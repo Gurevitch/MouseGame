@@ -11,6 +11,18 @@ const (
 	screenHeight = 800
 )
 
+func textureFromBPM(renderer *sdl.Renderer, filename string) *sdl.Texture {
+	img, err := sdl.LoadBMP(filename)
+	if err != nil {
+		panic(fmt.Errorf("failed to load BMP picture: %v", err))
+	}
+	defer img.Free()
+	tex, err := renderer.CreateTextureFromSurface(img)
+	if err != nil {
+		panic(fmt.Errorf("failed to create texture from surface: %v", err))
+	}
+	return tex
+}
 func main() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		fmt.Println("Init SDL problem: ", err)
@@ -33,11 +45,19 @@ func main() {
 		return
 	}
 	defer renderer.Destroy()
+
+	background, err := newBackground(renderer)
+	if err != nil {
+		fmt.Println("creating player: ", err)
+		return
+	}
+
 	plr, err := newPlayer(renderer)
 	if err != nil {
 		fmt.Println("creating player: ", err)
 		return
 	}
+
 	pprMan, err := newPaparMan(renderer)
 	if err != nil {
 		fmt.Println("creating paparMan: ", err)
@@ -52,6 +72,8 @@ func main() {
 		}
 		renderer.SetDrawColor(255, 255, 255, 255)
 		renderer.Clear()
+
+		background.draw(renderer)
 		pprMan.draw(renderer)
 		plr.update()
 		plr.draw(renderer)

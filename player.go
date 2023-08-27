@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -24,19 +22,15 @@ type movingPlayerToNewPlace struct {
 	mouseKeyPressed uint32
 }
 
-var newPlace movingPlayerToNewPlace
+var (
+	newPlace   movingPlayerToNewPlace
+	needToMove = false
+)
 
 func newPlayer(renderer *sdl.Renderer) (newPlayer player, err error) {
 
-	img, err := sdl.LoadBMP("images/player.bmp")
-	if err != nil {
-		return player{}, fmt.Errorf("loading player img: %v", err)
-	}
-	defer img.Free()
-	newPlayer.tex, err = renderer.CreateTextureFromSurface(img)
-	if err != nil {
-		return player{}, fmt.Errorf("creating player texture: %v", err)
-	}
+	newPlayer.tex = textureFromBPM(renderer, "images/player.bmp")
+
 	return newPlayer, nil
 }
 
@@ -44,24 +38,20 @@ func (plr *player) draw(renderer *sdl.Renderer) {
 
 	renderer.Copy(
 		plr.tex,
-		&sdl.Rect{X: 0, Y: 0, W: 242, H: 580},
-		&sdl.Rect{X: int32(plr.xMove), Y: int32(plr.yMove), W: 200, H: 300},
+		&sdl.Rect{X: 0, Y: 0, W: 242, H: 582},
+		&sdl.Rect{X: int32(plr.xMove), Y: int32(plr.yMove), W: 105, H: 150},
 	)
 }
 
-var needToMove = false
-
 func (plr *player) update() {
 	newPlace.xRightOrLeft, newPlace.yUpOrDown, newPlace.mouseKeyPressed = sdl.GetMouseState()
-
 	if (newPlace.mouseKeyPressed == leftMouseClick) && (int32(plr.xMove) != newPlace.xRightOrLeft || int32(plr.yMove) != newPlace.yUpOrDown) {
 		needToMove = true
 	}
 	if needToMove {
-
 		//moving player right or left
-		if int32(plr.xMove) != newPlace.xRightOrLeft {
-			if newPlace.xRightOrLeft > int32(plr.xMove) /* && newPlace.xRightOrLeft+242 < 1244 */ {
+		if int32(plr.xMove) != newPlace.xRightOrLeft /*&& (plr.xMove) < 1350-242*/ {
+			if newPlace.xRightOrLeft > int32(plr.xMove) {
 				plr.xMove += playerSpeed
 			}
 			if newPlace.xRightOrLeft < int32(plr.xMove) {
@@ -70,7 +60,7 @@ func (plr *player) update() {
 		}
 		//moving player up or down
 		if int32(plr.yMove) != newPlace.yUpOrDown {
-			if int32(plr.yMove) != newPlace.yUpOrDown /*&& newPlace.yUpOrDown+582 < 1070*/ {
+			if int32(plr.yMove) != newPlace.yUpOrDown /* && plr.yMove < screenHeight-240*/ {
 				if newPlace.yUpOrDown > int32(plr.yMove) {
 					plr.yMove += playerSpeed
 				}
@@ -83,5 +73,4 @@ func (plr *player) update() {
 			needToMove = false
 		}
 	}
-
 }

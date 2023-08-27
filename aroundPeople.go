@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -11,18 +9,10 @@ type aroundPeople struct {
 	xMove, yMove float32
 }
 
-func newPaparMan(renderer *sdl.Renderer) (newPlayer aroundPeople, err error) {
+func newPaparMan(renderer *sdl.Renderer) (newAroundPeople aroundPeople, err error) {
 
-	img, err := sdl.LoadBMP("images/paparman.bmp")
-	if err != nil {
-		return aroundPeople{}, fmt.Errorf("loading player img: %v", err)
-	}
-	defer img.Free()
-	newPlayer.tex, err = renderer.CreateTextureFromSurface(img)
-	if err != nil {
-		return aroundPeople{}, fmt.Errorf("creating player texture: %v", err)
-	}
-	return newPlayer, nil
+	newAroundPeople.tex = textureFromBPM(renderer, "images/paparman.bmp")
+	return newAroundPeople, nil
 }
 func (plr *aroundPeople) draw(renderer *sdl.Renderer) {
 
