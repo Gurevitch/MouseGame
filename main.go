@@ -9,6 +9,9 @@ import (
 const (
 	screenWidth  = 1200
 	screenHeight = 800
+
+	truePress  = 1
+	falsePress = 0
 )
 
 func textureFromBPM(renderer *sdl.Renderer, filename string) *sdl.Texture {
@@ -23,6 +26,7 @@ func textureFromBPM(renderer *sdl.Renderer, filename string) *sdl.Texture {
 	}
 	return tex
 }
+
 func main() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		fmt.Println("Init SDL problem: ", err)

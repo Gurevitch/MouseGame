@@ -19,7 +19,7 @@ type player struct {
 type movingPlayerToNewPlace struct {
 	xRightOrLeft    int32
 	yUpOrDown       int32
-	mouseKeyPressed uint32
+	mouseKeyPressed sdl.ButtonMask
 }
 
 var (
@@ -44,13 +44,22 @@ func (plr *player) draw(renderer *sdl.Renderer) {
 }
 
 func (plr *player) update() {
-	newPlace.xRightOrLeft, newPlace.yUpOrDown, newPlace.mouseKeyPressed = sdl.GetMouseState()
-	if (newPlace.mouseKeyPressed == leftMouseClick) && (int32(plr.xMove) != newPlace.xRightOrLeft || int32(plr.yMove) != newPlace.yUpOrDown) {
-		needToMove = true
+	if !needToMove {
+		newPlace.xRightOrLeft, newPlace.yUpOrDown, newPlace.mouseKeyPressed = sdl.GetMouseState()
+		if newPlace.mouseKeyPressed == leftMouseClick {
+			needToMove = true
+		}
+	}
+	keyPressed := sdl.GetKeyboardState()
+	if keyPressed[sdl.SCANCODE_SPACE] == truePress {
+		plr.xMove = float32(newPlace.xRightOrLeft)
+		plr.yMove = float32(newPlace.yUpOrDown)
+		needToMove = false
+
 	}
 	if needToMove {
 		//moving player right or left
-		if int32(plr.xMove) != newPlace.xRightOrLeft /*&& (plr.xMove) < 1350-242*/ {
+		if int32(plr.xMove) != newPlace.xRightOrLeft {
 			if newPlace.xRightOrLeft > int32(plr.xMove) {
 				plr.xMove += playerSpeed
 			}
@@ -60,7 +69,7 @@ func (plr *player) update() {
 		}
 		//moving player up or down
 		if int32(plr.yMove) != newPlace.yUpOrDown {
-			if int32(plr.yMove) != newPlace.yUpOrDown /* && plr.yMove < screenHeight-240*/ {
+			if int32(plr.yMove) != newPlace.yUpOrDown {
 				if newPlace.yUpOrDown > int32(plr.yMove) {
 					plr.yMove += playerSpeed
 				}
