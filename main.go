@@ -3,85 +3,75 @@ package main
 import (
 	"fmt"
 
+	"bitbucket.org/Local/games/PP/engine"
+	"bitbucket.org/Local/games/PP/game"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-const (
-	screenWidth  = 1200
-	screenHeight = 800
-
-	truePress  = 1
-	falsePress = 0
-)
-
-func textureFromBPM(renderer *sdl.Renderer, filename string) *sdl.Texture {
-	img, err := sdl.LoadBMP(filename)
-	if err != nil {
-		panic(fmt.Errorf("failed to load BMP picture: %v", err))
-	}
-	defer img.Free()
-	tex, err := renderer.CreateTextureFromSurface(img)
-	if err != nil {
-		panic(fmt.Errorf("failed to create texture from surface: %v", err))
-	}
-	return tex
-}
-
 func main() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
-		fmt.Println("Init SDL problem: ", err)
+		fmt.Println("Init SDL:", err)
 		return
 	}
-	window, err := sdl.CreateWindow(
-		"basic gaming practice in go", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		screenWidth, screenHeight,
-		sdl.WINDOW_OPENGL)
+	defer sdl.Quit()
 
+	window, err := sdl.CreateWindow(
+		"Pink Panther Adventure",
+		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+		engine.ScreenWidth, engine.ScreenHeight,
+		sdl.WINDOW_OPENGL)
 	if err != nil {
-		fmt.Println("Init Window problem: ", err)
+		fmt.Println("Window:", err)
 		return
 	}
 	defer window.Destroy()
 
 	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
 	if err != nil {
-		fmt.Println("Init renderer problem: ", err)
+		fmt.Println("Renderer:", err)
 		return
 	}
 	defer renderer.Destroy()
+	renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 
-	background, err := newBackground(renderer)
-	if err != nil {
-		fmt.Println("creating player: ", err)
-		return
-	}
+	font := engine.NewBitmapFont(renderer)
+	g := game.New(renderer, font)
 
-	plr, err := newPlayer(renderer)
-	if err != nil {
-		fmt.Println("creating player: ", err)
-		return
-	}
+	var lastTick uint32 = sdl.GetTicks()
 
-	pprMan, err := newPaparMan(renderer)
-	if err != nil {
-		fmt.Println("creating paparMan: ", err)
-		return
-	}
 	for {
+		frameStart := sdl.GetTicks()
+		dt := float64(frameStart-lastTick) / 1000.0
+		if dt > 0.05 {
+			dt = 0.05
+		}
+		lastTick = frameStart
+
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch event.(type) {
+			switch e := event.(type) {
 			case *sdl.QuitEvent:
 				return
+			case *sdl.MouseButtonEvent:
+				if e.Type == sdl.MOUSEBUTTONDOWN && e.Button == sdl.BUTTON_LEFT {
+					g.HandleClick(e.X, e.Y)
+				}
+			case *sdl.KeyboardEvent:
+				if e.Type == sdl.KEYDOWN {
+					g.HandleKey(e.Keysym.Scancode)
+				}
 			}
 		}
-		renderer.SetDrawColor(255, 255, 255, 255)
+
+		mx, my, _ := sdl.GetMouseState()
+		g.Update(dt, mx, my)
+
+		renderer.SetDrawColor(0, 0, 0, 255)
 		renderer.Clear()
-
-		background.draw(renderer)
-		pprMan.draw(renderer)
-		plr.update()
-		plr.draw(renderer)
-
+		g.Draw(renderer)
 		renderer.Present()
+
+		if elapsed := sdl.GetTicks() - frameStart; elapsed < engine.FrameDelay {
+			sdl.Delay(engine.FrameDelay - elapsed)
+		}
 	}
 }
