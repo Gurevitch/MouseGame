@@ -6,19 +6,29 @@ import (
 )
 
 type Game struct {
-	sceneMgr *sceneManager
-	player   *player
-	dialog   *dialogSystem
-	ui       *uiManager
+	sceneMgr  *sceneManager
+	player    *player
+	dialog    *dialogSystem
+	ui        *uiManager
+	audio     *audioManager
+	lastScene string
 }
 
 func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
-	return &Game{
+	g := &Game{
 		sceneMgr: newSceneManager(renderer),
 		player:   newPlayer(renderer),
 		dialog:   newDialogSystem(font),
 		ui:       newUIManager(font),
+		audio:    newAudioManager(),
 	}
+	g.lastScene = g.sceneMgr.currentName
+	g.audio.playMusic(g.sceneMgr.current().musicPath)
+	return g
+}
+
+func (g *Game) Close() {
+	g.audio.close()
 }
 
 func (g *Game) HandleClick(x, y int32) {
@@ -56,6 +66,9 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 
 func (g *Game) Update(dt float64, mx, my int32) {
 	scene := g.sceneMgr.current()
+	if !g.dialog.active && g.player.state == stateTalking {
+		g.player.state = stateIdle
+	}
 	if !g.dialog.active && !g.sceneMgr.transitioning {
 		g.player.update(dt)
 	}
@@ -63,16 +76,58 @@ func (g *Game) Update(dt float64, mx, my int32) {
 	g.sceneMgr.update(dt)
 	scene.updateAmbient(dt)
 	g.ui.updateHover(scene, mx, my)
+
+	if g.sceneMgr.currentName != g.lastScene {
+		g.lastScene = g.sceneMgr.currentName
+		g.audio.playMusic(g.sceneMgr.current().musicPath)
+	}
 }
 
 func (g *Game) Draw(renderer *sdl.Renderer) {
 	scene := g.sceneMgr.current()
-	scene.drawBackground(renderer)
+
+	scene.drawBackground(renderer, g.player.x)
 	scene.drawAmbient(renderer)
-	scene.drawHotspots(renderer)
+	scene.drawHotspots(renderer, g.ui.hoverName)
 	scene.drawNPCs(renderer)
 	g.player.draw(renderer)
+
+	drawWarmTint(renderer)
+	drawVignette(renderer)
+
 	g.dialog.draw(renderer)
 	g.ui.draw(renderer)
 	g.sceneMgr.drawTransition(renderer)
+}
+
+func drawWarmTint(renderer *sdl.Renderer) {
+	renderer.SetDrawColor(255, 230, 180, 8)
+	renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
+}
+
+func drawVignette(renderer *sdl.Renderer) {
+	w := int32(engine.ScreenWidth)
+	h := int32(engine.ScreenHeight)
+
+	layers := []struct {
+		inset int32
+		alpha uint8
+	}{
+		{0, 22},
+		{30, 15},
+		{70, 10},
+		{120, 5},
+	}
+
+	for _, l := range layers {
+		renderer.SetDrawColor(0, 0, 0, l.alpha)
+		// top
+		renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: w, H: l.inset + 30})
+		// bottom
+		renderer.FillRect(&sdl.Rect{X: 0, Y: h - l.inset - 30, W: w, H: l.inset + 30})
+		// left
+		renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: l.inset + 40, H: h})
+		// right
+		renderer.FillRect(&sdl.Rect{X: w - l.inset - 40, Y: 0, W: l.inset + 40, H: h})
+	}
 }

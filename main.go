@@ -36,6 +36,7 @@ func main() {
 
 	font := engine.NewBitmapFont(renderer)
 	g := game.New(renderer, font)
+	defer g.Close()
 
 	var lastTick uint32 = sdl.GetTicks()
 

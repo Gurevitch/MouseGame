@@ -15,13 +15,14 @@ type spriteFrame struct {
 
 const (
 	playerBaseSpeed = 250.0
-	playerDstW      = 140
-	playerDstH      = 200
+	playerDstW      = 200
+	playerDstH      = 280
 	playerMinX      = 10.0
 	playerMaxX      = engine.ScreenWidth - playerDstW - 10.0
 	playerMinY      = 340.0
 	playerMaxY      = engine.ScreenHeight - playerDstH - 60.0
 	walkFrameTime   = 0.12
+	talkFrameTime   = 0.20
 )
 
 type playerState int
@@ -32,14 +33,12 @@ const (
 	stateTalking
 )
 
-// Ping-pong walk cycle: frame 0 -> 1 -> 2 -> 1 -> repeat
 var walkCycle = [4]int{0, 1, 2, 1}
 
 type player struct {
 	idleFrame  spriteFrame
 	walkFrames [3]spriteFrame
-	talkFrame  spriteFrame
-	scale      float64
+	talkFrames []spriteFrame
 
 	x, y       float64
 	targetX    float64
@@ -51,8 +50,8 @@ type player struct {
 	breathTimer  float64
 	walkCycleIdx int
 	walkTimer    float64
+	talkCycleIdx int
 	talkTimer    float64
-	talkOpen     bool
 
 	interactTarget *npc
 	dialogSys      *dialogSystem
@@ -73,20 +72,10 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		p.walkFrames[i] = spriteFrame{tex: walkTexs[i], w: walkWs[i], h: walkHs[i]}
 	}
 
-	talkTex, talkW, talkH := engine.TextureFromPNG(renderer, "assets/images/pp_talk.png")
-	p.talkFrame = spriteFrame{tex: talkTex, w: talkW, h: talkH}
-
-	// Uniform scale from the tallest frame so all poses match in size
-	maxH := p.idleFrame.h
-	if p.talkFrame.h > maxH {
-		maxH = p.talkFrame.h
+	talkTexs, talkWs, talkHs := engine.SpriteFramesFromPNG(renderer, "assets/images/pp_talk_sheet.png", 4)
+	for i := 0; i < len(talkTexs); i++ {
+		p.talkFrames = append(p.talkFrames, spriteFrame{tex: talkTexs[i], w: talkWs[i], h: talkHs[i]})
 	}
-	for _, wf := range p.walkFrames {
-		if wf.h > maxH {
-			maxH = wf.h
-		}
-	}
-	p.scale = float64(playerDstH) / float64(maxH)
 
 	return p
 }
@@ -96,8 +85,8 @@ func (p *player) currentSprite() spriteFrame {
 	case stateWalking:
 		return p.walkFrames[walkCycle[p.walkCycleIdx]]
 	case stateTalking:
-		if p.talkOpen {
-			return p.talkFrame
+		if len(p.talkFrames) > 0 {
+			return p.talkFrames[p.talkCycleIdx%len(p.talkFrames)]
 		}
 		return p.idleFrame
 	default:
@@ -157,13 +146,15 @@ func (p *player) update(dt float64) {
 
 	if p.state == stateTalking {
 		p.talkTimer += dt
-		if p.talkTimer >= 0.30 {
-			p.talkTimer -= 0.30
-			p.talkOpen = !p.talkOpen
+		if p.talkTimer >= talkFrameTime {
+			p.talkTimer -= talkFrameTime
+			if len(p.talkFrames) > 0 {
+				p.talkCycleIdx = (p.talkCycleIdx + 1) % len(p.talkFrames)
+			}
 		}
 	} else {
 		p.talkTimer = 0
-		p.talkOpen = false
+		p.talkCycleIdx = 0
 	}
 
 	if !p.moving {
@@ -205,15 +196,21 @@ func (p *player) update(dt float64) {
 	p.facingLeft = dx < 0
 }
 
+func (p *player) footCenter() (int32, int32) {
+	cx := int32(p.x) + playerDstW/2
+	fy := int32(p.y) + playerDstH
+	return cx, fy
+}
+
 func (p *player) draw(renderer *sdl.Renderer) {
 	frame := p.currentSprite()
 
-	dstW := int32(float64(frame.w) * p.scale)
-	dstH := int32(float64(frame.h) * p.scale)
+	frameScale := float64(playerDstH) / float64(frame.h)
+	dstW := int32(float64(frame.w) * frameScale)
+	dstH := int32(playerDstH)
 
-	// Center horizontally within the logical bounding box, bottom-align
 	dstX := int32(p.x) + (playerDstW-dstW)/2
-	dstY := int32(p.y) + (playerDstH - dstH)
+	dstY := int32(p.y)
 
 	flip := sdl.FLIP_NONE
 	if p.facingLeft {
@@ -228,6 +225,9 @@ func (p *player) draw(renderer *sdl.Renderer) {
 		bob := math.Sin(p.breathTimer*3.0) * 1.5
 		dstY += int32(bob)
 	}
+
+	cx, fy := p.footCenter()
+	drawShadow(renderer, cx, fy, playerDstW-20)
 
 	renderer.CopyEx(frame.tex, nil,
 		&sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH},

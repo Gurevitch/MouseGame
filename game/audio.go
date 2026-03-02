@@ -1,17 +1,64 @@
 package game
 
-// Audio support requires SDL2_mixer.
-// To enable: pacman -S mingw-w64-x86_64-SDL2_mixer
-// Then use github.com/veandco/go-sdl2/mix
+import (
+	"fmt"
+	"syscall"
+	"unsafe"
+)
+
+var (
+	winmm         = syscall.NewLazyDLL("winmm.dll")
+	mciSendStringW = winmm.NewProc("mciSendStringW")
+)
+
+func mciSend(cmd string) error {
+	p, _ := syscall.UTF16PtrFromString(cmd)
+	ret, _, _ := mciSendStringW.Call(uintptr(unsafe.Pointer(p)), 0, 0, 0)
+	if ret != 0 {
+		return fmt.Errorf("MCI error %d for: %s", ret, cmd)
+	}
+	return nil
+}
 
 type audioManager struct {
-	enabled bool
+	currentPath string
+	playing     bool
 }
 
 func newAudioManager() *audioManager {
-	return &audioManager{enabled: false}
+	return &audioManager{}
 }
 
-func (am *audioManager) playMusic(path string) {}
-func (am *audioManager) fadeOutMusic(ms int)   {}
-func (am *audioManager) stopMusic()           {}
+func (am *audioManager) playMusic(path string) {
+	if path == am.currentPath && am.playing {
+		return
+	}
+	am.stopMusic()
+	if path == "" {
+		return
+	}
+	if err := mciSend(fmt.Sprintf(`open "%s" type mpegvideo alias bgmusic`, path)); err != nil {
+		fmt.Println("Audio open (non-fatal):", err)
+		return
+	}
+	if err := mciSend("play bgmusic repeat"); err != nil {
+		fmt.Println("Audio play (non-fatal):", err)
+		mciSend("close bgmusic")
+		return
+	}
+	am.currentPath = path
+	am.playing = true
+}
+
+func (am *audioManager) stopMusic() {
+	if am.playing {
+		mciSend("stop bgmusic")
+		mciSend("close bgmusic")
+		am.playing = false
+	}
+	am.currentPath = ""
+}
+
+func (am *audioManager) close() {
+	am.stopMusic()
+}

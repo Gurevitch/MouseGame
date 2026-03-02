@@ -16,20 +16,21 @@ type npc struct {
 	bobTimer  float64
 	bobAmount float64
 	flipped   bool
+	hovered   bool
 }
 
 func newPaparMan(renderer *sdl.Renderer) *npc {
-	tex := engine.TextureFromBMP(renderer, "assets/images/paparman.bmp")
+	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/npc_paparman.png")
 	return &npc{
 		tex:     tex,
-		srcRect: sdl.Rect{X: 0, Y: 0, W: 370, H: 346},
-		bounds:  sdl.Rect{X: 650, Y: 420, W: 180, H: 168},
-		name:    "Paparazzi Man",
+		srcRect: sdl.Rect{X: 0, Y: 0, W: w, H: h},
+		bounds:  sdl.Rect{X: 650, Y: 380, W: 150, H: 210},
+		name:    "Paper Man",
 		dialog: []dialogEntry{
-			{speaker: "Paparazzi Man", text: "Hey! You're the Pink Panther! Hold still for a photo!"},
+			{speaker: "Paper Man", text: "Extra! Extra! Read all about it! Pink Panther spotted in London!"},
 			{speaker: "Pink Panther", text: "..."},
-			{speaker: "Paparazzi Man", text: "Come on, just one shot! The tabloids will pay a fortune!"},
-			{speaker: "Pink Panther", text: "I'd rather not, thank you very much."},
+			{speaker: "Paper Man", text: "Care to buy a paper, sir? Got all the latest news!"},
+			{speaker: "Pink Panther", text: "No thank you, I prefer to make the news, not read it."},
 		},
 		bobAmount: 2.0,
 	}
@@ -81,7 +82,34 @@ func (n *npc) update(dt float64) {
 
 func (n *npc) draw(renderer *sdl.Renderer) {
 	bobOffset := int32(math.Sin(n.bobTimer*1.5) * n.bobAmount)
-	dst := sdl.Rect{X: n.bounds.X, Y: n.bounds.Y + bobOffset, W: n.bounds.W, H: n.bounds.H}
+
+	// Breathing scale pulse: ~1% oscillation at 0.8 Hz
+	breathScale := 1.0 + 0.01*math.Sin(n.bobTimer*0.8*2*math.Pi)
+	dstW := int32(float64(n.bounds.W) * breathScale)
+	dstH := int32(float64(n.bounds.H) * breathScale)
+	dstX := n.bounds.X - (dstW-n.bounds.W)/2
+	dstY := n.bounds.Y + bobOffset - (dstH - n.bounds.H)
+
+	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
+
+	shadowCX := n.bounds.X + n.bounds.W/2
+	shadowFY := n.bounds.Y + n.bounds.H
+	drawShadow(renderer, shadowCX, shadowFY, n.bounds.W-10)
+
+	if n.hovered {
+		renderer.SetDrawColor(255, 220, 100, 35)
+		pad := int32(4)
+		renderer.FillRect(&sdl.Rect{
+			X: dst.X - pad, Y: dst.Y - pad,
+			W: dst.W + pad*2, H: dst.H + pad*2,
+		})
+		renderer.SetDrawColor(255, 220, 100, 90)
+		renderer.DrawRect(&sdl.Rect{
+			X: dst.X - pad, Y: dst.Y - pad,
+			W: dst.W + pad*2, H: dst.H + pad*2,
+		})
+	}
+
 	flip := sdl.FLIP_NONE
 	if n.flipped {
 		flip = sdl.FLIP_HORIZONTAL

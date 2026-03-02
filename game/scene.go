@@ -42,6 +42,7 @@ type scene struct {
 	glows     []glowEffect
 	spawnX    float64
 	spawnY    float64
+	musicPath string
 }
 
 type sceneManager struct {
@@ -101,11 +102,41 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		})
 	}
 
-	// Lamp glow (warm, at the lamp head position)
+	// Cloud wisps drifting across sky
+	for i := 0; i < 4; i++ {
+		street.particles = append(street.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     60 + rand.Float64()*200,
+			baseY: 60 + rand.Float64()*200,
+			vx:    rand.Float64()*8 + 3,
+			vy:    0,
+			alpha: uint8(rand.Intn(8) + 4),
+			size:  int32(rand.Intn(120) + 100),
+		})
+	}
+
+	// Leaf drift near tree tops
+	treeXs := []float64{250, 560, 850, 1140}
+	for _, tx := range treeXs {
+		for j := 0; j < 3; j++ {
+			street.particles = append(street.particles, particle{
+				x:     tx + (rand.Float64()-0.5)*40,
+				y:     400 + rand.Float64()*30,
+				vx:    rand.Float64()*12 + 4,
+				vy:    rand.Float64()*6 + 2,
+				alpha: uint8(rand.Intn(30) + 15),
+				size:  int32(rand.Intn(2) + 1),
+			})
+		}
+	}
+
 	street.glows = []glowEffect{
-		{x: 90, y: 200, w: 100, h: 120, r: 255, g: 210, b: 130, alpha: 35, pulse: 2.5},
+		// Lamp glow (irregular flicker via high pulse speed)
+		{x: 90, y: 230, w: 100, h: 100, r: 255, g: 210, b: 130, alpha: 40, pulse: 4.5},
+		// Lamp ground warmth
+		{x: 50, y: 620, w: 160, h: 60, r: 255, g: 200, b: 120, alpha: 18, pulse: 3.8},
 		// Moon glow
-		{x: 940, y: 50, w: 120, h: 120, r: 180, g: 190, b: 220, alpha: 15, pulse: 0.5},
+		{x: 940, y: 50, w: 120, h: 120, r: 180, g: 190, b: 220, alpha: 12, pulse: 0.5},
 		// Horizon warm glow
 		{x: 0, y: 420, w: engine.ScreenWidth, h: 40, r: 50, g: 45, b: 35, alpha: 20, pulse: 1.0},
 	}
@@ -113,11 +144,12 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 
 	// ===== Interior (Wooden Cabin) =====
 	interior := &scene{
-		name:   "interior",
-		bg:     newPNGBackground(renderer, "assets/images/bg_interior.png"),
-		npcs:   []*npc{newCryingKid(renderer), newProfessor(renderer)},
-		spawnX: 500,
-		spawnY: float64(engine.ScreenHeight) - playerDstH - 120,
+		name:      "interior",
+		bg:        newPNGBackground(renderer, "assets/images/bg_interior.png"),
+		npcs:      []*npc{newCryingKid(renderer), newProfessor(renderer)},
+		spawnX:    500,
+		spawnY:    float64(engine.ScreenHeight) - playerDstH - 120,
+		musicPath: "assets/sounds/The Pink Panther's Passport to Peril OST #08 - Camp Chilly Wa-Wa (Day 2 & 3) [HQ].mp3",
 		hotspots: []hotspot{
 			{
 				bounds:      sdl.Rect{X: 510, Y: 120, W: 180, H: 350},
@@ -225,16 +257,23 @@ func (s *scene) checkHotspotClick(x, y int32) *hotspot {
 	return nil
 }
 
-func (s *scene) drawBackground(renderer *sdl.Renderer) {
-	s.bg.draw(renderer)
+func (s *scene) drawBackground(renderer *sdl.Renderer, playerX float64) {
+	s.bg.draw(renderer, playerX)
 }
 
-func (s *scene) drawHotspots(renderer *sdl.Renderer) {
+func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string) {
 	for _, hs := range s.hotspots {
-		renderer.SetDrawColor(hs.r, hs.g, hs.b, 40)
-		renderer.FillRect(&hs.bounds)
-		renderer.SetDrawColor(hs.r, hs.g, hs.b, 80)
-		renderer.DrawRect(&hs.bounds)
+		if hs.name == hoverName && hoverName != "" {
+			renderer.SetDrawColor(hs.r, hs.g, hs.b, 70)
+			renderer.FillRect(&hs.bounds)
+			renderer.SetDrawColor(255, 220, 100, 160)
+			renderer.DrawRect(&hs.bounds)
+		} else {
+			renderer.SetDrawColor(hs.r, hs.g, hs.b, 25)
+			renderer.FillRect(&hs.bounds)
+			renderer.SetDrawColor(hs.r, hs.g, hs.b, 50)
+			renderer.DrawRect(&hs.bounds)
+		}
 	}
 }
 
@@ -249,7 +288,6 @@ func (s *scene) updateAmbient(dt float64) {
 		p := &s.particles[i]
 
 		if p.twinkle {
-			// Stationary twinkling star: alpha oscillates
 			continue
 		}
 
@@ -259,6 +297,10 @@ func (s *scene) updateAmbient(dt float64) {
 		if p.vy < 0 && p.y < -10 {
 			p.y = float64(engine.ScreenHeight) + 10
 			p.x = rand.Float64() * float64(engine.ScreenWidth)
+		}
+		if p.vy > 0 && p.y > float64(engine.ScreenHeight)+10 {
+			p.y = p.baseY
+			p.x += (rand.Float64() - 0.5) * 60
 		}
 		if p.vx > 0 && p.x > float64(engine.ScreenWidth)+float64(p.size) {
 			p.x = -float64(p.size)
@@ -280,7 +322,19 @@ func (s *scene) updateAmbient(dt float64) {
 func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 	// Glow effects
 	for _, g := range s.glows {
-		a := float64(g.alpha) * (0.7 + 0.3*math.Sin(g.timer*g.pulse))
+		base := 0.7 + 0.3*math.Sin(g.timer*g.pulse)
+		if g.pulse > 3.0 {
+			// High-pulse glows get random flicker jitter
+			jitter := (rand.Float64() - 0.5) * 0.15
+			base += jitter
+			if base < 0.4 {
+				base = 0.4
+			}
+		}
+		a := float64(g.alpha) * base
+		if a > 255 {
+			a = 255
+		}
 		renderer.SetDrawColor(g.r, g.g, g.b, uint8(a))
 		renderer.FillRect(&sdl.Rect{X: g.x, Y: g.y, W: g.w, H: g.h})
 	}
