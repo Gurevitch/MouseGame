@@ -39,7 +39,7 @@ func (ui *uiManager) draw(renderer *sdl.Renderer) {
 	renderer.SetDrawColor(0, 0, 0, 140)
 	renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: 36})
 
-	txt := "CLICK TO WALK | CLICK CHARACTERS TO TALK | CLICK DOORS TO CHANGE ROOMS"
+	txt := "CLICK TO WALK | CLICK CHARACTERS TO TALK | CLICK ARROWS TO CHANGE ROOMS"
 	ui.font.DrawText(renderer, txt, 10, 11, 2,
 		sdl.Color{R: 0, G: 0, B: 0, A: 120})
 	ui.font.DrawText(renderer, txt, 9, 10, 2,

@@ -19,8 +19,8 @@ const (
 	playerDstH      = 280
 	playerMinX      = 10.0
 	playerMaxX      = engine.ScreenWidth - playerDstW - 10.0
-	playerMinY      = 340.0
-	playerMaxY      = engine.ScreenHeight - playerDstH - 60.0
+	playerMinY      = 300.0
+	playerMaxY      = 430.0
 	walkFrameTime   = 0.12
 	talkFrameTime   = 0.20
 )
@@ -33,18 +33,28 @@ const (
 	stateTalking
 )
 
-var walkCycle = [4]int{0, 1, 2, 1}
+type direction int
+
+const (
+	dirRight direction = iota
+	dirLeft
+	dirUp
+	dirDown
+)
 
 type player struct {
-	idleFrame  spriteFrame
-	walkFrames [3]spriteFrame
-	talkFrames []spriteFrame
+	walkSideFrames []spriteFrame
+	walkUpFrames   []spriteFrame
+	walkDownFrames []spriteFrame
+	idleFrames     []spriteFrame
+	talkFrames     []spriteFrame
 
 	x, y       float64
 	targetX    float64
 	targetY    float64
 	moving     bool
 	facingLeft bool
+	dir        direction
 	state      playerState
 
 	breathTimer  float64
@@ -52,10 +62,16 @@ type player struct {
 	walkTimer    float64
 	talkCycleIdx int
 	talkTimer    float64
+	idleCycleIdx int
+	idleTimer    float64
 
 	interactTarget *npc
 	dialogSys      *dialogSystem
 	onArrival      func()
+}
+
+func gridFrameToSprite(gf engine.GridFrame) spriteFrame {
+	return spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H}
 }
 
 func newPlayer(renderer *sdl.Renderer) *player {
@@ -64,39 +80,76 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		y: float64(engine.ScreenHeight) - playerDstH - 160,
 	}
 
-	idleTex, idleW, idleH := engine.TextureFromPNG(renderer, "assets/images/pp_idle.png")
-	p.idleFrame = spriteFrame{tex: idleTex, w: idleW, h: idleH}
+	posesGrid := engine.SpriteGridFromPNG(renderer,
+		"assets/images/player/Gemini_Generated_Image_kkasyqkkasyqkkas.png", 5, 4)
 
-	walkTexs, walkWs, walkHs := engine.SpriteFramesFromPNG(renderer, "assets/images/pp_walk_sheet.png", 3)
-	for i := 0; i < 3; i++ {
-		p.walkFrames[i] = spriteFrame{tex: walkTexs[i], w: walkWs[i], h: walkHs[i]}
+	dirGrid := engine.SpriteGridFromPNG(renderer,
+		"assets/images/player/Gemini_Generated_Image_vt2ol9vt2ol9vt2o.png", 4, 3)
+
+	// Side-view walk cycle: poses rows 0-1 (10 frames)
+	for r := 0; r < 2; r++ {
+		for c := 0; c < 5; c++ {
+			p.walkSideFrames = append(p.walkSideFrames, gridFrameToSprite(posesGrid[r][c]))
+		}
 	}
 
-	talkTexs, talkWs, talkHs := engine.SpriteFramesFromPNG(renderer, "assets/images/pp_talk_sheet.png", 4)
-	for i := 0; i < len(talkTexs); i++ {
-		p.talkFrames = append(p.talkFrames, spriteFrame{tex: talkTexs[i], w: talkWs[i], h: talkHs[i]})
+	// Walk away/back: directions row 0 (4 frames)
+	for c := 0; c < 4; c++ {
+		p.walkUpFrames = append(p.walkUpFrames, gridFrameToSprite(dirGrid[0][c]))
 	}
+
+	// Walk toward camera: directions row 2 (4 frames)
+	for c := 0; c < 4; c++ {
+		p.walkDownFrames = append(p.walkDownFrames, gridFrameToSprite(dirGrid[2][c]))
+	}
+
+	// Idle: single front-facing frame from directions row 1, col 0
+	p.idleFrames = append(p.idleFrames, gridFrameToSprite(dirGrid[1][0]))
+
+	// Talk: poses row 2 cols 0-1 (standing + waving)
+	p.talkFrames = append(p.talkFrames, gridFrameToSprite(posesGrid[2][0]))
+	p.talkFrames = append(p.talkFrames, gridFrameToSprite(posesGrid[2][1]))
 
 	return p
+}
+
+func (p *player) currentWalkFrames() []spriteFrame {
+	switch p.dir {
+	case dirUp:
+		return p.walkUpFrames
+	case dirDown:
+		return p.walkDownFrames
+	default:
+		return p.walkSideFrames
+	}
 }
 
 func (p *player) currentSprite() spriteFrame {
 	switch p.state {
 	case stateWalking:
-		return p.walkFrames[walkCycle[p.walkCycleIdx]]
+		frames := p.currentWalkFrames()
+		if len(frames) == 0 {
+			return p.idleFrames[0]
+		}
+		return frames[p.walkCycleIdx%len(frames)]
 	case stateTalking:
 		if len(p.talkFrames) > 0 {
 			return p.talkFrames[p.talkCycleIdx%len(p.talkFrames)]
 		}
-		return p.idleFrame
+		return p.idleFrames[0]
 	default:
-		return p.idleFrame
+		if len(p.idleFrames) > 0 {
+			return p.idleFrames[0]
+		}
+		return p.walkSideFrames[0]
 	}
 }
 
 func (p *player) setTarget(x, y float64) {
-	p.targetX = engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
-	p.targetY = engine.Clamp(y-playerDstH/2, playerMinY, playerMaxY)
+	tx := engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
+	ty := engine.Clamp(y-playerDstH/2, playerMinY, playerMaxY)
+	p.targetX = tx
+	p.targetY = ty
 	p.moving = true
 	p.state = stateWalking
 	p.interactTarget = nil
@@ -130,14 +183,17 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 	p.onArrival = action
 }
 
-func (p *player) update(dt float64) {
+func (p *player) update(dt float64, blockers []sdl.Rect) {
 	p.breathTimer += dt
 
 	if p.moving {
 		p.walkTimer += dt
 		if p.walkTimer >= walkFrameTime {
 			p.walkTimer -= walkFrameTime
-			p.walkCycleIdx = (p.walkCycleIdx + 1) % len(walkCycle)
+			frames := p.currentWalkFrames()
+			if len(frames) > 0 {
+				p.walkCycleIdx = (p.walkCycleIdx + 1) % len(frames)
+			}
 		}
 	} else {
 		p.walkCycleIdx = 0
@@ -157,6 +213,10 @@ func (p *player) update(dt float64) {
 		p.talkCycleIdx = 0
 	}
 
+	if p.state == stateIdle {
+		p.idleCycleIdx = 0
+	}
+
 	if !p.moving {
 		if p.state != stateTalking {
 			p.state = stateIdle
@@ -168,11 +228,31 @@ func (p *player) update(dt float64) {
 	dy := p.targetY - p.y
 	dist := math.Sqrt(dx*dx + dy*dy)
 
+	// Determine direction from movement delta
+	if math.Abs(dy) > math.Abs(dx)*1.2 {
+		if dy < 0 {
+			p.dir = dirUp
+		} else {
+			p.dir = dirDown
+		}
+	} else {
+		if dx < 0 {
+			p.dir = dirLeft
+		} else {
+			p.dir = dirRight
+		}
+	}
+	p.facingLeft = dx < 0
+
 	if dist < 3.0 {
 		p.x = p.targetX
 		p.y = p.targetY
 		p.moving = false
 		p.state = stateIdle
+		p.dir = dirDown
+		p.facingLeft = false
+		p.idleCycleIdx = 0
+		p.idleTimer = 0
 		if p.interactTarget != nil && p.dialogSys != nil {
 			p.state = stateTalking
 			p.dialogSys.startDialog(p.interactTarget.dialog)
@@ -193,7 +273,41 @@ func (p *player) update(dt float64) {
 	}
 	p.x = engine.Clamp(p.x+(dx/dist)*speed*dt, playerMinX, playerMaxX)
 	p.y = engine.Clamp(p.y+(dy/dist)*speed*dt, playerMinY, playerMaxY)
-	p.facingLeft = dx < 0
+
+	for _, b := range blockers {
+		pr := sdl.Rect{X: int32(p.x), Y: int32(p.y), W: playerDstW, H: playerDstH}
+		if pr.HasIntersection(&b) {
+			playerCX := p.x + playerDstW/2
+			blockerCX := float64(b.X) + float64(b.W)/2
+			if playerCX < blockerCX {
+				p.x = float64(b.X) - playerDstW
+			} else {
+				p.x = float64(b.X + b.W)
+			}
+			if p.targetX < float64(b.X+b.W) && p.targetX+playerDstW > float64(b.X) {
+				p.moving = false
+				if p.interactTarget != nil && p.dialogSys != nil {
+					p.state = stateTalking
+					p.dialogSys.startDialog(p.interactTarget.dialog)
+					p.facingLeft = p.x > float64(p.interactTarget.bounds.X)
+					p.interactTarget = nil
+				} else if p.onArrival != nil {
+					fn := p.onArrival
+					p.onArrival = nil
+					p.state = stateIdle
+					p.dir = dirDown
+					p.facingLeft = false
+					fn()
+				} else {
+					p.state = stateIdle
+					p.dir = dirDown
+					p.facingLeft = false
+				}
+				p.idleCycleIdx = 0
+				p.idleTimer = 0
+			}
+		}
+	}
 }
 
 func (p *player) footCenter() (int32, int32) {
@@ -213,7 +327,7 @@ func (p *player) draw(renderer *sdl.Renderer) {
 	dstY := int32(p.y)
 
 	flip := sdl.FLIP_NONE
-	if p.facingLeft {
+	if p.facingLeft && p.state != stateIdle {
 		flip = sdl.FLIP_HORIZONTAL
 	}
 

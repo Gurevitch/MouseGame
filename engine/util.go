@@ -1,7 +1,7 @@
 package engine
 
 const (
-	ScreenWidth  = 1200
+	ScreenWidth  = 1400
 	ScreenHeight = 800
 	TargetFPS    = 60
 	FrameDelay   = 1000 / TargetFPS

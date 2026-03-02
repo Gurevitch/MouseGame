@@ -8,11 +8,19 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+type arrowDir int
+
+const (
+	arrowNone  arrowDir = iota
+	arrowRight
+	arrowUp
+)
+
 type hotspot struct {
 	bounds      sdl.Rect
 	targetScene string
 	name        string
-	r, g, b     uint8
+	arrow       arrowDir
 }
 
 type particle struct {
@@ -40,6 +48,7 @@ type scene struct {
 	hotspots  []hotspot
 	particles []particle
 	glows     []glowEffect
+	blockers  []sdl.Rect
 	spawnX    float64
 	spawnY    float64
 	musicPath string
@@ -61,101 +70,58 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		currentName: "street",
 	}
 
-	// ===== Street (London Night) =====
+	// ===== Street (London Day) =====
 	street := &scene{
 		name:   "street",
-		bg:     newLondonBackground(renderer),
-		npcs:   []*npc{newPaparMan(renderer)},
-		spawnX: 200,
-		spawnY: float64(engine.ScreenHeight) - playerDstH - 160,
+		bg:     newPNGBackground(renderer, "assets/images/backgrounds/Gemini_Generated_Image_london.png"),
+		npcs:   []*npc{newPaparMan(renderer), newTalkingMan1(renderer), newTalkingWoman(renderer), newTalkingMan2(renderer)},
+		spawnX: 500,
+		spawnY: 380,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1065, Y: 395, W: 55, H: 45},
+				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
 				targetScene: "interior",
-				name:        "Enter Building",
-				r:           180, g: 140, b: 60,
+				name:        "Go Right",
+				arrow:       arrowRight,
 			},
+		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: 280, H: engine.ScreenHeight},
 		},
 	}
 
-	// Twinkling star overlay particles (subtle flicker on top of static stars)
-	for i := 0; i < 20; i++ {
-		street.particles = append(street.particles, particle{
-			x:       rand.Float64() * float64(engine.ScreenWidth),
-			y:       rand.Float64() * 350,
-			alpha:   uint8(rand.Intn(100) + 50),
-			size:    int32(rand.Intn(2) + 1),
-			twinkle: true,
-		})
-	}
-
-	// Fog near ground level
-	for i := 0; i < 25; i++ {
+	// Dust motes drifting in sunlight
+	for i := 0; i < 8; i++ {
 		street.particles = append(street.particles, particle{
 			x:     rand.Float64() * float64(engine.ScreenWidth),
-			y:     420 + rand.Float64()*60,
-			baseY: 420 + rand.Float64()*60,
-			vx:    rand.Float64()*20 + 5,
-			vy:    0,
-			alpha: uint8(rand.Intn(20) + 8),
-			size:  int32(rand.Intn(60) + 30),
+			y:     rand.Float64() * 400,
+			vx:    (rand.Float64() - 0.3) * 8,
+			vy:    -rand.Float64()*1.5 - 0.3,
+			alpha: uint8(rand.Intn(15) + 5),
+			size:  int32(rand.Intn(2) + 1),
 		})
-	}
-
-	// Cloud wisps drifting across sky
-	for i := 0; i < 4; i++ {
-		street.particles = append(street.particles, particle{
-			x:     rand.Float64() * float64(engine.ScreenWidth),
-			y:     60 + rand.Float64()*200,
-			baseY: 60 + rand.Float64()*200,
-			vx:    rand.Float64()*8 + 3,
-			vy:    0,
-			alpha: uint8(rand.Intn(8) + 4),
-			size:  int32(rand.Intn(120) + 100),
-		})
-	}
-
-	// Leaf drift near tree tops
-	treeXs := []float64{250, 560, 850, 1140}
-	for _, tx := range treeXs {
-		for j := 0; j < 3; j++ {
-			street.particles = append(street.particles, particle{
-				x:     tx + (rand.Float64()-0.5)*40,
-				y:     400 + rand.Float64()*30,
-				vx:    rand.Float64()*12 + 4,
-				vy:    rand.Float64()*6 + 2,
-				alpha: uint8(rand.Intn(30) + 15),
-				size:  int32(rand.Intn(2) + 1),
-			})
-		}
 	}
 
 	street.glows = []glowEffect{
-		// Lamp glow (irregular flicker via high pulse speed)
-		{x: 90, y: 230, w: 100, h: 100, r: 255, g: 210, b: 130, alpha: 40, pulse: 4.5},
-		// Lamp ground warmth
-		{x: 50, y: 620, w: 160, h: 60, r: 255, g: 200, b: 120, alpha: 18, pulse: 3.8},
-		// Moon glow
-		{x: 940, y: 50, w: 120, h: 120, r: 180, g: 190, b: 220, alpha: 12, pulse: 0.5},
-		// Horizon warm glow
-		{x: 0, y: 420, w: engine.ScreenWidth, h: 40, r: 50, g: 45, b: 35, alpha: 20, pulse: 1.0},
+		{x: 400, y: 0, w: 500, h: 400, r: 255, g: 245, b: 210, alpha: 8, pulse: 0.2},
+		{x: 0, y: 460, w: engine.ScreenWidth, h: 20, r: 200, g: 190, b: 160, alpha: 10, pulse: 0.4},
 	}
 	sm.scenes["street"] = street
 
 	// ===== Interior (Wooden Cabin) =====
 	interior := &scene{
 		name:      "interior",
-		bg:        newPNGBackground(renderer, "assets/images/bg_interior.png"),
+		bg:        newPNGBackground(renderer, "assets/images/backgrounds/bg_interior.png"),
 		npcs:      []*npc{newCryingKid(renderer), newProfessor(renderer)},
 		spawnX:    500,
 		spawnY:    float64(engine.ScreenHeight) - playerDstH - 120,
 		musicPath: "assets/sounds/The Pink Panther's Passport to Peril OST #08 - Camp Chilly Wa-Wa (Day 2 & 3) [HQ].mp3",
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 510, Y: 120, W: 180, H: 350},
+				bounds:      sdl.Rect{X: 520, Y: 50, W: 260, H: 300},
 				targetScene: "street",
-				name:        "Exit to Street",
-				r:           180, g: 160, b: 100,
+				name:        "Go Outside",
+				arrow:       arrowUp,
 			},
 		},
 	}
@@ -163,7 +129,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	// Dust motes drifting through sunbeams
 	for i := 0; i < 20; i++ {
 		interior.particles = append(interior.particles, particle{
-			x:     400 + rand.Float64()*400,
+			x:     450 + rand.Float64()*500,
 			y:     rand.Float64() * 500,
 			vx:    (rand.Float64() - 0.5) * 6,
 			vy:    -rand.Float64()*2 - 0.5,
@@ -173,14 +139,10 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	}
 
 	interior.glows = []glowEffect{
-		// Sunlight from the central doorway
-		{x: 460, y: 100, w: 280, h: 500, r: 255, g: 240, b: 200, alpha: 12, pulse: 0.3},
-		// Left window light
-		{x: 50, y: 150, w: 140, h: 200, r: 200, g: 220, b: 240, alpha: 10, pulse: 0.4},
-		// Right window light
-		{x: 1010, y: 150, w: 140, h: 200, r: 200, g: 220, b: 240, alpha: 10, pulse: 0.4},
-		// Warm floor glow from doorway light
-		{x: 400, y: 550, w: 400, h: 100, r: 255, g: 220, b: 170, alpha: 8, pulse: 0.5},
+		{x: 540, y: 100, w: 310, h: 500, r: 255, g: 240, b: 200, alpha: 12, pulse: 0.3},
+		{x: 60, y: 150, w: 160, h: 200, r: 200, g: 220, b: 240, alpha: 10, pulse: 0.4},
+		{x: 1180, y: 150, w: 160, h: 200, r: 200, g: 220, b: 240, alpha: 10, pulse: 0.4},
+		{x: 470, y: 550, w: 460, h: 100, r: 255, g: 220, b: 170, alpha: 8, pulse: 0.5},
 	}
 	sm.scenes["interior"] = interior
 
@@ -261,19 +223,80 @@ func (s *scene) drawBackground(renderer *sdl.Renderer, playerX float64) {
 	s.bg.draw(renderer, playerX)
 }
 
-func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string) {
+func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, mx, my int32) {
+	pulse := 0.6 + 0.4*math.Sin(float64(sdl.GetTicks())*0.003)
 	for _, hs := range s.hotspots {
-		if hs.name == hoverName && hoverName != "" {
-			renderer.SetDrawColor(hs.r, hs.g, hs.b, 70)
-			renderer.FillRect(&hs.bounds)
-			renderer.SetDrawColor(255, 220, 100, 160)
-			renderer.DrawRect(&hs.bounds)
-		} else {
-			renderer.SetDrawColor(hs.r, hs.g, hs.b, 25)
-			renderer.FillRect(&hs.bounds)
-			renderer.SetDrawColor(hs.r, hs.g, hs.b, 50)
-			renderer.DrawRect(&hs.bounds)
+		if hs.arrow == arrowNone {
+			continue
 		}
+		hovered := hs.name == hoverName && hoverName != ""
+		if hovered {
+			alpha := uint8(float64(220) * pulse)
+			drawArrow(renderer, mx, my, 40, 40, hs.arrow, alpha)
+		} else {
+			alpha := uint8(float64(60) * pulse)
+			cx := hs.bounds.X + hs.bounds.W/2
+			cy := hs.bounds.Y + hs.bounds.H/2
+			drawArrow(renderer, cx, cy, 30, 30, hs.arrow, alpha)
+		}
+	}
+}
+
+func drawArrow(renderer *sdl.Renderer, cx, cy, w, h int32, dir arrowDir, alpha uint8) {
+	renderer.SetDrawColor(255, 220, 100, alpha)
+	switch dir {
+	case arrowRight:
+		// Right-pointing triangle: tip at right, base on left
+		tipX := cx + w/2
+		tipY := cy
+		baseTop := cy - h/2
+		baseBot := cy + h/2
+		baseX := cx - w/2
+		for y := baseTop; y <= baseBot; y++ {
+			t := float64(y-baseTop) / float64(baseBot-baseTop)
+			var x0, x1 int32
+			if t <= 0.5 {
+				x0 = baseX
+				x1 = baseX + int32(float64(tipX-baseX)*t*2)
+			} else {
+				x0 = baseX
+				x1 = baseX + int32(float64(tipX-baseX)*(1.0-t)*2)
+			}
+			if x1 > x0 {
+				renderer.DrawLine(x0, y, x1, y)
+			}
+		}
+		// Outline
+		renderer.SetDrawColor(255, 240, 180, alpha)
+		renderer.DrawLine(baseX, baseTop, tipX, tipY)
+		renderer.DrawLine(tipX, tipY, baseX, baseBot)
+		renderer.DrawLine(baseX, baseBot, baseX, baseTop)
+	case arrowUp:
+		// Up-pointing triangle: tip at top, base on bottom
+		tipX := cx
+		tipY := cy - h/2
+		baseLeft := cx - w/2
+		baseRight := cx + w/2
+		baseY := cy + h/2
+		for x := baseLeft; x <= baseRight; x++ {
+			t := float64(x-baseLeft) / float64(baseRight-baseLeft)
+			var y0, y1 int32
+			if t <= 0.5 {
+				y1 = baseY
+				y0 = baseY - int32(float64(baseY-tipY)*t*2)
+			} else {
+				y1 = baseY
+				y0 = baseY - int32(float64(baseY-tipY)*(1.0-t)*2)
+			}
+			if y1 > y0 {
+				renderer.DrawLine(x, y0, x, y1)
+			}
+		}
+		// Outline
+		renderer.SetDrawColor(255, 240, 180, alpha)
+		renderer.DrawLine(baseLeft, baseY, tipX, tipY)
+		renderer.DrawLine(tipX, tipY, baseRight, baseY)
+		renderer.DrawLine(baseRight, baseY, baseLeft, baseY)
 	}
 }
 
@@ -356,7 +379,7 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 		if p.size > 5 {
 			// Wide fog particle
 			renderer.SetDrawColor(200, 205, 215, p.alpha)
-			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size/3})
+			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size / 3})
 		} else {
 			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size})
 		}

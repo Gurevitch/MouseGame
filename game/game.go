@@ -12,6 +12,8 @@ type Game struct {
 	ui        *uiManager
 	audio     *audioManager
 	lastScene string
+	mouseX    int32
+	mouseY    int32
 }
 
 func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
@@ -65,12 +67,14 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 }
 
 func (g *Game) Update(dt float64, mx, my int32) {
+	g.mouseX = mx
+	g.mouseY = my
 	scene := g.sceneMgr.current()
 	if !g.dialog.active && g.player.state == stateTalking {
 		g.player.state = stateIdle
 	}
 	if !g.dialog.active && !g.sceneMgr.transitioning {
-		g.player.update(dt)
+		g.player.update(dt, scene.blockers)
 	}
 	g.dialog.update(dt)
 	g.sceneMgr.update(dt)
@@ -88,7 +92,7 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 
 	scene.drawBackground(renderer, g.player.x)
 	scene.drawAmbient(renderer)
-	scene.drawHotspots(renderer, g.ui.hoverName)
+	scene.drawHotspots(renderer, g.ui.hoverName, g.mouseX, g.mouseY)
 	scene.drawNPCs(renderer)
 	g.player.draw(renderer)
 

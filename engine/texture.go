@@ -241,6 +241,17 @@ func TextureFromPNGRaw(renderer *sdl.Renderer, filename string) (*sdl.Texture, i
 	return nrgbaToTexture(renderer, img, img.Bounds())
 }
 
+// TextureFromPNGRawClean loads a PNG, removes the bottom-right watermark, and
+// returns the full image as a texture without auto-cropping.
+func TextureFromPNGRawClean(renderer *sdl.Renderer, filename string) (*sdl.Texture, int32, int32) {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG %s: %v", filename, err))
+	}
+	blankCornerLogo(img, 120, 80)
+	return nrgbaToTexture(renderer, img, img.Bounds())
+}
+
 // SpriteFramesFromPNG loads a PNG sprite sheet, splits it into numCols equal
 // columns, auto-crops each column, and returns per-frame textures + dimensions.
 func SpriteFramesFromPNG(renderer *sdl.Renderer, filename string, numCols int) ([]*sdl.Texture, []int32, []int32) {
@@ -270,4 +281,63 @@ func SpriteFramesFromPNG(renderer *sdl.Renderer, filename string, numCols int) (
 	}
 
 	return texs, ws, hs
+}
+
+// GridFrame holds a single frame extracted from a grid sprite sheet.
+type GridFrame struct {
+	Tex *sdl.Texture
+	W   int32
+	H   int32
+}
+
+// blankCornerLogo makes pixels in the bottom-right corner region transparent,
+// removing watermarks/logos that image generators embed.
+func blankCornerLogo(img *image.NRGBA, w, h int) {
+	b := img.Bounds()
+	transparent := color.NRGBA{0, 0, 0, 0}
+	startX := b.Max.X - w
+	startY := b.Max.Y - h
+	if startX < b.Min.X {
+		startX = b.Min.X
+	}
+	if startY < b.Min.Y {
+		startY = b.Min.Y
+	}
+	for y := startY; y < b.Max.Y; y++ {
+		for x := startX; x < b.Max.X; x++ {
+			img.SetNRGBA(x, y, transparent)
+		}
+	}
+}
+
+// SpriteGridFromPNG loads a PNG sprite sheet arranged in a grid of cols x rows,
+// removes the background via color-keying and any bottom-right watermark, and
+// returns frames indexed [row][col]. Each cell uses its full grid dimensions
+// (no auto-crop) so all frames share the same size.
+func SpriteGridFromPNG(renderer *sdl.Renderer, filename string, cols, rows int) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+	}
+	blankCornerLogo(img, 120, 80)
+	applyColorKey(img)
+
+	bounds := img.Bounds()
+	cellW := bounds.Dx() / cols
+	cellH := bounds.Dy() / rows
+
+	grid := make([][]GridFrame, rows)
+	for r := 0; r < rows; r++ {
+		grid[r] = make([]GridFrame, cols)
+		for c := 0; c < cols; c++ {
+			cellRect := image.Rect(
+				bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
+				bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
+			)
+			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+		}
+	}
+
+	return grid
 }

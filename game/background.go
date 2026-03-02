@@ -42,7 +42,7 @@ func newSolidBackground(renderer *sdl.Renderer, r, g, b uint8) *background {
 }
 
 func newPNGBackground(renderer *sdl.Renderer, path string) *background {
-	tex, w, h := engine.TextureFromPNGRaw(renderer, path)
+	tex, w, h := engine.TextureFromPNGRawClean(renderer, path)
 	return &background{tex: tex, srcW: w, srcH: h}
 }
 
@@ -105,101 +105,106 @@ func buildSkyLayer(renderer *sdl.Renderer, horizonY int32) *sdl.Texture {
 	s, f := makeSurface()
 	defer s.Free()
 
-	// Sky gradient
+	// Daytime sky gradient (bright blue)
 	for y := int32(0); y < horizonY; y++ {
 		t := float64(y) / float64(horizonY)
-		r := uint8(8 + t*20)
-		g := uint8(12 + t*30)
-		b := uint8(35 + t*45)
+		r := uint8(100 + t*60)
+		g := uint8(160 + t*40)
+		b := uint8(235 - t*30)
 		s.FillRect(&sdl.Rect{X: 0, Y: y, W: engine.ScreenWidth, H: 1}, sdl.MapRGBA(f, r, g, b, 255))
 	}
 
-	// Horizon city glow
-	for y := horizonY - 60; y < horizonY+20; y++ {
+	// Horizon haze
+	for y := horizonY - 40; y < horizonY+10; y++ {
 		dist := math.Abs(float64(y) - float64(horizonY))
-		a := uint8(math.Max(0, 35-dist*0.8))
-		s.FillRect(&sdl.Rect{X: 0, Y: y, W: engine.ScreenWidth, H: 1}, sdl.MapRGBA(f, 60, 55, 40, a))
+		a := uint8(math.Max(0, 30-dist*0.8))
+		s.FillRect(&sdl.Rect{X: 0, Y: y, W: engine.ScreenWidth, H: 1}, sdl.MapRGBA(f, 220, 210, 190, a))
 	}
 
-	// Stars
-	for i := 0; i < 150; i++ {
-		sx := int32(rand.Intn(int(engine.ScreenWidth)))
-		sy := int32(rand.Intn(int(horizonY - 80)))
-		sz := int32(rand.Intn(2) + 1)
-		a := uint8(rand.Intn(180) + 75)
-		s.FillRect(&sdl.Rect{X: sx, Y: sy, W: sz, H: sz}, sdl.MapRGBA(f, 255, 255, 240, a))
+	// Sun
+	sunX, sunY := int32(1300), int32(80)
+	for dr := int32(80); dr > 20; dr-- {
+		a := uint8(math.Min(255, float64(3)*float64(80-dr)/60.0))
+		fillCircleSurface(s, sunX, sunY, dr, sdl.MapRGBA(f, 255, 245, 200, a))
 	}
+	fillCircleSurface(s, sunX, sunY, 20, sdl.MapRGBA(f, 255, 250, 220, 255))
 
-	// Moon (smaller, softer glow)
-	moonX, moonY, moonR := int32(980), int32(90), int32(25)
-	for dr := moonR + 80; dr > moonR; dr-- {
-		a := uint8(math.Max(0, float64(4)*float64(moonR+80-dr)/80.0))
-		fillCircleSurface(s, moonX, moonY, dr, sdl.MapRGBA(f, 160, 175, 210, a))
-	}
-	fillCircleSurface(s, moonX, moonY, moonR, sdl.MapRGBA(f, 200, 208, 225, 255))
-	fillCircleSurface(s, moonX-8, moonY-6, 5, sdl.MapRGBA(f, 180, 188, 205, 255))
-	fillCircleSurface(s, moonX+7, moonY+4, 3, sdl.MapRGBA(f, 185, 192, 210, 255))
-	fillCircleSurface(s, moonX+2, moonY-10, 2, sdl.MapRGBA(f, 188, 195, 212, 255))
+	// Fluffy clouds
+	drawCloud(s, f, 200, 100, 120, 35)
+	drawCloud(s, f, 550, 60, 100, 30)
+	drawCloud(s, f, 900, 130, 90, 25)
+	drawCloud(s, f, 1200, 80, 110, 30)
 
 	return surfaceToTexture(renderer, s)
+}
+
+func drawCloud(surface *sdl.Surface, f *sdl.PixelFormat, cx, cy, w, h int32) {
+	col := sdl.MapRGBA(f, 255, 255, 255, 180)
+	colLight := sdl.MapRGBA(f, 255, 255, 255, 120)
+	fillEllipseSurface(surface, cx, cy, w/2, h/2, col)
+	fillEllipseSurface(surface, cx-w/3, cy+h/6, w/3, h/3, col)
+	fillEllipseSurface(surface, cx+w/3, cy+h/6, w/3, h/3, col)
+	fillEllipseSurface(surface, cx-w/5, cy-h/4, w/3, h/3, colLight)
+	fillEllipseSurface(surface, cx+w/6, cy-h/5, w/4, h/3, colLight)
 }
 
 func buildCityLayer(renderer *sdl.Renderer, horizonY int32) *sdl.Texture {
 	s, f := makeSurface()
 	defer s.Free()
-	// Transparent background -- surface starts zeroed (fully transparent)
 
-	bFar := sdl.MapRGBA(f, 12, 15, 28, 255)
-	bMid := sdl.MapRGBA(f, 18, 22, 38, 255)
-	bNear := sdl.MapRGBA(f, 25, 30, 48, 255)
-	winLit := sdl.MapRGBA(f, 255, 200, 80, 255)
-	winDim := sdl.MapRGBA(f, 200, 155, 55, 255)
+	// Daytime building colors (muted blue-gray silhouettes)
+	bFar := sdl.MapRGBA(f, 120, 130, 150, 255)
+	bMid := sdl.MapRGBA(f, 100, 110, 130, 255)
+	bNear := sdl.MapRGBA(f, 80, 85, 100, 255)
+	winGlass := sdl.MapRGBA(f, 160, 190, 220, 255)
+	winDark := sdl.MapRGBA(f, 70, 75, 90, 255)
 
 	// Big Ben tower
-	s.FillRect(&sdl.Rect{X: 155, Y: 120, W: 40, H: horizonY - 120}, bFar)
-	fillTriangleSurface(s, 175, 70, 150, 200, 120, bFar)
-	fillCircleSurface(s, 175, 160, 14, sdl.MapRGBA(f, 50, 55, 70, 255))
-	fillCircleSurface(s, 175, 160, 12, sdl.MapRGBA(f, 180, 175, 140, 180))
+	s.FillRect(&sdl.Rect{X: 200, Y: 140, W: 45, H: horizonY - 140}, bFar)
+	fillTriangleSurface(s, 222, 80, 195, 250, 140, bFar)
+	fillCircleSurface(s, 222, 180, 16, sdl.MapRGBA(f, 160, 155, 140, 255))
+	fillCircleSurface(s, 222, 180, 14, sdl.MapRGBA(f, 230, 220, 190, 200))
 
 	// Parliament building
-	s.FillRect(&sdl.Rect{X: 50, Y: 300, W: 260, H: horizonY - 300}, bFar)
-	for x := int32(50); x < 310; x += 20 {
-		s.FillRect(&sdl.Rect{X: x, Y: 290, W: 12, H: 10}, bFar)
+	s.FillRect(&sdl.Rect{X: 60, Y: 330, W: 300, H: horizonY - 330}, bFar)
+	for x := int32(60); x < 360; x += 22 {
+		s.FillRect(&sdl.Rect{X: x, Y: 320, W: 14, H: 10}, bFar)
 	}
-	s.FillRect(&sdl.Rect{X: 70, Y: 260, W: 18, H: 40}, bFar)
-	fillTriangleSurface(s, 79, 245, 68, 90, 260, bFar)
-	s.FillRect(&sdl.Rect{X: 280, Y: 270, W: 16, H: 30}, bFar)
-	fillTriangleSurface(s, 288, 255, 278, 298, 270, bFar)
+	s.FillRect(&sdl.Rect{X: 80, Y: 290, W: 20, H: 40}, bFar)
+	fillTriangleSurface(s, 90, 270, 78, 102, 290, bFar)
+	s.FillRect(&sdl.Rect{X: 330, Y: 300, W: 18, H: 30}, bFar)
+	fillTriangleSurface(s, 339, 282, 328, 350, 300, bFar)
 
 	// Center buildings
-	s.FillRect(&sdl.Rect{X: 350, Y: 320, W: 120, H: horizonY - 320}, bMid)
-	s.FillRect(&sdl.Rect{X: 480, Y: 290, W: 80, H: horizonY - 290}, bMid)
-	s.FillRect(&sdl.Rect{X: 420, Y: 280, W: 50, H: horizonY - 280}, bFar)
-	fillTriangleSurface(s, 445, 260, 420, 470, 280, bFar)
+	s.FillRect(&sdl.Rect{X: 420, Y: 350, W: 140, H: horizonY - 350}, bMid)
+	s.FillRect(&sdl.Rect{X: 570, Y: 320, W: 90, H: horizonY - 320}, bMid)
+	s.FillRect(&sdl.Rect{X: 500, Y: 310, W: 60, H: horizonY - 310}, bFar)
+	fillTriangleSurface(s, 530, 285, 500, 560, 310, bFar)
 
 	// Westminster Abbey
-	s.FillRect(&sdl.Rect{X: 680, Y: 200, W: 250, H: horizonY - 200}, bFar)
-	s.FillRect(&sdl.Rect{X: 795, Y: 100, W: 22, H: 100}, bFar)
-	fillTriangleSurface(s, 806, 60, 790, 822, 100, bFar)
-	s.FillRect(&sdl.Rect{X: 710, Y: 150, W: 16, H: 50}, bFar)
-	fillTriangleSurface(s, 718, 125, 707, 729, 150, bFar)
-	s.FillRect(&sdl.Rect{X: 890, Y: 155, W: 16, H: 45}, bFar)
-	fillTriangleSurface(s, 898, 130, 887, 909, 155, bFar)
-	for x := int32(700); x < 920; x += 35 {
-		fillTriangleSurface(s, x+10, 205, x, x+20, 230, sdl.MapRGBA(f, 20, 25, 45, 255))
+	s.FillRect(&sdl.Rect{X: 780, Y: 220, W: 300, H: horizonY - 220}, bFar)
+	s.FillRect(&sdl.Rect{X: 920, Y: 120, W: 24, H: 100}, bFar)
+	fillTriangleSurface(s, 932, 70, 915, 950, 120, bFar)
+	s.FillRect(&sdl.Rect{X: 810, Y: 170, W: 18, H: 50}, bFar)
+	fillTriangleSurface(s, 819, 145, 807, 831, 170, bFar)
+	s.FillRect(&sdl.Rect{X: 1040, Y: 175, W: 18, H: 45}, bFar)
+	fillTriangleSurface(s, 1049, 150, 1037, 1061, 175, bFar)
+	for x := int32(800); x < 1070; x += 38 {
+		fillTriangleSurface(s, x+12, 225, x, x+24, 255, sdl.MapRGBA(f, 105, 115, 135, 255))
 	}
 
 	// Far right buildings
-	s.FillRect(&sdl.Rect{X: 1000, Y: 310, W: 200, H: horizonY - 310}, bMid)
-	s.FillRect(&sdl.Rect{X: 1020, Y: 280, W: 60, H: 30}, bMid)
+	s.FillRect(&sdl.Rect{X: 1100, Y: 340, W: 150, H: horizonY - 340}, bMid)
+	s.FillRect(&sdl.Rect{X: 1120, Y: 310, W: 60, H: 30}, bMid)
+	s.FillRect(&sdl.Rect{X: 1270, Y: 360, W: 130, H: horizonY - 360}, bMid)
 
 	// Near foreground buildings with windows
-	s.FillRect(&sdl.Rect{X: 0, Y: 360, W: 110, H: horizonY - 360}, bNear)
-	for wy := int32(375); wy < horizonY-20; wy += 30 {
-		for wx := int32(12); wx < 100; wx += 28 {
-			c := winLit
+	s.FillRect(&sdl.Rect{X: 0, Y: 390, W: 120, H: horizonY - 390}, bNear)
+	for wy := int32(405); wy < horizonY-20; wy += 30 {
+		for wx := int32(14); wx < 110; wx += 28 {
+			c := winGlass
 			if rand.Float64() < 0.3 {
-				c = winDim
+				c = winDark
 			}
 			if rand.Float64() < 0.15 {
 				continue
@@ -208,12 +213,12 @@ func buildCityLayer(renderer *sdl.Renderer, horizonY int32) *sdl.Texture {
 		}
 	}
 
-	s.FillRect(&sdl.Rect{X: 1060, Y: 370, W: 140, H: horizonY - 370}, bNear)
-	for wy := int32(385); wy < horizonY-20; wy += 30 {
-		for wx := int32(1075); wx < 1190; wx += 30 {
-			c := winLit
+	s.FillRect(&sdl.Rect{X: 1250, Y: 400, W: 150, H: horizonY - 400}, bNear)
+	for wy := int32(415); wy < horizonY-20; wy += 30 {
+		for wx := int32(1265); wx < 1390; wx += 30 {
+			c := winGlass
 			if rand.Float64() < 0.4 {
-				c = winDim
+				c = winDark
 			}
 			if rand.Float64() < 0.2 {
 				continue
@@ -229,33 +234,33 @@ func buildGroundLayer(renderer *sdl.Renderer, horizonY, parkBottom, pathBottom i
 	s, f := makeSurface()
 	defer s.Free()
 
-	// Green park
+	// Bright green park
 	for y := horizonY; y < parkBottom; y++ {
 		t := float64(y-horizonY) / float64(parkBottom-horizonY)
-		r := uint8(30 + t*15)
-		g := uint8(80 - t*25)
-		b := uint8(25 + t*5)
+		r := uint8(60 + t*20)
+		g := uint8(140 - t*30)
+		b := uint8(40 + t*10)
 		s.FillRect(&sdl.Rect{X: 0, Y: y, W: engine.ScreenWidth, H: 1}, sdl.MapRGBA(f, r, g, b, 255))
 	}
 	// Grass tufts
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 300; i++ {
 		gx := int32(rand.Intn(int(engine.ScreenWidth)))
 		gy := horizonY + int32(rand.Intn(int(parkBottom-horizonY)))
 		gw := int32(rand.Intn(4) + 2)
 		gh := int32(rand.Intn(3) + 1)
-		brightness := uint8(rand.Intn(30))
+		brightness := uint8(rand.Intn(40))
 		s.FillRect(&sdl.Rect{X: gx, Y: gy, W: gw, H: gh},
-			sdl.MapRGBA(f, 25+brightness, 70+brightness, 20+brightness, 255))
+			sdl.MapRGBA(f, 50+brightness, 120+brightness, 35+brightness, 255))
 	}
 
 	// Trees
-	drawTree(s, f, 250, horizonY-5, 45)
-	drawTree(s, f, 560, horizonY+10, 40)
-	drawTree(s, f, 850, horizonY, 38)
-	drawTree(s, f, 1140, horizonY+5, 35)
+	drawTree(s, f, 280, horizonY-5, 48)
+	drawTree(s, f, 580, horizonY+10, 42)
+	drawTree(s, f, 900, horizonY, 40)
+	drawTree(s, f, 1200, horizonY+5, 38)
 
 	// Cobblestone path
-	pathBase := sdl.MapRGBA(f, 110, 95, 70, 255)
+	pathBase := sdl.MapRGBA(f, 140, 125, 100, 255)
 	s.FillRect(&sdl.Rect{X: 0, Y: parkBottom, W: engine.ScreenWidth, H: pathBottom - parkBottom}, pathBase)
 
 	for y := parkBottom + 3; y < pathBottom-3; y += 12 {
@@ -272,9 +277,9 @@ func buildGroundLayer(renderer *sdl.Renderer, horizonY, parkBottom, pathBottom i
 				distFromEdge = 1.0 - distFromEdge
 			}
 			edgeFade := uint8(math.Max(0, (0.5-distFromEdge)*20))
-			r := uint8(math.Max(0, float64(90+shade-edgeDarken-edgeFade)))
-			g := uint8(math.Max(0, float64(75+shade-edgeDarken-edgeFade)))
-			b := uint8(math.Max(0, float64(55+shade-edgeDarken-edgeFade)))
+			r := uint8(math.Max(0, float64(120+shade-edgeDarken-edgeFade)))
+			g := uint8(math.Max(0, float64(105+shade-edgeDarken-edgeFade)))
+			b := uint8(math.Max(0, float64(80+shade-edgeDarken-edgeFade)))
 
 			if rand.Float64() < 0.04 {
 				r = uint8(math.Max(0, float64(r)-20))
@@ -288,57 +293,46 @@ func buildGroundLayer(renderer *sdl.Renderer, horizonY, parkBottom, pathBottom i
 
 	// Path edges
 	s.FillRect(&sdl.Rect{X: 0, Y: parkBottom, W: engine.ScreenWidth, H: 3},
-		sdl.MapRGBA(f, 80, 70, 50, 255))
+		sdl.MapRGBA(f, 100, 90, 70, 255))
 	s.FillRect(&sdl.Rect{X: 0, Y: pathBottom - 2, W: engine.ScreenWidth, H: 3},
-		sdl.MapRGBA(f, 80, 70, 50, 255))
+		sdl.MapRGBA(f, 100, 90, 70, 255))
 
-	// Dark street
+	// Pavement / street
 	for y := pathBottom; y < engine.ScreenHeight; y++ {
 		t := float64(y-pathBottom) / float64(engine.ScreenHeight-pathBottom)
-		r := uint8(45 - t*15)
-		g := uint8(40 - t*12)
-		b := uint8(38 - t*10)
+		r := uint8(130 - t*25)
+		g := uint8(125 - t*22)
+		b := uint8(115 - t*20)
 		s.FillRect(&sdl.Rect{X: 0, Y: y, W: engine.ScreenWidth, H: 1}, sdl.MapRGBA(f, r, g, b, 255))
 	}
 
 	// Prop shadows
-	treeShadow := sdl.MapRGBA(f, 15, 30, 12, 80)
-	fillEllipseSurface(s, 250, horizonY+38, 32, 8, treeShadow)
-	fillEllipseSurface(s, 560, horizonY+48, 28, 7, treeShadow)
-	fillEllipseSurface(s, 850, horizonY+38, 26, 7, treeShadow)
-	fillEllipseSurface(s, 1140, horizonY+43, 24, 6, treeShadow)
+	treeShadow := sdl.MapRGBA(f, 30, 50, 25, 60)
+	fillEllipseSurface(s, 280, horizonY+40, 35, 9, treeShadow)
+	fillEllipseSurface(s, 580, horizonY+50, 30, 8, treeShadow)
+	fillEllipseSurface(s, 900, horizonY+40, 28, 8, treeShadow)
+	fillEllipseSurface(s, 1200, horizonY+45, 26, 7, treeShadow)
 
-	// Street lamp
-	lampX := int32(130)
-	lampTop := int32(280)
+	// Street lamp (unlit in daytime)
+	lampX := int32(170)
+	lampTop := int32(320)
 	lampBase := parkBottom + 40
-	poleColor := sdl.MapRGBA(f, 35, 35, 40, 255)
+	poleColor := sdl.MapRGBA(f, 50, 50, 55, 255)
 	s.FillRect(&sdl.Rect{X: lampX - 3, Y: lampTop, W: 6, H: lampBase - lampTop}, poleColor)
 	s.FillRect(&sdl.Rect{X: lampX - 18, Y: lampTop, W: 36, H: 5}, poleColor)
 	s.FillRect(&sdl.Rect{X: lampX - 12, Y: lampTop - 24, W: 24, H: 26},
-		sdl.MapRGBA(f, 40, 40, 45, 255))
+		sdl.MapRGBA(f, 55, 55, 60, 255))
 	s.FillRect(&sdl.Rect{X: lampX - 9, Y: lampTop - 20, W: 18, H: 16},
-		sdl.MapRGBA(f, 255, 220, 150, 200))
+		sdl.MapRGBA(f, 200, 210, 210, 200))
 	s.FillRect(&sdl.Rect{X: lampX - 10, Y: lampBase - 6, W: 20, H: 10}, poleColor)
-
-	// Lamp ground light pool
-	for ring := int32(0); ring < 8; ring++ {
-		rx := 90 - ring*10
-		ry := 30 - ring*3
-		if rx < 4 || ry < 2 {
-			break
-		}
-		a := uint8(45 - ring*5)
-		fillEllipseSurface(s, lampX, lampBase+10, rx, ry, sdl.MapRGBA(f, 255, 210, 130, a))
-	}
-	fillEllipseSurface(s, lampX, lampBase+5, 14, 5, sdl.MapRGBA(f, 10, 10, 10, 90))
+	fillEllipseSurface(s, lampX, lampBase+5, 14, 5, sdl.MapRGBA(f, 30, 30, 30, 60))
 
 	// Park bench
-	benchX := int32(400)
+	benchX := int32(500)
 	benchY := parkBottom - 45
-	benchColor := sdl.MapRGBA(f, 55, 40, 25, 255)
+	benchColor := sdl.MapRGBA(f, 70, 50, 30, 255)
 	benchW := int32(100)
-	fillEllipseSurface(s, benchX+benchW/2, benchY+35, benchW/2+5, 6, sdl.MapRGBA(f, 10, 15, 8, 70))
+	fillEllipseSurface(s, benchX+benchW/2, benchY+35, benchW/2+5, 6, sdl.MapRGBA(f, 30, 40, 25, 50))
 	s.FillRect(&sdl.Rect{X: benchX, Y: benchY, W: benchW, H: 6}, benchColor)
 	s.FillRect(&sdl.Rect{X: benchX, Y: benchY - 25, W: benchW, H: 6}, benchColor)
 	s.FillRect(&sdl.Rect{X: benchX + 3, Y: benchY - 25, W: 5, H: 31}, benchColor)
