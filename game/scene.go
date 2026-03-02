@@ -111,40 +111,44 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	}
 	sm.scenes["street"] = street
 
-	// ===== Interior =====
+	// ===== Interior (Wooden Cabin) =====
 	interior := &scene{
 		name:   "interior",
-		bg:     newInteriorBackground(renderer),
-		npcs:   nil,
-		spawnX: 120,
-		spawnY: float64(engine.ScreenHeight) - playerDstH - 160,
+		bg:     newPNGBackground(renderer, "assets/images/bg_interior.png"),
+		npcs:   []*npc{newCryingKid(renderer), newProfessor(renderer)},
+		spawnX: 500,
+		spawnY: float64(engine.ScreenHeight) - playerDstH - 120,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 10, Y: 450, W: 70, H: 100},
+				bounds:      sdl.Rect{X: 510, Y: 120, W: 180, H: 350},
 				targetScene: "street",
 				name:        "Exit to Street",
-				r:           139, g: 90, b: 43,
+				r:           180, g: 160, b: 100,
 			},
 		},
 	}
 
-	// Dust motes floating in interior
-	for i := 0; i < 15; i++ {
+	// Dust motes drifting through sunbeams
+	for i := 0; i < 20; i++ {
 		interior.particles = append(interior.particles, particle{
-			x:     rand.Float64() * float64(engine.ScreenWidth),
+			x:     400 + rand.Float64()*400,
 			y:     rand.Float64() * 500,
-			vx:    (rand.Float64() - 0.5) * 8,
-			vy:    -rand.Float64()*3 - 1,
-			alpha: uint8(rand.Intn(35) + 10),
+			vx:    (rand.Float64() - 0.5) * 6,
+			vy:    -rand.Float64()*2 - 0.5,
+			alpha: uint8(rand.Intn(30) + 10),
 			size:  int32(rand.Intn(2) + 1),
 		})
 	}
 
 	interior.glows = []glowEffect{
-		// Window light spill
-		{x: 500, y: 100, w: 200, h: 300, r: 150, g: 180, b: 220, alpha: 15, pulse: 0.3},
-		// Warm candle-like glow
-		{x: 180, y: 250, w: 100, h: 100, r: 255, g: 190, b: 100, alpha: 25, pulse: 3.0},
+		// Sunlight from the central doorway
+		{x: 460, y: 100, w: 280, h: 500, r: 255, g: 240, b: 200, alpha: 12, pulse: 0.3},
+		// Left window light
+		{x: 50, y: 150, w: 140, h: 200, r: 200, g: 220, b: 240, alpha: 10, pulse: 0.4},
+		// Right window light
+		{x: 1010, y: 150, w: 140, h: 200, r: 200, g: 220, b: 240, alpha: 10, pulse: 0.4},
+		// Warm floor glow from doorway light
+		{x: 400, y: 550, w: 400, h: 100, r: 255, g: 220, b: 170, alpha: 8, pulse: 0.5},
 	}
 	sm.scenes["interior"] = interior
 
@@ -227,9 +231,9 @@ func (s *scene) drawBackground(renderer *sdl.Renderer) {
 
 func (s *scene) drawHotspots(renderer *sdl.Renderer) {
 	for _, hs := range s.hotspots {
-		renderer.SetDrawColor(hs.r, hs.g, hs.b, 160)
+		renderer.SetDrawColor(hs.r, hs.g, hs.b, 40)
 		renderer.FillRect(&hs.bounds)
-		renderer.SetDrawColor(hs.r/2, hs.g/2, hs.b/2, 220)
+		renderer.SetDrawColor(hs.r, hs.g, hs.b, 80)
 		renderer.DrawRect(&hs.bounds)
 	}
 }

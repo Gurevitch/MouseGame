@@ -7,14 +7,21 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+type spriteFrame struct {
+	tex *sdl.Texture
+	w   int32
+	h   int32
+}
+
 const (
 	playerBaseSpeed = 250.0
-	playerDstW      = 105
-	playerDstH      = 150
+	playerDstW      = 140
+	playerDstH      = 200
 	playerMinX      = 10.0
 	playerMaxX      = engine.ScreenWidth - playerDstW - 10.0
-	playerMinY      = 380.0
-	playerMaxY      = engine.ScreenHeight - playerDstH - 80.0
+	playerMinY      = 340.0
+	playerMaxY      = engine.ScreenHeight - playerDstH - 60.0
+	walkFrameTime   = 0.12
 )
 
 type playerState int
@@ -25,24 +32,28 @@ const (
 	stateTalking
 )
 
-var walkRotations = [4]float64{-3.0, 0, 3.0, 0}
-var walkYOffsets = [4]float64{-3, 0, -3, 0}
+// Ping-pong walk cycle: frame 0 -> 1 -> 2 -> 1 -> repeat
+var walkCycle = [4]int{0, 1, 2, 1}
 
 type player struct {
-	tex            *sdl.Texture
-	x, y           float64
-	targetX        float64
-	targetY        float64
-	moving         bool
-	facingLeft     bool
-	state          playerState
-	srcW, srcH     int32
-	anim           *engine.Animator
-	breathTimer    float64
-	walkFrame      int
-	walkTimer      float64
-	talkTimer      float64
-	talkOpen       bool
+	idleFrame  spriteFrame
+	walkFrames [3]spriteFrame
+	talkFrame  spriteFrame
+	scale      float64
+
+	x, y       float64
+	targetX    float64
+	targetY    float64
+	moving     bool
+	facingLeft bool
+	state      playerState
+
+	breathTimer  float64
+	walkCycleIdx int
+	walkTimer    float64
+	talkTimer    float64
+	talkOpen     bool
+
 	interactTarget *npc
 	dialogSys      *dialogSystem
 	onArrival      func()
@@ -50,17 +61,48 @@ type player struct {
 
 func newPlayer(renderer *sdl.Renderer) *player {
 	p := &player{
-		tex:  engine.TextureFromBMP(renderer, "assets/images/player.bmp"),
-		x:    200,
-		y:    float64(engine.ScreenHeight) - playerDstH - 160,
-		srcW: 242,
-		srcH: 582,
+		x: 200,
+		y: float64(engine.ScreenHeight) - playerDstH - 160,
 	}
-	p.anim = engine.NewAnimator()
-	p.anim.AddAnimation("idle", []sdl.Rect{{X: 0, Y: 0, W: 242, H: 582}}, 1.0)
-	p.anim.AddAnimation("walk", []sdl.Rect{{X: 0, Y: 0, W: 242, H: 582}}, 0.15)
-	p.anim.Play("idle")
+
+	idleTex, idleW, idleH := engine.TextureFromPNG(renderer, "assets/images/pp_idle.png")
+	p.idleFrame = spriteFrame{tex: idleTex, w: idleW, h: idleH}
+
+	walkTexs, walkWs, walkHs := engine.SpriteFramesFromPNG(renderer, "assets/images/pp_walk_sheet.png", 3)
+	for i := 0; i < 3; i++ {
+		p.walkFrames[i] = spriteFrame{tex: walkTexs[i], w: walkWs[i], h: walkHs[i]}
+	}
+
+	talkTex, talkW, talkH := engine.TextureFromPNG(renderer, "assets/images/pp_talk.png")
+	p.talkFrame = spriteFrame{tex: talkTex, w: talkW, h: talkH}
+
+	// Uniform scale from the tallest frame so all poses match in size
+	maxH := p.idleFrame.h
+	if p.talkFrame.h > maxH {
+		maxH = p.talkFrame.h
+	}
+	for _, wf := range p.walkFrames {
+		if wf.h > maxH {
+			maxH = wf.h
+		}
+	}
+	p.scale = float64(playerDstH) / float64(maxH)
+
 	return p
+}
+
+func (p *player) currentSprite() spriteFrame {
+	switch p.state {
+	case stateWalking:
+		return p.walkFrames[walkCycle[p.walkCycleIdx]]
+	case stateTalking:
+		if p.talkOpen {
+			return p.talkFrame
+		}
+		return p.idleFrame
+	default:
+		return p.idleFrame
+	}
 }
 
 func (p *player) setTarget(x, y float64) {
@@ -70,21 +112,24 @@ func (p *player) setTarget(x, y float64) {
 	p.state = stateWalking
 	p.interactTarget = nil
 	p.onArrival = nil
-	p.anim.Play("walk")
 }
 
 func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
-	tx := float64(target.bounds.X) - playerDstW - 20
+	npcCenter := float64(target.bounds.X + target.bounds.W/2)
+	var tx float64
+	if npcCenter < engine.ScreenWidth/2 {
+		tx = float64(target.bounds.X+target.bounds.W) + 20
+	} else {
+		tx = float64(target.bounds.X) - playerDstW - 20
+	}
 	ty := float64(target.bounds.Y + target.bounds.H - playerDstH)
 	p.targetX = engine.Clamp(tx, playerMinX, playerMaxX)
 	p.targetY = engine.Clamp(ty, playerMinY, playerMaxY)
 	p.moving = true
 	p.state = stateWalking
-	p.facingLeft = false
 	p.interactTarget = target
 	p.dialogSys = ds
 	p.onArrival = nil
-	p.anim.Play("walk")
 }
 
 func (p *player) walkToAndDo(x, y float64, action func()) {
@@ -94,28 +139,26 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 	p.state = stateWalking
 	p.interactTarget = nil
 	p.onArrival = action
-	p.anim.Play("walk")
 }
 
 func (p *player) update(dt float64) {
 	p.breathTimer += dt
-	p.anim.Update(dt)
 
 	if p.moving {
 		p.walkTimer += dt
-		if p.walkTimer >= 0.15 {
-			p.walkTimer -= 0.15
-			p.walkFrame = (p.walkFrame + 1) % len(walkRotations)
+		if p.walkTimer >= walkFrameTime {
+			p.walkTimer -= walkFrameTime
+			p.walkCycleIdx = (p.walkCycleIdx + 1) % len(walkCycle)
 		}
 	} else {
-		p.walkFrame = 0
+		p.walkCycleIdx = 0
 		p.walkTimer = 0
 	}
 
 	if p.state == stateTalking {
 		p.talkTimer += dt
-		if p.talkTimer >= 0.22 {
-			p.talkTimer -= 0.22
+		if p.talkTimer >= 0.30 {
+			p.talkTimer -= 0.30
 			p.talkOpen = !p.talkOpen
 		}
 	} else {
@@ -126,7 +169,6 @@ func (p *player) update(dt float64) {
 	if !p.moving {
 		if p.state != stateTalking {
 			p.state = stateIdle
-			p.anim.Play("idle")
 		}
 		return
 	}
@@ -140,7 +182,6 @@ func (p *player) update(dt float64) {
 		p.y = p.targetY
 		p.moving = false
 		p.state = stateIdle
-		p.anim.Play("idle")
 		if p.interactTarget != nil && p.dialogSys != nil {
 			p.state = stateTalking
 			p.dialogSys.startDialog(p.interactTarget.dialog)
@@ -165,45 +206,30 @@ func (p *player) update(dt float64) {
 }
 
 func (p *player) draw(renderer *sdl.Renderer) {
+	frame := p.currentSprite()
+
+	dstW := int32(float64(frame.w) * p.scale)
+	dstH := int32(float64(frame.h) * p.scale)
+
+	// Center horizontally within the logical bounding box, bottom-align
+	dstX := int32(p.x) + (playerDstW-dstW)/2
+	dstY := int32(p.y) + (playerDstH - dstH)
+
 	flip := sdl.FLIP_NONE
 	if p.facingLeft {
 		flip = sdl.FLIP_HORIZONTAL
 	}
 
-	dstW := int32(playerDstW)
-	dstH := int32(playerDstH)
-	dstY := int32(p.y)
-	var rotation float64
-
 	switch p.state {
-	case stateWalking:
-		rotation = walkRotations[p.walkFrame]
-		if p.facingLeft {
-			rotation = -rotation
-		}
-		dstY += int32(walkYOffsets[p.walkFrame])
-	case stateTalking:
-		bob := math.Sin(p.breathTimer*4.0) * 1.5
-		dstY += int32(bob)
-		if p.talkOpen {
-			w := float64(playerDstW) * 0.97
-			h := float64(playerDstH) * 1.01
-			dstW = int32(w)
-			dstH = int32(h)
-		}
-	default:
+	case stateIdle:
 		breathVal := math.Sin(p.breathTimer * 2.0)
 		dstY += int32(breathVal * 2.0)
-		scale := 1.0 + breathVal*0.008
-		dstW = int32(float64(playerDstW) * scale)
-		dstH = int32(float64(playerDstH) * scale)
+	case stateTalking:
+		bob := math.Sin(p.breathTimer*3.0) * 1.5
+		dstY += int32(bob)
 	}
 
-	src := p.anim.CurrentRect()
-	if src == nil {
-		src = &sdl.Rect{X: 0, Y: 0, W: p.srcW, H: p.srcH}
-	}
-	renderer.CopyEx(p.tex, src,
-		&sdl.Rect{X: int32(p.x), Y: dstY, W: dstW, H: dstH},
-		rotation, nil, flip)
+	renderer.CopyEx(frame.tex, nil,
+		&sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH},
+		0, nil, flip)
 }

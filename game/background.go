@@ -33,6 +33,11 @@ func newSolidBackground(renderer *sdl.Renderer, r, g, b uint8) *background {
 	return &background{tex: tex, srcW: engine.ScreenWidth, srcH: engine.ScreenHeight}
 }
 
+func newPNGBackground(renderer *sdl.Renderer, path string) *background {
+	tex, w, h := engine.TextureFromPNGRaw(renderer, path)
+	return &background{tex: tex, srcW: w, srcH: h}
+}
+
 // ---------- London Night Background ----------
 
 func newLondonBackground(renderer *sdl.Renderer) *background {
