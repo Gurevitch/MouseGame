@@ -259,10 +259,7 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 		p.idleCycleIdx = 0
 		p.idleTimer = 0
 		if p.interactTarget != nil && p.dialogSys != nil {
-			p.state = stateTalking
-			p.dialogSys.startDialog(p.interactTarget.dialog)
-			p.facingLeft = p.x > float64(p.interactTarget.bounds.X)
-			p.interactTarget = nil
+			p.startNPCDialog()
 		}
 		if p.onArrival != nil {
 			fn := p.onArrival
@@ -292,10 +289,7 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 			if p.targetX < float64(b.X+b.W) && p.targetX+playerDstW > float64(b.X) {
 				p.moving = false
 				if p.interactTarget != nil && p.dialogSys != nil {
-					p.state = stateTalking
-					p.dialogSys.startDialog(p.interactTarget.dialog)
-					p.facingLeft = p.x > float64(p.interactTarget.bounds.X)
-					p.interactTarget = nil
+					p.startNPCDialog()
 				} else if p.onArrival != nil {
 					fn := p.onArrival
 					p.onArrival = nil
@@ -313,6 +307,44 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 			}
 		}
 	}
+}
+
+func (p *player) startNPCDialog() {
+	n := p.interactTarget
+	ds := p.dialogSys
+	if n == nil || ds == nil {
+		return
+	}
+	p.state = stateTalking
+	p.facingLeft = p.x > float64(n.bounds.X)
+
+	if n.altDialogFunc != nil {
+		entries, cb := n.altDialogFunc()
+		if entries != nil {
+			ds.startDialogWithCallback(entries, cb)
+			p.interactTarget = nil
+			return
+		}
+	}
+
+	cb := n.onDialogEnd
+	if !n.dialogDone {
+		ds.startDialogWithCallback(n.dialog, func() {
+			n.dialogDone = true
+			if cb != nil {
+				cb()
+			}
+		})
+	} else {
+		ds.startDialogWithCallback(n.dialog, nil)
+	}
+	p.interactTarget = nil
+}
+
+func (p *player) containsPoint(x, y int32) bool {
+	pt := sdl.Point{X: x, Y: y}
+	r := sdl.Rect{X: int32(p.x), Y: int32(p.y), W: playerDstW, H: playerDstH}
+	return pt.InRect(&r)
 }
 
 func (p *player) footCenter() (int32, int32) {

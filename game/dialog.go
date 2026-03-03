@@ -25,6 +25,7 @@ type dialogSystem struct {
 	active        bool
 	showContinue  bool
 	continueTimer float64
+	onComplete    func()
 }
 
 func newDialogSystem(font *engine.BitmapFont) *dialogSystem {
@@ -32,6 +33,10 @@ func newDialogSystem(font *engine.BitmapFont) *dialogSystem {
 }
 
 func (ds *dialogSystem) startDialog(entries []dialogEntry) {
+	ds.startDialogWithCallback(entries, nil)
+}
+
+func (ds *dialogSystem) startDialogWithCallback(entries []dialogEntry, cb func()) {
 	if len(entries) == 0 {
 		return
 	}
@@ -42,6 +47,7 @@ func (ds *dialogSystem) startDialog(entries []dialogEntry) {
 	ds.active = true
 	ds.showContinue = false
 	ds.continueTimer = 0
+	ds.onComplete = cb
 }
 
 func (ds *dialogSystem) advance() {
@@ -58,6 +64,11 @@ func (ds *dialogSystem) advance() {
 	if ds.currentIndex >= len(ds.queue) {
 		ds.active = false
 		ds.queue = nil
+		if ds.onComplete != nil {
+			fn := ds.onComplete
+			ds.onComplete = nil
+			fn()
+		}
 		return
 	}
 	ds.displayedLen = 0

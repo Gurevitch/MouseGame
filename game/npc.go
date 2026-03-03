@@ -17,27 +17,41 @@ type npc struct {
 	bobAmount float64
 	flipped   bool
 	hovered   bool
+	itemMatch bool
 	elevated  bool
+	silent    bool
 	groupID   string
+
+	dialogDone    bool
+	onDialogEnd   func()
+	altDialogFunc func() ([]dialogEntry, func())
 }
 
 func newPaparMan(renderer *sdl.Renderer) *npc {
-	grid := engine.SpriteGridFromPNG(renderer, "assets/images/paper_man/frames 3X4.png", 4, 3)
-	frame := grid[1][0] // front-facing idle pose
+	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/locations/london/npc/paperman.png")
 	return &npc{
-		tex:     frame.Tex,
-		srcRect: sdl.Rect{X: 0, Y: 0, W: frame.W, H: frame.H},
-		bounds:  sdl.Rect{X: 870, Y: 420, W: 100, H: 140},
+		tex:     tex,
+		srcRect: sdl.Rect{X: 0, Y: 0, W: w, H: h},
+		bounds:  sdl.Rect{X: 850, Y: 410, W: 110, H: 150},
 		name:    "Paper Man",
 		dialog: []dialogEntry{
 			{speaker: "Paper Man", text: "Extra! Extra! Read all about it! Pink Panther spotted in London!"},
 			{speaker: "Pink Panther", text: "..."},
 			{speaker: "Paper Man", text: "Care to buy a paper, sir? Got all the latest news!"},
 			{speaker: "Pink Panther", text: "No thank you, I prefer to make the news, not read it."},
+			{speaker: "Paper Man", text: "Well then, take this comic at least. Free of charge for a celebrity!"},
+			{speaker: "Pink Panther", text: "A comic book? Well... don't mind if I do!"},
 		},
 		bobAmount: 1.0,
-		elevated: true,
+		elevated:  true,
 	}
+}
+
+var paperManPostComicDialog = []dialogEntry{
+	{speaker: "Paper Man", text: "Back again, eh? No more free comics, I'm afraid!"},
+	{speaker: "Pink Panther", text: "That's alright. Any interesting headlines today?"},
+	{speaker: "Paper Man", text: "Just the usual... thefts, scandals, and the occasional cat burglar."},
+	{speaker: "Pink Panther", text: "Cat burglar? I take offense to that."},
 }
 
 var streetTalkersDialog = []dialogEntry{
@@ -50,61 +64,61 @@ var streetTalkersDialog = []dialogEntry{
 	{speaker: "Pink Panther", text: "Hmm... a diamond theft, you say? Interesting..."},
 }
 
-func newTalkingWoman(renderer *sdl.Renderer) *npc {
-	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/woman/sprite.png")
+func newStreetTalkers(renderer *sdl.Renderer) *npc {
+	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/locations/london/npc/3 person.png")
 	return &npc{
 		tex:       tex,
 		srcRect:   sdl.Rect{X: 0, Y: 0, W: w, H: h},
-		bounds:    sdl.Rect{X: 50, Y: 500, W: 110, H: 200},
-		name:      "Woman",
+		bounds:    sdl.Rect{X: 40, Y: 500, W: 350, H: 210},
+		name:      "Street Talkers",
 		dialog:    streetTalkersDialog,
-		bobAmount: 1.5,
-		flipped:   true,
-		groupID:   "street_talkers",
+		bobAmount: 1.0,
 	}
 }
 
-func newTalkingMan1(renderer *sdl.Renderer) *npc {
-	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/gentleman/gent.png")
+func newGrumpyKid(renderer *sdl.Renderer) *npc {
+	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/locations/london/npc/grumpy kid.png")
 	return &npc{
 		tex:       tex,
 		srcRect:   sdl.Rect{X: 0, Y: 0, W: w, H: h},
-		bounds:    sdl.Rect{X: 330, Y: 500, W: 110, H: 200},
-		name:      "Gentleman",
-		dialog:    streetTalkersDialog,
-		bobAmount: 1.8,
-		groupID:   "street_talkers",
+		bounds:    sdl.Rect{X: 5, Y: 520, W: 80, H: 170},
+		name:      "Grumpy Kid",
+		bobAmount: 0.8,
+		silent:    true,
 	}
 }
 
-func newTalkingMan2(renderer *sdl.Renderer) *npc {
-	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/young_man/sprite.png")
-	return &npc{
-		tex:       tex,
-		srcRect:   sdl.Rect{X: 0, Y: 0, W: w, H: h},
-		bounds:    sdl.Rect{X: 230, Y: 500, W: 110, H: 200},
-		name:      "Young Man",
-		dialog:    streetTalkersDialog,
-		bobAmount: 1.6,
-		groupID:   "street_talkers",
-	}
+var cryingKidDefaultDialog = []dialogEntry{
+	{speaker: "Crying Kid", text: "*sniff* I... I don't want to be here anymore..."},
+	{speaker: "Crying Kid", text: "I miss my mum and dad! I want to go home!"},
+	{speaker: "Pink Panther", text: "There there, little one. What happened?"},
+	{speaker: "Crying Kid", text: "They sent me to this camp and everyone is so mean!"},
+	{speaker: "Crying Kid", text: "Please... can you help me get back home?"},
+	{speaker: "Pink Panther", text: "Don't worry. I'll figure something out."},
+}
+
+var cryingKidComicDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Hey there, little one. Look what I got for you!"},
+	{speaker: "Crying Kid", text: "*sniff* W-what is it?"},
+	{speaker: "Pink Panther", text: "A comic book! It will cheer you up."},
+	{speaker: "Crying Kid", text: "A comic book?! Really?! For me?!"},
+	{speaker: "Crying Kid", text: "Oh wow, thank you so much! This is my favorite series!"},
+	{speaker: "Pink Panther", text: "There you go. A smile suits you much better."},
+}
+
+var cryingKidHappyDialog = []dialogEntry{
+	{speaker: "Happy Kid", text: "This comic is so cool! Thank you, Pink Panther!"},
+	{speaker: "Pink Panther", text: "Glad to see you smiling."},
 }
 
 func newCryingKid(renderer *sdl.Renderer) *npc {
 	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/crying_kid/sprite.png")
 	return &npc{
-		tex:     tex,
-		srcRect: sdl.Rect{X: 0, Y: 0, W: w, H: h},
-		bounds:  sdl.Rect{X: 140, Y: 380, W: 150, H: 130},
-		name:    "Crying Kid",
-		dialog: []dialogEntry{
-			{speaker: "Crying Kid", text: "*sniff* I... I don't want to be here anymore..."},
-			{speaker: "Crying Kid", text: "I miss my mum and dad! I want to go home!"},
-			{speaker: "Pink Panther", text: "There there, little one. What happened?"},
-			{speaker: "Crying Kid", text: "They sent me to this camp and everyone is so mean!"},
-			{speaker: "Crying Kid", text: "Please... can you help me get back home?"},
-			{speaker: "Pink Panther", text: "Don't worry. I'll figure something out."},
-		},
+		tex:       tex,
+		srcRect:   sdl.Rect{X: 0, Y: 0, W: w, H: h},
+		bounds:    sdl.Rect{X: 140, Y: 380, W: 150, H: 130},
+		name:      "Crying Kid",
+		dialog:    cryingKidDefaultDialog,
 		bobAmount: 1.2,
 	}
 }
@@ -150,9 +164,18 @@ func (n *npc) draw(renderer *sdl.Renderer) {
 	shadowFY := n.bounds.Y + n.bounds.H
 	drawShadow(renderer, shadowCX, shadowFY, n.bounds.W-10)
 
-	if n.hovered {
-		renderer.SetDrawColor(255, 220, 100, 35)
+	if n.itemMatch {
+		pad := int32(6)
+		renderer.SetDrawColor(255, 240, 50, 180)
+		for i := int32(0); i < 3; i++ {
+			renderer.DrawRect(&sdl.Rect{
+				X: dst.X - pad + i, Y: dst.Y - pad + i,
+				W: dst.W + (pad-i)*2, H: dst.H + (pad-i)*2,
+			})
+		}
+	} else if n.hovered {
 		pad := int32(4)
+		renderer.SetDrawColor(255, 220, 100, 35)
 		renderer.FillRect(&sdl.Rect{
 			X: dst.X - pad, Y: dst.Y - pad,
 			W: dst.W + pad*2, H: dst.H + pad*2,

@@ -13,6 +13,7 @@ type arrowDir int
 const (
 	arrowNone arrowDir = iota
 	arrowRight
+	arrowLeft
 	arrowUp
 )
 
@@ -73,14 +74,14 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	// ===== Street (London Day) =====
 	street := &scene{
 		name:   "street",
-		bg:     newPNGBackground(renderer, "assets/images/backgrounds/Gemini_Generated_Image_london.png"),
-		npcs:   []*npc{newPaparMan(renderer), newTalkingMan1(renderer), newTalkingWoman(renderer), newTalkingMan2(renderer)},
+		bg:     newPNGBackground(renderer, "assets/images/locations/london/background/street_V2.png"),
+		npcs:   []*npc{newPaparMan(renderer), newGrumpyKid(renderer), newStreetTalkers(renderer)},
 		spawnX: 460,
 		spawnY: 460,
 		hotspots: []hotspot{
 			{
 				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
-				targetScene: "interior",
+				targetScene: "pub",
 				name:        "Go Right",
 				arrow:       arrowRight,
 			},
@@ -119,8 +120,8 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		hotspots: []hotspot{
 			{
 				bounds:      sdl.Rect{X: 520, Y: 50, W: 260, H: 300},
-				targetScene: "street",
-				name:        "Go Outside",
+				targetScene: "pub",
+				name:        "Go Back",
 				arrow:       arrowUp,
 			},
 		},
@@ -145,6 +146,46 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		{x: 470, y: 550, w: 460, h: 100, r: 255, g: 220, b: 170, alpha: 8, pulse: 0.5},
 	}
 	sm.scenes["interior"] = interior
+
+	// ===== Pub =====
+	pub := &scene{
+		name:   "pub",
+		bg:     newPNGBackground(renderer, "assets/images/locations/london/background/pub 8K.jpg"),
+		npcs:   []*npc{},
+		spawnX: 600,
+		spawnY: 400,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
+				targetScene: "street",
+				name:        "Go Left",
+				arrow:       arrowLeft,
+			},
+			{
+				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
+				targetScene: "interior",
+				name:        "Go Right",
+				arrow:       arrowRight,
+			},
+		},
+	}
+
+	for i := 0; i < 10; i++ {
+		pub.particles = append(pub.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     rand.Float64() * float64(engine.ScreenHeight),
+			vx:    (rand.Float64() - 0.5) * 4,
+			vy:    -rand.Float64()*1.0 - 0.2,
+			alpha: uint8(rand.Intn(15) + 5),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+
+	pub.glows = []glowEffect{
+		{x: 300, y: 100, w: 200, h: 300, r: 255, g: 200, b: 120, alpha: 10, pulse: 0.3},
+		{x: 800, y: 100, w: 200, h: 300, r: 255, g: 200, b: 120, alpha: 10, pulse: 0.4},
+	}
+	sm.scenes["pub"] = pub
 
 	return sm
 }
@@ -202,6 +243,9 @@ func (sm *sceneManager) drawTransition(renderer *sdl.Renderer) {
 
 func (s *scene) checkNPCClick(x, y int32) *npc {
 	for _, n := range s.npcs {
+		if n.silent {
+			continue
+		}
 		if n.containsPoint(x, y) {
 			if n.groupID != "" {
 				return s.rightmostInGroup(n.groupID)
@@ -282,6 +326,30 @@ func drawArrow(renderer *sdl.Renderer, cx, cy, w, h int32, dir arrowDir, alpha u
 			}
 		}
 		// Outline
+		renderer.SetDrawColor(255, 240, 180, alpha)
+		renderer.DrawLine(baseX, baseTop, tipX, tipY)
+		renderer.DrawLine(tipX, tipY, baseX, baseBot)
+		renderer.DrawLine(baseX, baseBot, baseX, baseTop)
+	case arrowLeft:
+		tipX := cx - w/2
+		tipY := cy
+		baseTop := cy - h/2
+		baseBot := cy + h/2
+		baseX := cx + w/2
+		for y := baseTop; y <= baseBot; y++ {
+			t := float64(y-baseTop) / float64(baseBot-baseTop)
+			var x0, x1 int32
+			if t <= 0.5 {
+				x1 = baseX
+				x0 = baseX - int32(float64(baseX-tipX)*t*2)
+			} else {
+				x1 = baseX
+				x0 = baseX - int32(float64(baseX-tipX)*(1.0-t)*2)
+			}
+			if x1 > x0 {
+				renderer.DrawLine(x0, y, x1, y)
+			}
+		}
 		renderer.SetDrawColor(255, 240, 180, alpha)
 		renderer.DrawLine(baseX, baseTop, tipX, tipY)
 		renderer.DrawLine(tipX, tipY, baseX, baseBot)

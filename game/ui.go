@@ -16,15 +16,22 @@ func newUIManager(font *engine.BitmapFont) *uiManager {
 	return &uiManager{font: font}
 }
 
-func (ui *uiManager) updateHover(s *scene, mx, my int32) {
+func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory) {
 	ui.hoverName = ""
 	for _, n := range s.npcs {
 		n.hovered = false
+		n.itemMatch = false
 	}
 	for _, n := range s.npcs {
 		if n.containsPoint(mx, my) {
 			ui.hoverName = n.name
 			n.hovered = true
+			if inv.heldItem != nil && n.altDialogFunc != nil {
+				entries, _ := n.altDialogFunc()
+				if entries != nil {
+					n.itemMatch = true
+				}
+			}
 			return
 		}
 	}
@@ -47,13 +54,9 @@ func (ui *uiManager) draw(renderer *sdl.Renderer, mx, my int32) {
 	ui.font.DrawText(renderer, txt, 9, 10, 2,
 		sdl.Color{R: 255, G: 255, B: 255, A: 210})
 
-	// #region agent log -- crosshair at mouse position
-	renderer.SetDrawColor(255, 0, 0, 180)
-	renderer.DrawLine(mx-10, my, mx+10, my)
-	renderer.DrawLine(mx, my-10, mx, my+10)
-	renderer.SetDrawColor(255, 255, 0, 120)
-	renderer.DrawRect(&sdl.Rect{X: mx - 2, Y: my - 2, W: 4, H: 4})
-	// #endregion
+	drawTaskIcon(renderer, engine.ScreenWidth-80, 6)
+	ui.font.DrawText(renderer, "TASKS", engine.ScreenWidth-56, 13, 2,
+		sdl.Color{R: 255, G: 180, B: 200, A: 200})
 
 	if ui.hoverName != "" {
 		w := ui.font.TextWidth(ui.hoverName, 3)
@@ -68,4 +71,21 @@ func (ui *uiManager) draw(renderer *sdl.Renderer, mx, my int32) {
 		ui.font.DrawText(renderer, ui.hoverName, x, 43, 3,
 			sdl.Color{R: 255, G: 220, B: 100, A: 255})
 	}
+}
+
+func drawTaskIcon(renderer *sdl.Renderer, x, y int32) {
+	// Clipboard body
+	renderer.SetDrawColor(180, 160, 140, 200)
+	renderer.FillRect(&sdl.Rect{X: x, Y: y + 4, W: 18, H: 22})
+	// Clipboard clip at top
+	renderer.SetDrawColor(200, 180, 160, 220)
+	renderer.FillRect(&sdl.Rect{X: x + 5, Y: y, W: 8, H: 6})
+	// Task lines
+	renderer.SetDrawColor(60, 50, 40, 220)
+	renderer.FillRect(&sdl.Rect{X: x + 3, Y: y + 9, W: 12, H: 2})
+	renderer.FillRect(&sdl.Rect{X: x + 3, Y: y + 14, W: 12, H: 2})
+	renderer.FillRect(&sdl.Rect{X: x + 3, Y: y + 19, W: 8, H: 2})
+	// Outline
+	renderer.SetDrawColor(100, 80, 60, 180)
+	renderer.DrawRect(&sdl.Rect{X: x, Y: y + 4, W: 18, H: 22})
 }

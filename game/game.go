@@ -15,6 +15,7 @@ type Game struct {
 	dialog    *dialogSystem
 	ui        *uiManager
 	audio     *audioManager
+	inv       *inventory
 	lastScene string
 	mouseX    int32
 	mouseY    int32
@@ -27,9 +28,14 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 		dialog:   newDialogSystem(font),
 		ui:       newUIManager(font),
 		audio:    newAudioManager(),
+		inv:      newInventory(font),
 	}
 	g.lastScene = g.sceneMgr.currentName
 	g.audio.playMusic(g.sceneMgr.current().musicPath)
+
+	comicItem := createComicBookTexture(renderer)
+	g.setupNPCCallbacks(comicItem)
+
 	// #region agent log -- log NPC positions at startup
 	for sceneName, s := range g.sceneMgr.scenes {
 		for _, n := range s.npcs {
@@ -39,6 +45,43 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	debugLog("game.go:New", "player-bounds", fmt.Sprintf(`{"minY":%.0f,"maxY":%.0f,"dstH":%d,"feetMinY":%.0f,"feetMaxY":%.0f}`, playerMinY, playerMaxY, playerDstH, playerMinY+playerDstH, playerMaxY+playerDstH))
 	// #endregion
 	return g
+}
+
+func (g *Game) setupNPCCallbacks(comicItem *inventoryItem) {
+	// Paper Man gives comic book on first dialog completion
+	for _, n := range g.sceneMgr.scenes["street"].npcs {
+		if n.name == "Paper Man" {
+			pm := n
+			inv := g.inv
+			pm.onDialogEnd = func() {
+				if comicItem != nil && !inv.hasItem("Comic Book") {
+					inv.addItem(comicItem)
+					pm.dialog = paperManPostComicDialog
+				}
+			}
+			break
+		}
+	}
+
+	// Crying Kid accepts the comic book when player is holding it
+	for _, n := range g.sceneMgr.scenes["interior"].npcs {
+		if n.name == "Crying Kid" {
+			kid := n
+			inv := g.inv
+			kid.altDialogFunc = func() ([]dialogEntry, func()) {
+				if inv.heldItem != nil && inv.heldItem.name == "Comic Book" {
+					return cryingKidComicDialog, func() {
+						inv.removeItem("Comic Book")
+						inv.heldItem = nil
+						kid.dialog = cryingKidHappyDialog
+						kid.name = "Happy Kid"
+					}
+				}
+				return nil, nil
+			}
+			break
+		}
+	}
 }
 
 func (g *Game) Close() {
@@ -61,6 +104,11 @@ func (g *Game) HandleClick(x, y int32) {
 	// #region agent log
 	debugLog("game.go:HandleClick", "click", fmt.Sprintf(`{"x":%d,"y":%d,"scene":"%s"}`, x, y, g.sceneMgr.currentName))
 	// #endregion
+
+	if g.inv.open {
+		g.inv.handleClick(x, y)
+		return
+	}
 	if g.dialog.active {
 		g.dialog.advance()
 		return
@@ -69,6 +117,41 @@ func (g *Game) HandleClick(x, y int32) {
 		return
 	}
 	scene := g.sceneMgr.current()
+
+	if g.player.containsPoint(x, y) {
+		if g.inv.heldItem != nil {
+			g.inv.toggle()
+			return
+		}
+		if len(g.inv.items) > 0 {
+			g.inv.toggle()
+			return
+		}
+	}
+
+	if g.inv.heldItem != nil {
+		if clickedNPC := scene.checkNPCClick(x, y); clickedNPC != nil {
+			if clickedNPC.altDialogFunc != nil {
+				entries, cb := clickedNPC.altDialogFunc()
+				if entries != nil {
+					g.inv.heldItem = nil
+					ds := g.dialog
+					target := clickedNPC
+					g.player.walkToAndInteract(target, ds)
+					g.player.interactTarget = nil
+					g.player.onArrival = func() {
+						g.player.state = stateTalking
+						g.player.facingLeft = g.player.x > float64(target.bounds.X)
+						ds.startDialogWithCallback(entries, cb)
+					}
+					return
+				}
+			}
+		}
+		g.inv.heldItem = nil
+		return
+	}
+
 	if npc := scene.checkNPCClick(x, y); npc != nil {
 		g.player.walkToAndInteract(npc, g.dialog)
 		return
@@ -106,7 +189,8 @@ func (g *Game) Update(dt float64, mx, my int32) {
 	g.dialog.update(dt)
 	g.sceneMgr.update(dt)
 	scene.updateAmbient(dt)
-	g.ui.updateHover(scene, mx, my)
+	g.ui.updateHover(scene, mx, my, g.inv)
+	g.inv.update(dt)
 
 	if g.sceneMgr.currentName != g.lastScene {
 		g.lastScene = g.sceneMgr.currentName
@@ -128,6 +212,8 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 
 	g.dialog.draw(renderer)
 	g.ui.draw(renderer, g.mouseX, g.mouseY)
+	g.inv.draw(renderer)
+	g.inv.drawHeld(renderer, g.mouseX, g.mouseY)
 	g.sceneMgr.drawTransition(renderer)
 }
 
