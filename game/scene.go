@@ -11,7 +11,7 @@ import (
 type arrowDir int
 
 const (
-	arrowNone  arrowDir = iota
+	arrowNone arrowDir = iota
 	arrowRight
 	arrowUp
 )
@@ -75,8 +75,8 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		name:   "street",
 		bg:     newPNGBackground(renderer, "assets/images/backgrounds/Gemini_Generated_Image_london.png"),
 		npcs:   []*npc{newPaparMan(renderer), newTalkingMan1(renderer), newTalkingWoman(renderer), newTalkingMan2(renderer)},
-		spawnX: 500,
-		spawnY: 380,
+		spawnX: 460,
+		spawnY: 460,
 		hotspots: []hotspot{
 			{
 				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
@@ -86,7 +86,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			},
 		},
 		blockers: []sdl.Rect{
-			{X: 0, Y: 0, W: 280, H: engine.ScreenHeight},
+			{X: 0, Y: 0, W: 450, H: engine.ScreenHeight},
 		},
 	}
 
@@ -113,8 +113,8 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		name:      "interior",
 		bg:        newPNGBackground(renderer, "assets/images/backgrounds/bg_interior.png"),
 		npcs:      []*npc{newCryingKid(renderer), newProfessor(renderer)},
-		spawnX:    500,
-		spawnY:    float64(engine.ScreenHeight) - playerDstH - 120,
+		spawnX:    600,
+		spawnY:    230,
 		musicPath: "assets/sounds/The Pink Panther's Passport to Peril OST #08 - Camp Chilly Wa-Wa (Day 2 & 3) [HQ].mp3",
 		hotspots: []hotspot{
 			{
@@ -203,10 +203,25 @@ func (sm *sceneManager) drawTransition(renderer *sdl.Renderer) {
 func (s *scene) checkNPCClick(x, y int32) *npc {
 	for _, n := range s.npcs {
 		if n.containsPoint(x, y) {
+			if n.groupID != "" {
+				return s.rightmostInGroup(n.groupID)
+			}
 			return n
 		}
 	}
 	return nil
+}
+
+func (s *scene) rightmostInGroup(groupID string) *npc {
+	var best *npc
+	for _, n := range s.npcs {
+		if n.groupID == groupID {
+			if best == nil || n.bounds.X+n.bounds.W > best.bounds.X+best.bounds.W {
+				best = n
+			}
+		}
+	}
+	return best
 }
 
 func (s *scene) checkHotspotClick(x, y int32) *hotspot {

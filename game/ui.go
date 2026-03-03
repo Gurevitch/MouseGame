@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+
 	"bitbucket.org/Local/games/PP/engine"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -35,15 +37,23 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32) {
 	}
 }
 
-func (ui *uiManager) draw(renderer *sdl.Renderer) {
+func (ui *uiManager) draw(renderer *sdl.Renderer, mx, my int32) {
 	renderer.SetDrawColor(0, 0, 0, 140)
 	renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: 36})
 
-	txt := "CLICK TO WALK | CLICK CHARACTERS TO TALK | CLICK ARROWS TO CHANGE ROOMS"
+	txt := "CLICK TO WALK | CLICK CHARACTERS TO TALK | CLICK ARROWS TO CHANGE ROOMS | mouse: (" + fmt.Sprintf("%d", mx) + ", " + fmt.Sprintf("%d", my) + ")"
 	ui.font.DrawText(renderer, txt, 10, 11, 2,
 		sdl.Color{R: 0, G: 0, B: 0, A: 120})
 	ui.font.DrawText(renderer, txt, 9, 10, 2,
 		sdl.Color{R: 255, G: 255, B: 255, A: 210})
+
+	// #region agent log -- crosshair at mouse position
+	renderer.SetDrawColor(255, 0, 0, 180)
+	renderer.DrawLine(mx-10, my, mx+10, my)
+	renderer.DrawLine(mx, my-10, mx, my+10)
+	renderer.SetDrawColor(255, 255, 0, 120)
+	renderer.DrawRect(&sdl.Rect{X: mx - 2, Y: my - 2, W: 4, H: 4})
+	// #endregion
 
 	if ui.hoverName != "" {
 		w := ui.font.TextWidth(ui.hoverName, 3)

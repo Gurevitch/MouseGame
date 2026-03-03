@@ -76,7 +76,7 @@ func gridFrameToSprite(gf engine.GridFrame) spriteFrame {
 
 func newPlayer(renderer *sdl.Renderer) *player {
 	p := &player{
-		x: 200,
+		x: 630,
 		y: float64(engine.ScreenHeight) - playerDstH - 160,
 	}
 
@@ -164,7 +164,12 @@ func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
 	} else {
 		tx = float64(target.bounds.X) - playerDstW - 20
 	}
-	ty := float64(target.bounds.Y + target.bounds.H - playerDstH)
+	var ty float64
+	if target.elevated {
+		ty = p.y
+	} else {
+		ty = float64(target.bounds.Y + target.bounds.H - playerDstH)
+	}
 	p.targetX = engine.Clamp(tx, playerMinX, playerMaxX)
 	p.targetY = engine.Clamp(ty, playerMinY, playerMaxY)
 	p.moving = true

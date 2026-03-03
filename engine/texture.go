@@ -248,7 +248,6 @@ func TextureFromPNGRawClean(renderer *sdl.Renderer, filename string) (*sdl.Textu
 	if err != nil {
 		panic(fmt.Errorf("loading PNG %s: %v", filename, err))
 	}
-	blankCornerLogo(img, 120, 80)
 	return nrgbaToTexture(renderer, img, img.Bounds())
 }
 
@@ -319,7 +318,6 @@ func SpriteGridFromPNG(renderer *sdl.Renderer, filename string, cols, rows int) 
 	if err != nil {
 		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
 	}
-	blankCornerLogo(img, 120, 80)
 	applyColorKey(img)
 
 	bounds := img.Bounds()

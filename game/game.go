@@ -1,6 +1,10 @@
 package game
 
 import (
+	"fmt"
+	"os"
+	"time"
+
 	"bitbucket.org/Local/games/PP/engine"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -26,6 +30,14 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	}
 	g.lastScene = g.sceneMgr.currentName
 	g.audio.playMusic(g.sceneMgr.current().musicPath)
+	// #region agent log -- log NPC positions at startup
+	for sceneName, s := range g.sceneMgr.scenes {
+		for _, n := range s.npcs {
+			debugLog("game.go:New", "npc-pos", fmt.Sprintf(`{"scene":"%s","name":"%s","x":%d,"y":%d,"w":%d,"h":%d,"feetY":%d}`, sceneName, n.name, n.bounds.X, n.bounds.Y, n.bounds.W, n.bounds.H, n.bounds.Y+n.bounds.H))
+		}
+	}
+	debugLog("game.go:New", "player-bounds", fmt.Sprintf(`{"minY":%.0f,"maxY":%.0f,"dstH":%d,"feetMinY":%.0f,"feetMaxY":%.0f}`, playerMinY, playerMaxY, playerDstH, playerMinY+playerDstH, playerMaxY+playerDstH))
+	// #endregion
 	return g
 }
 
@@ -33,7 +45,22 @@ func (g *Game) Close() {
 	g.audio.close()
 }
 
+func debugLog(loc, msg string, data string) {
+	// #region agent log
+	f, err := os.OpenFile("debug-e6d985.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	ts := time.Now().UnixMilli()
+	fmt.Fprintf(f, `{"sessionId":"e6d985","location":"%s","message":"%s","data":%s,"timestamp":%d}`+"\n", loc, msg, data, ts)
+	// #endregion
+}
+
 func (g *Game) HandleClick(x, y int32) {
+	// #region agent log
+	debugLog("game.go:HandleClick", "click", fmt.Sprintf(`{"x":%d,"y":%d,"scene":"%s"}`, x, y, g.sceneMgr.currentName))
+	// #endregion
 	if g.dialog.active {
 		g.dialog.advance()
 		return
@@ -100,7 +127,7 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	drawVignette(renderer)
 
 	g.dialog.draw(renderer)
-	g.ui.draw(renderer)
+	g.ui.draw(renderer, g.mouseX, g.mouseY)
 	g.sceneMgr.drawTransition(renderer)
 }
 
