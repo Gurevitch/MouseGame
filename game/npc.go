@@ -32,7 +32,7 @@ func newPaparMan(renderer *sdl.Renderer) *npc {
 	return &npc{
 		tex:     tex,
 		srcRect: sdl.Rect{X: 0, Y: 0, W: w, H: h},
-		bounds:  sdl.Rect{X: 850, Y: 410, W: 110, H: 150},
+		bounds:  sdl.Rect{X: 1020, Y: 366, W: 180, H: 145},
 		name:    "Paper Man",
 		dialog: []dialogEntry{
 			{speaker: "Paper Man", text: "Extra! Extra! Read all about it! Pink Panther spotted in London!"},
@@ -197,4 +197,8 @@ func (n *npc) draw(renderer *sdl.Renderer) {
 func (n *npc) containsPoint(x, y int32) bool {
 	pt := sdl.Point{X: x, Y: y}
 	return pt.InRect(&n.bounds)
+}
+
+func (n *npc) footY() int32 {
+	return n.bounds.Y + n.bounds.H
 }

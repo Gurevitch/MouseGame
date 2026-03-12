@@ -22,7 +22,9 @@ const (
 	playerMinY      = 300.0
 	playerMaxY      = 430.0
 	walkFrameTime   = 0.12
-	talkFrameTime   = 0.20
+	talkFrameTime   = 0.12
+	walkStripFrames = 8
+	talkStripFrames = 14
 )
 
 type playerState int
@@ -43,27 +45,29 @@ const (
 )
 
 type player struct {
-	walkSideFrames []spriteFrame
-	walkUpFrames   []spriteFrame
-	walkDownFrames []spriteFrame
-	idleFrames     []spriteFrame
-	talkFrames     []spriteFrame
+	walkSideFrames  []spriteFrame
+	walkUpFrames    []spriteFrame
+	walkDownFrames  []spriteFrame
+	idleFrontFrames []spriteFrame
+	idleSideFrames  []spriteFrame
+	idleBackFrames  []spriteFrame
+	talkFrames      []spriteFrame
+	talkSideFrames  []spriteFrame
 
-	x, y       float64
-	targetX    float64
-	targetY    float64
-	moving     bool
-	facingLeft bool
-	dir        direction
-	state      playerState
+	x, y           float64
+	targetX        float64
+	targetY        float64
+	moving         bool
+	allowOffscreen bool
+	facingLeft     bool
+	dir            direction
+	state          playerState
 
 	breathTimer  float64
 	walkCycleIdx int
 	walkTimer    float64
 	talkCycleIdx int
 	talkTimer    float64
-	idleCycleIdx int
-	idleTimer    float64
 
 	interactTarget *npc
 	dialogSys      *dialogSystem
@@ -74,41 +78,36 @@ func gridFrameToSprite(gf engine.GridFrame) spriteFrame {
 	return spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H}
 }
 
+func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
+	grid := engine.SpriteGridFromPNG(renderer, path, cols, 1)
+	frames := make([]spriteFrame, 0, cols)
+	for c := 0; c < cols; c++ {
+		frames = append(frames, gridFrameToSprite(grid[0][c]))
+	}
+	return frames
+}
+
 func newPlayer(renderer *sdl.Renderer) *player {
 	p := &player{
 		x: 630,
 		y: float64(engine.ScreenHeight) - playerDstH - 160,
 	}
 
-	posesGrid := engine.SpriteGridFromPNG(renderer,
-		"assets/images/player/Gemini_Generated_Image_kkasyqkkasyqkkas.png", 5, 4)
+	p.walkSideFrames = stripFrames(renderer, "assets/images/player/pink_panther_walk_side.png", walkStripFrames)
+	p.walkUpFrames = stripFrames(renderer, "assets/images/player/pink_panther_walk_away.png", walkStripFrames)
+	p.walkDownFrames = stripFrames(renderer, "assets/images/player/pink_panther_walk_front.png", walkStripFrames)
 
-	dirGrid := engine.SpriteGridFromPNG(renderer,
-		"assets/images/player/Gemini_Generated_Image_vt2ol9vt2ol9vt2o.png", 4, 3)
-
-	// Side-view walk cycle: poses rows 0-1 (10 frames)
-	for r := 0; r < 2; r++ {
-		for c := 0; c < 5; c++ {
-			p.walkSideFrames = append(p.walkSideFrames, gridFrameToSprite(posesGrid[r][c]))
-		}
+	idleFrames := stripFrames(renderer, "assets/images/player/pink_panther_idle.png", 3)
+	if len(idleFrames) >= 3 {
+		p.idleFrontFrames = append(p.idleFrontFrames, idleFrames[0])
+		p.idleSideFrames = append(p.idleSideFrames, idleFrames[1])
+		p.idleBackFrames = append(p.idleBackFrames, idleFrames[2])
 	}
 
-	// Walk away/back: directions row 0 (4 frames)
-	for c := 0; c < 4; c++ {
-		p.walkUpFrames = append(p.walkUpFrames, gridFrameToSprite(dirGrid[0][c]))
-	}
+	p.talkFrames = stripFrames(renderer, "assets/images/player/pink_panther_talk_front.png", talkStripFrames)
+	p.talkSideFrames = stripFrames(renderer, "assets/images/player/pink_panther_talk_side.png", talkStripFrames)
 
-	// Walk toward camera: directions row 2 (4 frames)
-	for c := 0; c < 4; c++ {
-		p.walkDownFrames = append(p.walkDownFrames, gridFrameToSprite(dirGrid[2][c]))
-	}
-
-	// Idle: single front-facing frame from directions row 1, col 0
-	p.idleFrames = append(p.idleFrames, gridFrameToSprite(dirGrid[1][0]))
-
-	// Talk: poses row 2 cols 0-1 (standing + waving)
-	p.talkFrames = append(p.talkFrames, gridFrameToSprite(posesGrid[2][0]))
-	p.talkFrames = append(p.talkFrames, gridFrameToSprite(posesGrid[2][1]))
+	p.dir = dirDown
 
 	return p
 }
@@ -124,24 +123,55 @@ func (p *player) currentWalkFrames() []spriteFrame {
 	}
 }
 
+func (p *player) currentIdleFrames() []spriteFrame {
+	switch p.dir {
+	case dirUp:
+		return p.idleBackFrames
+	case dirLeft, dirRight:
+		return p.idleSideFrames
+	default:
+		return p.idleFrontFrames
+	}
+}
+
+func (p *player) currentTalkFrames() []spriteFrame {
+	switch p.dir {
+	case dirLeft, dirRight:
+		return p.talkSideFrames
+	default:
+		return p.talkFrames
+	}
+}
+
+func firstAvailableFrame(groups ...[]spriteFrame) spriteFrame {
+	for _, group := range groups {
+		if len(group) > 0 {
+			return group[0]
+		}
+	}
+	return spriteFrame{}
+}
+
 func (p *player) currentSprite() spriteFrame {
 	switch p.state {
 	case stateWalking:
 		frames := p.currentWalkFrames()
 		if len(frames) == 0 {
-			return p.idleFrames[0]
+			return firstAvailableFrame(p.currentIdleFrames(), p.walkDownFrames, p.walkSideFrames, p.walkUpFrames)
 		}
 		return frames[p.walkCycleIdx%len(frames)]
 	case stateTalking:
-		if len(p.talkFrames) > 0 {
-			return p.talkFrames[p.talkCycleIdx%len(p.talkFrames)]
+		frames := p.currentTalkFrames()
+		if len(frames) > 0 {
+			return frames[p.talkCycleIdx%len(frames)]
 		}
-		return p.idleFrames[0]
+		return firstAvailableFrame(p.currentIdleFrames(), p.walkDownFrames, p.walkSideFrames, p.walkUpFrames)
 	default:
-		if len(p.idleFrames) > 0 {
-			return p.idleFrames[0]
+		frames := p.currentIdleFrames()
+		if len(frames) > 0 {
+			return frames[0]
 		}
-		return p.walkSideFrames[0]
+		return firstAvailableFrame(p.walkDownFrames, p.walkSideFrames, p.walkUpFrames)
 	}
 }
 
@@ -151,6 +181,7 @@ func (p *player) setTarget(x, y float64) {
 	p.targetX = tx
 	p.targetY = ty
 	p.moving = true
+	p.allowOffscreen = false
 	p.state = stateWalking
 	p.interactTarget = nil
 	p.onArrival = nil
@@ -173,6 +204,7 @@ func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
 	p.targetX = engine.Clamp(tx, playerMinX, playerMaxX)
 	p.targetY = engine.Clamp(ty, playerMinY, playerMaxY)
 	p.moving = true
+	p.allowOffscreen = false
 	p.state = stateWalking
 	p.interactTarget = target
 	p.dialogSys = ds
@@ -183,6 +215,30 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 	p.targetX = engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
 	p.targetY = engine.Clamp(y-playerDstH/2, playerMinY, playerMaxY)
 	p.moving = true
+	p.allowOffscreen = false
+	p.state = stateWalking
+	p.interactTarget = nil
+	p.onArrival = action
+}
+
+func (p *player) walkToExit(dir arrowDir, action func()) {
+	p.targetY = engine.Clamp(p.y, playerMinY, playerMaxY)
+	switch dir {
+	case arrowLeft:
+		p.targetX = -playerDstW
+		p.dir = dirLeft
+		p.facingLeft = true
+	case arrowRight:
+		p.targetX = engine.ScreenWidth + playerDstW
+		p.dir = dirRight
+		p.facingLeft = false
+	default:
+		p.allowOffscreen = false
+		p.walkToAndDo(p.x+playerDstW/2, p.y+playerDstH/2, action)
+		return
+	}
+	p.moving = true
+	p.allowOffscreen = true
 	p.state = stateWalking
 	p.interactTarget = nil
 	p.onArrival = action
@@ -203,14 +259,16 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 	} else {
 		p.walkCycleIdx = 0
 		p.walkTimer = 0
+		p.allowOffscreen = false
 	}
 
 	if p.state == stateTalking {
 		p.talkTimer += dt
 		if p.talkTimer >= talkFrameTime {
 			p.talkTimer -= talkFrameTime
-			if len(p.talkFrames) > 0 {
-				p.talkCycleIdx = (p.talkCycleIdx + 1) % len(p.talkFrames)
+			frames := p.currentTalkFrames()
+			if len(frames) > 0 {
+				p.talkCycleIdx = (p.talkCycleIdx + 1) % len(frames)
 			}
 		}
 	} else {
@@ -218,13 +276,11 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 		p.talkCycleIdx = 0
 	}
 
-	if p.state == stateIdle {
-		p.idleCycleIdx = 0
-	}
-
 	if !p.moving {
 		if p.state != stateTalking {
 			p.state = stateIdle
+			p.dir = dirDown
+			p.facingLeft = false
 		}
 		return
 	}
@@ -254,10 +310,6 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 		p.y = p.targetY
 		p.moving = false
 		p.state = stateIdle
-		p.dir = dirDown
-		p.facingLeft = false
-		p.idleCycleIdx = 0
-		p.idleTimer = 0
 		if p.interactTarget != nil && p.dialogSys != nil {
 			p.startNPCDialog()
 		}
@@ -273,7 +325,12 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 	if dist < 100 {
 		speed = playerBaseSpeed * (0.3 + 0.7*dist/100.0)
 	}
-	p.x = engine.Clamp(p.x+(dx/dist)*speed*dt, playerMinX, playerMaxX)
+	nextX := p.x + (dx/dist)*speed*dt
+	if p.allowOffscreen {
+		p.x = nextX
+	} else {
+		p.x = engine.Clamp(nextX, playerMinX, playerMaxX)
+	}
 	p.y = engine.Clamp(p.y+(dy/dist)*speed*dt, playerMinY, playerMaxY)
 
 	for _, b := range blockers {
@@ -294,16 +351,10 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 					fn := p.onArrival
 					p.onArrival = nil
 					p.state = stateIdle
-					p.dir = dirDown
-					p.facingLeft = false
 					fn()
 				} else {
 					p.state = stateIdle
-					p.dir = dirDown
-					p.facingLeft = false
 				}
-				p.idleCycleIdx = 0
-				p.idleTimer = 0
 			}
 		}
 	}
@@ -316,7 +367,16 @@ func (p *player) startNPCDialog() {
 		return
 	}
 	p.state = stateTalking
-	p.facingLeft = p.x > float64(n.bounds.X)
+	p.talkCycleIdx = 0
+	p.talkTimer = 0
+	npcCenter := float64(n.bounds.X + n.bounds.W/2)
+	playerCenter := p.x + playerDstW/2
+	p.facingLeft = playerCenter > npcCenter
+	if p.facingLeft {
+		p.dir = dirLeft
+	} else {
+		p.dir = dirRight
+	}
 
 	if n.altDialogFunc != nil {
 		entries, cb := n.altDialogFunc()
@@ -353,18 +413,32 @@ func (p *player) footCenter() (int32, int32) {
 	return cx, fy
 }
 
+func (p *player) footY() int32 {
+	_, fy := p.footCenter()
+	return fy
+}
+
+func (p *player) depthScale() float64 {
+	progress := engine.Clamp((p.y-playerMinY)/(playerMaxY-playerMinY), 0, 1)
+	return 0.88 + progress*0.18
+}
+
 func (p *player) draw(renderer *sdl.Renderer) {
 	frame := p.currentSprite()
+	if frame.tex == nil || frame.h == 0 {
+		return
+	}
 
-	frameScale := float64(playerDstH) / float64(frame.h)
+	scaledHeight := int32(float64(playerDstH) * p.depthScale())
+	frameScale := float64(scaledHeight) / float64(frame.h)
 	dstW := int32(float64(frame.w) * frameScale)
-	dstH := int32(playerDstH)
+	dstH := scaledHeight
 
 	dstX := int32(p.x) + (playerDstW-dstW)/2
-	dstY := int32(p.y)
+	dstY := p.footY() - dstH
 
 	flip := sdl.FLIP_NONE
-	if p.facingLeft && p.state != stateIdle {
+	if p.dir == dirLeft {
 		flip = sdl.FLIP_HORIZONTAL
 	}
 
@@ -378,7 +452,7 @@ func (p *player) draw(renderer *sdl.Renderer) {
 	}
 
 	cx, fy := p.footCenter()
-	drawShadow(renderer, cx, fy, playerDstW-20)
+	drawShadow(renderer, cx, fy, int32(float64(playerDstW-20)*p.depthScale()))
 
 	renderer.CopyEx(frame.tex, nil,
 		&sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH},

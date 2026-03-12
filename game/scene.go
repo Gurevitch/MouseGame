@@ -3,6 +3,7 @@ package game
 import (
 	"math"
 	"math/rand"
+	"sort"
 
 	"bitbucket.org/Local/games/PP/engine"
 	"github.com/veandco/go-sdl2/sdl"
@@ -221,6 +222,9 @@ func (sm *sceneManager) update(dt float64) {
 				sm.transPlayer.x = s.spawnX
 				sm.transPlayer.y = s.spawnY
 				sm.transPlayer.moving = false
+				sm.transPlayer.allowOffscreen = false
+				sm.transPlayer.facingLeft = false
+				sm.transPlayer.dir = dirDown
 				sm.transPlayer.state = stateIdle
 			}
 		}
@@ -383,9 +387,44 @@ func drawArrow(renderer *sdl.Renderer, cx, cy, w, h int32, dir arrowDir, alpha u
 	}
 }
 
-func (s *scene) drawNPCs(renderer *sdl.Renderer) {
-	for _, n := range s.npcs {
-		n.draw(renderer)
+func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
+	type actorDraw struct {
+		footY int32
+		order int
+		draw  func()
+	}
+
+	actors := make([]actorDraw, 0, len(s.npcs)+1)
+	for i := range s.npcs {
+		n := s.npcs[i]
+		actors = append(actors, actorDraw{
+			footY: n.footY(),
+			order: i,
+			draw: func() {
+				n.draw(renderer)
+			},
+		})
+	}
+
+	if plr != nil {
+		actors = append(actors, actorDraw{
+			footY: plr.footY(),
+			order: len(s.npcs),
+			draw: func() {
+				plr.draw(renderer)
+			},
+		})
+	}
+
+	sort.SliceStable(actors, func(i, j int) bool {
+		if actors[i].footY == actors[j].footY {
+			return actors[i].order < actors[j].order
+		}
+		return actors[i].footY < actors[j].footY
+	})
+
+	for _, actor := range actors {
+		actor.draw()
 	}
 }
 
