@@ -30,12 +30,13 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	g.audio.playMusic(g.sceneMgr.current().musicPath)
 
 	comicItem := createComicBookTexture(renderer)
-	g.setupNPCCallbacks(comicItem)
+	beerItem := createBeerTexture(renderer)
+	g.setupNPCCallbacks(comicItem, beerItem)
 
 	return g
 }
 
-func (g *Game) setupNPCCallbacks(comicItem *inventoryItem) {
+func (g *Game) setupNPCCallbacks(comicItem, beerItem *inventoryItem) {
 	// Paper Man gives comic book on first dialog completion
 	for _, n := range g.sceneMgr.scenes["street"].npcs {
 		if n.name == "Paper Man" {
@@ -63,6 +64,48 @@ func (g *Game) setupNPCCallbacks(comicItem *inventoryItem) {
 						inv.heldItem = nil
 						kid.dialog = cryingKidHappyDialog
 						kid.name = "Happy Kid"
+					}
+				}
+				return nil, nil
+			}
+			break
+		}
+	}
+
+	// Barmaid gives beer on first dialog completion
+	for _, n := range g.sceneMgr.scenes["pub"].npcs {
+		if n.name == "Barmaid" {
+			bm := n
+			inv := g.inv
+			bm.onDialogEnd = func() {
+				if beerItem != nil && !inv.hasItem("Pint of Beer") {
+					inv.addItem(beerItem)
+					bm.dialog = barmaidPostBeerDialog
+				}
+			}
+			break
+		}
+	}
+
+	// Bobby accepts beer and reveals clue
+	for _, n := range g.sceneMgr.scenes["pub"].npcs {
+		if n.name == "Bobby" {
+			bobby := n
+			inv := g.inv
+			bobby.altDialogFunc = func() ([]dialogEntry, func()) {
+				if inv.heldItem != nil && inv.heldItem.name == "Pint of Beer" {
+					return bobbyBeerDialog, func() {
+						inv.removeItem("Pint of Beer")
+						inv.heldItem = nil
+						bobby.animState = npcAnimDrink
+						bobby.animOnce = true
+						bobby.frameIdx = 0
+						bobby.frameTimer = 0
+						af := bobby.activeFrames()
+						if len(af) > 0 {
+							bobby.srcRect = af[0]
+						}
+						bobby.dialog = bobbyPostBeerDialog
 					}
 				}
 				return nil, nil
@@ -121,7 +164,18 @@ func (g *Game) HandleClick(x, y int32) {
 						} else {
 							g.player.dir = dirRight
 						}
-						ds.startDialogWithCallback(entries, cb)
+						if len(target.talkFrames) > 0 {
+							target.setAnimState(npcAnimTalk)
+						}
+						wrappedCb := func() {
+							if len(target.talkFrames) > 0 {
+								target.setAnimState(npcAnimIdle)
+							}
+							if cb != nil {
+								cb()
+							}
+						}
+						ds.startDialogWithCallback(entries, wrappedCb)
 					}
 					return
 				}

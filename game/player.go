@@ -22,7 +22,7 @@ const (
 	playerMinY      = 300.0
 	playerMaxY      = 430.0
 	walkFrameTime   = 0.12
-	talkFrameTime   = 0.12
+	talkFrameTime   = 0.07
 	walkStripFrames = 8
 	talkStripFrames = 14
 )
@@ -90,7 +90,7 @@ func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
 func newPlayer(renderer *sdl.Renderer) *player {
 	p := &player{
 		x: 630,
-		y: float64(engine.ScreenHeight) - playerDstH - 160,
+		y: float64(engine.ScreenHeight) - playerDstH - 100,
 	}
 
 	p.walkSideFrames = stripFrames(renderer, "assets/images/player/pink_panther_walk_side.png", walkStripFrames)
@@ -378,10 +378,26 @@ func (p *player) startNPCDialog() {
 		p.dir = dirRight
 	}
 
+	if len(n.talkFrames) > 0 {
+		n.setAnimState(npcAnimTalk)
+	}
+
+	wrapCb := func(inner func()) func() {
+		target := n
+		return func() {
+			if len(target.talkFrames) > 0 {
+				target.setAnimState(npcAnimIdle)
+			}
+			if inner != nil {
+				inner()
+			}
+		}
+	}
+
 	if n.altDialogFunc != nil {
 		entries, cb := n.altDialogFunc()
 		if entries != nil {
-			ds.startDialogWithCallback(entries, cb)
+			ds.startDialogWithCallback(entries, wrapCb(cb))
 			p.interactTarget = nil
 			return
 		}
@@ -389,14 +405,14 @@ func (p *player) startNPCDialog() {
 
 	cb := n.onDialogEnd
 	if !n.dialogDone {
-		ds.startDialogWithCallback(n.dialog, func() {
+		ds.startDialogWithCallback(n.dialog, wrapCb(func() {
 			n.dialogDone = true
 			if cb != nil {
 				cb()
 			}
-		})
+		}))
 	} else {
-		ds.startDialogWithCallback(n.dialog, nil)
+		ds.startDialogWithCallback(n.dialog, wrapCb(nil))
 	}
 	p.interactTarget = nil
 }

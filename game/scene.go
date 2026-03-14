@@ -76,7 +76,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	street := &scene{
 		name:   "street",
 		bg:     newPNGBackground(renderer, "assets/images/locations/london/background/street_V2.png"),
-		npcs:   []*npc{newPaparMan(renderer), newGrumpyKid(renderer), newStreetTalkers(renderer)},
+		npcs:   []*npc{newPaperMan(renderer), newGrumpyKid(renderer), newStreetTalkers(renderer)},
 		spawnX: 460,
 		spawnY: 460,
 		hotspots: []hotspot{
@@ -151,8 +151,8 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	// ===== Pub =====
 	pub := &scene{
 		name:   "pub",
-		bg:     newPNGBackground(renderer, "assets/images/locations/london/background/pub 8K.jpg"),
-		npcs:   []*npc{},
+		bg:     newPNGBackground(renderer, "assets/images/locations/london/background/pub_no_tables.png"),
+		npcs:   []*npc{newBarmaid(renderer), newButler(renderer), newPoliceman(renderer)},
 		spawnX: 600,
 		spawnY: 400,
 		hotspots: []hotspot{

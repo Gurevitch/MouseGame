@@ -231,6 +231,17 @@ func TextureFromPNG(renderer *sdl.Renderer, filename string) (*sdl.Texture, int3
 	return nrgbaToTexture(renderer, img, crop)
 }
 
+// TextureFromPNGKeyed loads a PNG, applies color-key background removal, and
+// returns the full image as a texture without auto-cropping.
+func TextureFromPNGKeyed(renderer *sdl.Renderer, filename string) (*sdl.Texture, int32, int32) {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG %s: %v", filename, err))
+	}
+	applyColorKey(img)
+	return nrgbaToTexture(renderer, img, img.Bounds())
+}
+
 // TextureFromPNGRaw loads a PNG without auto-cropping, returning the full image
 // as a texture. Useful for backgrounds and full-scene art.
 func TextureFromPNGRaw(renderer *sdl.Renderer, filename string) (*sdl.Texture, int32, int32) {

@@ -271,6 +271,49 @@ func createComicBookTexture(renderer *sdl.Renderer) *inventoryItem {
 	}
 }
 
+func createBeerTexture(renderer *sdl.Renderer) *inventoryItem {
+	w := int32(60)
+	h := int32(90)
+	surface, err := sdl.CreateRGBSurface(0, w, h, 32,
+		0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000)
+	if err != nil {
+		return nil
+	}
+	defer surface.Free()
+
+	surface.FillRect(nil, sdl.MapRGBA(surface.Format, 0, 0, 0, 0))
+
+	glass := sdl.MapRGBA(surface.Format, 200, 200, 210, 120)
+	surface.FillRect(&sdl.Rect{X: 12, Y: 15, W: 36, H: 60}, glass)
+
+	beer := sdl.MapRGBA(surface.Format, 210, 170, 50, 230)
+	surface.FillRect(&sdl.Rect{X: 14, Y: 25, W: 32, H: 48}, beer)
+
+	foam := sdl.MapRGBA(surface.Format, 255, 250, 230, 250)
+	surface.FillRect(&sdl.Rect{X: 12, Y: 15, W: 36, H: 14}, foam)
+
+	handle := sdl.MapRGBA(surface.Format, 180, 180, 190, 200)
+	surface.FillRect(&sdl.Rect{X: 48, Y: 30, W: 8, H: 30}, handle)
+	surface.FillRect(&sdl.Rect{X: 44, Y: 28, W: 12, H: 6}, handle)
+	surface.FillRect(&sdl.Rect{X: 44, Y: 56, W: 12, H: 6}, handle)
+
+	base := sdl.MapRGBA(surface.Format, 180, 180, 190, 220)
+	surface.FillRect(&sdl.Rect{X: 8, Y: 75, W: 44, H: 8}, base)
+
+	tex, err := renderer.CreateTextureFromSurface(surface)
+	if err != nil {
+		return nil
+	}
+	tex.SetBlendMode(sdl.BLENDMODE_BLEND)
+	return &inventoryItem{
+		name: "Pint of Beer",
+		tex:  tex,
+		srcW: w,
+		srcH: h,
+		desc: "A frothy pint from the barmaid.",
+	}
+}
+
 func drawFilledOval(renderer *sdl.Renderer, cx, cy, rx, ry int32, r, g, b, a uint8) {
 	renderer.SetDrawColor(r, g, b, a)
 	for y := -ry; y <= ry; y++ {
