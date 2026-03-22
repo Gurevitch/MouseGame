@@ -16,6 +16,7 @@ const (
 	arrowRight
 	arrowLeft
 	arrowUp
+	arrowDown
 )
 
 type hotspot struct {
@@ -23,6 +24,7 @@ type hotspot struct {
 	targetScene string
 	name        string
 	arrow       arrowDir
+	onInteract  func() bool
 }
 
 type particle struct {
@@ -31,7 +33,11 @@ type particle struct {
 	alpha   uint8
 	size    int32
 	baseY   float64
+	homeX   float64
 	twinkle bool
+	r, g, b uint8
+	fire    bool
+	bird    bool
 }
 
 type glowEffect struct {
@@ -43,17 +49,28 @@ type glowEffect struct {
 	timer   float64
 }
 
+type floorItem struct {
+	tex      *sdl.Texture
+	srcW     int32
+	srcH     int32
+	bounds   sdl.Rect
+	name     string
+	visible  bool
+	onPickup func()
+}
+
 type scene struct {
-	name      string
-	bg        *background
-	npcs      []*npc
-	hotspots  []hotspot
-	particles []particle
-	glows     []glowEffect
-	blockers  []sdl.Rect
-	spawnX    float64
-	spawnY    float64
-	musicPath string
+	name       string
+	bg         *background
+	npcs       []*npc
+	hotspots   []hotspot
+	floorItems []*floorItem
+	particles  []particle
+	glows      []glowEffect
+	blockers   []sdl.Rect
+	spawnX     float64
+	spawnY     float64
+	musicPath  string
 }
 
 type sceneManager struct {
@@ -69,7 +86,7 @@ type sceneManager struct {
 func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm := &sceneManager{
 		scenes:      make(map[string]*scene),
-		currentName: "street",
+		currentName: "camp_entrance",
 	}
 
 	// ===== Street (London Day) =====
@@ -188,6 +205,201 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	}
 	sm.scenes["pub"] = pub
 
+	// ===== Camp Chilly Wa Wa: Entrance =====
+	campEntrance := &scene{
+		name:   "camp_entrance",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_entrance.png"),
+		npcs:   []*npc{newDirectorHiggins(renderer)},
+		spawnX: 300,
+		spawnY: 400,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
+				targetScene: "camp_grounds",
+				name:        "Enter Camp",
+				arrow:       arrowRight,
+			},
+		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: 120, H: engine.ScreenHeight},
+		},
+	}
+	for i := 0; i < 6; i++ {
+		campEntrance.particles = append(campEntrance.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     rand.Float64() * 350,
+			vx:    (rand.Float64() - 0.3) * 5,
+			vy:    -rand.Float64()*1.0 - 0.2,
+			alpha: uint8(rand.Intn(12) + 4),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	for i := 0; i < 3; i++ {
+		dir := 15 + rand.Float64()*20
+		if rand.Float64() < 0.5 {
+			dir = -dir
+		}
+		campEntrance.particles = append(campEntrance.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     30 + rand.Float64()*60,
+			vx:    dir,
+			baseY: 30 + rand.Float64()*60,
+			alpha: uint8(rand.Intn(30) + 50),
+			size:  3,
+			bird:  true,
+		})
+	}
+	campEntrance.glows = []glowEffect{
+		{x: 300, y: 0, w: 600, h: 350, r: 255, g: 245, b: 210, alpha: 10, pulse: 0.25},
+	}
+	sm.scenes["camp_entrance"] = campEntrance
+
+	// ===== Camp Chilly Wa Wa: Grounds =====
+	campGrounds := &scene{
+		name:   "camp_grounds",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_grounds.png"),
+		npcs:   []*npc{newTommy(renderer), newJake(renderer), newLily(renderer), newMarcus(renderer), newDanny(renderer)},
+		spawnX: 100,
+		spawnY: 400,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
+				targetScene: "camp_entrance",
+				name:        "Camp Entrance",
+				arrow:       arrowLeft,
+			},
+			{
+				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
+				targetScene: "camp_messhall",
+				name:        "Mess Hall",
+				arrow:       arrowRight,
+			},
+			{
+				bounds:      sdl.Rect{X: 560, Y: 50, W: 280, H: 200},
+				targetScene: "camp_lake",
+				name:        "To the Lake",
+				arrow:       arrowUp,
+			},
+		},
+	}
+	for i := 0; i < 10; i++ {
+		campGrounds.particles = append(campGrounds.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     rand.Float64() * 400,
+			vx:    (rand.Float64() - 0.5) * 4,
+			vy:    -rand.Float64()*0.8 - 0.1,
+			alpha: uint8(rand.Intn(10) + 3),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	// Campfire particles
+	fireColors := [][3]uint8{{255, 140, 20}, {255, 180, 40}, {255, 100, 10}, {255, 200, 60}, {240, 80, 10},
+		{255, 160, 30}, {255, 120, 15}, {255, 190, 50}}
+	for i := 0; i < 8; i++ {
+		c := fireColors[i%len(fireColors)]
+		campGrounds.particles = append(campGrounds.particles, particle{
+			x:     680 + (rand.Float64()-0.5)*20,
+			y:     515 - rand.Float64()*30,
+			vx:    (rand.Float64() - 0.5) * 12,
+			vy:    -rand.Float64()*35 - 15,
+			alpha: uint8(rand.Intn(50) + 30),
+			size:  int32(rand.Intn(2) + 1),
+			baseY: 518,
+			homeX: 680,
+			fire:  true,
+			r:     c[0], g: c[1], b: c[2],
+		})
+	}
+	// Birds in the sky
+	for i := 0; i < 3; i++ {
+		campGrounds.particles = append(campGrounds.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     40 + rand.Float64()*80,
+			vx:    15 + rand.Float64()*20,
+			baseY: 40 + rand.Float64()*80,
+			alpha: uint8(rand.Intn(30) + 50),
+			size:  3,
+			bird:  true,
+		})
+	}
+	campGrounds.glows = []glowEffect{
+		{x: 200, y: 50, w: 400, h: 300, r: 255, g: 245, b: 200, alpha: 8, pulse: 0.2},
+		{x: 500, y: 400, w: 300, h: 100, r: 255, g: 200, b: 120, alpha: 6, pulse: 0.35},
+		{x: 650, y: 490, w: 60, h: 40, r: 255, g: 160, b: 40, alpha: 18, pulse: 4.0},
+	}
+	sm.scenes["camp_grounds"] = campGrounds
+
+	// ===== Camp Chilly Wa Wa: Mess Hall =====
+	campMessHall := &scene{
+		name:   "camp_messhall",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_messhall.png"),
+		npcs:   []*npc{newCookMarge(renderer)},
+		spawnX: 640,
+		spawnY: 400,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 300, Y: 650, W: 700, H: 100},
+				targetScene: "camp_grounds",
+				name:        "Back to Camp",
+				arrow:       arrowDown,
+			},
+		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: engine.ScreenWidth, H: 300},
+		},
+	}
+	campMessHall.glows = []glowEffect{
+		{x: 300, y: 100, w: 600, h: 400, r: 255, g: 230, b: 180, alpha: 8, pulse: 0.3},
+	}
+	sm.scenes["camp_messhall"] = campMessHall
+
+	// ===== Camp Chilly Wa Wa: Lake =====
+	campLake := &scene{
+		name:   "camp_lake",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_lake.png"),
+		npcs:   []*npc{},
+		spawnX: 200,
+		spawnY: 400,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
+				targetScene: "camp_grounds",
+				name:        "Back to Camp",
+				arrow:       arrowLeft,
+			},
+		},
+	}
+	for i := 0; i < 5; i++ {
+		campLake.particles = append(campLake.particles, particle{
+			x:     400 + rand.Float64()*500,
+			y:     300 + rand.Float64()*200,
+			vx:    (rand.Float64() - 0.5) * 3,
+			vy:    -rand.Float64()*0.5 - 0.1,
+			alpha: uint8(rand.Intn(8) + 3),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	for i := 0; i < 3; i++ {
+		dir := 12 + rand.Float64()*18
+		if rand.Float64() < 0.5 {
+			dir = -dir
+		}
+		campLake.particles = append(campLake.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     20 + rand.Float64()*60,
+			vx:    dir,
+			baseY: 20 + rand.Float64()*60,
+			alpha: uint8(rand.Intn(25) + 40),
+			size:  3,
+			bird:  true,
+		})
+	}
+	campLake.glows = []glowEffect{
+		{x: 400, y: 250, w: 500, h: 200, r: 255, g: 200, b: 120, alpha: 6, pulse: 0.2},
+		{x: 0, y: 0, w: engine.ScreenWidth, h: 200, r: 180, g: 150, b: 200, alpha: 5, pulse: 0.15},
+	}
+	sm.scenes["camp_lake"] = campLake
+
 	return sm
 }
 
@@ -272,6 +484,16 @@ func (s *scene) rightmostInGroup(groupID string) *npc {
 	return best
 }
 
+func (s *scene) checkFloorItemClick(x, y int32) *floorItem {
+	pt := sdl.Point{X: x, Y: y}
+	for _, fi := range s.floorItems {
+		if fi.visible && pt.InRect(&fi.bounds) {
+			return fi
+		}
+	}
+	return nil
+}
+
 func (s *scene) checkHotspotClick(x, y int32) *hotspot {
 	pt := sdl.Point{X: x, Y: y}
 	for i := range s.hotspots {
@@ -286,104 +508,37 @@ func (s *scene) drawBackground(renderer *sdl.Renderer, playerX float64) {
 	s.bg.draw(renderer, playerX)
 }
 
-func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, mx, my int32) {
-	pulse := 0.6 + 0.4*math.Sin(float64(sdl.GetTicks())*0.003)
+func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, _, _ int32) {
+	pulse := 0.5 + 0.5*math.Sin(float64(sdl.GetTicks())*0.004)
 	for _, hs := range s.hotspots {
 		if hs.arrow == arrowNone {
 			continue
 		}
 		hovered := hs.name == hoverName && hoverName != ""
 		if hovered {
-			alpha := uint8(float64(220) * pulse)
-			drawArrow(renderer, mx, my, 40, 40, hs.arrow, alpha)
-		} else {
-			alpha := uint8(float64(60) * pulse)
-			cx := hs.bounds.X + hs.bounds.W/2
-			cy := hs.bounds.Y + hs.bounds.H/2
-			drawArrow(renderer, cx, cy, 30, 30, hs.arrow, alpha)
+			continue
 		}
-	}
-}
 
-func drawArrow(renderer *sdl.Renderer, cx, cy, w, h int32, dir arrowDir, alpha uint8) {
-	renderer.SetDrawColor(255, 220, 100, alpha)
-	switch dir {
-	case arrowRight:
-		// Right-pointing triangle: tip at right, base on left
-		tipX := cx + w/2
-		tipY := cy
-		baseTop := cy - h/2
-		baseBot := cy + h/2
-		baseX := cx - w/2
-		for y := baseTop; y <= baseBot; y++ {
-			t := float64(y-baseTop) / float64(baseBot-baseTop)
-			var x0, x1 int32
-			if t <= 0.5 {
-				x0 = baseX
-				x1 = baseX + int32(float64(tipX-baseX)*t*2)
-			} else {
-				x0 = baseX
-				x1 = baseX + int32(float64(tipX-baseX)*(1.0-t)*2)
-			}
-			if x1 > x0 {
-				renderer.DrawLine(x0, y, x1, y)
-			}
+		cx := hs.bounds.X + hs.bounds.W/2
+		cy := hs.bounds.Y + hs.bounds.H/2
+
+		switch hs.arrow {
+		case arrowLeft:
+			cx = hs.bounds.X + 20
+		case arrowRight:
+			cx = hs.bounds.X + hs.bounds.W - 20
+		case arrowUp:
+			cy = hs.bounds.Y + 20
+		case arrowDown:
+			cy = hs.bounds.Y + hs.bounds.H - 20
 		}
-		// Outline
-		renderer.SetDrawColor(255, 240, 180, alpha)
-		renderer.DrawLine(baseX, baseTop, tipX, tipY)
-		renderer.DrawLine(tipX, tipY, baseX, baseBot)
-		renderer.DrawLine(baseX, baseBot, baseX, baseTop)
-	case arrowLeft:
-		tipX := cx - w/2
-		tipY := cy
-		baseTop := cy - h/2
-		baseBot := cy + h/2
-		baseX := cx + w/2
-		for y := baseTop; y <= baseBot; y++ {
-			t := float64(y-baseTop) / float64(baseBot-baseTop)
-			var x0, x1 int32
-			if t <= 0.5 {
-				x1 = baseX
-				x0 = baseX - int32(float64(baseX-tipX)*t*2)
-			} else {
-				x1 = baseX
-				x0 = baseX - int32(float64(baseX-tipX)*(1.0-t)*2)
-			}
-			if x1 > x0 {
-				renderer.DrawLine(x0, y, x1, y)
-			}
+
+		a := uint8(40 + float64(40)*pulse)
+		for r := int32(4); r >= 1; r-- {
+			renderer.SetDrawColor(255, 220, 100, a)
+			renderer.FillRect(&sdl.Rect{X: cx - r, Y: cy - r, W: r * 2, H: r * 2})
+			a = uint8(float64(a) * 0.6)
 		}
-		renderer.SetDrawColor(255, 240, 180, alpha)
-		renderer.DrawLine(baseX, baseTop, tipX, tipY)
-		renderer.DrawLine(tipX, tipY, baseX, baseBot)
-		renderer.DrawLine(baseX, baseBot, baseX, baseTop)
-	case arrowUp:
-		// Up-pointing triangle: tip at top, base on bottom
-		tipX := cx
-		tipY := cy - h/2
-		baseLeft := cx - w/2
-		baseRight := cx + w/2
-		baseY := cy + h/2
-		for x := baseLeft; x <= baseRight; x++ {
-			t := float64(x-baseLeft) / float64(baseRight-baseLeft)
-			var y0, y1 int32
-			if t <= 0.5 {
-				y1 = baseY
-				y0 = baseY - int32(float64(baseY-tipY)*t*2)
-			} else {
-				y1 = baseY
-				y0 = baseY - int32(float64(baseY-tipY)*(1.0-t)*2)
-			}
-			if y1 > y0 {
-				renderer.DrawLine(x, y0, x, y1)
-			}
-		}
-		// Outline
-		renderer.SetDrawColor(255, 240, 180, alpha)
-		renderer.DrawLine(baseLeft, baseY, tipX, tipY)
-		renderer.DrawLine(tipX, tipY, baseRight, baseY)
-		renderer.DrawLine(baseRight, baseY, baseLeft, baseY)
 	}
 }
 
@@ -394,12 +549,28 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 		draw  func()
 	}
 
-	actors := make([]actorDraw, 0, len(s.npcs)+1)
+	actors := make([]actorDraw, 0, len(s.npcs)+len(s.floorItems)+1)
+
+	for i := range s.floorItems {
+		fi := s.floorItems[i]
+		if !fi.visible {
+			continue
+		}
+		actors = append(actors, actorDraw{
+			footY: fi.bounds.Y + fi.bounds.H,
+			order: i,
+			draw: func() {
+				renderer.Copy(fi.tex, nil, &fi.bounds)
+			},
+		})
+	}
+
+	base := len(s.floorItems)
 	for i := range s.npcs {
 		n := s.npcs[i]
 		actors = append(actors, actorDraw{
 			footY: n.footY(),
-			order: i,
+			order: base + i,
 			draw: func() {
 				n.draw(renderer)
 			},
@@ -409,7 +580,7 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 	if plr != nil {
 		actors = append(actors, actorDraw{
 			footY: plr.footY(),
-			order: len(s.npcs),
+			order: base + len(s.npcs),
 			draw: func() {
 				plr.draw(renderer)
 			},
@@ -433,6 +604,37 @@ func (s *scene) updateAmbient(dt float64) {
 		p := &s.particles[i]
 
 		if p.twinkle {
+			continue
+		}
+
+		if p.fire {
+			p.x += p.vx * dt
+			p.y += p.vy * dt
+			fadeRate := 80 * dt
+			if float64(p.alpha) > fadeRate {
+				p.alpha -= uint8(fadeRate)
+			} else {
+				p.alpha = 0
+			}
+			if p.alpha < 5 || p.y < p.baseY-70 {
+				p.x = p.homeX + (rand.Float64()-0.5)*24
+				p.y = p.baseY + rand.Float64()*4
+				p.alpha = uint8(rand.Intn(50) + 30)
+				p.vx = (rand.Float64() - 0.5) * 12
+				p.vy = -rand.Float64()*35 - 15
+			}
+			continue
+		}
+
+		if p.bird {
+			p.x += p.vx * dt
+			p.y = p.baseY + math.Sin(p.x*0.02)*8
+			if p.vx > 0 && p.x > float64(engine.ScreenWidth)+20 {
+				p.x = -20
+			}
+			if p.vx < 0 && p.x < -20 {
+				p.x = float64(engine.ScreenWidth) + 20
+			}
 			continue
 		}
 
@@ -489,7 +691,6 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 		p := &s.particles[i]
 
 		if p.twinkle {
-			// Twinkling star: alpha fades in and out using a unique phase per star
 			phase := p.x*0.1 + p.y*0.07
 			a := float64(p.alpha) * (0.3 + 0.7*math.Abs(math.Sin(phase+float64(sdl.GetTicks())*0.002)))
 			renderer.SetDrawColor(255, 255, 240, uint8(a))
@@ -497,9 +698,24 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 			continue
 		}
 
+		if p.fire {
+			renderer.SetDrawColor(p.r, p.g, p.b, p.alpha)
+			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size})
+			continue
+		}
+
+		if p.bird {
+			renderer.SetDrawColor(30, 25, 20, p.alpha)
+			px := int32(p.x)
+			py := int32(p.y)
+			renderer.FillRect(&sdl.Rect{X: px, Y: py, W: 3, H: 1})
+			renderer.FillRect(&sdl.Rect{X: px - 1, Y: py - 1, W: 1, H: 1})
+			renderer.FillRect(&sdl.Rect{X: px + 3, Y: py - 1, W: 1, H: 1})
+			continue
+		}
+
 		renderer.SetDrawColor(255, 255, 255, p.alpha)
 		if p.size > 5 {
-			// Wide fog particle
 			renderer.SetDrawColor(200, 205, 215, p.alpha)
 			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size / 3})
 		} else {

@@ -192,9 +192,15 @@ func (inv *inventory) drawHeld(renderer *sdl.Renderer, mx, my int32) {
 	dstH := int32(float64(item.srcH) * scale)
 	dst := sdl.Rect{X: mx + 12, Y: my + 12, W: dstW, H: dstH}
 
-	renderer.SetDrawColor(255, 220, 100, 160)
-	pad := int32(3)
-	renderer.DrawRect(&sdl.Rect{X: dst.X - pad, Y: dst.Y - pad, W: dst.W + pad*2, H: dst.H + pad*2})
+	cx := dst.X + dst.W/2
+	cy := dst.Y + dst.H/2
+	pulse := 0.7 + 0.3*math.Sin(inv.pulse*3.0)
+	for i := int32(5); i >= 1; i-- {
+		rx := dst.W/2 + i + 2
+		ry := dst.H/2 + i + 2
+		a := uint8(float64(20-i*3) * pulse)
+		drawFilledOval(renderer, cx, cy, rx, ry, 255, 220, 100, a)
+	}
 	renderer.Copy(item.tex, nil, &dst)
 }
 
@@ -234,6 +240,10 @@ func drawInvArrow(renderer *sdl.Renderer, cx, cy, size int32, leftFacing bool, a
 }
 
 func createComicBookTexture(renderer *sdl.Renderer) *inventoryItem {
+	if item := createItemFromPNG(renderer, "assets/images/items/comic_book.png",
+		"Comic Book", "A colorful comic book from the Paper Man."); item != nil {
+		return item
+	}
 	w := int32(80)
 	h := int32(100)
 	surface, err := sdl.CreateRGBSurface(0, w, h, 32,
@@ -312,6 +322,34 @@ func createBeerTexture(renderer *sdl.Renderer) *inventoryItem {
 		srcH: h,
 		desc: "A frothy pint from the barmaid.",
 	}
+}
+
+func createItemFromPNG(renderer *sdl.Renderer, path, name, desc string) *inventoryItem {
+	tex, w, h := engine.TextureFromPNGRaw(renderer, path)
+	if tex == nil {
+		return nil
+	}
+	return &inventoryItem{name: name, tex: tex, srcW: w, srcH: h, desc: desc}
+}
+
+func createLetterTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/letter.png",
+		"Appointment Letter", "Official letter appointing PP as substitute counselor.")
+}
+
+func createFishingRodTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/fishing_rod.png",
+		"Fishing Rod", "An old fishing rod found at the dock.")
+}
+
+func createMessHallNoteTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/mess_note.png",
+		"Mess Hall Note", "A crumpled note found in the mess hall.")
+}
+
+func createBurntMarshmallowTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/marshmallow.png",
+		"Burnt Marshmallow", "A charred marshmallow. Might be useful as a distraction.")
 }
 
 func drawFilledOval(renderer *sdl.Renderer, cx, cy, rx, ry int32, r, g, b, a uint8) {

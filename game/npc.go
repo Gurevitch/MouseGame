@@ -38,6 +38,14 @@ type npc struct {
 	animOnce       bool
 }
 
+func frameSequence(rects []sdl.Rect, indices ...int) []sdl.Rect {
+	seq := make([]sdl.Rect, len(indices))
+	for i, idx := range indices {
+		seq[i] = rects[idx%len(rects)]
+	}
+	return seq
+}
+
 func newPaperMan(renderer *sdl.Renderer) *npc {
 	const (
 		cols = 7
@@ -53,14 +61,6 @@ func newPaperMan(renderer *sdl.Renderer) *npc {
 			rects[i] = sdl.Rect{X: i * frameW, Y: row * frameH, W: frameW, H: frameH}
 		}
 		return rects
-	}
-
-	frameSequence := func(rects []sdl.Rect, indices ...int) []sdl.Rect {
-		seq := make([]sdl.Rect, len(indices))
-		for i, idx := range indices {
-			seq[i] = rects[idx]
-		}
-		return seq
 	}
 
 	idleRow := rowRects(2)
@@ -285,6 +285,289 @@ func newPoliceman(renderer *sdl.Renderer) *npc {
 	}
 }
 
+// ===== Camp Chilly Wa Wa NPCs =====
+
+func campNPCSheet(renderer *sdl.Renderer, path string, cols, rows int32) (*sdl.Texture, int32, int32, func(row int32) []sdl.Rect) {
+	tex, w, h := engine.TextureFromPNGRaw(renderer, path)
+	frameW := w / cols
+	frameH := h / rows
+	rowFn := func(row int32) []sdl.Rect {
+		rects := make([]sdl.Rect, cols)
+		for i := int32(0); i < cols; i++ {
+			rects[i] = sdl.Rect{X: i * frameW, Y: row * frameH, W: frameW, H: frameH}
+		}
+		return rects
+	}
+	return tex, frameW, frameH, rowFn
+}
+
+// --- Director Higgins ---
+
+var higginsDefaultDialog = []dialogEntry{
+	{speaker: "Director Higgins", text: "Halt! Who goes there?! This is a PRIVATE camp!"},
+	{speaker: "Pink Panther", text: "Good afternoon. I'm the substitute counselor."},
+	{speaker: "Director Higgins", text: "Substitute?! I was told nothing about this!"},
+	{speaker: "Director Higgins", text: "Where is your appointment letter?! No letter, no entry!"},
+	{speaker: "Pink Panther", text: "Hmm... I should find that letter."},
+}
+
+var higginsLetterDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Here you go. My official appointment letter."},
+	{speaker: "Director Higgins", text: "Let me see that... *adjusts glasses*"},
+	{speaker: "Director Higgins", text: "Hmm. This seems to be in order. Very well!"},
+	{speaker: "Director Higgins", text: "Welcome to Camp Chilly Wa Wa. Try not to break anything."},
+	{speaker: "Director Higgins", text: "The camp grounds are through the gate. The kids are... around."},
+}
+
+var higginsPostLetterDialog = []dialogEntry{
+	{speaker: "Director Higgins", text: "Don't just stand there! The kids need supervision!"},
+	{speaker: "Pink Panther", text: "Right. Supervision. My specialty."},
+}
+
+func newDirectorHiggins(renderer *sdl.Renderer) *npc {
+	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_director_higgins.png", 7, 2)
+	raw := rowFn(0)
+	idleFrames := frameSequence(raw, 0, 0, 0, 0, 1, 0, 0, 0, 2, 2, 0, 0, 1, 1, 0, 0)
+	talkFrames := rowFn(1)
+	return &npc{
+		tex:            tex,
+		srcRect:        idleFrames[0],
+		bounds:         sdl.Rect{X: 700, Y: 360, W: 120, H: 210},
+		name:           "Director Higgins",
+		dialog:         higginsDefaultDialog,
+		bobAmount:      0.2,
+		frames:         idleFrames,
+		talkFrames:     talkFrames,
+		frameSpeed:     0.48,
+		talkFrameSpeed: 0.10,
+	}
+}
+
+// --- Tommy (Homesick Kid) ---
+
+var tommyDialog = []dialogEntry{
+	{speaker: "Tommy", text: "*sniff* I... I want to go home..."},
+	{speaker: "Pink Panther", text: "Hey there, little one. What's wrong?"},
+	{speaker: "Tommy", text: "Everything! The food is gross, the bugs are huge, and I miss my dog!"},
+	{speaker: "Pink Panther", text: "Camp can be tough. Is there anything that cheers you up?"},
+	{speaker: "Tommy", text: "My pen pal lives in Scotland... she says there's a monster in the loch, and someone is trying to catch it!"},
+	{speaker: "Tommy", text: "I wish I could visit her instead of being stuck here..."},
+	{speaker: "Tommy", text: "If only I had something to read... a comic book or something..."},
+}
+
+var tommyComicDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Hey Tommy, look what I found! A comic book."},
+	{speaker: "Tommy", text: "R-really?! For me?!"},
+	{speaker: "Tommy", text: "Oh wow! This is THE BEST! Thank you so much!"},
+	{speaker: "Tommy", text: "You know what... there's a shortcut past Jake."},
+	{speaker: "Tommy", text: "Go behind the big cabin and you can get to the lake without him seeing you!"},
+}
+
+var tommyHappyDialog = []dialogEntry{
+	{speaker: "Tommy", text: "This comic is amazing! Thank you, Pink Panther!"},
+	{speaker: "Pink Panther", text: "Anytime, kid. Hang in there."},
+}
+
+func newTommy(renderer *sdl.Renderer) *npc {
+	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_homesick_kid.png", 7, 2)
+	raw := rowFn(0)
+	idleFrames := frameSequence(raw, 0, 0, 0, 1, 0, 0, 0, 0, 2, 2, 0, 0, 1, 0, 0, 0)
+	talkFrames := rowFn(1)
+	return &npc{
+		tex:            tex,
+		srcRect:        idleFrames[0],
+		bounds:         sdl.Rect{X: 200, Y: 420, W: 120, H: 140},
+		name:           "Tommy",
+		dialog:         tommyDialog,
+		bobAmount:      0.3,
+		frames:         idleFrames,
+		talkFrames:     talkFrames,
+		frameSpeed:     0.50,
+		talkFrameSpeed: 0.10,
+	}
+}
+
+// --- Jake (Bully Kid) ---
+
+var jakeDialog = []dialogEntry{
+	{speaker: "Jake", text: "Hey! Where do you think YOU'RE going?!"},
+	{speaker: "Pink Panther", text: "Just passing through, my young friend."},
+	{speaker: "Jake", text: "No way! Nobody gets past ME without paying the toll!"},
+	{speaker: "Pink Panther", text: "A toll? What kind of toll?"},
+	{speaker: "Jake", text: "Food! I'm STARVING! Get me something good and maybe I'll let you pass."},
+	{speaker: "Jake", text: "My dad brought me a weird old coin from Israel. He said it came from some hidden tunnel under an ancient city."},
+	{speaker: "Jake", text: "Maybe I'll trade it if you bring me something REALLY good to eat!"},
+}
+
+var jakeFedDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Here, try this."},
+	{speaker: "Jake", text: "*munch munch* ... Hey, this is actually good!"},
+	{speaker: "Jake", text: "Alright, alright. You can pass. Just don't tell anyone I was nice."},
+}
+
+var jakePostFedDialog = []dialogEntry{
+	{speaker: "Jake", text: "What? I already let you pass! Scram!"},
+	{speaker: "Pink Panther", text: "Charming as always."},
+}
+
+func newJake(renderer *sdl.Renderer) *npc {
+	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_bully_kid.png", 6, 2)
+	raw := rowFn(0)
+	idleFrames := frameSequence(raw, 0, 0, 0, 0, 1, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0)
+	talkFrames := rowFn(1)
+	return &npc{
+		tex:            tex,
+		srcRect:        idleFrames[0],
+		bounds:         sdl.Rect{X: 700, Y: 400, W: 130, H: 180},
+		name:           "Jake",
+		dialog:         jakeDialog,
+		bobAmount:      0.25,
+		frames:         idleFrames,
+		talkFrames:     talkFrames,
+		frameSpeed:     0.45,
+		talkFrameSpeed: 0.10,
+	}
+}
+
+// --- Lily (Shy Girl) ---
+
+var lilyDialog = []dialogEntry{
+	{speaker: "Lily", text: "..."},
+	{speaker: "Pink Panther", text: "Hello there. Mind if I sit for a moment?"},
+	{speaker: "Lily", text: "...o-okay..."},
+}
+
+var lilySecondDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "It's a nice campfire, isn't it?"},
+	{speaker: "Lily", text: "...I guess so..."},
+	{speaker: "Lily", text: "I... I saw a postcard from Japan once... a temple in the mountains with a garden that glows at night..."},
+	{speaker: "Lily", text: "I wish I could see it someday..."},
+	{speaker: "Pink Panther", text: "A glowing garden? That sounds magical."},
+	{speaker: "Lily", text: "*small smile* ...you're... nice..."},
+}
+
+func newLily(renderer *sdl.Renderer) *npc {
+	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_shy_girl.png", 6, 2)
+	raw := rowFn(0)
+	idleFrames := frameSequence(raw, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0)
+	talkFrames := rowFn(1)
+	return &npc{
+		tex:            tex,
+		srcRect:        idleFrames[0],
+		bounds:         sdl.Rect{X: 550, Y: 440, W: 110, H: 130},
+		name:           "Lily",
+		dialog:         lilyDialog,
+		bobAmount:      0.15,
+		frames:         idleFrames,
+		talkFrames:     talkFrames,
+		frameSpeed:     0.55,
+		talkFrameSpeed: 0.12,
+	}
+}
+
+// --- Marcus (Know-It-All) ---
+
+var marcusDialog = []dialogEntry{
+	{speaker: "Marcus", text: "Ah, a new counselor! Did you know this camp was founded in 1968?"},
+	{speaker: "Pink Panther", text: "I did not. How enlightening."},
+	{speaker: "Marcus", text: "Actually, there's a famous art heist case in Paris. The painting was never found."},
+	{speaker: "Marcus", text: "I read the whole file! 347 pages! The thief used the catacombs as an escape route!"},
+	{speaker: "Pink Panther", text: "A stolen painting in Paris... now THAT is interesting."},
+	{speaker: "Marcus", text: "I can tell you more! I've catalogued every unsolved case in my notebook!"},
+}
+
+func newMarcus(renderer *sdl.Renderer) *npc {
+	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_know_it_all.png", 6, 2)
+	raw := rowFn(0)
+	idleFrames := frameSequence(raw, 0, 0, 0, 1, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 2)
+	talkFrames := rowFn(1)
+	return &npc{
+		tex:            tex,
+		srcRect:        idleFrames[0],
+		bounds:         sdl.Rect{X: 1000, Y: 380, W: 100, H: 200},
+		name:           "Marcus",
+		dialog:         marcusDialog,
+		bobAmount:      0.2,
+		frames:         idleFrames,
+		talkFrames:     talkFrames,
+		frameSpeed:     0.46,
+		talkFrameSpeed: 0.10,
+	}
+}
+
+// --- Danny (Prankster) ---
+
+var dannyDialog = []dialogEntry{
+	{speaker: "Danny", text: "Psst! Hey! Over here!"},
+	{speaker: "Pink Panther", text: "Hmm? What are you doing back there?"},
+	{speaker: "Danny", text: "Shh! I'm setting up the ULTIMATE prank! Wanna help?"},
+	{speaker: "Pink Panther", text: "I'll pass, thank you."},
+	{speaker: "Danny", text: "Your loss! Dude, my cousin snuck into some catacombs in Italy."},
+	{speaker: "Danny", text: "Said there's a secret room with gold everywhere! Can you believe it?!"},
+	{speaker: "Pink Panther", text: "Catacombs... gold... Italy. Noted."},
+}
+
+func newDanny(renderer *sdl.Renderer) *npc {
+	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_prankster.png", 6, 2)
+	raw := rowFn(0)
+	idleFrames := frameSequence(raw, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 1, 1, 0, 0, 2, 0)
+	talkFrames := rowFn(1)
+	return &npc{
+		tex:            tex,
+		srcRect:        idleFrames[0],
+		bounds:         sdl.Rect{X: 1150, Y: 400, W: 110, H: 180},
+		name:           "Danny",
+		dialog:         dannyDialog,
+		bobAmount:      0.3,
+		frames:         idleFrames,
+		talkFrames:     talkFrames,
+		frameSpeed:     0.42,
+		talkFrameSpeed: 0.10,
+	}
+}
+
+// --- Cook Marge ---
+
+var cookMargeDialog = []dialogEntry{
+	{speaker: "Cook Marge", text: "Well hello there, sugar! Welcome to my kitchen!"},
+	{speaker: "Pink Panther", text: "Good day, madam. Something smells... interesting."},
+	{speaker: "Cook Marge", text: "That's my famous mystery stew! Secret recipe!"},
+	{speaker: "Cook Marge", text: "Say, you look like a helpful sort. Mind giving me a hand?"},
+	{speaker: "Cook Marge", text: "I need someone to stir the pot while I find the salt."},
+	{speaker: "Pink Panther", text: "I suppose I could do that..."},
+}
+
+var cookMargeHelpedDialog = []dialogEntry{
+	{speaker: "Cook Marge", text: "Thank you, dear! Here, take some stew for the road."},
+	{speaker: "Cook Marge", text: "It might not look pretty, but it's got kick!"},
+	{speaker: "Pink Panther", text: "How... appetizing. Thank you."},
+}
+
+var cookMargePostHelpDialog = []dialogEntry{
+	{speaker: "Cook Marge", text: "Come back anytime, sugar! The kitchen is always open!"},
+	{speaker: "Pink Panther", text: "I'll keep that in mind."},
+}
+
+func newCookMarge(renderer *sdl.Renderer) *npc {
+	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_cook_marge.png", 6, 2)
+	raw := rowFn(0)
+	idleFrames := frameSequence(raw, 0, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 1, 1, 0, 0, 0)
+	talkFrames := rowFn(1)
+	return &npc{
+		tex:            tex,
+		srcRect:        idleFrames[0],
+		bounds:         sdl.Rect{X: 600, Y: 300, W: 220, H: 280},
+		name:           "Cook Marge",
+		dialog:         cookMargeDialog,
+		bobAmount:      0.4,
+		elevated:       true,
+		frames:         idleFrames,
+		talkFrames:     talkFrames,
+		frameSpeed:     0.48,
+		talkFrameSpeed: 0.10,
+	}
+}
+
 func newProfessor(renderer *sdl.Renderer) *npc {
 	tex, w, h := engine.TextureFromPNG(renderer, "assets/images/professor/sprite.png")
 	return &npc{
@@ -381,29 +664,6 @@ func (n *npc) draw(renderer *sdl.Renderer) {
 	shadowCX := n.bounds.X + n.bounds.W/2
 	shadowFY := n.bounds.Y + n.bounds.H
 	drawShadow(renderer, shadowCX, shadowFY, n.bounds.W-10)
-
-	if n.itemMatch {
-		pad := int32(6)
-		renderer.SetDrawColor(255, 240, 50, 180)
-		for i := int32(0); i < 3; i++ {
-			renderer.DrawRect(&sdl.Rect{
-				X: dst.X - pad + i, Y: dst.Y - pad + i,
-				W: dst.W + (pad-i)*2, H: dst.H + (pad-i)*2,
-			})
-		}
-	} else if n.hovered {
-		pad := int32(4)
-		renderer.SetDrawColor(255, 220, 100, 35)
-		renderer.FillRect(&sdl.Rect{
-			X: dst.X - pad, Y: dst.Y - pad,
-			W: dst.W + pad*2, H: dst.H + pad*2,
-		})
-		renderer.SetDrawColor(255, 220, 100, 90)
-		renderer.DrawRect(&sdl.Rect{
-			X: dst.X - pad, Y: dst.Y - pad,
-			W: dst.W + pad*2, H: dst.H + pad*2,
-		})
-	}
 
 	flip := sdl.FLIP_NONE
 	if n.flipped {

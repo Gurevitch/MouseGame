@@ -34,6 +34,8 @@ func main() {
 	defer renderer.Destroy()
 	renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
 
+	sdl.ShowCursor(sdl.DISABLE)
+
 	font := engine.NewBitmapFont(renderer)
 	g := game.New(renderer, font)
 	defer g.Close()
