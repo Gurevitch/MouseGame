@@ -26,6 +26,11 @@ func main() {
 	}
 	defer window.Destroy()
 
+	if iconSurf, err := engine.SurfaceFromPNG("assets/images/pp_icon.png"); err == nil {
+		window.SetIcon(iconSurf)
+		iconSurf.Free()
+	}
+
 	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
 	if err != nil {
 		fmt.Println("Renderer:", err)
