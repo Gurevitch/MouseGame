@@ -14,22 +14,16 @@ type spriteFrame struct {
 }
 
 const (
-	playerBaseSpeed  = 250.0
-	playerDstW       = 200
-	playerDstH       = 280
-	playerMinX       = 10.0
-	playerMaxX       = engine.ScreenWidth - playerDstW - 10.0
-	playerMinY       = 300.0
-	playerMaxY       = 430.0
-	walkFrameTime    = 0.12
-	talkFrameTime    = 0.07
-	actionFrameTime  = 0.10
-	walkSideFrameN   = 8
-	walkFrontFrameN  = 10
-	walkBackFrameN   = 10
-	talkStripFrames  = 8
-	grabStripFrames  = 8
-	actionStripTotal = 10
+	playerBaseSpeed = 250.0
+	playerDstW      = 160
+	playerDstH      = 220
+	playerMinX      = 10.0
+	playerMaxX      = engine.ScreenWidth - playerDstW - 10.0
+	playerMinY      = 300.0
+	playerMaxY      = 430.0
+	walkFrameTime   = 0.12
+	talkFrameTime   = 0.07
+	actionFrameTime = 0.10
 )
 
 type playerState int
@@ -97,10 +91,10 @@ func gridFrameToSprite(gf engine.GridFrame) spriteFrame {
 }
 
 func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
-	grid := engine.SpriteGridFromPNG(renderer, path, cols, 1)
-	frames := make([]spriteFrame, 0, cols)
-	for c := 0; c < cols; c++ {
-		frames = append(frames, gridFrameToSprite(grid[0][c]))
+	texs, ws, hs := engine.SpriteFramesFromPNG(renderer, path, cols)
+	frames := make([]spriteFrame, len(texs))
+	for i := range texs {
+		frames[i] = spriteFrame{tex: texs[i], w: ws[i], h: hs[i]}
 	}
 	return frames
 }
@@ -111,27 +105,56 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		y: float64(engine.ScreenHeight) - playerDstH - 100,
 	}
 
-	p.walkSideFrames = stripFrames(renderer, "assets/images/player/pink_panther_walk_side.png", walkSideFrameN)
-	p.walkUpFrames = stripFrames(renderer, "assets/images/player/pink_panther_walk_away.png", walkBackFrameN)
-	p.walkDownFrames = stripFrames(renderer, "assets/images/player/pink_panther_walk_front.png", walkFrontFrameN)
+	// Walk side (8 frames, single row)
+	p.walkSideFrames = stripFrames(renderer, "assets/images/player/PP walk left.png", 8)
 
-	idleFrames := stripFrames(renderer, "assets/images/player/pink_panther_idle.png", 3)
-	if len(idleFrames) >= 3 {
-		p.idleFrontFrames = append(p.idleFrontFrames, idleFrames[0])
-		p.idleSideFrames = append(p.idleSideFrames, idleFrames[1])
-		p.idleBackFrames = append(p.idleBackFrames, idleFrames[2])
+	// Walk front / idle from 8x2 sheet
+	walkFrontGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP_walk_front_full_idle.png", 8, 2)
+	p.walkDownFrames = make([]spriteFrame, 8)
+	for c := 0; c < 8; c++ {
+		p.walkDownFrames[c] = gridFrameToSprite(walkFrontGrid[0][c])
+	}
+	// Use bottom row first frame as walk-up placeholder (reuse walk front for now)
+	p.walkUpFrames = make([]spriteFrame, 8)
+	for c := 0; c < 8; c++ {
+		p.walkUpFrames[c] = gridFrameToSprite(walkFrontGrid[1][c])
 	}
 
-	p.talkFrames = stripFrames(renderer, "assets/images/player/pink_panther_talk_front.png", talkStripFrames)
-	p.talkSideFrames = stripFrames(renderer, "assets/images/player/pink_panther_talk_side.png", talkStripFrames)
-	p.grabFrames = stripFrames(renderer, "assets/images/player/pp_grab.png", grabStripFrames)
+	// Idle front (8x2 sheet, top row = idle variations)
+	idleGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP idle front.png", 8, 2)
+	p.idleFrontFrames = make([]spriteFrame, 8)
+	for c := 0; c < 8; c++ {
+		p.idleFrontFrames[c] = gridFrameToSprite(idleGrid[0][c])
+	}
+	// Use first idle frame for side and back idle too
+	p.idleSideFrames = []spriteFrame{gridFrameToSprite(idleGrid[1][0])}
+	p.idleBackFrames = []spriteFrame{gridFrameToSprite(idleGrid[1][1])}
 
-	actionsAll := stripFrames(renderer, "assets/images/player/pp_actions.png", actionStripTotal)
-	if len(actionsAll) >= 10 {
-		p.useItemFrames = actionsAll[0:2]
-		p.examineFrames = actionsAll[2:4]
-		p.reactFrames = actionsAll[4:8]
-		p.showInvFrames = actionsAll[8:10]
+	// Talk front (8 frames, single row)
+	p.talkFrames = stripFrames(renderer, "assets/images/player/PP talk front.png", 8)
+
+	// Talk side (8 frames, single row)
+	p.talkSideFrames = stripFrames(renderer, "assets/images/player/PP talk side.png", 8)
+
+	// Grab (8 frames, single row)
+	p.grabFrames = stripFrames(renderer, "assets/images/player/PP grab.png", 8)
+
+	// Celebrate/react (6 frames, single row)
+	celebrateFrames := stripFrames(renderer, "assets/images/player/PP celebrate.png", 6)
+	p.reactFrames = celebrateFrames
+	if len(celebrateFrames) >= 2 {
+		p.showInvFrames = celebrateFrames[0:2]
+	}
+
+	// Sneak (8x2 sheet) — use for examine and use-item
+	sneakGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP sneak.png", 8, 2)
+	p.examineFrames = make([]spriteFrame, 4)
+	for c := 0; c < 4; c++ {
+		p.examineFrames[c] = gridFrameToSprite(sneakGrid[0][c])
+	}
+	p.useItemFrames = make([]spriteFrame, 4)
+	for c := 0; c < 4; c++ {
+		p.useItemFrames[c] = gridFrameToSprite(sneakGrid[1][c])
 	}
 
 	p.dir = dirDown
@@ -498,16 +521,12 @@ func (p *player) startNPCDialog() {
 	}
 
 	cb := n.onDialogEnd
-	if !n.dialogDone {
-		ds.startDialogWithCallback(n.dialog, wrapCb(func() {
-			n.dialogDone = true
-			if cb != nil {
-				cb()
-			}
-		}))
-	} else {
-		ds.startDialogWithCallback(n.dialog, wrapCb(nil))
-	}
+	ds.startDialogWithCallback(n.dialog, wrapCb(func() {
+		if cb != nil {
+			cb()
+		}
+		n.dialogDone = true
+	}))
 	p.interactTarget = nil
 }
 

@@ -6,26 +6,47 @@ import (
 )
 
 var openingMonologue = []dialogEntry{
-	{speaker: "Pink Panther", text: "So many things have changed since the last time I was here..."},
-	{speaker: "Pink Panther", text: "The old sign is barely standing, the cabins look like they've seen better days..."},
-	{speaker: "Pink Panther", text: "...and is that a llama?"},
-	{speaker: "Pink Panther", text: "Hmm. Well, a job is a job."},
-	{speaker: "Pink Panther", text: "Time to see what Camp Chilly Wa Wa has in store for me this time."},
+	{speaker: "Pink Panther", text: "Camp Chilly Wa Wa... it's been a while."},
+	{speaker: "Pink Panther", text: "The old sign is barely standing, the cabins have seen better days..."},
+	{speaker: "Pink Panther", text: "But a job is a job. Time to meet the kids."},
+}
+
+var day2Monologue = []dialogEntry{
+	{speaker: "Pink Panther", text: "Something feels different this morning..."},
+	{speaker: "Pink Panther", text: "The kids... they don't seem like themselves."},
+	{speaker: "Pink Panther", text: "I should talk to everyone and find out what's going on."},
+}
+
+var parisStreetMonologue = []dialogEntry{
+	{speaker: "Pink Panther", text: "Ah, Paris! The city of lights, love, and... mysteries, apparently."},
+	{speaker: "Pink Panther", text: "Marcus kept drawing a museum with a glass pyramid. That must be the Louvre."},
+	{speaker: "Pink Panther", text: "Time to find out what he's been seeing."},
 }
 
 type Game struct {
-	sceneMgr        *sceneManager
-	player          *player
-	dialog          *dialogSystem
-	ui              *uiManager
-	audio           *audioManager
-	inv             *inventory
-	lastScene       string
-	mouseX          int32
-	mouseY          int32
+	sceneMgr  *sceneManager
+	player    *player
+	dialog    *dialogSystem
+	ui        *uiManager
+	audio     *audioManager
+	inv       *inventory
+	travelMap *travelMap
+	lastScene string
+	mouseX    int32
+	mouseY    int32
+
+	// Story progression
 	monologuePlayed bool
-	bullyDefeated   bool
-	cookHelped      bool
+	showTravelMap   bool
+	travelMapFrom   string
+	day             int  // 1 = arrival/normal, 2 = weirdness begins
+	day2Started     bool // Day 2 transition played
+	metKids         int  // How many kids PP has talked to on Day 1
+	talkedToMarcus  bool // Talked to Marcus on Day 2 (strange)
+	parisUnlocked   bool // Paris available on travel map
+
+	// City monologues
+	parisMonologuePlayed bool
 }
 
 func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
@@ -36,289 +57,290 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 		ui:       newUIManager(font),
 		audio:    newAudioManager(),
 		inv:      newInventory(font),
+		day:      1,
 	}
 	g.lastScene = g.sceneMgr.currentName
 	g.audio.playMusic(g.sceneMgr.current().musicPath)
 
-	letterItem := createLetterTexture(renderer)
-	comicItem := createComicBookTexture(renderer)
-	beerItem := createBeerTexture(renderer)
-	fishingRodItem := createFishingRodTexture(renderer)
-	messNoteItem := createMessHallNoteTexture(renderer)
-	marshmallowItem := createBurntMarshmallowTexture(renderer)
-
-	if letterItem != nil {
-		g.inv.addItem(letterItem)
-	}
-
-	g.setupLondonCallbacks(comicItem, beerItem)
-	g.setupCampCallbacks(letterItem, comicItem, fishingRodItem, messNoteItem, marshmallowItem)
+	g.travelMap = newTravelMap(renderer)
+	g.setupCampCallbacks()
+	g.setupParisCallbacks()
+	g.setupTravelHotspots()
 	g.ui.initCursors(renderer)
 
 	return g
 }
 
-func (g *Game) setupLondonCallbacks(comicItem, beerItem *inventoryItem) {
-	// Paper Man gives comic book on first dialog completion
-	for _, n := range g.sceneMgr.scenes["street"].npcs {
-		if n.name == "Paper Man" {
-			pm := n
-			inv := g.inv
-			pm.onDialogEnd = func() {
-				if comicItem != nil && !inv.hasItem("Comic Book") {
-					inv.addItem(comicItem)
-					pm.dialog = paperManPostComicDialog
-				}
+// startDay2 transitions all NPCs to their "strange" dialogs
+func (g *Game) startDay2() {
+	if g.day >= 2 {
+		return
+	}
+	g.day = 2
+
+	// Swap all kid dialogs and sprites to strange versions
+	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
+		for _, n := range grounds.npcs {
+			switch n.name {
+			case "Marcus":
+				n.dialog = marcusStrangeDialog
+				n.dialogDone = false
+				n.setStrange(true)
+			case "Tommy":
+				n.dialog = tommyStrangeDialog
+				n.dialogDone = false
+				n.setStrange(true)
+			case "Jake":
+				n.dialog = jakeStrangeDialog
+				n.dialogDone = false
+				n.setStrange(true)
+			case "Lily":
+				n.dialog = lilyStrangeDialog
+				n.dialogDone = false
+				n.setStrange(true)
+			case "Danny":
+				n.dialog = dannyStrangeDialog
+				n.dialogDone = false
+				n.setStrange(true)
 			}
-			break
 		}
 	}
 
-	// Crying Kid accepts the comic book when player is holding it
-	for _, n := range g.sceneMgr.scenes["interior"].npcs {
-		if n.name == "Crying Kid" {
-			kid := n
-			inv := g.inv
-			kid.altDialogFunc = func() ([]dialogEntry, func()) {
-				if inv.heldItem != nil && inv.heldItem.name == "Comic Book" {
-					return cryingKidComicDialog, func() {
-						inv.removeItem("Comic Book")
-						inv.heldItem = nil
-						kid.dialog = cryingKidHappyDialog
-						kid.name = "Happy Kid"
-					}
-				}
-				return nil, nil
+	// Swap Higgins dialog
+	if entrance, ok := g.sceneMgr.scenes["camp_entrance"]; ok {
+		for _, n := range entrance.npcs {
+			if n.name == "Director Higgins" {
+				n.dialog = higginsWorriedDialog
+				n.dialogDone = false
+				break
 			}
-			break
 		}
 	}
 
-	// Barmaid gives beer on first dialog completion
-	for _, n := range g.sceneMgr.scenes["pub"].npcs {
-		if n.name == "Barmaid" {
-			bm := n
-			inv := g.inv
-			bm.onDialogEnd = func() {
-				if beerItem != nil && !inv.hasItem("Pint of Beer") {
-					inv.addItem(beerItem)
-					bm.dialog = barmaidPostBeerDialog
-				}
+	// Swap Cook Marge dialog
+	if messHall, ok := g.sceneMgr.scenes["camp_messhall"]; ok {
+		for _, n := range messHall.npcs {
+			if n.name == "Cook Marge" {
+				n.dialog = cookMargeWorriedDialog
+				n.dialogDone = false
+				break
 			}
-			break
-		}
-	}
-
-	// Bobby accepts beer and reveals clue
-	for _, n := range g.sceneMgr.scenes["pub"].npcs {
-		if n.name == "Bobby" {
-			bobby := n
-			inv := g.inv
-			bobby.altDialogFunc = func() ([]dialogEntry, func()) {
-				if inv.heldItem != nil && inv.heldItem.name == "Pint of Beer" {
-					return bobbyBeerDialog, func() {
-						inv.removeItem("Pint of Beer")
-						inv.heldItem = nil
-						bobby.animState = npcAnimDrink
-						bobby.animOnce = true
-						bobby.frameIdx = 0
-						bobby.frameTimer = 0
-						af := bobby.activeFrames()
-						if len(af) > 0 {
-							bobby.srcRect = af[0]
-						}
-						bobby.dialog = bobbyPostBeerDialog
-					}
-				}
-				return nil, nil
-			}
-			break
 		}
 	}
 }
 
-func (g *Game) setupCampCallbacks(letterItem, comicItem, fishingRodItem, messNoteItem, marshmallowItem *inventoryItem) {
-	inv := g.inv
+func (g *Game) setupCampCallbacks() {
+	game := g
 
-	// Director Higgins: show letter to gain entry
+	// --- Day 1: Higgins intro, swaps to post-dialog ---
 	for _, n := range g.sceneMgr.scenes["camp_entrance"].npcs {
 		if n.name == "Director Higgins" {
 			higgins := n
-			higgins.altDialogFunc = func() ([]dialogEntry, func()) {
-				if inv.heldItem != nil && inv.heldItem.name == "Appointment Letter" {
-					return higginsLetterDialog, func() {
-						inv.removeItem("Appointment Letter")
-						inv.heldItem = nil
-						higgins.dialog = higginsPostLetterDialog
-					}
+			higgins.onDialogEnd = func() {
+				if game.day == 1 {
+					higgins.dialog = higginsPostDialog
+				} else {
+					higgins.dialog = higginsPostWorriedDialog
 				}
-				return nil, nil
 			}
 			break
 		}
 	}
 
-	// Tommy: give comic book -> reveals shortcut
-	for _, n := range g.sceneMgr.scenes["camp_grounds"].npcs {
-		if n.name == "Tommy" {
+	// --- Day 1: Kids normal intros, count meetings ---
+	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
+		for _, n := range grounds.npcs {
 			kid := n
-			kid.altDialogFunc = func() ([]dialogEntry, func()) {
-				if inv.heldItem != nil && inv.heldItem.name == "Comic Book" {
-					return tommyComicDialog, func() {
-						inv.removeItem("Comic Book")
-						inv.heldItem = nil
-						kid.dialog = tommyHappyDialog
-						kid.name = "Tommy"
+			switch kid.name {
+			case "Marcus":
+				kid.onDialogEnd = func() {
+					if game.day == 1 {
+						game.metKids++
+						kid.dialog = marcusPostDialog
+						game.checkDay1Complete()
+					} else {
+						// Day 2: talked to strange Marcus -> unlock Paris
+						if !game.talkedToMarcus {
+							game.talkedToMarcus = true
+							kid.dialog = marcusPostStrangeDialog
+							game.tryUnlockParis()
+						}
 					}
 				}
-				return nil, nil
-			}
-			break
-		}
-	}
-
-	// Lily: opens up after first dialog
-	for _, n := range g.sceneMgr.scenes["camp_grounds"].npcs {
-		if n.name == "Lily" {
-			girl := n
-			girl.onDialogEnd = func() {
-				if !girl.dialogDone {
-					girl.dialog = lilySecondDialog
-				}
-			}
-			break
-		}
-	}
-
-	// Cook Marge: gives food item (marshmallow or stew) on first completion
-	for _, n := range g.sceneMgr.scenes["camp_messhall"].npcs {
-		if n.name == "Cook Marge" {
-			marge := n
-			game := g
-			marge.onDialogEnd = func() {
-				if !game.cookHelped && marshmallowItem != nil {
-					game.cookHelped = true
-					inv.addItem(marshmallowItem)
-					marge.dialog = cookMargePostHelpDialog
-				}
-			}
-			break
-		}
-	}
-
-	// Jake: give food to pass
-	for _, n := range g.sceneMgr.scenes["camp_grounds"].npcs {
-		if n.name == "Jake" {
-			bully := n
-			game := g
-			bully.altDialogFunc = func() ([]dialogEntry, func()) {
-				if inv.heldItem != nil && inv.heldItem.name == "Burnt Marshmallow" {
-					return jakeFedDialog, func() {
-						inv.removeItem("Burnt Marshmallow")
-						inv.heldItem = nil
-						game.bullyDefeated = true
-						bully.dialog = jakePostFedDialog
+			case "Tommy":
+				kid.onDialogEnd = func() {
+					if game.day == 1 {
+						game.metKids++
+						kid.dialog = tommyPostDialog
+						game.checkDay1Complete()
+					} else {
+						kid.dialog = tommyPostStrangeDialog
 					}
 				}
-				return nil, nil
+			case "Jake":
+				kid.onDialogEnd = func() {
+					if game.day == 1 {
+						game.metKids++
+						kid.dialog = jakePostDialog
+						game.checkDay1Complete()
+					} else {
+						kid.dialog = jakePostStrangeDialog
+					}
+				}
+			case "Lily":
+				kid.onDialogEnd = func() {
+					if game.day == 1 {
+						game.metKids++
+						kid.dialog = lilyPostDialog
+						game.checkDay1Complete()
+					} else {
+						kid.dialog = lilyPostStrangeDialog
+					}
+				}
+			case "Danny":
+				kid.onDialogEnd = func() {
+					if game.day == 1 {
+						game.metKids++
+						kid.dialog = dannyPostDialog
+						game.checkDay1Complete()
+					} else {
+						kid.dialog = dannyPostStrangeDialog
+					}
+				}
 			}
-			break
 		}
 	}
 
-	// Floor item: Comic Book on the ground at camp_grounds
-	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok && comicItem != nil {
-		fi := &floorItem{
-			tex:     comicItem.tex,
-			srcW:    comicItem.srcW,
-			srcH:    comicItem.srcH,
-			bounds:  sdl.Rect{X: 350, Y: 460, W: 36, H: 44},
-			name:    "Comic Book",
-			visible: true,
-		}
-		fi.onPickup = func() {
-			if !fi.visible {
-				return
+	// --- Cook Marge ---
+	if messHall, ok := g.sceneMgr.scenes["camp_messhall"]; ok {
+		for _, n := range messHall.npcs {
+			if n.name == "Cook Marge" {
+				marge := n
+				marge.onDialogEnd = func() {
+					if game.day == 1 {
+						marge.dialog = cookMargePostDialog
+					} else {
+						marge.dialog = cookMargePostWorriedDialog
+					}
+				}
+				break
 			}
-			fi.visible = false
-			inv.addItem(comicItem)
-			g.player.playAction(stateGrabbing, nil)
-			g.dialog.startDialog([]dialogEntry{
-				{speaker: "Pink Panther", text: "A comic book! Someone must have dropped it."},
-			})
 		}
-		grounds.floorItems = append(grounds.floorItems, fi)
+	}
+}
+
+// checkDay1Complete triggers Day 2 once PP has met all 5 kids
+func (g *Game) checkDay1Complete() {
+	if g.metKids >= 5 && g.day == 1 {
+		// All kids met! Trigger Day 2 transition
+		g.dialog.startDialogWithCallback([]dialogEntry{
+			{speaker: "Pink Panther", text: "Well, I've met everyone. Seems like a nice group."},
+			{speaker: "Pink Panther", text: "Time to get some rest. Tomorrow is a new day."},
+		}, func() {
+			g.startDay2()
+			// Show Day 2 morning monologue
+			g.dialog.startDialog(day2Monologue)
+		})
+	}
+}
+
+func (g *Game) tryUnlockParis() {
+	if g.parisUnlocked {
+		return
+	}
+	g.parisUnlocked = true
+	g.travelMap.setUnlocked("paris_street", true)
+	g.dialog.startDialog([]dialogEntry{
+		{speaker: "Pink Panther", text: "A glass pyramid... the biggest museum in the world... a woman's face..."},
+		{speaker: "Pink Panther", text: "Marcus is seeing the Louvre. In Paris."},
+		{speaker: "Pink Panther", text: "I need to go there and find out what he's connected to."},
+		{speaker: "Pink Panther", text: "The travel map should have Paris available now."},
+	})
+}
+
+func (g *Game) setupParisCallbacks() {
+	// French Guide: post-dialog after first conversation
+	if parisStreet, ok := g.sceneMgr.scenes["paris_street"]; ok {
+		for _, n := range parisStreet.npcs {
+			if n.name == "Madame Colette" {
+				guide := n
+				guide.onDialogEnd = func() {
+					guide.dialog = frenchGuidePostDialog
+				}
+				break
+			}
+		}
 	}
 
-	// Floor item: Fishing Rod at the lake dock
-	if lake, ok := g.sceneMgr.scenes["camp_lake"]; ok && fishingRodItem != nil {
-		fi := &floorItem{
-			tex:     fishingRodItem.tex,
-			srcW:    fishingRodItem.srcW,
-			srcH:    fishingRodItem.srcH,
-			bounds:  sdl.Rect{X: 650, Y: 370, W: 44, H: 50},
-			name:    "Fishing Rod",
-			visible: true,
-		}
-		fi.onPickup = func() {
-			if !fi.visible {
-				return
-			}
-			fi.visible = false
-			inv.addItem(fishingRodItem)
-			g.player.playAction(stateGrabbing, nil)
-			g.dialog.startDialog([]dialogEntry{
-				{speaker: "Pink Panther", text: "An old fishing rod. Might come in handy."},
-			})
-		}
-		lake.floorItems = append(lake.floorItems, fi)
-
-		footprintsExamined := false
-		lake.hotspots = append(lake.hotspots, hotspot{
-			bounds: sdl.Rect{X: 200, Y: 500, W: 120, H: 60},
-			name:   "Footprints",
-			onInteract: func() bool {
-				if footprintsExamined {
-					g.dialog.startDialog([]dialogEntry{
-						{speaker: "Pink Panther", text: "Strange footprints... someone was here recently."},
+	// Museum Curator: gives postcard on first dialog, then post-dialog
+	if parisLouvre, ok := g.sceneMgr.scenes["paris_louvre"]; ok {
+		game := g
+		for _, n := range parisLouvre.npcs {
+			if n.name == "Curator Beaumont" {
+				curator := n
+				curator.onDialogEnd = func() {
+					curator.dialog = museumCuratorPostDialog
+					// Give the postcard anchor item
+					game.dialog.startDialog([]dialogEntry{
+						{speaker: "Pink Panther", text: "A postcard of the painting... this is what Marcus has been drawing."},
+						{speaker: "Pink Panther", text: "I need to bring this back to camp. It might help him."},
 					})
-					return true
 				}
-				footprintsExamined = true
-				g.dialog.startDialog([]dialogEntry{
-					{speaker: "Pink Panther", text: "Hmm... footprints in the sand. Fresh ones."},
-					{speaker: "Pink Panther", text: "They lead toward the water and then... vanish."},
-					{speaker: "Pink Panther", text: "Someone was here recently. Very recently."},
-				})
+				break
+			}
+		}
+
+		// Travel map hotspot to return to camp
+		parisLouvre.hotspots = append(parisLouvre.hotspots, hotspot{
+			bounds: sdl.Rect{X: 1300, Y: 600, W: 100, H: 150},
+			name:   "Travel Map",
+			arrow:  arrowDown,
+			onInteract: func() bool {
+				game.showTravelMap = true
+				game.travelMapFrom = "paris_louvre"
 				return true
 			},
 		})
 	}
 
-	// Floor item: Mess Hall Note under a table
-	if messHall, ok := g.sceneMgr.scenes["camp_messhall"]; ok && messNoteItem != nil {
-		fi := &floorItem{
-			tex:     messNoteItem.tex,
-			srcW:    messNoteItem.srcW,
-			srcH:    messNoteItem.srcH,
-			bounds:  sdl.Rect{X: 400, Y: 475, W: 40, H: 32},
-			name:    "Crumpled Note",
-			visible: true,
-		}
-		fi.onPickup = func() {
-			if !fi.visible {
-				return
-			}
-			fi.visible = false
-			inv.addItem(messNoteItem)
-			g.player.playAction(stateGrabbing, nil)
-			g.dialog.startDialog([]dialogEntry{
-				{speaker: "Pink Panther", text: "What's this? A note hidden under the table..."},
-				{speaker: "Pink Panther", text: "'Meet me at the lake. Midnight. Come alone.'"},
-				{speaker: "Pink Panther", text: "Now THAT is suspicious."},
-			})
-		}
-		messHall.floorItems = append(messHall.floorItems, fi)
+	// Paris street: travel map access
+	if parisStreet, ok := g.sceneMgr.scenes["paris_street"]; ok {
+		game := g
+		parisStreet.hotspots = append(parisStreet.hotspots, hotspot{
+			bounds: sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
+			name:   "Travel Map",
+			arrow:  arrowLeft,
+			onInteract: func() bool {
+				game.showTravelMap = true
+				game.travelMapFrom = "paris_street"
+				return true
+			},
+		})
+	}
+}
+
+func (g *Game) setupTravelHotspots() {
+	game := g
+
+	// Camp Entrance: bus stop to open travel map
+	if campEntrance, ok := g.sceneMgr.scenes["camp_entrance"]; ok {
+		campEntrance.hotspots = append(campEntrance.hotspots, hotspot{
+			bounds: sdl.Rect{X: 120, Y: 250, W: 130, H: 200},
+			name:   "Camp Chilly Wa Wa Air",
+			arrow:  arrowLeft,
+			onInteract: func() bool {
+				if game.day < 2 {
+					game.dialog.startDialog([]dialogEntry{
+						{speaker: "Pink Panther", text: "An old airstrip. 'Camp Chilly Wa Wa Air' — how quaint."},
+						{speaker: "Pink Panther", text: "I don't think I need to go anywhere just yet."},
+					})
+					return true
+				}
+				game.showTravelMap = true
+				game.travelMapFrom = "camp_entrance"
+				return true
+			},
+		})
 	}
 }
 
@@ -327,6 +349,19 @@ func (g *Game) Close() {
 }
 
 func (g *Game) HandleClick(x, y int32) {
+	g.ui.triggerClick()
+
+	if g.showTravelMap {
+		loc := g.travelMap.hitTest(x, y)
+		if loc != nil && loc.scene != g.travelMapFrom {
+			g.showTravelMap = false
+			g.sceneMgr.transitionTo(loc.scene, g.player)
+		} else if loc == nil {
+			g.showTravelMap = false
+		}
+		return
+	}
+
 	if g.inv.open {
 		g.inv.handleClick(x, y)
 		return
@@ -440,6 +475,10 @@ func (g *Game) HandleClick(x, y int32) {
 }
 
 func (g *Game) HandleKey(scancode sdl.Scancode) {
+	if g.showTravelMap && scancode == sdl.SCANCODE_ESCAPE {
+		g.showTravelMap = false
+		return
+	}
 	if scancode == sdl.SCANCODE_SPACE && g.dialog.active {
 		g.dialog.advance()
 	}
@@ -448,11 +487,21 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 func (g *Game) Update(dt float64, mx, my int32) {
 	g.mouseX = mx
 	g.mouseY = my
+
+	if g.showTravelMap {
+		return
+	}
+
 	scene := g.sceneMgr.current()
 
 	if !g.monologuePlayed && g.sceneMgr.currentName == "camp_entrance" && !g.sceneMgr.transitioning {
 		g.monologuePlayed = true
 		g.dialog.startDialog(openingMonologue)
+	}
+
+	if !g.parisMonologuePlayed && g.sceneMgr.currentName == "paris_street" && !g.sceneMgr.transitioning {
+		g.parisMonologuePlayed = true
+		g.dialog.startDialog(parisStreetMonologue)
 	}
 
 	if !g.dialog.active && g.player.state == stateTalking {
@@ -474,6 +523,15 @@ func (g *Game) Update(dt float64, mx, my int32) {
 }
 
 func (g *Game) Draw(renderer *sdl.Renderer) {
+	if g.showTravelMap {
+		renderer.Copy(g.travelMap.bgTex, nil,
+			&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
+		g.travelMap.drawOverlay(renderer, g.ui.font, g.mouseX, g.mouseY)
+		drawVignette(renderer)
+		g.ui.drawCursor(renderer, g.mouseX, g.mouseY)
+		return
+	}
+
 	scene := g.sceneMgr.current()
 
 	scene.drawBackground(renderer, g.player.x)
@@ -513,13 +571,9 @@ func drawVignette(renderer *sdl.Renderer) {
 
 	for _, l := range layers {
 		renderer.SetDrawColor(0, 0, 0, l.alpha)
-		// top
 		renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: w, H: l.inset + 30})
-		// bottom
 		renderer.FillRect(&sdl.Rect{X: 0, Y: h - l.inset - 30, W: w, H: l.inset + 30})
-		// left
 		renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: l.inset + 40, H: h})
-		// right
 		renderer.FillRect(&sdl.Rect{X: w - l.inset - 40, Y: 0, W: l.inset + 40, H: h})
 	}
 }

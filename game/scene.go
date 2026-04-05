@@ -38,6 +38,11 @@ type particle struct {
 	r, g, b uint8
 	fire    bool
 	bird    bool
+	smoke   bool
+	insect  bool
+	cloud   bool
+	water   bool
+	timer   float64
 }
 
 type glowEffect struct {
@@ -89,122 +94,6 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		currentName: "camp_entrance",
 	}
 
-	// ===== Street (London Day) =====
-	street := &scene{
-		name:   "street",
-		bg:     newPNGBackground(renderer, "assets/images/locations/london/background/street_V2.png"),
-		npcs:   []*npc{newPaperMan(renderer), newGrumpyKid(renderer), newStreetTalkers(renderer)},
-		spawnX: 460,
-		spawnY: 460,
-		hotspots: []hotspot{
-			{
-				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
-				targetScene: "pub",
-				name:        "Go Right",
-				arrow:       arrowRight,
-			},
-		},
-		blockers: []sdl.Rect{
-			{X: 0, Y: 0, W: 450, H: engine.ScreenHeight},
-		},
-	}
-
-	// Dust motes drifting in sunlight
-	for i := 0; i < 8; i++ {
-		street.particles = append(street.particles, particle{
-			x:     rand.Float64() * float64(engine.ScreenWidth),
-			y:     rand.Float64() * 400,
-			vx:    (rand.Float64() - 0.3) * 8,
-			vy:    -rand.Float64()*1.5 - 0.3,
-			alpha: uint8(rand.Intn(15) + 5),
-			size:  int32(rand.Intn(2) + 1),
-		})
-	}
-
-	street.glows = []glowEffect{
-		{x: 400, y: 0, w: 500, h: 400, r: 255, g: 245, b: 210, alpha: 8, pulse: 0.2},
-		{x: 0, y: 460, w: engine.ScreenWidth, h: 20, r: 200, g: 190, b: 160, alpha: 10, pulse: 0.4},
-	}
-	sm.scenes["street"] = street
-
-	// ===== Interior (Wooden Cabin) =====
-	interior := &scene{
-		name:      "interior",
-		bg:        newPNGBackground(renderer, "assets/images/backgrounds/bg_interior.png"),
-		npcs:      []*npc{newCryingKid(renderer), newProfessor(renderer)},
-		spawnX:    600,
-		spawnY:    230,
-		musicPath: "assets/sounds/The Pink Panther's Passport to Peril OST #08 - Camp Chilly Wa-Wa (Day 2 & 3) [HQ].mp3",
-		hotspots: []hotspot{
-			{
-				bounds:      sdl.Rect{X: 520, Y: 50, W: 260, H: 300},
-				targetScene: "pub",
-				name:        "Go Back",
-				arrow:       arrowUp,
-			},
-		},
-	}
-
-	// Dust motes drifting through sunbeams
-	for i := 0; i < 20; i++ {
-		interior.particles = append(interior.particles, particle{
-			x:     450 + rand.Float64()*500,
-			y:     rand.Float64() * 500,
-			vx:    (rand.Float64() - 0.5) * 6,
-			vy:    -rand.Float64()*2 - 0.5,
-			alpha: uint8(rand.Intn(30) + 10),
-			size:  int32(rand.Intn(2) + 1),
-		})
-	}
-
-	interior.glows = []glowEffect{
-		{x: 540, y: 100, w: 310, h: 500, r: 255, g: 240, b: 200, alpha: 12, pulse: 0.3},
-		{x: 60, y: 150, w: 160, h: 200, r: 200, g: 220, b: 240, alpha: 10, pulse: 0.4},
-		{x: 1180, y: 150, w: 160, h: 200, r: 200, g: 220, b: 240, alpha: 10, pulse: 0.4},
-		{x: 470, y: 550, w: 460, h: 100, r: 255, g: 220, b: 170, alpha: 8, pulse: 0.5},
-	}
-	sm.scenes["interior"] = interior
-
-	// ===== Pub =====
-	pub := &scene{
-		name:   "pub",
-		bg:     newPNGBackground(renderer, "assets/images/locations/london/background/pub_no_tables.png"),
-		npcs:   []*npc{newBarmaid(renderer), newButler(renderer), newPoliceman(renderer)},
-		spawnX: 600,
-		spawnY: 400,
-		hotspots: []hotspot{
-			{
-				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
-				targetScene: "street",
-				name:        "Go Left",
-				arrow:       arrowLeft,
-			},
-			{
-				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
-				targetScene: "interior",
-				name:        "Go Right",
-				arrow:       arrowRight,
-			},
-		},
-	}
-
-	for i := 0; i < 10; i++ {
-		pub.particles = append(pub.particles, particle{
-			x:     rand.Float64() * float64(engine.ScreenWidth),
-			y:     rand.Float64() * float64(engine.ScreenHeight),
-			vx:    (rand.Float64() - 0.5) * 4,
-			vy:    -rand.Float64()*1.0 - 0.2,
-			alpha: uint8(rand.Intn(15) + 5),
-			size:  int32(rand.Intn(2) + 1),
-		})
-	}
-
-	pub.glows = []glowEffect{
-		{x: 300, y: 100, w: 200, h: 300, r: 255, g: 200, b: 120, alpha: 10, pulse: 0.3},
-		{x: 800, y: 100, w: 200, h: 300, r: 255, g: 200, b: 120, alpha: 10, pulse: 0.4},
-	}
-	sm.scenes["pub"] = pub
-
 	// ===== Camp Chilly Wa Wa: Entrance =====
 	campEntrance := &scene{
 		name:   "camp_entrance",
@@ -247,6 +136,31 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			alpha: uint8(rand.Intn(30) + 50),
 			size:  3,
 			bird:  true,
+		})
+	}
+	// Butterflies near flowers/bushes
+	butterflyColors := [][3]uint8{{240, 200, 80}, {180, 120, 200}, {100, 180, 220}}
+	for i := 0; i < 3; i++ {
+		c := butterflyColors[i%len(butterflyColors)]
+		campEntrance.particles = append(campEntrance.particles, particle{
+			x:      300 + rand.Float64()*600,
+			baseY:  200 + rand.Float64()*200,
+			vx:     (rand.Float64() - 0.5) * 12,
+			alpha:  uint8(rand.Intn(40) + 50),
+			insect: true,
+			r:      c[0], g: c[1], b: c[2],
+			timer: rand.Float64() * 10,
+		})
+	}
+	// Clouds
+	for i := 0; i < 2; i++ {
+		campEntrance.particles = append(campEntrance.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     30 + rand.Float64()*60,
+			vx:    2 + rand.Float64()*3,
+			alpha: uint8(rand.Intn(6) + 3),
+			size:  int32(50 + rand.Intn(40)),
+			cloud: true,
 		})
 	}
 	campEntrance.glows = []glowEffect{
@@ -322,6 +236,33 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			bird:  true,
 		})
 	}
+	// Campfire smoke
+	for i := 0; i < 5; i++ {
+		campGrounds.particles = append(campGrounds.particles, particle{
+			x:     680 + (rand.Float64()-0.5)*12,
+			y:     490 - rand.Float64()*20,
+			vx:    (rand.Float64() - 0.5) * 4,
+			vy:    -rand.Float64()*12 - 6,
+			alpha: uint8(rand.Intn(15) + 8),
+			size:  int32(rand.Intn(3) + 2),
+			baseY: 490,
+			homeX: 680,
+			smoke: true,
+			r:     140, g: 130, b: 120,
+			timer: rand.Float64() * 10,
+		})
+	}
+	// Fireflies at edges
+	for i := 0; i < 6; i++ {
+		campGrounds.particles = append(campGrounds.particles, particle{
+			x:       100 + rand.Float64()*1100,
+			y:       350 + rand.Float64()*150,
+			twinkle: true,
+			alpha:   uint8(rand.Intn(30) + 20),
+			size:    1,
+			r:       255, g: 255, b: 150,
+		})
+	}
 	campGrounds.glows = []glowEffect{
 		{x: 200, y: 50, w: 400, h: 300, r: 255, g: 245, b: 200, alpha: 8, pulse: 0.2},
 		{x: 500, y: 400, w: 300, h: 100, r: 255, g: 200, b: 120, alpha: 6, pulse: 0.35},
@@ -348,8 +289,37 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			{X: 0, Y: 0, W: engine.ScreenWidth, H: 300},
 		},
 	}
+	// Steam from pots
+	for i := 0; i < 4; i++ {
+		baseX := 550 + float64(i)*60
+		campMessHall.particles = append(campMessHall.particles, particle{
+			x:     baseX + (rand.Float64()-0.5)*8,
+			y:     280 - rand.Float64()*15,
+			vx:    (rand.Float64() - 0.5) * 2,
+			vy:    -rand.Float64()*10 - 5,
+			alpha: uint8(rand.Intn(15) + 8),
+			size:  int32(rand.Intn(2) + 2),
+			baseY: 280,
+			homeX: baseX,
+			smoke: true,
+			r:     230, g: 225, b: 220,
+			timer: rand.Float64() * 10,
+		})
+	}
+	// Fly buzzing around food
+	campMessHall.particles = append(campMessHall.particles, particle{
+		x:      500,
+		baseY:  400,
+		vx:     8,
+		alpha:  70,
+		insect: true,
+		r:      30, g: 30, b: 30,
+		timer: rand.Float64() * 10,
+	})
 	campMessHall.glows = []glowEffect{
 		{x: 300, y: 100, w: 600, h: 400, r: 255, g: 230, b: 180, alpha: 8, pulse: 0.3},
+		// Flickering overhead lamp
+		{x: 580, y: 80, w: 120, h: 200, r: 255, g: 240, b: 180, alpha: 12, pulse: 5.5},
 	}
 	sm.scenes["camp_messhall"] = campMessHall
 
@@ -394,11 +364,139 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			bird:  true,
 		})
 	}
+	// Water shimmer ripples
+	for i := 0; i < 12; i++ {
+		baseX := 350 + float64(i)*60
+		baseY := 380 + rand.Float64()*120
+		campLake.particles = append(campLake.particles, particle{
+			homeX: baseX,
+			baseY: baseY,
+			x:     baseX,
+			alpha: uint8(rand.Intn(10) + 4),
+			size:  int32(rand.Intn(20) + 15),
+			water: true,
+			timer: rand.Float64() * 10,
+		})
+	}
+	// Dragonflies over water
+	for i := 0; i < 2; i++ {
+		campLake.particles = append(campLake.particles, particle{
+			x:      500 + rand.Float64()*400,
+			baseY:  320 + rand.Float64()*60,
+			vx:     6 + rand.Float64()*8,
+			alpha:  uint8(rand.Intn(40) + 40),
+			insect: true,
+			r:      80, g: 160, b: 200,
+			timer: rand.Float64() * 10,
+		})
+	}
 	campLake.glows = []glowEffect{
 		{x: 400, y: 250, w: 500, h: 200, r: 255, g: 200, b: 120, alpha: 6, pulse: 0.2},
 		{x: 0, y: 0, w: engine.ScreenWidth, h: 200, r: 180, g: 150, b: 200, alpha: 5, pulse: 0.15},
+		// Water surface reflection shimmer
+		{x: 350, y: 370, w: 600, h: 20, r: 200, g: 230, b: 255, alpha: 5, pulse: 1.5},
 	}
 	sm.scenes["camp_lake"] = campLake
+
+	// ===== Paris: Street (Eiffel Tower) =====
+	parisStreet := &scene{
+		name:   "paris_street",
+		bg:     newPNGBackground(renderer, "assets/images/locations/paris/background/paris_street.png"),
+		npcs:   []*npc{newFrenchGuide(renderer)},
+		spawnX: 200,
+		spawnY: 400,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
+				targetScene: "paris_louvre",
+				name:        "To the Louvre",
+				arrow:       arrowRight,
+			},
+		},
+	}
+	// Pigeons
+	for i := 0; i < 4; i++ {
+		dir := 10 + rand.Float64()*15
+		if rand.Float64() < 0.5 {
+			dir = -dir
+		}
+		parisStreet.particles = append(parisStreet.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     50 + rand.Float64()*80,
+			vx:    dir,
+			baseY: 50 + rand.Float64()*80,
+			alpha: uint8(rand.Intn(25) + 40),
+			size:  3,
+			bird:  true,
+		})
+	}
+	// Cafe steam
+	for i := 0; i < 3; i++ {
+		baseX := 150 + float64(i)*80
+		parisStreet.particles = append(parisStreet.particles, particle{
+			x:     baseX + (rand.Float64()-0.5)*8,
+			y:     350 - rand.Float64()*15,
+			vx:    (rand.Float64() - 0.5) * 2,
+			vy:    -rand.Float64()*10 - 5,
+			alpha: uint8(rand.Intn(12) + 6),
+			size:  int32(rand.Intn(2) + 2),
+			baseY: 350,
+			homeX: baseX,
+			smoke: true,
+			r:     230, g: 225, b: 220,
+			timer: rand.Float64() * 10,
+		})
+	}
+	// Dust motes
+	for i := 0; i < 6; i++ {
+		parisStreet.particles = append(parisStreet.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     rand.Float64() * 400,
+			vx:    (rand.Float64() - 0.3) * 5,
+			vy:    -rand.Float64()*1.0 - 0.2,
+			alpha: uint8(rand.Intn(10) + 4),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	parisStreet.glows = []glowEffect{
+		{x: 300, y: 0, w: 600, h: 400, r: 255, g: 245, b: 210, alpha: 10, pulse: 0.25},
+		{x: 50, y: 300, w: 200, h: 150, r: 255, g: 220, b: 160, alpha: 8, pulse: 0.3},
+	}
+	sm.scenes["paris_street"] = parisStreet
+
+	// ===== Paris: Louvre Interior =====
+	parisLouvre := &scene{
+		name:   "paris_louvre",
+		bg:     newPNGBackground(renderer, "assets/images/locations/paris/background/paris_museum.png"),
+		npcs:   []*npc{newMuseumCurator(renderer)},
+		spawnX: 200,
+		spawnY: 400,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
+				targetScene: "paris_street",
+				name:        "Back to Street",
+				arrow:       arrowLeft,
+			},
+		},
+	}
+	// Dust motes in sunbeams
+	for i := 0; i < 15; i++ {
+		parisLouvre.particles = append(parisLouvre.particles, particle{
+			x:     400 + rand.Float64()*500,
+			y:     rand.Float64() * 500,
+			vx:    (rand.Float64() - 0.5) * 4,
+			vy:    -rand.Float64()*1.5 - 0.3,
+			alpha: uint8(rand.Intn(20) + 8),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	parisLouvre.glows = []glowEffect{
+		{x: 400, y: 50, w: 400, h: 500, r: 255, g: 240, b: 200, alpha: 10, pulse: 0.2},
+		{x: 200, y: 100, w: 150, h: 300, r: 255, g: 230, b: 180, alpha: 8, pulse: 0.4},
+		{x: 900, y: 100, w: 150, h: 300, r: 255, g: 230, b: 180, alpha: 8, pulse: 0.4},
+	}
+	sm.scenes["paris_louvre"] = parisLouvre
 
 	return sm
 }
@@ -508,7 +606,7 @@ func (s *scene) drawBackground(renderer *sdl.Renderer, playerX float64) {
 	s.bg.draw(renderer, playerX)
 }
 
-func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, _, _ int32) {
+func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, mx, my int32) {
 	pulse := 0.5 + 0.5*math.Sin(float64(sdl.GetTicks())*0.004)
 	for _, hs := range s.hotspots {
 		if hs.arrow == arrowNone {
@@ -524,20 +622,48 @@ func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, _, _ int3
 
 		switch hs.arrow {
 		case arrowLeft:
-			cx = hs.bounds.X + 20
+			cx = hs.bounds.X + 14
 		case arrowRight:
-			cx = hs.bounds.X + hs.bounds.W - 20
+			cx = hs.bounds.X + hs.bounds.W - 14
 		case arrowUp:
-			cy = hs.bounds.Y + 20
+			cy = hs.bounds.Y + 14
 		case arrowDown:
-			cy = hs.bounds.Y + hs.bounds.H - 20
+			cy = hs.bounds.Y + hs.bounds.H - 14
 		}
 
-		a := uint8(40 + float64(40)*pulse)
-		for r := int32(4); r >= 1; r-- {
-			renderer.SetDrawColor(255, 220, 100, a)
-			renderer.FillRect(&sdl.Rect{X: cx - r, Y: cy - r, W: r * 2, H: r * 2})
-			a = uint8(float64(a) * 0.6)
+		dx := float64(mx) - float64(cx)
+		dy := float64(my) - float64(cy)
+		dist := math.Sqrt(dx*dx + dy*dy)
+		proximityFade := 1.0
+		if dist > 200 {
+			proximityFade = math.Max(0.15, 1.0-(dist-200)/400)
+		}
+
+		baseA := (30 + float64(35)*pulse) * proximityFade
+		a := uint8(baseA)
+
+		sz := int32(5)
+		switch hs.arrow {
+		case arrowLeft:
+			for i := int32(0); i < sz; i++ {
+				renderer.SetDrawColor(255, 220, 100, a)
+				renderer.FillRect(&sdl.Rect{X: cx + i, Y: cy - (sz - i), W: 1, H: (sz-i)*2 + 1})
+			}
+		case arrowRight:
+			for i := int32(0); i < sz; i++ {
+				renderer.SetDrawColor(255, 220, 100, a)
+				renderer.FillRect(&sdl.Rect{X: cx - i, Y: cy - (sz - i), W: 1, H: (sz-i)*2 + 1})
+			}
+		case arrowUp:
+			for i := int32(0); i < sz; i++ {
+				renderer.SetDrawColor(255, 220, 100, a)
+				renderer.FillRect(&sdl.Rect{X: cx - (sz - i), Y: cy + i, W: (sz-i)*2 + 1, H: 1})
+			}
+		case arrowDown:
+			for i := int32(0); i < sz; i++ {
+				renderer.SetDrawColor(255, 220, 100, a)
+				renderer.FillRect(&sdl.Rect{X: cx - (sz - i), Y: cy - i, W: (sz-i)*2 + 1, H: 1})
+			}
 		}
 	}
 }
@@ -626,6 +752,55 @@ func (s *scene) updateAmbient(dt float64) {
 			continue
 		}
 
+		if p.smoke {
+			p.timer += dt
+			p.x += p.vx*dt + math.Sin(p.timer*2)*3*dt
+			p.y += p.vy * dt
+			fadeRate := 25 * dt
+			if float64(p.alpha) > fadeRate {
+				p.alpha -= uint8(fadeRate)
+			} else {
+				p.alpha = 0
+			}
+			if p.alpha < 3 || p.y < p.baseY-120 {
+				p.x = p.homeX + (rand.Float64()-0.5)*16
+				p.y = p.baseY
+				p.alpha = uint8(rand.Intn(25) + 10)
+				p.timer = rand.Float64() * 10
+			}
+			continue
+		}
+
+		if p.insect {
+			p.timer += dt
+			p.x += math.Sin(p.timer*3.5)*40*dt + p.vx*dt
+			p.y = p.baseY + math.Sin(p.timer*2.7)*15
+			if p.x > float64(engine.ScreenWidth)+20 {
+				p.x = -20
+			}
+			if p.x < -20 {
+				p.x = float64(engine.ScreenWidth) + 20
+			}
+			continue
+		}
+
+		if p.cloud {
+			p.x += p.vx * dt
+			if p.x > float64(engine.ScreenWidth)+float64(p.size) {
+				p.x = -float64(p.size) * 2
+			}
+			if p.x < -float64(p.size)*2 {
+				p.x = float64(engine.ScreenWidth) + float64(p.size)
+			}
+			continue
+		}
+
+		if p.water {
+			p.timer += dt
+			p.x = p.homeX + math.Sin(p.timer*1.5+p.baseY*0.1)*8
+			continue
+		}
+
 		if p.bird {
 			p.x += p.vx * dt
 			p.y = p.baseY + math.Sin(p.x*0.02)*8
@@ -693,7 +868,11 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 		if p.twinkle {
 			phase := p.x*0.1 + p.y*0.07
 			a := float64(p.alpha) * (0.3 + 0.7*math.Abs(math.Sin(phase+float64(sdl.GetTicks())*0.002)))
-			renderer.SetDrawColor(255, 255, 240, uint8(a))
+			tr, tg, tb := uint8(255), uint8(255), uint8(240)
+			if p.r != 0 || p.g != 0 || p.b != 0 {
+				tr, tg, tb = p.r, p.g, p.b
+			}
+			renderer.SetDrawColor(tr, tg, tb, uint8(a))
 			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size})
 			continue
 		}
@@ -701,6 +880,45 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 		if p.fire {
 			renderer.SetDrawColor(p.r, p.g, p.b, p.alpha)
 			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size})
+			continue
+		}
+
+		if p.smoke {
+			renderer.SetDrawColor(p.r, p.g, p.b, p.alpha)
+			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size})
+			if p.size > 2 {
+				renderer.FillRect(&sdl.Rect{X: int32(p.x) + 1, Y: int32(p.y) - 1, W: p.size - 1, H: p.size + 1})
+			}
+			continue
+		}
+
+		if p.insect {
+			px := int32(p.x)
+			py := int32(p.y)
+			wingSpread := int32(2 + math.Abs(math.Sin(p.timer*8))*2)
+			renderer.SetDrawColor(p.r, p.g, p.b, p.alpha)
+			renderer.FillRect(&sdl.Rect{X: px, Y: py, W: 2, H: 2})
+			renderer.SetDrawColor(p.r, p.g, p.b, p.alpha / 2)
+			renderer.FillRect(&sdl.Rect{X: px - wingSpread, Y: py - 1, W: wingSpread, H: 1})
+			renderer.FillRect(&sdl.Rect{X: px + 2, Y: py - 1, W: wingSpread, H: 1})
+			continue
+		}
+
+		if p.cloud {
+			renderer.SetDrawColor(255, 255, 255, p.alpha)
+			cx := int32(p.x)
+			cy := int32(p.y)
+			s := p.size
+			renderer.FillRect(&sdl.Rect{X: cx, Y: cy, W: s, H: s / 3})
+			renderer.FillRect(&sdl.Rect{X: cx + s/4, Y: cy - s/6, W: s / 2, H: s / 3})
+			renderer.FillRect(&sdl.Rect{X: cx + s/6, Y: cy - s/4, W: s / 3, H: s / 4})
+			continue
+		}
+
+		if p.water {
+			a := uint8(float64(p.alpha) * (0.5 + 0.5*math.Sin(p.timer*2+p.baseY*0.1)))
+			renderer.SetDrawColor(200, 220, 255, a)
+			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.baseY), W: p.size, H: 1})
 			continue
 		}
 

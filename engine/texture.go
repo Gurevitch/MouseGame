@@ -252,6 +252,29 @@ func TextureFromPNGRaw(renderer *sdl.Renderer, filename string) (*sdl.Texture, i
 	return nrgbaToTexture(renderer, img, img.Bounds())
 }
 
+// SafeTextureFromPNGRaw loads a PNG like TextureFromPNGRaw but returns nil
+// instead of panicking if the file is missing or unreadable.
+func SafeTextureFromPNGRaw(renderer *sdl.Renderer, filename string) (*sdl.Texture, int32, int32) {
+	img, err := loadPNG(filename)
+	if err != nil {
+		fmt.Printf("Warning: could not load %s: %v\n", filename, err)
+		return nil, 0, 0
+	}
+	return nrgbaToTexture(renderer, img, img.Bounds())
+}
+
+// SafeTextureFromPNGKeyed loads a PNG with color-key background removal,
+// returning nil instead of panicking if the file is missing.
+func SafeTextureFromPNGKeyed(renderer *sdl.Renderer, filename string) (*sdl.Texture, int32, int32) {
+	img, err := loadPNG(filename)
+	if err != nil {
+		fmt.Printf("Warning: could not load %s: %v\n", filename, err)
+		return nil, 0, 0
+	}
+	applyColorKey(img)
+	return nrgbaToTexture(renderer, img, img.Bounds())
+}
+
 // TextureFromPNGRawClean loads a PNG, removes the bottom-right watermark, and
 // returns the full image as a texture without auto-cropping.
 func TextureFromPNGRawClean(renderer *sdl.Renderer, filename string) (*sdl.Texture, int32, int32) {
@@ -260,6 +283,35 @@ func TextureFromPNGRawClean(renderer *sdl.Renderer, filename string) (*sdl.Textu
 		panic(fmt.Errorf("loading PNG %s: %v", filename, err))
 	}
 	return nrgbaToTexture(renderer, img, img.Bounds())
+}
+
+// SurfaceFromPNG loads a PNG and returns it as an SDL surface (caller must Free).
+// Useful for window icons and other non-renderer uses.
+func SurfaceFromPNG(filename string) (*sdl.Surface, error) {
+	img, err := loadPNG(filename)
+	if err != nil {
+		return nil, err
+	}
+	b := img.Bounds()
+	w := int32(b.Dx())
+	h := int32(b.Dy())
+	surface, err := sdl.CreateRGBSurface(0, w, h, 32,
+		0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000)
+	if err != nil {
+		return nil, err
+	}
+	pixels := surface.Pixels()
+	for y := int32(0); y < h; y++ {
+		for x := int32(0); x < w; x++ {
+			c := img.NRGBAAt(int(x)+b.Min.X, int(y)+b.Min.Y)
+			off := int(y)*int(surface.Pitch) + int(x)*4
+			pixels[off] = c.R
+			pixels[off+1] = c.G
+			pixels[off+2] = c.B
+			pixels[off+3] = c.A
+		}
+	}
+	return surface, nil
 }
 
 // SpriteFramesFromPNG loads a PNG sprite sheet, splits it into numCols equal

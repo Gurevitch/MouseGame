@@ -325,7 +325,7 @@ func createBeerTexture(renderer *sdl.Renderer) *inventoryItem {
 }
 
 func createItemFromPNG(renderer *sdl.Renderer, path, name, desc string) *inventoryItem {
-	tex, w, h := engine.TextureFromPNGRaw(renderer, path)
+	tex, w, h := engine.SafeTextureFromPNGRaw(renderer, path)
 	if tex == nil {
 		return nil
 	}
@@ -350,6 +350,31 @@ func createMessHallNoteTexture(renderer *sdl.Renderer) *inventoryItem {
 func createBurntMarshmallowTexture(renderer *sdl.Renderer) *inventoryItem {
 	return createItemFromPNG(renderer, "assets/images/items/marshmallow.png",
 		"Burnt Marshmallow", "A charred marshmallow. Might be useful as a distraction.")
+}
+
+func createMuseumTicketTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/museum_ticket.png",
+		"Museum Ticket", "An admission ticket to the Musee d'Art in Paris.")
+}
+
+func createMagnifyingGlassTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/magnifying_glass.png",
+		"Magnifying Glass", "A brass magnifying glass. Perfect for examining details.")
+}
+
+func createFakePaintingTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/fake_painting.png",
+		"Fake Painting", "A convincing forgery of a famous masterpiece.")
+}
+
+func createCatacombKeyTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/catacomb_key.png",
+		"Catacomb Key", "An ancient iron key with a skull emblem. Opens something underground.")
+}
+
+func createGoldenArtifactTexture(renderer *sdl.Renderer) *inventoryItem {
+	return createItemFromPNG(renderer, "assets/images/items/golden_artifact.png",
+		"Golden Artifact", "A priceless golden idol. The prize everyone has been searching for.")
 }
 
 func drawFilledOval(renderer *sdl.Renderer, cx, cy, rx, ry int32, r, g, b, a uint8) {

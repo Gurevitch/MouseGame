@@ -22,13 +22,15 @@ const (
 )
 
 type uiManager struct {
-	font        *engine.BitmapFont
-	hoverName   string
-	cursor      cursorState
-	cursorTex   [cursorCount]*sdl.Texture
-	cursorW     [cursorCount]int32
-	cursorH     [cursorCount]int32
-	cursorTimer float64
+	font             *engine.BitmapFont
+	hoverName        string
+	cursor           cursorState
+	cursorTex        [cursorCount]*sdl.Texture
+	cursorW          [cursorCount]int32
+	cursorH          [cursorCount]int32
+	cursorTimer      float64
+	cursorClickTimer float64
+	cursorClicking   bool
 }
 
 func newUIManager(font *engine.BitmapFont) *uiManager {
@@ -36,244 +38,38 @@ func newUIManager(font *engine.BitmapFont) *uiManager {
 }
 
 func (ui *uiManager) initCursors(renderer *sdl.Renderer) {
-	mkSurf := func(w, h int32) *sdl.Surface {
-		s, _ := sdl.CreateRGBSurface(0, w, h, 32,
-			0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000)
-		if s != nil {
-			s.FillRect(nil, 0)
-		}
-		return s
-	}
-	px := func(s *sdl.Surface, x, y int32, r, g, b, a uint8) {
-		if x < 0 || y < 0 || x >= s.W || y >= s.H {
-			return
-		}
-		s.FillRect(&sdl.Rect{X: x, Y: y, W: 1, H: 1},
-			sdl.MapRGBA(s.Format, r, g, b, a))
-	}
-	block := func(s *sdl.Surface, x, y, w, h int32, r, g, b, a uint8) {
-		s.FillRect(&sdl.Rect{X: x, Y: y, W: w, H: h},
-			sdl.MapRGBA(s.Format, r, g, b, a))
-	}
-
-	// Normal pointer -- classic angled arrow in pink with dark outline
-	{
-		const w, h int32 = 16, 20
-		s := mkSurf(w, h)
-		if s != nil {
-			outline := [20][]int32{
-				{0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5},
-				{0, 6}, {0, 7}, {0, 8}, {0, 9}, {0, 10},
-				{0, 11}, {0, 7, 8}, {0, 1, 8, 9}, {1, 2, 9, 10},
-				{2, 3, 10, 11}, {3, 4, 11, 12}, {4, 5, 12, 13},
-				{5, 6, 13, 14}, {6, 14},
-			}
-			fill := [20][]int32{
-				{}, {}, {1}, {1, 2}, {1, 2, 3}, {1, 2, 3, 4},
-				{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6, 7},
-				{1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 3, 4, 5, 6, 7, 8, 9},
-				{1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6}, {2, 3, 4, 5, 6, 7},
-				{3, 4, 5, 6, 7, 8}, {4, 5, 6, 7, 8, 9}, {5, 6, 7, 8, 9, 10},
-				{6, 7, 8, 9, 10, 11}, {7, 8, 9, 10, 11, 12}, {7, 8, 9, 10, 11, 12, 13},
-			}
-			for row := int32(0); row < h; row++ {
-				for _, col := range outline[row] {
-					px(s, col, row, 30, 15, 25, 255)
-				}
-				for _, col := range fill[row] {
-					if row < 3 {
-						px(s, col, row, 255, 210, 225, 255)
-					} else {
-						px(s, col, row, 255, 150, 180, 255)
-					}
-				}
-			}
-			px(s, 1, 1, 255, 230, 240, 255)
-
-			tex, _ := renderer.CreateTextureFromSurface(s)
-			if tex != nil {
-				tex.SetBlendMode(sdl.BLENDMODE_BLEND)
-			}
-			ui.cursorTex[cursorNormal] = tex
-			ui.cursorW[cursorNormal] = w
-			ui.cursorH[cursorNormal] = h
-			s.Free()
-		}
-	}
-
-	// Talk cursor (speech bubble)
-	{
-		const w, h = 22, 20
-		s := mkSurf(w, h)
-		if s != nil {
-			block(s, 2, 0, 18, 2, 40, 20, 30, 255)
-			block(s, 0, 2, 2, 10, 40, 20, 30, 255)
-			block(s, 20, 2, 2, 10, 40, 20, 30, 255)
-			block(s, 2, 12, 18, 2, 40, 20, 30, 255)
-			block(s, 2, 2, 18, 10, 255, 250, 220, 240)
-			block(s, 6, 14, 2, 2, 40, 20, 30, 255)
-			block(s, 4, 16, 2, 2, 40, 20, 30, 255)
-			block(s, 2, 18, 2, 2, 40, 20, 30, 255)
-			block(s, 5, 5, 2, 4, 40, 20, 30, 200)
-			block(s, 10, 5, 2, 4, 40, 20, 30, 200)
-			block(s, 15, 5, 2, 4, 40, 20, 30, 200)
-
-			tex, _ := renderer.CreateTextureFromSurface(s)
-			if tex != nil {
-				tex.SetBlendMode(sdl.BLENDMODE_BLEND)
-			}
-			ui.cursorTex[cursorTalk] = tex
-			ui.cursorW[cursorTalk] = w
-			ui.cursorH[cursorTalk] = h
-			s.Free()
-		}
-	}
-
-	// Grab hand
-	{
-		const w, h = 20, 22
-		s := mkSurf(w, h)
-		if s != nil {
-			block(s, 4, 0, 4, 6, 40, 20, 30, 255)
-			block(s, 5, 1, 2, 4, 255, 200, 170, 255)
-			block(s, 9, 1, 4, 6, 40, 20, 30, 255)
-			block(s, 10, 2, 2, 4, 255, 200, 170, 255)
-			block(s, 14, 2, 4, 6, 40, 20, 30, 255)
-			block(s, 15, 3, 2, 4, 255, 200, 170, 255)
-			block(s, 2, 7, 16, 8, 40, 20, 30, 255)
-			block(s, 3, 8, 14, 6, 255, 200, 170, 255)
-			block(s, 2, 15, 16, 7, 40, 20, 30, 255)
-			block(s, 3, 16, 14, 5, 255, 200, 170, 255)
-
-			tex, _ := renderer.CreateTextureFromSurface(s)
-			if tex != nil {
-				tex.SetBlendMode(sdl.BLENDMODE_BLEND)
-			}
-			ui.cursorTex[cursorGrab] = tex
-			ui.cursorW[cursorGrab] = w
-			ui.cursorH[cursorGrab] = h
-			s.Free()
-		}
-	}
-
-	// Arrow cursors -- clean filled triangles with dark outline
-	arrowSurf := func(dir int) (*sdl.Texture, int32, int32) {
-		var sw, sh int32
-		if dir == 2 {
-			sw, sh = 16, 12
-		} else {
-			sw, sh = 12, 16
-		}
-		s := mkSurf(sw, sh)
-		if s == nil {
-			return nil, 0, 0
-		}
-
-		switch dir {
-		case 0: // left -- tip at left edge, base at right
-			mid := sh / 2
-			for row := int32(0); row < sh; row++ {
-				dist := row - mid
-				if dist < 0 {
-					dist = -dist
-				}
-				w := sw - int32(float64(dist)*float64(sw)/float64(mid))
-				if w < 1 {
-					w = 1
-				}
-				block(s, 0, row, w, 1, 255, 220, 100, 255)
-				px(s, 0, row, 30, 15, 25, 255)
-				if w > 1 {
-					px(s, w-1, row, 30, 15, 25, 255)
-				}
-			}
-			for col := int32(0); col < sw; col++ {
-				px(s, col, 0, 30, 15, 25, 255)
-				px(s, col, sh-1, 30, 15, 25, 255)
-			}
-		case 1: // right -- tip at right edge, base at left
-			mid := sh / 2
-			for row := int32(0); row < sh; row++ {
-				dist := row - mid
-				if dist < 0 {
-					dist = -dist
-				}
-				w := sw - int32(float64(dist)*float64(sw)/float64(mid))
-				if w < 1 {
-					w = 1
-				}
-				block(s, sw-w, row, w, 1, 255, 220, 100, 255)
-				px(s, sw-1, row, 30, 15, 25, 255)
-				if w > 1 {
-					px(s, sw-w, row, 30, 15, 25, 255)
-				}
-			}
-			for col := int32(0); col < sw; col++ {
-				px(s, col, 0, 30, 15, 25, 255)
-				px(s, col, sh-1, 30, 15, 25, 255)
-			}
-		case 2: // up -- tip at top, base at bottom
-			mid := sw / 2
-			for col := int32(0); col < sw; col++ {
-				dist := col - mid
-				if dist < 0 {
-					dist = -dist
-				}
-				h := sh - int32(float64(dist)*float64(sh)/float64(mid))
-				if h < 1 {
-					h = 1
-				}
-				block(s, col, 0, 1, h, 255, 220, 100, 255)
-				px(s, col, 0, 30, 15, 25, 255)
-				if h > 1 {
-					px(s, col, h-1, 30, 15, 25, 255)
-				}
-			}
-			for row := int32(0); row < sh; row++ {
-				px(s, 0, row, 30, 15, 25, 255)
-				px(s, sw-1, row, 30, 15, 25, 255)
-			}
-		case 3: // down -- tip at bottom, base at top
-			mid := sw / 2
-			for col := int32(0); col < sw; col++ {
-				dist := col - mid
-				if dist < 0 {
-					dist = -dist
-				}
-				h := sh - int32(float64(dist)*float64(sh)/float64(mid))
-				if h < 1 {
-					h = 1
-				}
-				block(s, col, sh-h, 1, h, 255, 220, 100, 255)
-				px(s, col, sh-1, 30, 15, 25, 255)
-				if h > 1 {
-					px(s, col, sh-h, 30, 15, 25, 255)
-				}
-			}
-			for row := int32(0); row < sh; row++ {
-				px(s, 0, row, 30, 15, 25, 255)
-				px(s, sw-1, row, 30, 15, 25, 255)
-			}
-		}
-
-		tex, _ := renderer.CreateTextureFromSurface(s)
+	load := func(path string) (*sdl.Texture, int32, int32) {
+		tex, w, h := engine.TextureFromPNG(renderer, path)
 		if tex != nil {
 			tex.SetBlendMode(sdl.BLENDMODE_BLEND)
 		}
-		s.Free()
-		return tex, sw, sh
+		return tex, w, h
 	}
 
-	ui.cursorTex[cursorArrowLeft], ui.cursorW[cursorArrowLeft], ui.cursorH[cursorArrowLeft] = arrowSurf(0)
-	ui.cursorTex[cursorArrowRight], ui.cursorW[cursorArrowRight], ui.cursorH[cursorArrowRight] = arrowSurf(1)
-	ui.cursorTex[cursorArrowUp], ui.cursorW[cursorArrowUp], ui.cursorH[cursorArrowUp] = arrowSurf(2)
-	ui.cursorTex[cursorArrowDown], ui.cursorW[cursorArrowDown], ui.cursorH[cursorArrowDown] = arrowSurf(3)
+	ui.cursorTex[cursorNormal], ui.cursorW[cursorNormal], ui.cursorH[cursorNormal] = load("assets/images/ui/cursors/cursor_normal.png")
+	ui.cursorTex[cursorTalk], ui.cursorW[cursorTalk], ui.cursorH[cursorTalk] = load("assets/images/ui/cursors/cursor_talk.png")
+	ui.cursorTex[cursorGrab], ui.cursorW[cursorGrab], ui.cursorH[cursorGrab] = load("assets/images/ui/cursors/cursor_grab.png")
+	ui.cursorTex[cursorArrowLeft], ui.cursorW[cursorArrowLeft], ui.cursorH[cursorArrowLeft] = load("assets/images/ui/cursors/cursor_arrow_left.png")
+	ui.cursorTex[cursorArrowRight], ui.cursorW[cursorArrowRight], ui.cursorH[cursorArrowRight] = load("assets/images/ui/cursors/cursor_arrow_right.png")
+	ui.cursorTex[cursorArrowUp], ui.cursorW[cursorArrowUp], ui.cursorH[cursorArrowUp] = load("assets/images/ui/cursors/cursor_arrow_up.png")
+	ui.cursorTex[cursorArrowDown], ui.cursorW[cursorArrowDown], ui.cursorH[cursorArrowDown] = load("assets/images/ui/cursors/cursor_arrow_down.png")
+}
+
+func (ui *uiManager) triggerClick() {
+	ui.cursorClicking = true
+	ui.cursorClickTimer = 0.15
 }
 
 func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt float64) {
 	ui.hoverName = ""
 	ui.cursor = cursorNormal
 	ui.cursorTimer += dt
+	if ui.cursorClicking {
+		ui.cursorClickTimer -= dt
+		if ui.cursorClickTimer <= 0 {
+			ui.cursorClicking = false
+		}
+	}
 	for _, n := range s.npcs {
 		n.hovered = false
 		n.itemMatch = false
@@ -360,8 +156,29 @@ func (ui *uiManager) drawCursor(renderer *sdl.Renderer, mx, my int32) {
 	if tex == nil {
 		return
 	}
-	w := ui.cursorW[c] * 2
-	h := ui.cursorH[c] * 2
+
+	srcW := ui.cursorW[c]
+	srcH := ui.cursorH[c]
+
+	var src *sdl.Rect
+	if c == cursorNormal {
+		frameW := srcW / 2
+		if ui.cursorClicking {
+			src = &sdl.Rect{X: frameW, Y: 0, W: frameW, H: srcH}
+		} else {
+			src = &sdl.Rect{X: 0, Y: 0, W: frameW, H: srcH}
+		}
+		srcW = frameW
+	}
+
+	// Scale cursor to a reasonable size (target ~64px wide)
+	targetW := int32(64)
+	scale := float64(targetW) / float64(srcW)
+	if scale > 2.0 {
+		scale = 2.0
+	}
+	w := int32(float64(srcW) * scale)
+	h := int32(float64(srcH) * scale)
 
 	bob := int32(math.Sin(ui.cursorTimer*3.0) * 2.0)
 
@@ -390,7 +207,7 @@ func (ui *uiManager) drawCursor(renderer *sdl.Renderer, mx, my int32) {
 	}
 
 	dst := sdl.Rect{X: mx + dx, Y: my + dy + bob, W: w, H: h}
-	renderer.Copy(tex, nil, &dst)
+	renderer.Copy(tex, src, &dst)
 }
 
 func drawTaskIcon(renderer *sdl.Renderer, x, y int32) {

@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/Users/Roii/Documents/PP P2P/**)",
+      "Read(//c/Users/Roii/Documents/PP P2P/ppp2p/**)",
+      "Bash(go build:*)",
+      "Bash(go get:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:x.com)",
+      "WebFetch(domain:www.pixellab.ai)",
+      "WebFetch(domain:api.pixellab.ai)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:www.seeles.ai)",
+      "Bash(curl -s -X POST \"https://test-api.seeles.ai/web_forwarder/check_task\" -H \"Content-Type: application/json\" -d '{\"\"task_id\"\":\"\"7d1bf14d-b380-4123-9782-2006cfa3c07d\"\"}')",
+      "Bash(curl:*)",
+      "Bash(where python:*)",
+      "Bash(where py:*)",
+      "Bash(\"/c/Users/Roii/AppData/Roaming/Python/Python313/python.exe\" -c \"print\\(''works''\\)\")",
+      "Bash(py -c \"print\\(''works''\\)\")",
+      "Bash(py:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(claude update:*)",
+      "Bash(go list:*)",
+      "Bash(grep -n \"func\\\\|type\\\\|const\" /c/go-workspace/src/bitbucket.org/Local/games/ClonedPP/engine/*.go)",
+      "Bash(python3 -c ':*)",
+      "Bash(python -c ':*)",
+      "Bash(timeout 5 go run .)",
+      "Bash(go run:*)"
+    ]
+  }
+}
