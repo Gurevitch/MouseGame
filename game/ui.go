@@ -75,6 +75,9 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt floa
 		n.itemMatch = false
 	}
 	for _, n := range s.npcs {
+		if n.silent {
+			continue
+		}
 		if n.containsPoint(mx, my) {
 			ui.hoverName = n.name
 			n.hovered = true

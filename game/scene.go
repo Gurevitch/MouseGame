@@ -64,18 +64,59 @@ type floorItem struct {
 	onPickup func()
 }
 
+type walkSegment struct {
+	x1, y1, x2, y2 float64
+}
+
 type scene struct {
-	name       string
-	bg         *background
-	npcs       []*npc
-	hotspots   []hotspot
-	floorItems []*floorItem
-	particles  []particle
-	glows      []glowEffect
-	blockers   []sdl.Rect
-	spawnX     float64
-	spawnY     float64
-	musicPath  string
+	name         string
+	bg           *background
+	npcs         []*npc
+	hotspots     []hotspot
+	floorItems   []*floorItem
+	particles    []particle
+	glows        []glowEffect
+	blockers     []sdl.Rect
+	walkSegments []walkSegment
+	spawnX       float64
+	spawnY       float64
+	musicPath    string
+	minY         float64
+	maxY         float64
+}
+
+// snapToPath finds the nearest point on any walk segment. If no segments, returns input.
+func (s *scene) snapToPath(x, y float64) (float64, float64) {
+	if len(s.walkSegments) == 0 {
+		return x, y
+	}
+	bestX, bestY := x, y
+	bestDist := math.MaxFloat64
+	for _, seg := range s.walkSegments {
+		px, py := nearestPointOnSegment(x, y, seg.x1, seg.y1, seg.x2, seg.y2)
+		dx, dy := px-x, py-y
+		d := dx*dx + dy*dy
+		if d < bestDist {
+			bestDist = d
+			bestX, bestY = px, py
+		}
+	}
+	return bestX, bestY
+}
+
+func nearestPointOnSegment(px, py, x1, y1, x2, y2 float64) (float64, float64) {
+	dx, dy := x2-x1, y2-y1
+	lenSq := dx*dx + dy*dy
+	if lenSq == 0 {
+		return x1, y1
+	}
+	t := ((px-x1)*dx + (py-y1)*dy) / lenSq
+	if t < 0 {
+		t = 0
+	} else if t > 1 {
+		t = 1
+	}
+	return x1 + t*dx, y1 + t*dy
 }
 
 type sceneManager struct {
@@ -99,14 +140,15 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		name:   "camp_entrance",
 		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_entrance.png"),
 		npcs:   []*npc{newDirectorHiggins(renderer)},
-		spawnX: 300,
-		spawnY: 400,
+		spawnX: 500,
+		spawnY: 570,
+		minY:   400.0,
+		maxY:   620.0,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
-				targetScene: "camp_grounds",
-				name:        "Enter Camp",
-				arrow:       arrowRight,
+				bounds: sdl.Rect{X: 500, Y: 100, W: 300, H: 250},
+				name:   "Enter Camp",
+				arrow:  arrowUp,
 			},
 		},
 		blockers: []sdl.Rect{
@@ -174,25 +216,21 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_grounds.png"),
 		npcs:   []*npc{newTommy(renderer), newJake(renderer), newLily(renderer), newMarcus(renderer), newDanny(renderer)},
 		spawnX: 100,
-		spawnY: 400,
+		spawnY: 416,
+		walkSegments: []walkSegment{
+			{100, 416, 100, 360},    // left vertical going up
+			{100, 374, 476, 374},    // connect left to upper path
+			{476, 374, 917, 374},    // upper horizontal path
+			{490, 650, 490, 670},    // short lower vertical
+			{490, 650, 871, 435},    // diagonal connecting lower to upper-right
+			{871, 435, 1206, 630},   // diagonal going down-right
+		},
 		hotspots: []hotspot{
 			{
 				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
-				targetScene: "camp_entrance",
-				name:        "Camp Entrance",
-				arrow:       arrowLeft,
-			},
-			{
-				bounds:      sdl.Rect{X: 1300, Y: 200, W: 100, H: 400},
-				targetScene: "camp_messhall",
-				name:        "Mess Hall",
-				arrow:       arrowRight,
-			},
-			{
-				bounds:      sdl.Rect{X: 560, Y: 50, W: 280, H: 200},
 				targetScene: "camp_lake",
 				name:        "To the Lake",
-				arrow:       arrowUp,
+				arrow:       arrowLeft,
 			},
 		},
 	}
@@ -270,58 +308,70 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	}
 	sm.scenes["camp_grounds"] = campGrounds
 
-	// ===== Camp Chilly Wa Wa: Mess Hall =====
-	campMessHall := &scene{
-		name:   "camp_messhall",
-		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_messhall.png"),
-		npcs:   []*npc{newCookMarge(renderer)},
-		spawnX: 640,
+	// ===== Camp Chilly Wa Wa: Higgins' Office =====
+	campOffice := &scene{
+		name:   "camp_office",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_office.png"),
+		npcs:   []*npc{newOfficeHiggins(renderer)},
+		spawnX: 150,
 		spawnY: 400,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 300, Y: 650, W: 700, H: 100},
+				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
 				targetScene: "camp_grounds",
 				name:        "Back to Camp",
-				arrow:       arrowDown,
+				arrow:       arrowLeft,
 			},
 		},
 		blockers: []sdl.Rect{
-			{X: 0, Y: 0, W: engine.ScreenWidth, H: 300},
+			{X: 500, Y: 0, W: 900, H: 360},
 		},
 	}
-	// Steam from pots
-	for i := 0; i < 4; i++ {
-		baseX := 550 + float64(i)*60
-		campMessHall.particles = append(campMessHall.particles, particle{
-			x:     baseX + (rand.Float64()-0.5)*8,
-			y:     280 - rand.Float64()*15,
-			vx:    (rand.Float64() - 0.5) * 2,
-			vy:    -rand.Float64()*10 - 5,
-			alpha: uint8(rand.Intn(15) + 8),
-			size:  int32(rand.Intn(2) + 2),
-			baseY: 280,
-			homeX: baseX,
-			smoke: true,
-			r:     230, g: 225, b: 220,
-			timer: rand.Float64() * 10,
+	campOffice.glows = []glowEffect{
+		{x: 600, y: 200, w: 300, h: 300, r: 255, g: 230, b: 170, alpha: 10, pulse: 0.3},
+		{x: 0, y: 100, w: 300, h: 400, r: 255, g: 245, b: 210, alpha: 8, pulse: 0.2},
+	}
+	sm.scenes["camp_office"] = campOffice
+
+	// ===== Camp Chilly Wa Wa: Night (campfire scene) =====
+	campNight := &scene{
+		name:   "camp_night",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_night.png"),
+		npcs:   []*npc{},
+		spawnX: 300,
+		spawnY: 400,
+	}
+	// Fireflies
+	for i := 0; i < 12; i++ {
+		campNight.particles = append(campNight.particles, particle{
+			x:       100 + rand.Float64()*1100,
+			y:       250 + rand.Float64()*250,
+			twinkle: true,
+			alpha:   uint8(rand.Intn(40) + 30),
+			size:    1,
+			r:       255, g: 255, b: 150,
 		})
 	}
-	// Fly buzzing around food
-	campMessHall.particles = append(campMessHall.particles, particle{
-		x:      500,
-		baseY:  400,
-		vx:     8,
-		alpha:  70,
-		insect: true,
-		r:      30, g: 30, b: 30,
-		timer: rand.Float64() * 10,
-	})
-	campMessHall.glows = []glowEffect{
-		{x: 300, y: 100, w: 600, h: 400, r: 255, g: 230, b: 180, alpha: 8, pulse: 0.3},
-		// Flickering overhead lamp
-		{x: 580, y: 80, w: 120, h: 200, r: 255, g: 240, b: 180, alpha: 12, pulse: 5.5},
+	// Embers rising from fire pit
+	for i := 0; i < 6; i++ {
+		campNight.particles = append(campNight.particles, particle{
+			x:     640 + (rand.Float64()-0.5)*30,
+			y:     480 - rand.Float64()*20,
+			vx:    (rand.Float64() - 0.5) * 8,
+			vy:    -rand.Float64()*25 - 10,
+			alpha: uint8(rand.Intn(40) + 20),
+			size:  int32(rand.Intn(2) + 1),
+			baseY: 485,
+			homeX: 640,
+			fire:  true,
+			r:     255, g: 160, b: 40,
+		})
 	}
-	sm.scenes["camp_messhall"] = campMessHall
+	campNight.glows = []glowEffect{
+		{x: 500, y: 380, w: 300, h: 200, r: 255, g: 160, b: 40, alpha: 15, pulse: 3.5},
+		{x: 0, y: 0, w: engine.ScreenWidth, h: engine.ScreenHeight, r: 20, g: 15, b: 40, alpha: 12, pulse: 0.1},
+	}
+	sm.scenes["camp_night"] = campNight
 
 	// ===== Camp Chilly Wa Wa: Lake =====
 	campLake := &scene{
@@ -337,6 +387,9 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 				name:        "Back to Camp",
 				arrow:       arrowLeft,
 			},
+		},
+		blockers: []sdl.Rect{
+			{X: 500, Y: 0, W: 900, H: engine.ScreenHeight},
 		},
 	}
 	for i := 0; i < 5; i++ {
@@ -413,6 +466,9 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 				arrow:       arrowRight,
 			},
 		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: 180, H: 500},
+		},
 	}
 	// Pigeons
 	for i := 0; i < 4; i++ {
@@ -479,6 +535,9 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 				arrow:       arrowLeft,
 			},
 		},
+		blockers: []sdl.Rect{
+			{X: 400, Y: 0, W: 500, H: 340},
+		},
 	}
 	// Dust motes in sunbeams
 	for i := 0; i < 15; i++ {
@@ -503,6 +562,20 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 
 func (sm *sceneManager) current() *scene {
 	return sm.scenes[sm.currentName]
+}
+
+func (s *scene) effectiveMinY() float64 {
+	if s.minY > 0 {
+		return s.minY
+	}
+	return playerMinY
+}
+
+func (s *scene) effectiveMaxY() float64 {
+	if s.maxY > 0 {
+		return s.maxY
+	}
+	return playerMaxY
 }
 
 func (sm *sceneManager) transitionTo(sceneName string, plr *player) {
@@ -536,6 +609,8 @@ func (sm *sceneManager) update(dt float64) {
 				sm.transPlayer.facingLeft = false
 				sm.transPlayer.dir = dirDown
 				sm.transPlayer.state = stateIdle
+				sm.transPlayer.sceneMinY = s.minY
+				sm.transPlayer.sceneMaxY = s.maxY
 			}
 		}
 	} else {
@@ -668,6 +743,10 @@ func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, mx, my in
 	}
 }
 
+func (s *scene) drawActorsNoPlayer(renderer *sdl.Renderer) {
+	s.drawActors(renderer, nil)
+}
+
 func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 	type actorDraw struct {
 		footY int32
@@ -694,6 +773,9 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 	base := len(s.floorItems)
 	for i := range s.npcs {
 		n := s.npcs[i]
+		if n.silent {
+			continue
+		}
 		actors = append(actors, actorDraw{
 			footY: n.footY(),
 			order: base + i,

@@ -32,6 +32,13 @@ func newDialogSystem(font *engine.BitmapFont) *dialogSystem {
 	return &dialogSystem{font: font}
 }
 
+func (ds *dialogSystem) currentSpeaker() string {
+	if !ds.active || ds.currentIndex >= len(ds.queue) {
+		return ""
+	}
+	return ds.queue[ds.currentIndex].speaker
+}
+
 func (ds *dialogSystem) startDialog(entries []dialogEntry) {
 	ds.startDialogWithCallback(entries, nil)
 }

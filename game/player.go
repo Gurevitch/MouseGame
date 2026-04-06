@@ -15,8 +15,8 @@ type spriteFrame struct {
 
 const (
 	playerBaseSpeed = 250.0
-	playerDstW      = 160
-	playerDstH      = 220
+	playerDstW      = 140
+	playerDstH      = 195
 	playerMinX      = 10.0
 	playerMaxX      = engine.ScreenWidth - playerDstW - 10.0
 	playerMinY      = 300.0
@@ -84,19 +84,23 @@ type player struct {
 	interactTarget *npc
 	dialogSys      *dialogSystem
 	onArrival      func()
-}
 
-func gridFrameToSprite(gf engine.GridFrame) spriteFrame {
-	return spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H}
+	sceneMinY float64
+	sceneMaxY float64
 }
 
 func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
-	texs, ws, hs := engine.SpriteFramesFromPNG(renderer, path, cols)
-	frames := make([]spriteFrame, len(texs))
-	for i := range texs {
-		frames[i] = spriteFrame{tex: texs[i], w: ws[i], h: hs[i]}
+	grid := engine.SpriteGridFromPNGRaw(renderer, path, cols, 1)
+	frames := make([]spriteFrame, cols)
+	for c := 0; c < cols; c++ {
+		gf := grid[0][c]
+		frames[c] = spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H}
 	}
 	return frames
+}
+
+func gridToSprite(gf engine.GridFrame) spriteFrame {
+	return spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H}
 }
 
 func newPlayer(renderer *sdl.Renderer) *player {
@@ -105,57 +109,33 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		y: float64(engine.ScreenHeight) - playerDstH - 100,
 	}
 
-	// Walk side (8 frames, single row)
 	p.walkSideFrames = stripFrames(renderer, "assets/images/player/PP walk left.png", 8)
+	p.walkDownFrames = stripFrames(renderer, "assets/images/player/PP walk front.png", 8)
+	p.walkUpFrames = stripFrames(renderer, "assets/images/player/PP walk back.png", 8)
 
-	// Walk front / idle from 8x2 sheet
-	walkFrontGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP_walk_front_full_idle.png", 8, 2)
-	p.walkDownFrames = make([]spriteFrame, 8)
-	for c := 0; c < 8; c++ {
-		p.walkDownFrames[c] = gridFrameToSprite(walkFrontGrid[0][c])
-	}
-	// Use bottom row first frame as walk-up placeholder (reuse walk front for now)
-	p.walkUpFrames = make([]spriteFrame, 8)
-	for c := 0; c < 8; c++ {
-		p.walkUpFrames[c] = gridFrameToSprite(walkFrontGrid[1][c])
-	}
+	// Idle images are 8x2 grids — use only frame [0][0] as static idle
+	idleFrontGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/player/PP idle front.png", 8, 2)
+	p.idleFrontFrames = []spriteFrame{gridToSprite(idleFrontGrid[0][0])}
 
-	// Idle front (8x2 sheet, top row = idle variations)
-	idleGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP idle front.png", 8, 2)
-	p.idleFrontFrames = make([]spriteFrame, 8)
-	for c := 0; c < 8; c++ {
-		p.idleFrontFrames[c] = gridFrameToSprite(idleGrid[0][c])
-	}
-	// Use first idle frame for side and back idle too
-	p.idleSideFrames = []spriteFrame{gridFrameToSprite(idleGrid[1][0])}
-	p.idleBackFrames = []spriteFrame{gridFrameToSprite(idleGrid[1][1])}
+	idleSideGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/player/PP idle side.png", 8, 2)
+	p.idleSideFrames = []spriteFrame{gridToSprite(idleSideGrid[0][0])}
 
-	// Talk front (8 frames, single row)
+	idleBackGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/player/PP idle back.png", 8, 2)
+	p.idleBackFrames = []spriteFrame{gridToSprite(idleBackGrid[0][0])}
+
 	p.talkFrames = stripFrames(renderer, "assets/images/player/PP talk front.png", 8)
-
-	// Talk side (8 frames, single row)
 	p.talkSideFrames = stripFrames(renderer, "assets/images/player/PP talk side.png", 8)
 
-	// Grab (8 frames, single row)
 	p.grabFrames = stripFrames(renderer, "assets/images/player/PP grab.png", 8)
 
-	// Celebrate/react (6 frames, single row)
-	celebrateFrames := stripFrames(renderer, "assets/images/player/PP celebrate.png", 6)
+	celebrateFrames := stripFrames(renderer, "assets/images/player/PP celebrate.png", 8)
 	p.reactFrames = celebrateFrames
 	if len(celebrateFrames) >= 2 {
 		p.showInvFrames = celebrateFrames[0:2]
 	}
 
-	// Sneak (8x2 sheet) — use for examine and use-item
-	sneakGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP sneak.png", 8, 2)
-	p.examineFrames = make([]spriteFrame, 4)
-	for c := 0; c < 4; c++ {
-		p.examineFrames[c] = gridFrameToSprite(sneakGrid[0][c])
-	}
-	p.useItemFrames = make([]spriteFrame, 4)
-	for c := 0; c < 4; c++ {
-		p.useItemFrames[c] = gridFrameToSprite(sneakGrid[1][c])
-	}
+	p.examineFrames = stripFrames(renderer, "assets/images/player/PP sneak examine.png", 8)
+	p.useItemFrames = stripFrames(renderer, "assets/images/player/PP sneak use.png", 8)
 
 	p.dir = dirDown
 
@@ -247,9 +227,23 @@ func (p *player) currentSprite() spriteFrame {
 	}
 }
 
+func (p *player) minY() float64 {
+	if p.sceneMinY > 0 {
+		return p.sceneMinY
+	}
+	return playerMinY
+}
+
+func (p *player) maxY() float64 {
+	if p.sceneMaxY > 0 {
+		return p.sceneMaxY
+	}
+	return playerMaxY
+}
+
 func (p *player) setTarget(x, y float64) {
 	tx := engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
-	ty := engine.Clamp(y-playerDstH/2, playerMinY, playerMaxY)
+	ty := engine.Clamp(y-playerDstH/2, p.minY(), p.maxY())
 	p.targetX = tx
 	p.targetY = ty
 	p.moving = true
@@ -288,7 +282,7 @@ func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
 		ty = npcFootY - playerDstH + 4
 	}
 	p.targetX = tx
-	p.targetY = engine.Clamp(ty, playerMinY, playerMaxY)
+	p.targetY = engine.Clamp(ty, p.minY(), p.maxY())
 	p.moving = true
 	p.allowOffscreen = false
 	p.state = stateWalking
@@ -299,7 +293,7 @@ func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
 
 func (p *player) walkToAndDo(x, y float64, action func()) {
 	p.targetX = engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
-	p.targetY = engine.Clamp(y-playerDstH/2, playerMinY, playerMaxY)
+	p.targetY = engine.Clamp(y-playerDstH/2, p.minY(), p.maxY())
 	p.moving = true
 	p.allowOffscreen = false
 	p.state = stateWalking
@@ -308,7 +302,7 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 }
 
 func (p *player) walkToExit(dir arrowDir, action func()) {
-	p.targetY = engine.Clamp(p.y, playerMinY, playerMaxY)
+	p.targetY = engine.Clamp(p.y, p.minY(), p.maxY())
 	switch dir {
 	case arrowLeft:
 		p.targetX = -playerDstW
@@ -322,6 +316,11 @@ func (p *player) walkToExit(dir arrowDir, action func()) {
 		p.targetX = p.x
 		p.targetY = engine.ScreenHeight + playerDstH
 		p.dir = dirDown
+		p.facingLeft = false
+	case arrowUp:
+		p.targetX = p.x
+		p.targetY = -playerDstH
+		p.dir = dirUp
 		p.facingLeft = false
 	default:
 		p.allowOffscreen = false
@@ -447,7 +446,7 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 		p.y = nextY
 	} else {
 		p.x = engine.Clamp(nextX, playerMinX, playerMaxX)
-		p.y = engine.Clamp(nextY, playerMinY, playerMaxY)
+		p.y = engine.Clamp(nextY, p.minY(), p.maxY())
 	}
 
 	for _, b := range blockers {
@@ -495,14 +494,14 @@ func (p *player) startNPCDialog() {
 		p.dir = dirRight
 	}
 
-	if len(n.talkFrames) > 0 {
+	if len(n.talkGrid) > 0 {
 		n.setAnimState(npcAnimTalk)
 	}
 
 	wrapCb := func(inner func()) func() {
 		target := n
 		return func() {
-			if len(target.talkFrames) > 0 {
+			if len(target.talkGrid) > 0 {
 				target.setAnimState(npcAnimIdle)
 			}
 			if inner != nil {

@@ -22,10 +22,21 @@ type inventory struct {
 	selectedIdx int
 	pulse       float64
 	heldItem    *inventoryItem
+	circleTex   *sdl.Texture
+	circleW     int32
+	circleH     int32
 }
 
-func newInventory(font *engine.BitmapFont) *inventory {
-	return &inventory{font: font}
+func newInventory(font *engine.BitmapFont, renderer *sdl.Renderer) *inventory {
+	inv := &inventory{font: font}
+	tex, w, h := engine.SafeTextureFromPNGRaw(renderer, "assets/images/ui/inv_circle.png")
+	if tex != nil {
+		tex.SetBlendMode(sdl.BLENDMODE_BLEND)
+		inv.circleTex = tex
+		inv.circleW = w
+		inv.circleH = h
+	}
+	return inv
 }
 
 func (inv *inventory) addItem(item *inventoryItem) {
@@ -128,12 +139,16 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 	renderer.SetDrawColor(0, 0, 0, 140)
 	renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
 
-	// Outer oval (pink border)
-	drawFilledOval(renderer, cx, cy, invOvalW/2+8, invOvalH/2+8, 255, 180, 200, 220)
-	// Inner oval (dark background)
-	drawFilledOval(renderer, cx, cy, invOvalW/2, invOvalH/2, 30, 20, 40, 230)
-	// Inner highlight rim
-	drawOvalOutline(renderer, cx, cy, invOvalW/2, invOvalH/2, 255, 200, 220, 120)
+	if inv.circleTex != nil {
+		ovalW := int32(invOvalW + 32)
+		ovalH := int32(invOvalH + 32)
+		dst := sdl.Rect{X: cx - ovalW/2, Y: cy - ovalH/2, W: ovalW, H: ovalH}
+		renderer.Copy(inv.circleTex, nil, &dst)
+	} else {
+		drawFilledOval(renderer, cx, cy, invOvalW/2+8, invOvalH/2+8, 255, 180, 200, 220)
+		drawFilledOval(renderer, cx, cy, invOvalW/2, invOvalH/2, 30, 20, 40, 230)
+		drawOvalOutline(renderer, cx, cy, invOvalW/2, invOvalH/2, 255, 200, 220, 120)
+	}
 
 	// Draw current item
 	item := inv.items[inv.selectedIdx]

@@ -376,6 +376,33 @@ func blankCornerLogo(img *image.NRGBA, w, h int) {
 // removes the background via color-keying and any bottom-right watermark, and
 // returns frames indexed [row][col]. Each cell uses its full grid dimensions
 // (no auto-crop) so all frames share the same size.
+// SpriteGridFromPNGRaw loads a PNG grid without color-key removal.
+// Uses the PNG's native alpha channel. Each cell is its own texture.
+func SpriteGridFromPNGRaw(renderer *sdl.Renderer, filename string, cols, rows int) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+	}
+
+	bounds := img.Bounds()
+	cellW := bounds.Dx() / cols
+	cellH := bounds.Dy() / rows
+
+	grid := make([][]GridFrame, rows)
+	for r := 0; r < rows; r++ {
+		grid[r] = make([]GridFrame, cols)
+		for c := 0; c < cols; c++ {
+			cellRect := image.Rect(
+				bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
+				bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
+			)
+			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+		}
+	}
+	return grid
+}
+
 func SpriteGridFromPNG(renderer *sdl.Renderer, filename string, cols, rows int) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {

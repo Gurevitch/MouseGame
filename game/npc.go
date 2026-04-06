@@ -7,10 +7,14 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+type npcFrame struct {
+	tex *sdl.Texture
+	w   int32
+	h   int32
+}
+
 type npc struct {
-	tex       *sdl.Texture
 	bounds    sdl.Rect
-	srcRect   sdl.Rect
 	dialog    []dialogEntry
 	name      string
 	bobTimer  float64
@@ -26,25 +30,22 @@ type npc struct {
 	onDialogEnd   func()
 	altDialogFunc func() ([]dialogEntry, func())
 
-	frames     []sdl.Rect
-	frameIdx   int
-	frameTimer float64
-	frameSpeed float64
+	// Idle = single static square frame (no animation)
+	idleFrame npcFrame
 
-	talkFrames     []sdl.Rect
-	drinkFrames    []sdl.Rect
+	// Talk = animated frames from grid
+	talkGrid       []npcFrame
 	talkFrameSpeed float64
+	curFrame       int
+	frameTimer     float64
 	animState      int
-	animOnce       bool
 
-	// Strange state (Day 2) — alternate texture + frames
-	strangeTex        *sdl.Texture
-	strangeFrames     []sdl.Rect
-	strangeTalkFrames []sdl.Rect
-	normalTex         *sdl.Texture // saved normal tex for restoring
-	normalFrames      []sdl.Rect
-	normalTalkFrames  []sdl.Rect
-	isStrange         bool
+	// Strange state (Day 2) — alternate idle + talk
+	strangeIdle     npcFrame
+	strangeTalk     []npcFrame
+	normalIdle      npcFrame
+	normalTalk      []npcFrame
+	isStrange       bool
 }
 
 func (n *npc) setStrange(strange bool) {
@@ -52,72 +53,60 @@ func (n *npc) setStrange(strange bool) {
 		return
 	}
 	n.isStrange = strange
-	if strange && n.strangeTex != nil {
-		// Save normal state
-		n.normalTex = n.tex
-		n.normalFrames = n.frames
-		n.normalTalkFrames = n.talkFrames
-		// Swap to strange
-		n.tex = n.strangeTex
-		n.frames = n.strangeFrames
-		n.talkFrames = n.strangeTalkFrames
-	} else if !strange && n.normalTex != nil {
-		// Restore normal
-		n.tex = n.normalTex
-		n.frames = n.normalFrames
-		n.talkFrames = n.normalTalkFrames
+	if strange && n.strangeIdle.tex != nil {
+		n.normalIdle = n.idleFrame
+		n.normalTalk = n.talkGrid
+		n.idleFrame = n.strangeIdle
+		n.talkGrid = n.strangeTalk
+	} else if !strange && n.normalIdle.tex != nil {
+		n.idleFrame = n.normalIdle
+		n.talkGrid = n.normalTalk
 	}
-	n.frameIdx = 0
+	n.curFrame = 0
 	n.frameTimer = 0
-	n.setAnimState(npcAnimIdle)
+	n.animState = npcAnimIdle
 }
 
-func frameSequence(rects []sdl.Rect, indices ...int) []sdl.Rect {
-	seq := make([]sdl.Rect, len(indices))
-	for i, idx := range indices {
-		seq[i] = rects[idx%len(rects)]
-	}
-	return seq
-}
 
 // loadStrangeSheet loads a strange-state sprite sheet and sets it on the NPC
 func loadStrangeSheet(renderer *sdl.Renderer, n *npc, path string) {
-	tex, w, h := engine.SafeTextureFromPNGKeyed(renderer, path)
-	if tex == nil {
-		return
+	idle, talk := campNPCFromSheet(renderer, path)
+	if idle.tex != nil {
+		n.strangeIdle = idle
+		n.strangeTalk = talk
 	}
-	cols := int32(8)
-	frameW := w / cols
-	frameH := h / 2
-
-	rowFn := func(row int32) []sdl.Rect {
-		rects := make([]sdl.Rect, cols)
-		for i := int32(0); i < cols; i++ {
-			rects[i] = sdl.Rect{X: i * frameW, Y: row * frameH, W: frameW, H: frameH}
-		}
-		return rects
-	}
-
-	idleRaw := rowFn(0)
-	n.strangeTex = tex
-	n.strangeFrames = frameSequence(idleRaw, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
-	n.strangeTalkFrames = rowFn(1)
 }
 
 // ===== Camp Chilly Wa Wa NPCs =====
 
-func campNPCSheet(renderer *sdl.Renderer, path string, cols, rows int32) (*sdl.Texture, int32, int32, func(row int32) []sdl.Rect) {
-	tex, w, h := engine.TextureFromPNGKeyed(renderer, path)
-	frameW := w / cols
-	frameH := h / rows
-	rowFn := func(row int32) []sdl.Rect {
-		rects := make([]sdl.Rect, cols)
-		for i := int32(0); i < cols; i++ {
-			rects[i] = sdl.Rect{X: i * frameW, Y: row * frameH, W: frameW, H: frameH}
-		}
-		return rects
+// loadNPCIdle loads a single square idle image for an NPC.
+func loadNPCIdle(renderer *sdl.Renderer, path string) npcFrame {
+	tex, w, h := engine.TextureFromPNGRaw(renderer, path)
+	return npcFrame{tex: tex, w: w, h: h}
+}
+
+// loadNPCTalk loads a talk animation strip (single row of frames).
+func loadNPCTalk(renderer *sdl.Renderer, path string, cols int) []npcFrame {
+	grid := engine.SpriteGridFromPNGRaw(renderer, path, cols, 1)
+	frames := make([]npcFrame, cols)
+	for c := 0; c < cols; c++ {
+		gf := grid[0][c]
+		frames[c] = npcFrame{tex: gf.Tex, w: gf.W, h: gf.H}
 	}
-	return tex, frameW, frameH, rowFn
+	return frames
+}
+
+// campNPCFromSheet loads an NPC from an 8x2 sprite sheet (legacy).
+// Row 0 frame 0 = idle, Row 1 = talk frames.
+func campNPCFromSheet(renderer *sdl.Renderer, path string) (npcFrame, []npcFrame) {
+	grid := engine.SpriteGridFromPNGRaw(renderer, path, 8, 2)
+	idle := npcFrame{tex: grid[0][0].Tex, w: grid[0][0].W, h: grid[0][0].H}
+	talk := make([]npcFrame, 8)
+	for c := 0; c < 8; c++ {
+		gf := grid[1][c]
+		talk[c] = npcFrame{tex: gf.Tex, w: gf.W, h: gf.H}
+	}
+	return idle, talk
 }
 
 // --- Director Higgins ---
@@ -139,12 +128,12 @@ var higginsWorriedDialog = []dialogEntry{
 	{speaker: "Director Higgins", text: "Something is wrong with the kids."},
 	{speaker: "Director Higgins", text: "Marcus has been up all night drawing things he's never seen."},
 	{speaker: "Director Higgins", text: "Buildings, paintings, rooftops... from places he's never been!"},
-	{speaker: "Pink Panther", text: "That does sound unusual."},
+	{speaker: "Pink Panther", text: "I saw him last night by the campfire. He was... not himself."},
 	{speaker: "Director Higgins", text: "I've seen this kind of thing before... well, no I haven't. But it's NOT normal!"},
-	{speaker: "Director Higgins", text: "If you think the answer is out there somewhere..."},
-	{speaker: "Director Higgins", text: "Camp Chilly Wa Wa Air hasn't flown in years, but I can get the old plane running."},
+	{speaker: "Director Higgins", text: "A glass pyramid, a woman's face... it sounds like Paris. The Louvre."},
+	{speaker: "Director Higgins", text: "Here, take this travel map. Camp Chilly Wa Wa Air can get you there."},
 	{speaker: "Pink Panther", text: "A camp... airline?"},
-	{speaker: "Director Higgins", text: "Don't ask questions. Just check on Marcus first."},
+	{speaker: "Director Higgins", text: "Don't ask questions. Just go find out what Marcus is connected to."},
 }
 
 var higginsPostWorriedDialog = []dialogEntry{
@@ -153,21 +142,29 @@ var higginsPostWorriedDialog = []dialogEntry{
 }
 
 func newDirectorHiggins(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_director_higgins.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 0, 0, 1, 1, 0, 0, 0, 2, 2, 0, 0, 0, 3, 0)
-	talkFrames := rowFn(1)
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_director_higgins.png")
 	return &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
-		bounds:         sdl.Rect{X: 700, Y: 360, W: 120, H: 210},
+		idleFrame:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 700, Y: 400, W: 120, H: 210},
 		name:           "Director Higgins",
 		dialog:         higginsDefaultDialog,
 		bobAmount:      0.2,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.7,
 		talkFrameSpeed: 0.12,
+	}
+}
+
+func newOfficeHiggins(renderer *sdl.Renderer) *npc {
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_director_higgins_office.png")
+	return &npc{
+		idleFrame:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 780, Y: 300, W: 120, H: 210},
+		name:           "Director Higgins",
+		dialog:         higginsWorriedDialog,
+		bobAmount:      0.2,
+		talkFrameSpeed: 0.12,
+		silent:         true,
 	}
 }
 
@@ -202,20 +199,14 @@ var tommyPostStrangeDialog = []dialogEntry{
 }
 
 func newTommy(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_homesick_kid.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 3)
-	talkFrames := rowFn(1)
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_homesick_kid.png")
 	n := &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
-		bounds:         sdl.Rect{X: 200, Y: 420, W: 120, H: 140},
+		idleFrame:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 200, Y: 380, W: 145, H: 175},
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0.3,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.7,
 		talkFrameSpeed: 0.12,
 	}
 	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_homesick_kid_strange.png")
@@ -254,20 +245,14 @@ var jakePostStrangeDialog = []dialogEntry{
 }
 
 func newJake(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_bully_kid.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 0, 0, 1, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0)
-	talkFrames := rowFn(1)
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_bully_kid.png")
 	n := &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
-		bounds:         sdl.Rect{X: 700, Y: 400, W: 130, H: 180},
+		idleFrame:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 700, Y: 370, W: 150, H: 195},
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0.25,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.7,
 		talkFrameSpeed: 0.12,
 	}
 	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_bully_kid_strange.png")
@@ -307,20 +292,14 @@ var lilyPostStrangeDialog = []dialogEntry{
 }
 
 func newLily(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_shy_girl.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0)
-	talkFrames := rowFn(1)
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_shy_girl.png")
 	n := &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
-		bounds:         sdl.Rect{X: 550, Y: 440, W: 110, H: 130},
+		idleFrame:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 550, Y: 400, W: 140, H: 170},
 		name:           "Lily",
 		dialog:         lilyDialog,
 		bobAmount:      0.15,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.8,
 		talkFrameSpeed: 0.12,
 	}
 	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_shy_girl_strange.png")
@@ -362,21 +341,15 @@ var marcusPostStrangeDialog = []dialogEntry{
 }
 
 func newMarcus(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_know_it_all.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
-	talkFrames := rowFn(1)
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_know_it_all.png")
 	n := &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
-		bounds:         sdl.Rect{X: 1000, Y: 380, W: 100, H: 200},
+		idleFrame:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 1000, Y: 360, W: 140, H: 200},
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0.2,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.46,
-		talkFrameSpeed: 0.10,
+		talkFrameSpeed: 0.12,
 	}
 	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_know_it_all_strange.png")
 	return n
@@ -415,78 +388,18 @@ var dannyPostStrangeDialog = []dialogEntry{
 }
 
 func newDanny(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_prankster.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
-	talkFrames := rowFn(1)
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_prankster.png")
 	n := &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
-		bounds:         sdl.Rect{X: 1150, Y: 400, W: 110, H: 180},
+		idleFrame:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 1150, Y: 370, W: 140, H: 195},
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0.3,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.42,
-		talkFrameSpeed: 0.10,
+		talkFrameSpeed: 0.12,
 	}
 	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_prankster_strange.png")
 	return n
-}
-
-// --- Cook Marge ---
-
-var cookMargeDialog = []dialogEntry{
-	{speaker: "Cook Marge", text: "Well hello there, sugar! You must be the new counselor!"},
-	{speaker: "Pink Panther", text: "Good day, madam. Something smells... interesting."},
-	{speaker: "Cook Marge", text: "That's my famous mystery stew! Been cooking it since '68!"},
-	{speaker: "Cook Marge", text: "I've seen a LOT of strange things at this camp over the years."},
-	{speaker: "Pink Panther", text: "Strange things? Like what?"},
-	{speaker: "Cook Marge", text: "Oh, kids acting funny. Drawing things they shouldn't know about."},
-	{speaker: "Cook Marge", text: "It happened before, years ago. The old counselor figured it out eventually."},
-	{speaker: "Cook Marge", text: "But that's a story for another time. Want some stew?"},
-}
-
-var cookMargePostDialog = []dialogEntry{
-	{speaker: "Cook Marge", text: "Come back anytime, sugar! The kitchen is always open!"},
-	{speaker: "Pink Panther", text: "Thank you, Marge."},
-}
-
-var cookMargeWorriedDialog = []dialogEntry{
-	{speaker: "Cook Marge", text: "It's happening again, isn't it?"},
-	{speaker: "Pink Panther", text: "You mentioned this happened before..."},
-	{speaker: "Cook Marge", text: "Years ago, a group of kids started acting the same way."},
-	{speaker: "Cook Marge", text: "Seeing places they'd never been, drawing things they shouldn't know."},
-	{speaker: "Cook Marge", text: "The old counselor traveled to the places the kids described."},
-	{speaker: "Cook Marge", text: "Brought back little souvenirs from each place, and the kids settled right down."},
-	{speaker: "Pink Panther", text: "So the answer is out there... in the real places they're seeing."},
-	{speaker: "Cook Marge", text: "That's what I believe, sugar. Find what they're seeing, and bring a piece of it back."},
-}
-
-var cookMargePostWorriedDialog = []dialogEntry{
-	{speaker: "Cook Marge", text: "Find what the kids are seeing, sugar. Bring back a piece of it."},
-	{speaker: "Cook Marge", text: "That's the only thing that worked last time."},
-}
-
-func newCookMarge(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/camp/npc/npc_cook_marge.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
-	talkFrames := rowFn(1)
-	return &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
-		bounds:         sdl.Rect{X: 600, Y: 300, W: 220, H: 280},
-		name:           "Cook Marge",
-		dialog:         cookMargeDialog,
-		bobAmount:      0.4,
-		elevated:       true,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.48,
-		talkFrameSpeed: 0.10,
-	}
 }
 
 const (
@@ -495,71 +408,35 @@ const (
 	npcAnimDrink = 2
 )
 
-func (n *npc) activeFrames() []sdl.Rect {
-	switch n.animState {
-	case npcAnimTalk:
-		if len(n.talkFrames) > 0 {
-			return n.talkFrames
-		}
-	case npcAnimDrink:
-		if len(n.drinkFrames) > 0 {
-			return n.drinkFrames
-		}
-	}
-	return n.frames
-}
-
 func (n *npc) setAnimState(state int) {
 	if n.animState == state {
 		return
 	}
 	n.animState = state
-	n.frameIdx = 0
+	n.curFrame = 0
 	n.frameTimer = 0
-	n.animOnce = false
-	af := n.activeFrames()
-	if len(af) > 0 {
-		n.srcRect = af[0]
-	}
-}
-
-func (n *npc) currentFrameSpeed() float64 {
-	if n.animState != npcAnimIdle && n.talkFrameSpeed > 0 {
-		return n.talkFrameSpeed
-	}
-	return n.frameSpeed
 }
 
 func (n *npc) update(dt float64) {
 	n.bobTimer += dt
 
-	af := n.activeFrames()
-	if len(af) > 1 {
+	// Only talk frames animate — idle is static
+	if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
 		n.frameTimer += dt
-		speed := n.currentFrameSpeed()
+		speed := n.talkFrameSpeed
+		if speed <= 0 {
+			speed = 0.12
+		}
 		if n.frameTimer >= speed {
 			n.frameTimer -= speed
-			if n.animOnce && n.frameIdx >= len(af)-1 {
-				n.setAnimState(npcAnimIdle)
-				return
-			}
-			n.frameIdx = (n.frameIdx + 1) % len(af)
-			n.srcRect = af[n.frameIdx]
+			n.curFrame = (n.curFrame + 1) % len(n.talkGrid)
 		}
 	}
 }
 
 func (n *npc) draw(renderer *sdl.Renderer) {
 	bobOffset := int32(math.Sin(n.bobTimer*1.5) * n.bobAmount)
-
-	// Breathing scale pulse: ~1% oscillation at 0.8 Hz
 	breathScale := 1.0 + 0.01*math.Sin(n.bobTimer*0.8*2*math.Pi)
-	dstW := int32(float64(n.bounds.W) * breathScale)
-	dstH := int32(float64(n.bounds.H) * breathScale)
-	dstX := n.bounds.X - (dstW-n.bounds.W)/2
-	dstY := n.bounds.Y + bobOffset - (dstH - n.bounds.H)
-
-	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
 
 	shadowCX := n.bounds.X + n.bounds.W/2
 	shadowFY := n.bounds.Y + n.bounds.H
@@ -569,7 +446,33 @@ func (n *npc) draw(renderer *sdl.Renderer) {
 	if n.flipped {
 		flip = sdl.FLIP_HORIZONTAL
 	}
-	renderer.CopyEx(n.tex, &n.srcRect, &dst, 0, nil, flip)
+
+	// Select frame: talk animation or static idle
+	var frame npcFrame
+	if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
+		frame = n.talkGrid[n.curFrame%len(n.talkGrid)]
+	} else {
+		frame = n.idleFrame
+	}
+
+	if frame.tex == nil {
+		return
+	}
+
+	// Scale frame to fit bounds while preserving aspect ratio
+	scaleW := float64(n.bounds.W) * breathScale / float64(frame.w)
+	scaleH := float64(n.bounds.H) * breathScale / float64(frame.h)
+	scale := scaleW
+	if scaleH < scale {
+		scale = scaleH
+	}
+	dstW := int32(float64(frame.w) * scale)
+	dstH := int32(float64(frame.h) * scale)
+	dstX := n.bounds.X + (n.bounds.W-dstW)/2
+	dstY := n.bounds.Y + bobOffset + (n.bounds.H - dstH)
+
+	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
+	renderer.CopyEx(frame.tex, nil, &dst, 0, nil, flip)
 }
 
 func (n *npc) containsPoint(x, y int32) bool {
@@ -605,21 +508,15 @@ var frenchGuidePostDialog = []dialogEntry{
 }
 
 func newFrenchGuide(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/paris/npc/npc_french_guide.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
-	talkFrames := rowFn(1)
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/paris/npc/npc_french_guide.png")
 	return &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
+		idleFrame:       idle,
+		talkGrid:       talk,
 		bounds:         sdl.Rect{X: 300, Y: 350, W: 140, H: 240},
 		name:           "Madame Colette",
 		dialog:         frenchGuideDialog,
 		bobAmount:      0.2,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.50,
-		talkFrameSpeed: 0.10,
+		talkFrameSpeed: 0.12,
 	}
 }
 
@@ -647,20 +544,14 @@ var museumCuratorPostDialog = []dialogEntry{
 }
 
 func newMuseumCurator(renderer *sdl.Renderer) *npc {
-	tex, _, _, rowFn := campNPCSheet(renderer, "assets/images/locations/paris/npc/npc_museum_curator.png", 8, 2)
-	raw := rowFn(0)
-	idleFrames := frameSequence(raw, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
-	talkFrames := rowFn(1)
+	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/paris/npc/npc_museum_curator.png")
 	return &npc{
-		tex:            tex,
-		srcRect:        idleFrames[0],
+		idleFrame:       idle,
+		talkGrid:       talk,
 		bounds:         sdl.Rect{X: 500, Y: 320, W: 130, H: 250},
 		name:           "Curator Beaumont",
 		dialog:         museumCuratorDialog,
 		bobAmount:      0.15,
-		frames:         idleFrames,
-		talkFrames:     talkFrames,
-		frameSpeed:     0.50,
-		talkFrameSpeed: 0.10,
+		talkFrameSpeed: 0.12,
 	}
 }
