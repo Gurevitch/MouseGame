@@ -15,11 +15,13 @@ func main() {
 	}
 	defer sdl.Quit()
 
+	// Get desktop display size for fullscreen
+	dm, _ := sdl.GetDesktopDisplayMode(0)
 	window, err := sdl.CreateWindow(
 		"Pink Panther Adventure",
-		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		engine.ScreenWidth, engine.ScreenHeight,
-		sdl.WINDOW_OPENGL)
+		sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
+		dm.W, dm.H,
+		sdl.WINDOW_FULLSCREEN_DESKTOP)
 	if err != nil {
 		fmt.Println("Window:", err)
 		return
@@ -38,6 +40,7 @@ func main() {
 	}
 	defer renderer.Destroy()
 	renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
+	renderer.SetLogicalSize(engine.ScreenWidth, engine.ScreenHeight)
 
 	sdl.ShowCursor(sdl.DISABLE)
 

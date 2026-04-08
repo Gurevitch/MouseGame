@@ -12,9 +12,9 @@ var openingMonologue = []dialogEntry{
 }
 
 var day2Monologue = []dialogEntry{
-	{speaker: "Pink Panther", text: "Something feels different this morning..."},
-	{speaker: "Pink Panther", text: "The kids... they don't seem like themselves."},
-	{speaker: "Pink Panther", text: "I should talk to everyone and find out what's going on."},
+	{speaker: "Pink Panther", text: "What a night... I could hear Marcus from across the camp."},
+	{speaker: "Pink Panther", text: "I need to find him. He must be in his cabin."},
+	{speaker: "Pink Panther", text: "And then I should tell Higgins about this."},
 }
 
 var parisStreetMonologue = []dialogEntry{
@@ -48,15 +48,27 @@ type Game struct {
 	nightSceneDone  bool // Night campfire scene completed
 
 	// Night scene
-	playerSleeping   bool
-	sleepingFrames   []npcFrame
-	sleepingFrameIdx int
-	sleepingTimer    float64
-	wakingFrames     []npcFrame
-	wakingPhase      int // 0=sleeping, 1=waking, 2=done
+	playerSleeping    bool
+	sleepingFrames    []npcFrame
+	sleepingFrameIdx  int
+	sleepingTimer     float64
+	wakingFrames      []npcFrame
+	wakingPhase       int // 0=sleeping, 1=waking, 2=done
+	campfireFrames    []npcFrame
+	campfireFrameIdx  int
+	campfireTimer     float64
+
+	// Map reveal animation
+	mapRevealing  bool
+	mapRevealScale float64
+	mapRevealTex   *sdl.Texture
+	mapRevealW     int32
+	mapRevealH     int32
 
 	// City monologues
 	parisMonologuePlayed bool
+
+	marcusRoomNightBg *background
 }
 
 func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
@@ -95,6 +107,15 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 		}
 	}
 
+	// Load campfire animation (8 frames, single row)
+	fireGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/locations/camp/campfire_idle.png", 8, 1)
+	for c := 0; c < 8; c++ {
+		gf := fireGrid[0][c]
+		g.campfireFrames = append(g.campfireFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+	}
+
+	g.marcusRoomNightBg = newPNGBackground(renderer, "assets/images/locations/camp/background/marcus_room_night.png")
+
 	startScene := g.sceneMgr.current()
 	g.player.sceneMinY = startScene.minY
 	g.player.sceneMaxY = startScene.maxY
@@ -109,16 +130,22 @@ func (g *Game) startDay2() {
 	}
 	g.day = 2
 
-	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
-		for _, n := range grounds.npcs {
-			switch n.name {
-			case "Marcus":
+	// Make Marcus strange in his room
+	if marcusRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok {
+		for _, n := range marcusRoom.npcs {
+			if n.name == "Marcus" {
 				n.dialog = marcusStrangeDialog
 				n.dialogDone = false
 				n.setStrange(true)
-			case "Tommy", "Jake", "Lily", "Danny":
-				n.silent = true
+				break
 			}
+		}
+	}
+
+	// Make other kids silent on camp_grounds (they're in their rooms now)
+	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
+		for _, n := range grounds.npcs {
+			n.silent = true
 		}
 	}
 
@@ -131,6 +158,11 @@ func (g *Game) startDay2() {
 				break
 			}
 		}
+	}
+
+	// Restore Marcus room to day background (night cutscene is over)
+	if marcusRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok {
+		marcusRoom.bg = newPNGBackground(g.renderer, "assets/images/locations/camp/background/marcus_room_day.png")
 	}
 }
 
@@ -147,6 +179,22 @@ func (g *Game) setupCampCallbacks() {
 				}
 			}
 			break
+		}
+	}
+
+	// --- Marcus in his room (Day 2) ---
+	if marcusRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok {
+		for _, n := range marcusRoom.npcs {
+			if n.name == "Marcus" {
+				marcus := n
+				marcus.onDialogEnd = func() {
+					if game.day == 2 && !game.talkedToMarcus {
+						game.talkedToMarcus = true
+						marcus.dialog = marcusPostStrangeDialog
+					}
+				}
+				break
+			}
 		}
 	}
 
@@ -246,50 +294,36 @@ func (g *Game) checkDay1Complete() {
 			{speaker: "Director Higgins", text: "Off to bed! Big day tomorrow."},
 			{speaker: "Pink Panther", text: "Goodnight, Higgins."},
 		}, func() {
-			g.sceneMgr.transitionTo("camp_night", g.player)
+			// Swap Marcus room to night background before entering
+			if marcusRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok && g.marcusRoomNightBg != nil {
+				marcusRoom.bg = g.marcusRoomNightBg
+			}
+			g.sceneMgr.transitionTo("marcus_room", g.player)
 		})
 	}
 }
 
-// nightSceneArrival fires the sleeping → Marcus freakout → wake-up sequence
+// nightSceneArrival — automatic cutscene: shows Marcus freaking out in his room
 func (g *Game) nightSceneArrival() {
 	if g.nightSceneDone {
 		return
 	}
 	g.nightSceneDone = true
-	g.playerSleeping = true
-	g.wakingPhase = 0
-	g.sleepingFrameIdx = 0
-	g.sleepingTimer = 0
+	g.playerSleeping = true // hide normal player during cutscene
 
-	// Phase 1: PP falls asleep
+	// Show Marcus's room at night with his frantic dialog
 	g.dialog.startDialogWithCallback([]dialogEntry{
-		{speaker: "Pink Panther", text: "*yawn* What a day... time to get some rest..."},
+		{speaker: "Marcus", text: "I can't stop... the lines keep coming..."},
+		{speaker: "Marcus", text: "A face... golden frames... a glass pyramid..."},
+		{speaker: "Marcus", text: "I don't KNOW! I've never seen these things!"},
+		{speaker: "Marcus", text: "A woman... she's smiling... and the building is ENORMOUS!"},
+		{speaker: "Marcus", text: "The picture is WRONG! Something is MISSING!"},
 	}, func() {
-		// Phase 2: Marcus freakout wakes PP
-		g.dialog.startDialogWithCallback([]dialogEntry{
-			{speaker: "Marcus", text: "I can't stop... the lines keep coming..."},
-			{speaker: "Marcus", text: "A face... golden frames... a glass pyramid..."},
-			{speaker: "Pink Panther", text: "Huh? Marcus? It's the middle of the night!"},
-			{speaker: "Marcus", text: "I don't KNOW! I've never seen these things! But they won't leave my head!"},
-			{speaker: "Marcus", text: "A woman... she's smiling... and the building is ENORMOUS!"},
-			{speaker: "Pink Panther", text: "...I should talk to Higgins about this in the morning."},
-		}, func() {
-			// Phase 3: Morning wake-up
-			g.wakingPhase = 1
-			g.sleepingFrameIdx = 0
-			g.sleepingTimer = 0
-			g.dialog.startDialogWithCallback([]dialogEntry{
-				{speaker: "Pink Panther", text: "*stretches* What a night..."},
-				{speaker: "Pink Panther", text: "I need to find Higgins and tell him about Marcus."},
-			}, func() {
-				g.playerSleeping = false
-				g.wakingPhase = 2
-				g.startDay2()
-				g.sceneMgr.transitionTo("camp_office", g.player)
-				g.day2Started = true
-			})
-		})
+		// Morning: transition to camp_grounds, player must find Marcus
+		g.playerSleeping = false
+		g.startDay2()
+		g.sceneMgr.transitionTo("camp_grounds", g.player)
+		g.day2Started = true
 	})
 }
 
@@ -301,16 +335,20 @@ func (g *Game) giveMapItem() {
 	if tex != nil {
 		tex.SetBlendMode(sdl.BLENDMODE_BLEND)
 	}
+
+	// Start map reveal animation
+	g.mapRevealing = true
+	g.mapRevealScale = 0.0
+	g.mapRevealTex = tex
+	g.mapRevealW = w
+	g.mapRevealH = h
+
 	g.inv.addItem(&inventoryItem{
 		name: "Travel Map",
 		tex:  tex,
 		srcW: w,
 		srcH: h,
-		desc: "A travel map from Higgins. Use at the airstrip to fly.",
-	})
-	g.dialog.startDialog([]dialogEntry{
-		{speaker: "Pink Panther", text: "A travel map! Now I can use Camp Chilly Wa Wa Air."},
-		{speaker: "Pink Panther", text: "I should head to Paris and investigate the Louvre."},
+		desc: "Use the map to travel by dropping it anywhere on the screen.",
 	})
 }
 
@@ -495,6 +533,13 @@ func (g *Game) HandleClick(x, y int32) {
 				}
 			}
 		}
+		// Travel Map: drop anywhere to open globe
+		if g.inv.heldItem.name == "Travel Map" {
+			g.inv.heldItem = nil
+			g.showTravelMap = true
+			g.travelMapFrom = g.sceneMgr.currentName
+			return
+		}
 		g.inv.heldItem = nil
 		return
 	}
@@ -543,14 +588,6 @@ func (g *Game) HandleClick(x, y int32) {
 		}
 		return
 	}
-	// Travel Map: drop anywhere to open globe
-	if g.inv.heldItem != nil && g.inv.heldItem.name == "Travel Map" {
-		g.inv.heldItem = nil
-		g.showTravelMap = true
-		g.travelMapFrom = g.sceneMgr.currentName
-		return
-	}
-
 	tx, ty := float64(x), float64(y)
 	tx, ty = scene.snapToPath(tx, ty)
 	g.player.setTarget(tx, ty)
@@ -589,11 +626,11 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		})
 	}
 
-	if !g.nightSceneDone && g.sceneMgr.currentName == "camp_night" && !g.sceneMgr.transitioning && !g.dialog.active {
+	if !g.nightSceneDone && g.sceneMgr.currentName == "marcus_room" && !g.sceneMgr.transitioning && !g.dialog.active {
 		g.nightSceneArrival()
 	}
 
-	if g.day2Started && g.sceneMgr.currentName == "camp_office" && !g.sceneMgr.transitioning && !g.dialog.active {
+	if g.day2Started && g.sceneMgr.currentName == "camp_grounds" && !g.sceneMgr.transitioning && !g.dialog.active {
 		g.day2Started = false
 		g.dialog.startDialog(day2Monologue)
 	}
@@ -601,6 +638,28 @@ func (g *Game) Update(dt float64, mx, my int32) {
 	if !g.parisMonologuePlayed && g.sceneMgr.currentName == "paris_street" && !g.sceneMgr.transitioning {
 		g.parisMonologuePlayed = true
 		g.dialog.startDialog(parisStreetMonologue)
+	}
+
+	// Map reveal animation
+	if g.mapRevealing {
+		g.mapRevealScale += dt * 1.5 // ~0.67 seconds to full
+		if g.mapRevealScale >= 1.0 {
+			g.mapRevealScale = 1.0
+			g.mapRevealing = false
+			g.dialog.startDialog([]dialogEntry{
+				{speaker: "Pink Panther", text: "A travel map! Now I can use Camp Chilly Wa Wa Air."},
+				{speaker: "Pink Panther", text: "I just need to take it from my inventory and use it anywhere."},
+			})
+		}
+	}
+
+	// Animate campfire
+	if g.sceneMgr.currentName == "camp_night" && len(g.campfireFrames) > 0 {
+		g.campfireTimer += dt
+		if g.campfireTimer >= 0.12 {
+			g.campfireTimer -= 0.12
+			g.campfireFrameIdx = (g.campfireFrameIdx + 1) % len(g.campfireFrames)
+		}
 	}
 
 	// Animate sleeping/waking frames (same speed as walking)
@@ -689,6 +748,19 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	scene.drawAmbient(renderer)
 	scene.drawHotspots(renderer, g.ui.hoverName, g.mouseX, g.mouseY)
 
+	// Draw campfire animation in night scene
+	if g.sceneMgr.currentName == "camp_night" && len(g.campfireFrames) > 0 {
+		f := g.campfireFrames[g.campfireFrameIdx%len(g.campfireFrames)]
+		if f.tex != nil {
+			fireScale := 2.5
+			dstW := int32(float64(f.w) * fireScale)
+			dstH := int32(float64(f.h) * fireScale)
+			fireX := int32(600) - dstW/2
+			fireY := int32(450) - dstH
+			renderer.Copy(f.tex, nil, &sdl.Rect{X: fireX, Y: fireY, W: dstW, H: dstH})
+		}
+	}
+
 	if g.playerSleeping {
 		// Draw sleeping/waking sprite instead of player
 		scene.drawActorsNoPlayer(renderer)
@@ -702,7 +774,6 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 			idx := g.sleepingFrameIdx % len(frames)
 			f := frames[idx]
 			if f.tex != nil {
-				// Position near the campfire area
 				scale := 1.5
 				dstW := int32(float64(f.w) * scale)
 				dstH := int32(float64(f.h) * scale)
@@ -717,6 +788,20 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 
 	drawWarmTint(renderer)
 	drawVignette(renderer)
+
+	// Map reveal animation overlay
+	if g.mapRevealing && g.mapRevealTex != nil {
+		// Dim background
+		renderer.SetDrawColor(0, 0, 0, uint8(140*g.mapRevealScale))
+		renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
+
+		scale := g.mapRevealScale
+		dstW := int32(float64(g.mapRevealW) * scale * 3)
+		dstH := int32(float64(g.mapRevealH) * scale * 3)
+		dstX := engine.ScreenWidth/2 - dstW/2
+		dstY := engine.ScreenHeight/2 - dstH/2
+		renderer.Copy(g.mapRevealTex, nil, &sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH})
+	}
 
 	g.dialog.draw(renderer)
 	g.ui.draw(renderer, g.mouseX, g.mouseY)

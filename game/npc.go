@@ -30,22 +30,20 @@ type npc struct {
 	onDialogEnd   func()
 	altDialogFunc func() ([]dialogEntry, func())
 
-	// Idle = single static square frame (no animation)
-	idleFrame npcFrame
-
-	// Talk = animated frames from grid
+	idleGrid       []npcFrame
 	talkGrid       []npcFrame
 	talkFrameSpeed float64
 	curFrame       int
 	frameTimer     float64
+	idleCurFrame   int
+	idleFrameTimer float64
 	animState      int
 
-	// Strange state (Day 2) — alternate idle + talk
-	strangeIdle     npcFrame
-	strangeTalk     []npcFrame
-	normalIdle      npcFrame
-	normalTalk      []npcFrame
-	isStrange       bool
+	strangeIdle []npcFrame
+	strangeTalk []npcFrame
+	normalIdle  []npcFrame
+	normalTalk  []npcFrame
+	isStrange   bool
 }
 
 func (n *npc) setStrange(strange bool) {
@@ -53,25 +51,27 @@ func (n *npc) setStrange(strange bool) {
 		return
 	}
 	n.isStrange = strange
-	if strange && n.strangeIdle.tex != nil {
-		n.normalIdle = n.idleFrame
+	if strange && len(n.strangeIdle) > 0 {
+		n.normalIdle = n.idleGrid
 		n.normalTalk = n.talkGrid
-		n.idleFrame = n.strangeIdle
+		n.idleGrid = n.strangeIdle
 		n.talkGrid = n.strangeTalk
-	} else if !strange && n.normalIdle.tex != nil {
-		n.idleFrame = n.normalIdle
+	} else if !strange && len(n.normalIdle) > 0 {
+		n.idleGrid = n.normalIdle
 		n.talkGrid = n.normalTalk
 	}
 	n.curFrame = 0
 	n.frameTimer = 0
+	n.idleCurFrame = 0
+	n.idleFrameTimer = 0
 	n.animState = npcAnimIdle
 }
 
 
-// loadStrangeSheet loads a strange-state sprite sheet and sets it on the NPC
-func loadStrangeSheet(renderer *sdl.Renderer, n *npc, path string) {
-	idle, talk := campNPCFromSheet(renderer, path)
-	if idle.tex != nil {
+func loadStrangeStrips(renderer *sdl.Renderer, n *npc, idlePath, talkPath string) {
+	idle := loadNPCStrip(renderer, idlePath, 8)
+	talk := loadNPCStrip(renderer, talkPath, 8)
+	if len(idle) > 0 {
 		n.strangeIdle = idle
 		n.strangeTalk = talk
 	}
@@ -79,14 +79,7 @@ func loadStrangeSheet(renderer *sdl.Renderer, n *npc, path string) {
 
 // ===== Camp Chilly Wa Wa NPCs =====
 
-// loadNPCIdle loads a single square idle image for an NPC.
-func loadNPCIdle(renderer *sdl.Renderer, path string) npcFrame {
-	tex, w, h := engine.TextureFromPNGRaw(renderer, path)
-	return npcFrame{tex: tex, w: w, h: h}
-}
-
-// loadNPCTalk loads a talk animation strip (single row of frames).
-func loadNPCTalk(renderer *sdl.Renderer, path string, cols int) []npcFrame {
+func loadNPCStrip(renderer *sdl.Renderer, path string, cols int) []npcFrame {
 	grid := engine.SpriteGridFromPNGRaw(renderer, path, cols, 1)
 	frames := make([]npcFrame, cols)
 	for c := 0; c < cols; c++ {
@@ -94,19 +87,6 @@ func loadNPCTalk(renderer *sdl.Renderer, path string, cols int) []npcFrame {
 		frames[c] = npcFrame{tex: gf.Tex, w: gf.W, h: gf.H}
 	}
 	return frames
-}
-
-// campNPCFromSheet loads an NPC from an 8x2 sprite sheet (legacy).
-// Row 0 frame 0 = idle, Row 1 = talk frames.
-func campNPCFromSheet(renderer *sdl.Renderer, path string) (npcFrame, []npcFrame) {
-	grid := engine.SpriteGridFromPNGRaw(renderer, path, 8, 2)
-	idle := npcFrame{tex: grid[0][0].Tex, w: grid[0][0].W, h: grid[0][0].H}
-	talk := make([]npcFrame, 8)
-	for c := 0; c < 8; c++ {
-		gf := grid[1][c]
-		talk[c] = npcFrame{tex: gf.Tex, w: gf.W, h: gf.H}
-	}
-	return idle, talk
 }
 
 // --- Director Higgins ---
@@ -142,10 +122,9 @@ var higginsPostWorriedDialog = []dialogEntry{
 }
 
 func newDirectorHiggins(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_director_higgins.png")
 	return &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_director_higgins_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_director_higgins_talk.png", 8),
 		bounds:         sdl.Rect{X: 700, Y: 400, W: 120, H: 210},
 		name:           "Director Higgins",
 		dialog:         higginsDefaultDialog,
@@ -155,10 +134,9 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 }
 
 func newOfficeHiggins(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_director_higgins_office.png")
 	return &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_director_higgins_office_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_director_higgins_office_talk.png", 8),
 		bounds:         sdl.Rect{X: 780, Y: 300, W: 120, H: 210},
 		name:           "Director Higgins",
 		dialog:         higginsWorriedDialog,
@@ -199,17 +177,18 @@ var tommyPostStrangeDialog = []dialogEntry{
 }
 
 func newTommy(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_homesick_kid.png")
 	n := &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
-		bounds:         sdl.Rect{X: 200, Y: 380, W: 145, H: 175},
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_homesick_kid_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_homesick_kid_talk.png", 8),
+		bounds:         sdl.Rect{X: 140, Y: 400, W: 130, H: 170},
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0.3,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_homesick_kid_strange.png")
+	loadStrangeStrips(renderer, n,
+		"assets/images/locations/camp/npc/npc_homesick_kid_strange_idle.png",
+		"assets/images/locations/camp/npc/npc_homesick_kid_strange_talk.png")
 	return n
 }
 
@@ -245,17 +224,18 @@ var jakePostStrangeDialog = []dialogEntry{
 }
 
 func newJake(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_bully_kid.png")
 	n := &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
-		bounds:         sdl.Rect{X: 700, Y: 370, W: 150, H: 195},
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_bully_kid_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_bully_kid_talk.png", 8),
+		bounds:         sdl.Rect{X: 380, Y: 380, W: 130, H: 185},
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0.25,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_bully_kid_strange.png")
+	loadStrangeStrips(renderer, n,
+		"assets/images/locations/camp/npc/npc_bully_kid_strange_idle.png",
+		"assets/images/locations/camp/npc/npc_bully_kid_strange_talk.png")
 	return n
 }
 
@@ -292,17 +272,18 @@ var lilyPostStrangeDialog = []dialogEntry{
 }
 
 func newLily(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_shy_girl.png")
 	n := &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
-		bounds:         sdl.Rect{X: 550, Y: 400, W: 140, H: 170},
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_shy_girl_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_shy_girl_talk.png", 8),
+		bounds:         sdl.Rect{X: 610, Y: 390, W: 120, H: 165},
 		name:           "Lily",
 		dialog:         lilyDialog,
 		bobAmount:      0.15,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_shy_girl_strange.png")
+	loadStrangeStrips(renderer, n,
+		"assets/images/locations/camp/npc/npc_shy_girl_strange_idle.png",
+		"assets/images/locations/camp/npc/npc_shy_girl_strange_talk.png")
 	return n
 }
 
@@ -341,17 +322,18 @@ var marcusPostStrangeDialog = []dialogEntry{
 }
 
 func newMarcus(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_know_it_all.png")
 	n := &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
-		bounds:         sdl.Rect{X: 1000, Y: 360, W: 140, H: 200},
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_know_it_all_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_know_it_all_talk.png", 8),
+		bounds:         sdl.Rect{X: 900, Y: 370, W: 130, H: 190},
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0.2,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_know_it_all_strange.png")
+	loadStrangeStrips(renderer, n,
+		"assets/images/locations/camp/npc/npc_know_it_all_strange_idle.png",
+		"assets/images/locations/camp/npc/npc_know_it_all_strange_talk.png")
 	return n
 }
 
@@ -388,17 +370,18 @@ var dannyPostStrangeDialog = []dialogEntry{
 }
 
 func newDanny(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/camp/npc/npc_prankster.png")
 	n := &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
-		bounds:         sdl.Rect{X: 1150, Y: 370, W: 140, H: 195},
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_prankster_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_prankster_talk.png", 8),
+		bounds:         sdl.Rect{X: 1170, Y: 380, W: 130, H: 185},
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0.3,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeSheet(renderer, n, "assets/images/locations/camp/npc/npc_prankster_strange.png")
+	loadStrangeStrips(renderer, n,
+		"assets/images/locations/camp/npc/npc_prankster_strange_idle.png",
+		"assets/images/locations/camp/npc/npc_prankster_strange_talk.png")
 	return n
 }
 
@@ -420,13 +403,21 @@ func (n *npc) setAnimState(state int) {
 func (n *npc) update(dt float64) {
 	n.bobTimer += dt
 
-	// Only talk frames animate — idle is static
+	speed := n.talkFrameSpeed
+	if speed <= 0 {
+		speed = 0.12
+	}
+
+	if len(n.idleGrid) > 1 {
+		n.idleFrameTimer += dt
+		if n.idleFrameTimer >= speed {
+			n.idleFrameTimer -= speed
+			n.idleCurFrame = (n.idleCurFrame + 1) % len(n.idleGrid)
+		}
+	}
+
 	if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
 		n.frameTimer += dt
-		speed := n.talkFrameSpeed
-		if speed <= 0 {
-			speed = 0.12
-		}
 		if n.frameTimer >= speed {
 			n.frameTimer -= speed
 			n.curFrame = (n.curFrame + 1) % len(n.talkGrid)
@@ -447,12 +438,11 @@ func (n *npc) draw(renderer *sdl.Renderer) {
 		flip = sdl.FLIP_HORIZONTAL
 	}
 
-	// Select frame: talk animation or static idle
 	var frame npcFrame
 	if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
 		frame = n.talkGrid[n.curFrame%len(n.talkGrid)]
-	} else {
-		frame = n.idleFrame
+	} else if len(n.idleGrid) > 0 {
+		frame = n.idleGrid[n.idleCurFrame%len(n.idleGrid)]
 	}
 
 	if frame.tex == nil {
@@ -508,10 +498,9 @@ var frenchGuidePostDialog = []dialogEntry{
 }
 
 func newFrenchGuide(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/paris/npc/npc_french_guide.png")
 	return &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/paris/npc/npc_french_guide_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/paris/npc/npc_french_guide_talk.png", 8),
 		bounds:         sdl.Rect{X: 300, Y: 350, W: 140, H: 240},
 		name:           "Madame Colette",
 		dialog:         frenchGuideDialog,
@@ -544,10 +533,9 @@ var museumCuratorPostDialog = []dialogEntry{
 }
 
 func newMuseumCurator(renderer *sdl.Renderer) *npc {
-	idle, talk := campNPCFromSheet(renderer, "assets/images/locations/paris/npc/npc_museum_curator.png")
 	return &npc{
-		idleFrame:       idle,
-		talkGrid:       talk,
+		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/paris/npc/npc_museum_curator_idle.png", 8),
+		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/paris/npc/npc_museum_curator_talk.png", 8),
 		bounds:         sdl.Rect{X: 500, Y: 320, W: 130, H: 250},
 		name:           "Curator Beaumont",
 		dialog:         museumCuratorDialog,

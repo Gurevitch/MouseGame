@@ -215,82 +215,116 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		name:   "camp_grounds",
 		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_grounds.png"),
 		npcs:   []*npc{newTommy(renderer), newJake(renderer), newLily(renderer), newMarcus(renderer), newDanny(renderer)},
-		spawnX: 100,
-		spawnY: 416,
+		spawnX: 650,
+		spawnY: 650,
 		walkSegments: []walkSegment{
-			{100, 416, 100, 360},    // left vertical going up
-			{100, 374, 476, 374},    // connect left to upper path
-			{476, 374, 917, 374},    // upper horizontal path
-			{490, 650, 490, 670},    // short lower vertical
-			{490, 650, 871, 435},    // diagonal connecting lower to upper-right
-			{871, 435, 1206, 630},   // diagonal going down-right
+			{650, 650, 650, 550},
+			{120, 480, 380, 480},
+			{380, 480, 620, 520},
+			{620, 520, 900, 480},
+			{900, 480, 1200, 500},
+			{620, 520, 650, 650},
+			{120, 480, 50, 500},
+			{1200, 500, 1350, 520},
 		},
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
+				bounds:      sdl.Rect{X: 0, Y: 200, W: 80, H: 500},
 				targetScene: "camp_lake",
 				name:        "To the Lake",
 				arrow:       arrowLeft,
+			},
+			{
+				bounds:      sdl.Rect{X: 1320, Y: 200, W: 80, H: 500},
+				targetScene: "camp_office",
+				name:        "Higgins' Office",
+				arrow:       arrowRight,
+			},
+			{
+				bounds:      sdl.Rect{X: 70, Y: 340, W: 120, H: 100},
+				targetScene: "tommy_room",
+				name:        "Tommy's Cabin",
+				arrow:       arrowUp,
+			},
+			{
+				bounds:      sdl.Rect{X: 320, Y: 310, W: 120, H: 100},
+				targetScene: "jake_room",
+				name:        "Jake's Cabin",
+				arrow:       arrowUp,
+			},
+			{
+				bounds:      sdl.Rect{X: 560, Y: 290, W: 120, H: 100},
+				targetScene: "lily_room",
+				name:        "Lily's Cabin",
+				arrow:       arrowUp,
+			},
+			{
+				bounds:      sdl.Rect{X: 860, Y: 310, W: 120, H: 100},
+				targetScene: "marcus_room",
+				name:        "Marcus's Cabin",
+				arrow:       arrowUp,
+			},
+			{
+				bounds:      sdl.Rect{X: 1160, Y: 340, W: 120, H: 100},
+				targetScene: "danny_room",
+				name:        "Danny's Cabin",
+				arrow:       arrowUp,
 			},
 		},
 	}
 	for i := 0; i < 10; i++ {
 		campGrounds.particles = append(campGrounds.particles, particle{
 			x:     rand.Float64() * float64(engine.ScreenWidth),
-			y:     rand.Float64() * 400,
+			y:     rand.Float64() * 350,
 			vx:    (rand.Float64() - 0.5) * 4,
 			vy:    -rand.Float64()*0.8 - 0.1,
 			alpha: uint8(rand.Intn(10) + 3),
 			size:  int32(rand.Intn(2) + 1),
 		})
 	}
-	// Campfire particles
 	fireColors := [][3]uint8{{255, 140, 20}, {255, 180, 40}, {255, 100, 10}, {255, 200, 60}, {240, 80, 10},
 		{255, 160, 30}, {255, 120, 15}, {255, 190, 50}}
 	for i := 0; i < 8; i++ {
 		c := fireColors[i%len(fireColors)]
 		campGrounds.particles = append(campGrounds.particles, particle{
-			x:     680 + (rand.Float64()-0.5)*20,
-			y:     515 - rand.Float64()*30,
+			x:     620 + (rand.Float64()-0.5)*20,
+			y:     520 - rand.Float64()*30,
 			vx:    (rand.Float64() - 0.5) * 12,
 			vy:    -rand.Float64()*35 - 15,
 			alpha: uint8(rand.Intn(50) + 30),
 			size:  int32(rand.Intn(2) + 1),
-			baseY: 518,
-			homeX: 680,
+			baseY: 525,
+			homeX: 620,
 			fire:  true,
 			r:     c[0], g: c[1], b: c[2],
 		})
 	}
-	// Birds in the sky
 	for i := 0; i < 3; i++ {
 		campGrounds.particles = append(campGrounds.particles, particle{
 			x:     rand.Float64() * float64(engine.ScreenWidth),
-			y:     40 + rand.Float64()*80,
+			y:     30 + rand.Float64()*60,
 			vx:    15 + rand.Float64()*20,
-			baseY: 40 + rand.Float64()*80,
+			baseY: 30 + rand.Float64()*60,
 			alpha: uint8(rand.Intn(30) + 50),
 			size:  3,
 			bird:  true,
 		})
 	}
-	// Campfire smoke
 	for i := 0; i < 5; i++ {
 		campGrounds.particles = append(campGrounds.particles, particle{
-			x:     680 + (rand.Float64()-0.5)*12,
-			y:     490 - rand.Float64()*20,
+			x:     620 + (rand.Float64()-0.5)*12,
+			y:     495 - rand.Float64()*20,
 			vx:    (rand.Float64() - 0.5) * 4,
 			vy:    -rand.Float64()*12 - 6,
 			alpha: uint8(rand.Intn(15) + 8),
 			size:  int32(rand.Intn(3) + 2),
-			baseY: 490,
-			homeX: 680,
+			baseY: 495,
+			homeX: 620,
 			smoke: true,
 			r:     140, g: 130, b: 120,
 			timer: rand.Float64() * 10,
 		})
 	}
-	// Fireflies at edges
 	for i := 0; i < 6; i++ {
 		campGrounds.particles = append(campGrounds.particles, particle{
 			x:       100 + rand.Float64()*1100,
@@ -302,9 +336,9 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		})
 	}
 	campGrounds.glows = []glowEffect{
-		{x: 200, y: 50, w: 400, h: 300, r: 255, g: 245, b: 200, alpha: 8, pulse: 0.2},
-		{x: 500, y: 400, w: 300, h: 100, r: 255, g: 200, b: 120, alpha: 6, pulse: 0.35},
-		{x: 650, y: 490, w: 60, h: 40, r: 255, g: 160, b: 40, alpha: 18, pulse: 4.0},
+		{x: 200, y: 0, w: 800, h: 300, r: 255, g: 245, b: 200, alpha: 8, pulse: 0.2},
+		{x: 450, y: 400, w: 300, h: 100, r: 255, g: 200, b: 120, alpha: 6, pulse: 0.35},
+		{x: 590, y: 500, w: 60, h: 40, r: 255, g: 160, b: 40, alpha: 18, pulse: 4.0},
 	}
 	sm.scenes["camp_grounds"] = campGrounds
 
@@ -338,38 +372,37 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		name:   "camp_night",
 		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_night.png"),
 		npcs:   []*npc{},
-		spawnX: 300,
-		spawnY: 400,
+		spawnX: 650,
+		spawnY: 550,
 	}
-	// Fireflies
-	for i := 0; i < 12; i++ {
+	for i := 0; i < 16; i++ {
 		campNight.particles = append(campNight.particles, particle{
-			x:       100 + rand.Float64()*1100,
-			y:       250 + rand.Float64()*250,
+			x:       80 + rand.Float64()*1200,
+			y:       200 + rand.Float64()*300,
 			twinkle: true,
 			alpha:   uint8(rand.Intn(40) + 30),
 			size:    1,
 			r:       255, g: 255, b: 150,
 		})
 	}
-	// Embers rising from fire pit
 	for i := 0; i < 6; i++ {
 		campNight.particles = append(campNight.particles, particle{
-			x:     640 + (rand.Float64()-0.5)*30,
-			y:     480 - rand.Float64()*20,
+			x:     620 + (rand.Float64()-0.5)*30,
+			y:     500 - rand.Float64()*20,
 			vx:    (rand.Float64() - 0.5) * 8,
 			vy:    -rand.Float64()*25 - 10,
 			alpha: uint8(rand.Intn(40) + 20),
 			size:  int32(rand.Intn(2) + 1),
-			baseY: 485,
-			homeX: 640,
+			baseY: 505,
+			homeX: 620,
 			fire:  true,
 			r:     255, g: 160, b: 40,
 		})
 	}
 	campNight.glows = []glowEffect{
-		{x: 500, y: 380, w: 300, h: 200, r: 255, g: 160, b: 40, alpha: 15, pulse: 3.5},
+		{x: 480, y: 400, w: 280, h: 180, r: 255, g: 160, b: 40, alpha: 15, pulse: 3.5},
 		{x: 0, y: 0, w: engine.ScreenWidth, h: engine.ScreenHeight, r: 20, g: 15, b: 40, alpha: 12, pulse: 0.1},
+		{x: 820, y: 280, w: 180, h: 120, r: 255, g: 200, b: 100, alpha: 8, pulse: 1.5},
 	}
 	sm.scenes["camp_night"] = campNight
 
@@ -556,6 +589,198 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		{x: 900, y: 100, w: 150, h: 300, r: 255, g: 230, b: 180, alpha: 8, pulse: 0.4},
 	}
 	sm.scenes["paris_louvre"] = parisLouvre
+
+	// ===== Cabin Interiors =====
+
+	// --- Tommy's Room ---
+	tommyRoom := &scene{
+		name:   "tommy_room",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/tommy_room.png"),
+		npcs:   []*npc{},
+		spawnX: 1100,
+		spawnY: 500,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 1250, Y: 300, W: 130, H: 400},
+				targetScene: "camp_grounds",
+				name:        "Exit Cabin",
+				arrow:       arrowRight,
+			},
+		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: 500, H: 450},
+			{X: 500, Y: 0, W: 500, H: 350},
+		},
+	}
+	for i := 0; i < 8; i++ {
+		tommyRoom.particles = append(tommyRoom.particles, particle{
+			x:     300 + rand.Float64()*700,
+			y:     rand.Float64() * 500,
+			vx:    (rand.Float64() - 0.5) * 3,
+			vy:    -rand.Float64()*0.5 - 0.1,
+			alpha: uint8(rand.Intn(10) + 4),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	tommyRoom.glows = []glowEffect{
+		{x: 500, y: 150, w: 400, h: 350, r: 255, g: 240, b: 190, alpha: 8, pulse: 0.2},
+	}
+	sm.scenes["tommy_room"] = tommyRoom
+
+	// --- Jake's Room ---
+	jakeRoom := &scene{
+		name:   "jake_room",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/jake_room.png"),
+		npcs:   []*npc{},
+		spawnX: 1100,
+		spawnY: 500,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 1250, Y: 300, W: 130, H: 400},
+				targetScene: "camp_grounds",
+				name:        "Exit Cabin",
+				arrow:       arrowRight,
+			},
+		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: 450, H: 420},
+			{X: 500, Y: 0, W: 500, H: 350},
+		},
+	}
+	for i := 0; i < 6; i++ {
+		jakeRoom.particles = append(jakeRoom.particles, particle{
+			x:     300 + rand.Float64()*700,
+			y:     rand.Float64() * 500,
+			vx:    (rand.Float64() - 0.5) * 3,
+			vy:    -rand.Float64()*0.5 - 0.1,
+			alpha: uint8(rand.Intn(8) + 3),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	jakeRoom.glows = []glowEffect{
+		{x: 550, y: 150, w: 350, h: 300, r: 255, g: 240, b: 200, alpha: 7, pulse: 0.2},
+	}
+	sm.scenes["jake_room"] = jakeRoom
+
+	// --- Lily's Room ---
+	lilyRoom := &scene{
+		name:   "lily_room",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/lily_room.png"),
+		npcs:   []*npc{},
+		spawnX: 700,
+		spawnY: 550,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 600, Y: 650, W: 250, H: 150},
+				targetScene: "camp_grounds",
+				name:        "Exit Cabin",
+				arrow:       arrowDown,
+			},
+		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: 300, H: 500},
+			{X: 400, Y: 0, W: 600, H: 350},
+			{X: 1000, Y: 0, W: 400, H: 500},
+		},
+	}
+	for i := 0; i < 6; i++ {
+		lilyRoom.particles = append(lilyRoom.particles, particle{
+			x:     400 + rand.Float64()*500,
+			y:     rand.Float64() * 400,
+			vx:    (rand.Float64() - 0.5) * 3,
+			vy:    -rand.Float64()*0.5 - 0.1,
+			alpha: uint8(rand.Intn(10) + 5),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	butterflyColorsLily := [][3]uint8{{240, 180, 200}, {200, 160, 220}, {180, 220, 200}}
+	for i := 0; i < 3; i++ {
+		c := butterflyColorsLily[i%len(butterflyColorsLily)]
+		lilyRoom.particles = append(lilyRoom.particles, particle{
+			x:      500 + rand.Float64()*400,
+			baseY:  200 + rand.Float64()*150,
+			vx:     (rand.Float64() - 0.5) * 10,
+			alpha:  uint8(rand.Intn(35) + 40),
+			insect: true,
+			r:      c[0], g: c[1], b: c[2],
+			timer: rand.Float64() * 10,
+		})
+	}
+	lilyRoom.glows = []glowEffect{
+		{x: 400, y: 100, w: 500, h: 400, r: 255, g: 245, b: 220, alpha: 8, pulse: 0.2},
+	}
+	sm.scenes["lily_room"] = lilyRoom
+
+	// --- Marcus's Room ---
+	marcusRoom := &scene{
+		name:   "marcus_room",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/marcus_room_day.png"),
+		npcs:   []*npc{newMarcus(renderer)},
+		spawnX: 700,
+		spawnY: 550,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 600, Y: 650, W: 250, H: 150},
+				targetScene: "camp_grounds",
+				name:        "Exit Cabin",
+				arrow:       arrowDown,
+			},
+		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: 400, H: 450},
+			{X: 400, Y: 0, W: 500, H: 300},
+			{X: 1000, Y: 0, W: 400, H: 450},
+		},
+	}
+	for i := 0; i < 10; i++ {
+		marcusRoom.particles = append(marcusRoom.particles, particle{
+			x:     300 + rand.Float64()*700,
+			y:     rand.Float64() * 500,
+			vx:    (rand.Float64() - 0.5) * 3,
+			vy:    -rand.Float64()*0.5 - 0.1,
+			alpha: uint8(rand.Intn(10) + 4),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	marcusRoom.glows = []glowEffect{
+		{x: 500, y: 100, w: 400, h: 400, r: 255, g: 240, b: 190, alpha: 9, pulse: 0.25},
+	}
+	sm.scenes["marcus_room"] = marcusRoom
+
+	// --- Danny's Room ---
+	dannyRoom := &scene{
+		name:   "danny_room",
+		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/danny_room.png"),
+		npcs:   []*npc{},
+		spawnX: 1100,
+		spawnY: 500,
+		hotspots: []hotspot{
+			{
+				bounds:      sdl.Rect{X: 1250, Y: 300, W: 130, H: 400},
+				targetScene: "camp_grounds",
+				name:        "Exit Cabin",
+				arrow:       arrowRight,
+			},
+		},
+		blockers: []sdl.Rect{
+			{X: 0, Y: 0, W: 400, H: 450},
+			{X: 400, Y: 0, W: 600, H: 300},
+		},
+	}
+	for i := 0; i < 8; i++ {
+		dannyRoom.particles = append(dannyRoom.particles, particle{
+			x:     300 + rand.Float64()*700,
+			y:     rand.Float64() * 500,
+			vx:    (rand.Float64() - 0.5) * 3,
+			vy:    -rand.Float64()*0.5 - 0.1,
+			alpha: uint8(rand.Intn(8) + 3),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	dannyRoom.glows = []glowEffect{
+		{x: 400, y: 50, w: 300, h: 300, r: 255, g: 245, b: 210, alpha: 7, pulse: 0.2},
+	}
+	sm.scenes["danny_room"] = dannyRoom
 
 	return sm
 }
