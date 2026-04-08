@@ -38,21 +38,37 @@ Meet all 5 kids (normal personalities):
     v
 ```
 
-## NIGHT — The Campfire
+## NIGHT — The Campfire (Multi-phase cutscene)
 
 ```
+[Higgins bedtime dialog at camp_grounds]
+Higgins: "Attention everyone! It's getting very late."
+Higgins: "All campers to their cabins. NOW."
+    |
+    v
 [Transition to camp_night scene]
     |
     v
-[PP falls asleep on log by fire — sleeping animation]
+[PP falls asleep by campfire — sleeping animation + campfire_idle animation]
+[~3.5 seconds of sleeping]
     |
     v
-[Marcus appears, frantic]
-Marcus: "I can't stop... golden frames... a glass pyramid..."
+[Transition to marcus_room (night background)]
+[Marcus freaks out for 6-8 seconds]
+Marcus: "No no no... the lines won't stop..."
+Marcus: "A woman's face... golden frames everywhere..."
+Marcus: "A GLASS PYRAMID! And the building is ENORMOUS!"
+Marcus: "The painting is WRONG! Something is hidden underneath!"
+Marcus: "I have to draw it... I HAVE to draw it ALL!"
     |
     v
-[PP wakes up — waking animation]
-PP: "I need to find Higgins."
+[Transition back to camp_night]
+[PP waking animation plays ~2 seconds]
+    |
+    v
+PP: "*yawn* What a night..."
+PP: "I heard Marcus freaking out. Something about paintings and pyramids."
+PP: "I need to check on him."
     |
     v
 ```
@@ -60,22 +76,27 @@ PP: "I need to find Higgins."
 ## DAY 2 — The Weirdness
 
 ```
-[Transition to Higgins' Office]
+[Transition to camp_grounds]
     |
     v
-[Day 2 monologue: "Something feels different..."]
+[Day 2 monologue: "I need to find Marcus..."]
     |
     v
-Higgins: worried, gives Travel Map
+Navigate to Marcus's Cabin (arrow UP hotspot)
     |
-    v (go left to camp_grounds)
-    |
-Camp Grounds (Marcus has strange sprite)
+    v
+Marcus Room (day background, Marcus has strange sprite)
     |
     v
 Talk to Marcus (strange dialog):
   "A woman's face... ornate golden frames... a glass pyramid..."
   "The biggest museum in the world!"
+    |
+    v
+Navigate to Higgins' Office (arrow RIGHT from camp_grounds)
+    |
+    v
+Higgins: worried, gives Travel Map
     |
     v
 [Paris unlocks on travel map]
@@ -84,7 +105,7 @@ Talk to Marcus (strange dialog):
 Use Travel Map (from inventory, click anywhere) --> Globe opens
     |
     v
-Click Paris --> Fly to Paris
+Click Paris --> [Airplane cutscene ~4 seconds, PP idle in plane] --> Fly to Paris
 ```
 
 ## PARIS — The Louvre
@@ -186,10 +207,11 @@ Each kid follows the same pattern:
 ## Travel System
 
 - Camp Chilly Wa Wa Air (funny old propeller plane)
-- Globe/world map with city pins
-- Unlocked cities glow yellow
-- Locked cities show as gray dots with name
+- Globe/world map with landmark icons per city
+- Unlocked cities: full-color landmark image + yellow glow + label
+- Locked cities: dimmed/gray landmark image + muted label
 - Dotted flight path between camp and destination
+- Airplane cutscene (~4 seconds, PP idle in plane) plays before arriving at any city
 
 ---
 
