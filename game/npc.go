@@ -68,9 +68,9 @@ func (n *npc) setStrange(strange bool) {
 }
 
 
-func loadStrangeStrips(renderer *sdl.Renderer, n *npc, idlePath, talkPath string) {
-	idle := loadNPCStrip(renderer, idlePath, 8)
-	talk := loadNPCStrip(renderer, talkPath, 8)
+func loadStrangeGrids(renderer *sdl.Renderer, n *npc, idlePath string, idleCols, idleRows int, talkPath string, talkCols, talkRows int) {
+	idle := loadNPCGrid(renderer, idlePath, idleCols, idleRows)
+	talk := loadNPCGrid(renderer, talkPath, talkCols, talkRows)
 	if len(idle) > 0 {
 		n.strangeIdle = idle
 		n.strangeTalk = talk
@@ -80,11 +80,17 @@ func loadStrangeStrips(renderer *sdl.Renderer, n *npc, idlePath, talkPath string
 // ===== Camp Chilly Wa Wa NPCs =====
 
 func loadNPCStrip(renderer *sdl.Renderer, path string, cols int) []npcFrame {
-	grid := engine.SpriteGridFromPNGRaw(renderer, path, cols, 1)
-	frames := make([]npcFrame, cols)
-	for c := 0; c < cols; c++ {
-		gf := grid[0][c]
-		frames[c] = npcFrame{tex: gf.Tex, w: gf.W, h: gf.H}
+	return loadNPCGrid(renderer, path, cols, 1)
+}
+
+func loadNPCGrid(renderer *sdl.Renderer, path string, cols, rows int) []npcFrame {
+	grid := engine.SpriteGridFromPNG(renderer, path, cols, rows)
+	var frames []npcFrame
+	for r := 0; r < rows; r++ {
+		for c := 0; c < cols; c++ {
+			gf := grid[r][c]
+			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+		}
 	}
 	return frames
 }
@@ -123,8 +129,8 @@ var higginsPostWorriedDialog = []dialogEntry{
 
 func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 	return &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_director_higgins_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_director_higgins_talk.png", 8),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 8, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 4, 2),
 		bounds:         sdl.Rect{X: 700, Y: 400, W: 120, H: 210},
 		name:           "Director Higgins",
 		dialog:         higginsDefaultDialog,
@@ -135,8 +141,8 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 
 func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	return &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_director_higgins_office_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_director_higgins_office_talk.png", 8),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 4, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 4, 2),
 		bounds:         sdl.Rect{X: 780, Y: 300, W: 120, H: 210},
 		name:           "Director Higgins",
 		dialog:         higginsWorriedDialog,
@@ -178,17 +184,17 @@ var tommyPostStrangeDialog = []dialogEntry{
 
 func newTommy(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_homesick_kid_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_homesick_kid_talk.png", 8),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/tommy/npc_tommy_idle.png", 8, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/tommy/npc_tommy_talk.png", 4, 2),
 		bounds:         sdl.Rect{X: 140, Y: 400, W: 130, H: 170},
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0.3,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeStrips(renderer, n,
-		"assets/images/locations/camp/npc/npc_homesick_kid_strange_idle.png",
-		"assets/images/locations/camp/npc/npc_homesick_kid_strange_talk.png")
+	loadStrangeGrids(renderer, n,
+		"assets/images/locations/camp/npc/kids/tommy/npc_tommy_strange_idle.png", 8, 2,
+		"assets/images/locations/camp/npc/kids/tommy/npc_tommy_strange_talk.png", 8, 2)
 	return n
 }
 
@@ -225,17 +231,17 @@ var jakePostStrangeDialog = []dialogEntry{
 
 func newJake(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_bully_kid_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_bully_kid_talk.png", 8),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png", 5, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/jake/npc_jake_talk.png", 5, 2),
 		bounds:         sdl.Rect{X: 380, Y: 380, W: 130, H: 185},
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0.25,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeStrips(renderer, n,
-		"assets/images/locations/camp/npc/npc_bully_kid_strange_idle.png",
-		"assets/images/locations/camp/npc/npc_bully_kid_strange_talk.png")
+	loadStrangeGrids(renderer, n,
+		"assets/images/locations/camp/npc/kids/jake/npc_jake_strange_idle.png", 6, 2,
+		"assets/images/locations/camp/npc/kids/jake/npc_jake_strange_talk.png", 8, 2)
 	return n
 }
 
@@ -273,17 +279,17 @@ var lilyPostStrangeDialog = []dialogEntry{
 
 func newLily(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_shy_girl_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_shy_girl_talk.png", 8),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/lily/npc_lily_idle.png", 8, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/lily/npc_lily_talk.png", 8, 2),
 		bounds:         sdl.Rect{X: 610, Y: 390, W: 120, H: 165},
 		name:           "Lily",
 		dialog:         lilyDialog,
 		bobAmount:      0.15,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeStrips(renderer, n,
-		"assets/images/locations/camp/npc/npc_shy_girl_strange_idle.png",
-		"assets/images/locations/camp/npc/npc_shy_girl_strange_talk.png")
+	loadStrangeGrids(renderer, n,
+		"assets/images/locations/camp/npc/kids/lily/npc_lily_strange_idle.png", 8, 2,
+		"assets/images/locations/camp/npc/kids/lily/npc_lily_strange_talk.png", 8, 2)
 	return n
 }
 
@@ -323,17 +329,17 @@ var marcusPostStrangeDialog = []dialogEntry{
 
 func newMarcus(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_know_it_all_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_know_it_all_talk.png", 8),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png", 7, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_talk.png", 8, 2),
 		bounds:         sdl.Rect{X: 900, Y: 370, W: 130, H: 190},
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0.2,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeStrips(renderer, n,
-		"assets/images/locations/camp/npc/npc_know_it_all_strange_idle.png",
-		"assets/images/locations/camp/npc/npc_know_it_all_strange_talk.png")
+	loadStrangeGrids(renderer, n,
+		"assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_idle.png", 8, 2,
+		"assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_talk.png", 8, 2)
 	return n
 }
 
@@ -371,17 +377,17 @@ var dannyPostStrangeDialog = []dialogEntry{
 
 func newDanny(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_prankster_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/camp/npc/npc_prankster_talk.png", 8),
-		bounds:         sdl.Rect{X: 1170, Y: 380, W: 130, H: 185},
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/danny/npc_danny_idle.png", 8, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/danny/npc_danny_talk.png", 8, 2),
+		bounds:         sdl.Rect{X: 1120, Y: 380, W: 130, H: 185},
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0.3,
 		talkFrameSpeed: 0.12,
 	}
-	loadStrangeStrips(renderer, n,
-		"assets/images/locations/camp/npc/npc_prankster_strange_idle.png",
-		"assets/images/locations/camp/npc/npc_prankster_strange_talk.png")
+	loadStrangeGrids(renderer, n,
+		"assets/images/locations/camp/npc/kids/danny/npc_danny_strange_idle.png", 8, 2,
+		"assets/images/locations/camp/npc/kids/danny/npc_danny_strange_talk.png", 8, 2)
 	return n
 }
 
@@ -499,8 +505,8 @@ var frenchGuidePostDialog = []dialogEntry{
 
 func newFrenchGuide(renderer *sdl.Renderer) *npc {
 	return &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/paris/npc/npc_french_guide_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/paris/npc/npc_french_guide_talk.png", 8),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_french_guide_idle.png", 8, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_french_guide_talk.png", 4, 2),
 		bounds:         sdl.Rect{X: 300, Y: 350, W: 140, H: 240},
 		name:           "Madame Colette",
 		dialog:         frenchGuideDialog,
@@ -534,8 +540,8 @@ var museumCuratorPostDialog = []dialogEntry{
 
 func newMuseumCurator(renderer *sdl.Renderer) *npc {
 	return &npc{
-		idleGrid:       loadNPCStrip(renderer, "assets/images/locations/paris/npc/npc_museum_curator_idle.png", 8),
-		talkGrid:       loadNPCStrip(renderer, "assets/images/locations/paris/npc/npc_museum_curator_talk.png", 8),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_idle.png", 8, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_talk.png", 5, 2),
 		bounds:         sdl.Rect{X: 500, Y: 320, W: 130, H: 250},
 		name:           "Curator Beaumont",
 		dialog:         museumCuratorDialog,

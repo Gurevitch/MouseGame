@@ -26,7 +26,13 @@
       "Bash(python3 -c ':*)",
       "Bash(python -c ':*)",
       "Bash(timeout 5 go run .)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(mkdir -p higgins kids/marcus kids/tommy kids/jake kids/lily kids/danny)",
+      "Bash(cp npc_director_higgins_idle.png npc_director_higgins_talk.png npc_director_higgins_office_idle.png npc_director_higgins_office_talk.png higgins/)",
+      "Bash(cp npc_know_it_all_idle.png npc_know_it_all_talk.png npc_know_it_all_strange_idle.png npc_know_it_all_strange_talk.png kids/marcus/)",
+      "Bash(cp npc_homesick_kid_idle.png npc_homesick_kid_talk.png npc_homesick_kid_strange_idle.png npc_homesick_kid_strange_talk.png kids/tommy/)",
+      "Bash(cp npc_bully_kid_idle.png npc_bully_kid_talk.png npc_bully_kid_strange_idle.png npc_bully_kid_strange_talk.png kids/jake/)",
+      "Bash(find . -name \"*.go\" -exec wc -l {} +)"
     ]
   }
 }

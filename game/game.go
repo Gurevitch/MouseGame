@@ -107,11 +107,12 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 		}
 	}
 
-	// Load campfire animation (8 frames, single row)
-	fireGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/locations/camp/campfire_idle.png", 8, 1)
-	for c := 0; c < 8; c++ {
-		gf := fireGrid[0][c]
-		g.campfireFrames = append(g.campfireFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+	fireGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/locations/camp/campfire_idle.png", 8, 4)
+	for r := 0; r < len(fireGrid); r++ {
+		for c := 0; c < len(fireGrid[r]); c++ {
+			gf := fireGrid[r][c]
+			g.campfireFrames = append(g.campfireFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+		}
 	}
 
 	g.marcusRoomNightBg = newPNGBackground(renderer, "assets/images/locations/camp/background/marcus_room_night.png")
@@ -626,7 +627,7 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		})
 	}
 
-	if !g.nightSceneDone && g.sceneMgr.currentName == "marcus_room" && !g.sceneMgr.transitioning && !g.dialog.active {
+	if !g.nightSceneDone && g.metKids >= 5 && g.sceneMgr.currentName == "marcus_room" && !g.sceneMgr.transitioning && !g.dialog.active {
 		g.nightSceneArrival()
 	}
 

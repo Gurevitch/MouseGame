@@ -225,7 +225,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			{900, 480, 1200, 500},
 			{620, 520, 650, 650},
 			{120, 480, 50, 500},
-			{1200, 500, 1350, 520},
+			{1200, 500, 1400, 520},
 		},
 		hotspots: []hotspot{
 			{
@@ -241,34 +241,34 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 				arrow:       arrowRight,
 			},
 			{
-				bounds:      sdl.Rect{X: 70, Y: 340, W: 120, H: 100},
+				bounds:      sdl.Rect{X: 70, Y: 370, W: 120, H: 120},
 				targetScene: "tommy_room",
 				name:        "Tommy's Cabin",
-				arrow:       arrowUp,
+				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 320, Y: 310, W: 120, H: 100},
+				bounds:      sdl.Rect{X: 320, Y: 350, W: 120, H: 120},
 				targetScene: "jake_room",
 				name:        "Jake's Cabin",
-				arrow:       arrowUp,
+				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 560, Y: 290, W: 120, H: 100},
+				bounds:      sdl.Rect{X: 560, Y: 340, W: 120, H: 120},
 				targetScene: "lily_room",
 				name:        "Lily's Cabin",
-				arrow:       arrowUp,
+				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 860, Y: 310, W: 120, H: 100},
+				bounds:      sdl.Rect{X: 860, Y: 350, W: 120, H: 120},
 				targetScene: "marcus_room",
 				name:        "Marcus's Cabin",
-				arrow:       arrowUp,
+				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 1160, Y: 340, W: 120, H: 100},
+				bounds:      sdl.Rect{X: 1160, Y: 370, W: 120, H: 120},
 				targetScene: "danny_room",
 				name:        "Danny's Cabin",
-				arrow:       arrowUp,
+				arrow:       arrowNone,
 			},
 		},
 	}
