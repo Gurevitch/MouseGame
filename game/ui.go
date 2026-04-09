@@ -18,6 +18,7 @@ const (
 	cursorArrowRight
 	cursorArrowUp
 	cursorArrowDown
+	cursorArrowDownRight
 	cursorCount
 )
 
@@ -53,6 +54,7 @@ func (ui *uiManager) initCursors(renderer *sdl.Renderer) {
 	ui.cursorTex[cursorArrowRight], ui.cursorW[cursorArrowRight], ui.cursorH[cursorArrowRight] = load("assets/images/ui/cursors/cursor_arrow_right.png")
 	ui.cursorTex[cursorArrowUp], ui.cursorW[cursorArrowUp], ui.cursorH[cursorArrowUp] = load("assets/images/ui/cursors/cursor_arrow_up.png")
 	ui.cursorTex[cursorArrowDown], ui.cursorW[cursorArrowDown], ui.cursorH[cursorArrowDown] = load("assets/images/ui/cursors/cursor_arrow_down.png")
+	ui.cursorTex[cursorArrowDownRight], ui.cursorW[cursorArrowDownRight], ui.cursorH[cursorArrowDownRight] = load("assets/images/ui/cursors/cursor_arrow_down_right.png")
 }
 
 func (ui *uiManager) triggerClick() {
@@ -124,7 +126,7 @@ func (ui *uiManager) draw(renderer *sdl.Renderer, mx, my int32) {
 	renderer.SetDrawColor(0, 0, 0, 140)
 	renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: 36})
 
-	txt := "CLICK TO WALK | CLICK CHARACTERS TO TALK | CLICK ARROWS TO CHANGE ROOMS | mouse: (" + fmt.Sprintf("%d", mx) + ", " + fmt.Sprintf("%d", my) + ")"
+	txt := "(" + fmt.Sprintf("%d", mx) + ", " + fmt.Sprintf("%d", my) + ")"
 	ui.font.DrawText(renderer, txt, 10, 11, 2,
 		sdl.Color{R: 0, G: 0, B: 0, A: 120})
 	ui.font.DrawText(renderer, txt, 9, 10, 2,
@@ -197,6 +199,8 @@ func (ui *uiManager) drawCursor(renderer *sdl.Renderer, mx, my int32) {
 		dy = -h
 	case cursorArrowDown:
 		dx = -w / 2
+		dy = 0
+	case cursorArrowDownRight:
 		dy = 0
 	case cursorTalk:
 		dx = -w / 2

@@ -13,6 +13,7 @@ type travelLocation struct {
 	pinX     int32
 	pinY     int32
 	unlocked bool
+	info     string // city facts shown when clicking locked cities
 }
 
 type travelMap struct {
@@ -25,14 +26,14 @@ func newTravelMap(renderer *sdl.Renderer) *travelMap {
 	tm := &travelMap{
 		renderer: renderer,
 		locations: []travelLocation{
-			{name: "Camp Chilly Wa Wa", scene: "camp_entrance", pinX: 310, pinY: 280, unlocked: true},
-			{name: "Paris", scene: "paris_street", pinX: 670, pinY: 240, unlocked: false},
-			{name: "Jerusalem", scene: "jerusalem_street", pinX: 760, pinY: 310, unlocked: false},
-			{name: "Tokyo", scene: "tokyo_street", pinX: 1200, pinY: 280, unlocked: false},
-			{name: "Rome", scene: "rome_street", pinX: 700, pinY: 275, unlocked: false},
-			{name: "Rio de Janeiro", scene: "rio_street", pinX: 430, pinY: 490, unlocked: false},
-			{name: "Buenos Aires", scene: "buenosaires_street", pinX: 400, pinY: 540, unlocked: false},
-			{name: "Mexico City", scene: "mexico_street", pinX: 240, pinY: 340, unlocked: false},
+			{name: "Camp Chilly Wa Wa", scene: "camp_entrance", pinX: 310, pinY: 280, unlocked: true, info: "Camp Chilly Wa Wa - A summer camp in the mountains. Home base for PP and the kids."},
+			{name: "Paris", scene: "paris_street", pinX: 670, pinY: 240, unlocked: false, info: "Paris, France. City of lights! Home of the Eiffel Tower (1889) and the Louvre museum with over 380,000 artworks."},
+			{name: "Jerusalem", scene: "jerusalem_street", pinX: 760, pinY: 310, unlocked: false, info: "Jerusalem, Israel. One of the oldest cities in the world. Home of the Western Wall and ancient underground tunnels."},
+			{name: "Tokyo", scene: "tokyo_street", pinX: 1200, pinY: 280, unlocked: false, info: "Tokyo, Japan. A city of ancient temples and modern towers. Famous for cherry blossoms, torii gates, and Senso-ji temple."},
+			{name: "Rome", scene: "rome_street", pinX: 700, pinY: 275, unlocked: false, info: "Rome, Italy. The Eternal City! Home of the Colosseum (72 AD), where gladiators once fought before 50,000 spectators."},
+			{name: "Rio de Janeiro", scene: "rio_street", pinX: 430, pinY: 490, unlocked: false, info: "Rio de Janeiro, Brazil. Famous for Christ the Redeemer statue, Copacabana beach, and the world's biggest Carnival."},
+			{name: "Buenos Aires", scene: "buenosaires_street", pinX: 400, pinY: 540, unlocked: false, info: "Buenos Aires, Argentina. The birthplace of tango! Known for La Boca neighborhood and the iconic Obelisco."},
+			{name: "Mexico City", scene: "mexico_street", pinX: 240, pinY: 340, unlocked: false, info: "Mexico City, Mexico. Built on ancient Aztec ruins. Home of Teotihuacan pyramids and Frida Kahlo's museum."},
 		},
 	}
 	// Try to load globe image, fall back to procedural map
@@ -271,6 +272,18 @@ func (tm *travelMap) hitTest(mx, my int32) *travelLocation {
 		if !tm.locations[i].unlocked {
 			continue
 		}
+		loc := &tm.locations[i]
+		hitRect := sdl.Rect{X: loc.pinX - 40, Y: loc.pinY - 35, W: 80, H: 70}
+		if pt.InRect(&hitRect) {
+			return loc
+		}
+	}
+	return nil
+}
+
+func (tm *travelMap) hitTestAny(mx, my int32) *travelLocation {
+	pt := sdl.Point{X: mx, Y: my}
+	for i := range tm.locations {
 		loc := &tm.locations[i]
 		hitRect := sdl.Rect{X: loc.pinX - 40, Y: loc.pinY - 35, W: 80, H: 70}
 		if pt.InRect(&hitRect) {

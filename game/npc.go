@@ -79,10 +79,6 @@ func loadStrangeGrids(renderer *sdl.Renderer, n *npc, idlePath string, idleCols,
 
 // ===== Camp Chilly Wa Wa NPCs =====
 
-func loadNPCStrip(renderer *sdl.Renderer, path string, cols int) []npcFrame {
-	return loadNPCGrid(renderer, path, cols, 1)
-}
-
 func loadNPCGrid(renderer *sdl.Renderer, path string, cols, rows int) []npcFrame {
 	grid := engine.SpriteGridFromPNG(renderer, path, cols, rows)
 	var frames []npcFrame
@@ -247,19 +243,30 @@ func newJake(renderer *sdl.Renderer) *npc {
 
 // --- Lily (Shy Girl) ---
 
-var lilyDialog = []dialogEntry{
+var lilyShyDialog = []dialogEntry{
 	{speaker: "Lily", text: "..."},
 	{speaker: "Pink Panther", text: "Hello there. I'm the new counselor."},
-	{speaker: "Lily", text: "...o-okay..."},
-	{speaker: "Pink Panther", text: "Those are beautiful flowers you're arranging."},
-	{speaker: "Lily", text: "...thank you... I like flowers... and quiet places..."},
+	{speaker: "Lily", text: "..."},
+	{speaker: "Pink Panther", text: "Not much of a talker, huh?"},
 }
 
-var lilyPostDialog = []dialogEntry{
+var lilyFlowerDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "I found this flower by the lake. Would you like it?"},
+	{speaker: "Lily", text: "...! A daisy! It's beautiful!"},
+	{speaker: "Lily", text: "...thank you... nobody ever brings me flowers..."},
+	{speaker: "Pink Panther", text: "I'm the new counselor. What's your name?"},
+	{speaker: "Lily", text: "...Lily... I like flowers... and quiet places..."},
+	{speaker: "Pink Panther", text: "Nice to meet you, Lily. Those are beautiful flowers you're arranging."},
+	{speaker: "Lily", text: "...thank you... you're nice..."},
+}
+
+var lilyDialog = []dialogEntry{
 	{speaker: "Lily", text: "...hi again..."},
 	{speaker: "Pink Panther", text: "Hello, Lily. Beautiful day, isn't it?"},
 	{speaker: "Lily", text: "*small nod*"},
 }
+
+var lilyPostDialog = lilyDialog
 
 var lilyStrangeDialog = []dialogEntry{
 	{speaker: "Lily", text: "...the flowers are glowing..."},
@@ -283,7 +290,7 @@ func newLily(renderer *sdl.Renderer) *npc {
 		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/lily/npc_lily_talk.png", 8, 2),
 		bounds:         sdl.Rect{X: 610, Y: 390, W: 120, H: 165},
 		name:           "Lily",
-		dialog:         lilyDialog,
+		dialog:         lilyShyDialog,
 		bobAmount:      0.15,
 		talkFrameSpeed: 0.12,
 	}

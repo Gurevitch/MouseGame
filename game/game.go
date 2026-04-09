@@ -91,15 +91,13 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	g.setupTravelHotspots()
 	g.ui.initCursors(renderer)
 
-	// Load sleeping/waking sprites
-	sleepGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/player/pp_sleeping.png", 8, 2)
-	for r := 0; r < 2; r++ {
-		for c := 0; c < 8; c++ {
-			gf := sleepGrid[r][c]
-			g.sleepingFrames = append(g.sleepingFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
-		}
+	// Load sleeping/waking sprites (use first row only)
+	sleepGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/pp_sleeping.png", 8, 2)
+	for c := 0; c < 8; c++ {
+		gf := sleepGrid[0][c]
+		g.sleepingFrames = append(g.sleepingFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
 	}
-	wakeGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/player/pp_waking.png", 8, 2)
+	wakeGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/pp_waking.png", 8, 2)
 	for r := 0; r < 2; r++ {
 		for c := 0; c < 8; c++ {
 			gf := wakeGrid[r][c]
@@ -259,13 +257,26 @@ func (g *Game) setupCampCallbacks() {
 			}
 		case "Lily":
 			kid.onDialogEnd = func() {
-				if game.day == 1 {
-					game.metKids++
-					kid.dialog = lilyPostDialog
-					game.checkDay1Complete()
-				} else if !kid.dialogDone {
+				if game.day == 1 && !kid.dialogDone {
+					// First talk: shy dialog — Higgins hint
+					game.dialog.startDialog([]dialogEntry{
+						{speaker: "Director Higgins", text: "She's very shy, that one."},
+						{speaker: "Director Higgins", text: "Maybe try bringing her something she likes? She loves flowers."},
+						{speaker: "Pink Panther", text: "Flowers... I think I saw some by the lake."},
+					})
+					kid.dialogDone = true // mark so hint only plays once
+				} else if game.day >= 2 && !kid.dialogDone {
 					kid.dialogDone = true
 					kid.dialog = lilyPostStrangeDialog
+				}
+			}
+			// Flower item interaction
+			kid.altDialogFunc = func() ([]dialogEntry, func()) {
+				return lilyFlowerDialog, func() {
+					game.metKids++
+					kid.dialog = lilyDialog
+					kid.altDialogFunc = nil
+					game.checkDay1Complete()
 				}
 			}
 		case "Danny":
@@ -281,6 +292,48 @@ func (g *Game) setupCampCallbacks() {
 			}
 			}
 		}
+	}
+
+	// --- Lake: Flower pickup for Lily ---
+	if lake, ok := g.sceneMgr.scenes["camp_lake"]; ok {
+		flowerTex, flowerW, flowerH := engine.SafeTextureFromPNGRaw(g.renderer, "assets/images/items/flower.png")
+		if flowerTex == nil {
+			// Fallback: use marshmallow texture as placeholder
+			flowerTex, flowerW, flowerH = engine.SafeTextureFromPNGRaw(g.renderer, "assets/images/items/marshmallow.png")
+		}
+		flower := &floorItem{
+			tex:     flowerTex,
+			srcW:    flowerW,
+			srcH:    flowerH,
+			bounds:  sdl.Rect{X: 250, Y: 380, W: 40, H: 40},
+			name:    "Flower",
+			visible: true,
+			onPickup: func() {
+				if flowerTex != nil {
+					game.inv.addItem(&inventoryItem{
+						name: "Flower",
+						tex:  flowerTex,
+						srcW: flowerW,
+						srcH: flowerH,
+						desc: "A pretty daisy from the lake. Lily might like this.",
+					})
+				}
+				// Remove flower from scene
+				if lake, ok := game.sceneMgr.scenes["camp_lake"]; ok {
+					for i, fi := range lake.floorItems {
+						if fi.name == "Flower" {
+							fi.visible = false
+							_ = i
+							break
+						}
+					}
+				}
+				game.dialog.startDialog([]dialogEntry{
+					{speaker: "Pink Panther", text: "A pretty daisy. I bet Lily would like this."},
+				})
+			},
+		}
+		lake.floorItems = append(lake.floorItems, flower)
 	}
 
 }
@@ -423,7 +476,9 @@ func (g *Game) setupTravelHotspots() {
 			if campEntrance.hotspots[i].name == "Enter Camp" {
 				campEntrance.hotspots[i].onInteract = func() bool {
 					game.player.dir = dirUp
-					game.player.walkToAndDo(599, 350, func() {
+					game.player.allowOffscreen = true
+					game.player.walkToAndDo(599, 200, func() {
+						game.player.allowOffscreen = false
 						game.sceneMgr.transitionTo("camp_grounds", game.player)
 					})
 					return true
@@ -468,7 +523,16 @@ func (g *Game) HandleClick(x, y int32) {
 			g.showTravelMap = false
 			g.sceneMgr.transitionTo(loc.scene, g.player)
 		} else if loc == nil {
-			g.showTravelMap = false
+			// Check if they clicked a locked city — show info popup
+			anyLoc := g.travelMap.hitTestAny(x, y)
+			if anyLoc != nil && !anyLoc.unlocked && anyLoc.info != "" {
+				g.showTravelMap = false
+				g.dialog.startDialog([]dialogEntry{
+					{speaker: anyLoc.name, text: anyLoc.info},
+				})
+			} else {
+				g.showTravelMap = false
+			}
 		}
 		return
 	}
@@ -578,7 +642,7 @@ func (g *Game) HandleClick(x, y int32) {
 		plr := g.player
 		sm := g.sceneMgr
 		onArrival := func() { sm.transitionTo(tgt, plr) }
-		if hs.arrow == arrowLeft || hs.arrow == arrowRight || hs.arrow == arrowDown || hs.arrow == arrowUp {
+		if hs.arrow == arrowLeft || hs.arrow == arrowRight || hs.arrow == arrowDown || hs.arrow == arrowUp || hs.arrow == arrowDownRight {
 			plr.walkToExit(hs.arrow, onArrival)
 		} else {
 			plr.walkToAndDo(
@@ -599,6 +663,13 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 		g.showTravelMap = false
 		return
 	}
+	if scancode == sdl.SCANCODE_M && !g.dialog.active && !g.sceneMgr.transitioning {
+		g.showTravelMap = !g.showTravelMap
+		if g.showTravelMap {
+			g.travelMapFrom = g.sceneMgr.currentName
+		}
+		return
+	}
 	if scancode == sdl.SCANCODE_SPACE && g.dialog.active {
 		g.dialog.advance()
 	}
@@ -616,7 +687,11 @@ func (g *Game) Update(dt float64, mx, my int32) {
 
 	if !g.monologuePlayed && g.sceneMgr.currentName == "camp_entrance" && !g.sceneMgr.transitioning {
 		g.monologuePlayed = true
+		// PP faces camera and talks during opening monologue
+		g.player.state = stateTalking
+		g.player.dir = dirDown
 		g.dialog.startDialogWithCallback(openingMonologue, func() {
+			g.player.state = stateIdle
 			// Auto-walk to Higgins after monologue
 			for _, n := range scene.npcs {
 				if n.name == "Director Higgins" {
@@ -627,7 +702,7 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		})
 	}
 
-	if !g.nightSceneDone && g.metKids >= 5 && g.sceneMgr.currentName == "marcus_room" && !g.sceneMgr.transitioning && !g.dialog.active {
+	if !g.nightSceneDone && g.day == 1 && g.metKids >= 5 && g.sceneMgr.currentName == "marcus_room" && !g.sceneMgr.transitioning && !g.dialog.active {
 		g.nightSceneArrival()
 	}
 

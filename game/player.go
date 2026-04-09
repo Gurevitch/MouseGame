@@ -90,7 +90,7 @@ type player struct {
 }
 
 func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
-	grid := engine.SpriteGridFromPNGRaw(renderer, path, cols, 1)
+	grid := engine.SpriteGridFromPNG(renderer, path, cols, 1)
 	frames := make([]spriteFrame, cols)
 	for c := 0; c < cols; c++ {
 		gf := grid[0][c]
@@ -114,13 +114,13 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	p.walkUpFrames = stripFrames(renderer, "assets/images/player/PP walk back.png", 8)
 
 	// Idle images are 8x2 grids — use only frame [0][0] as static idle
-	idleFrontGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/player/PP idle front.png", 8, 2)
+	idleFrontGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP idle front.png", 8, 2)
 	p.idleFrontFrames = []spriteFrame{gridToSprite(idleFrontGrid[0][0])}
 
-	idleSideGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/player/PP idle side.png", 8, 2)
+	idleSideGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP idle side.png", 8, 2)
 	p.idleSideFrames = []spriteFrame{gridToSprite(idleSideGrid[0][0])}
 
-	idleBackGrid := engine.SpriteGridFromPNGRaw(renderer, "assets/images/player/PP idle back.png", 8, 2)
+	idleBackGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP idle back.png", 8, 2)
 	p.idleBackFrames = []spriteFrame{gridToSprite(idleBackGrid[0][0])}
 
 	p.talkFrames = stripFrames(renderer, "assets/images/player/PP talk front.png", 8)
@@ -321,6 +321,11 @@ func (p *player) walkToExit(dir arrowDir, action func()) {
 		p.targetX = p.x
 		p.targetY = -playerDstH
 		p.dir = dirUp
+		p.facingLeft = false
+	case arrowDownRight:
+		p.targetX = engine.ScreenWidth + playerDstW
+		p.targetY = engine.ScreenHeight + playerDstH
+		p.dir = dirDown
 		p.facingLeft = false
 	default:
 		p.allowOffscreen = false

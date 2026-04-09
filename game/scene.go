@@ -17,6 +17,7 @@ const (
 	arrowLeft
 	arrowUp
 	arrowDown
+	arrowDownRight
 )
 
 type hotspot struct {
@@ -235,10 +236,10 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 				arrow:       arrowLeft,
 			},
 			{
-				bounds:      sdl.Rect{X: 1320, Y: 200, W: 80, H: 500},
+				bounds:      sdl.Rect{X: 1100, Y: 640, W: 150, H: 120},
 				targetScene: "camp_office",
 				name:        "Higgins' Office",
-				arrow:       arrowRight,
+				arrow:       arrowDownRight,
 			},
 			{
 				bounds:      sdl.Rect{X: 70, Y: 370, W: 120, H: 120},
@@ -929,6 +930,9 @@ func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, mx, my in
 			cy = hs.bounds.Y + 14
 		case arrowDown:
 			cy = hs.bounds.Y + hs.bounds.H - 14
+		case arrowDownRight:
+			cx = hs.bounds.X + hs.bounds.W - 14
+			cy = hs.bounds.Y + hs.bounds.H - 14
 		}
 
 		dx := float64(mx) - float64(cx)
@@ -963,6 +967,11 @@ func (s *scene) drawHotspots(renderer *sdl.Renderer, hoverName string, mx, my in
 			for i := int32(0); i < sz; i++ {
 				renderer.SetDrawColor(255, 220, 100, a)
 				renderer.FillRect(&sdl.Rect{X: cx - (sz - i), Y: cy - i, W: (sz-i)*2 + 1, H: 1})
+			}
+		case arrowDownRight:
+			for i := int32(0); i < sz; i++ {
+				renderer.SetDrawColor(255, 220, 100, a)
+				renderer.FillRect(&sdl.Rect{X: cx - sz + i, Y: cy - sz + i, W: 1, H: 1})
 			}
 		}
 	}

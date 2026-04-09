@@ -79,14 +79,62 @@ When fixed, move to the **Resolved** section with the date.
              every kid need idle,talking and also freaking out idle and talking 
 - [ ] `[P1]` idle that you moved to folder removed from the npc folder 
 
-### Reported
-- [ ] `[P0]` write in plan mode!  
-- [ ] `[P2]` in pp_sleeping animation  use only the first row 
-- [ ] `[P2]` in the top of the screen we can remove to line of click and walk. i want only the cords to stay for now, its important when we need to change the clicks and arrows
-- [ ] `[P1]` - in the first screen i need the pp to talk when he said the first sentences.
-             - can we change to rooms to be with open door? then i want the pp to make it like he is going out of the door.
-             - in the first screen after we click on the top arrow, i want to see the pp walking back and after a second or two to change the screen to the camp
-             - in order to talk to lily, we need to get a flower from the lake. change the story as well if needed. first we will try to talk to her, the higgings will arrived and said that she is shy so you need to find another way in order to talk. then in the lake sceen put a flower the we need to get. going back to the camp, from the inventory get out the flower and then we can see the conversation.
-- [ ] `[P1]` make sure in the map the landmarks are places in the right place. the map will be always available to open, so what we will do is when the user open the map, each city that he will press(that we not going to fly to), a popup will load with some data on the city.    
-- [ ] `[P1]` i want to be able click on each door and get inside, for higgins office lets use the road down right.
-- [ ] `[P2]` we made alot of changes in frames. check the code and remove uneeded parts
+### Reported (batch 3)
+- [x] `[P2]` PP sleeping — use only first row — FIXED
+- [x] `[P2]` Top bar — removed instructions, coords only remain
+- [x] `[P1]` PP talks during opening monologue — FIXED: state set to stateTalking
+- [x] `[P1]` PP walks back on "Enter Camp" — FIXED: walks to Y:200 (into distance) then transitions
+- [x] `[P1]` Lily flower mechanic — DONE: shy first dialog, Higgins hint, flower in lake, use on Lily
+- [x] `[P1]` Map city info popups — DONE: clicking locked cities shows facts. Press M to open map anywhere.
+- [x] `[P1]` Higgins office via road — FIXED: moved hotspot to road area (down-right) instead of screen edge
+- [x] `[P2]` Code cleanup — removed unused loadNPCStrip
+- [ ] `[P1]` Open door rooms — kid rooms with open doors, PP walks through door (needs door assets)
+- [ ] `[P1]` Flower asset needed — currently using marshmallow.png as placeholder for flower item
+
+- [x] `[P1]` PP walking/talking shows white bg — FIXED: switched all PP sprites from SpriteGridFromPNGRaw to SpriteGridFromPNG (auto color-key removal)
+- [x] `[P1]` PP sleeping has white bg — FIXED: same fix, switched to SpriteGridFromPNG
+- [x] `[P1]` Story crash: clicking Lily before flower triggered night — FIXED: added `g.day == 1` guard to night trigger, Lily shy dialog doesn't count as metKid
+- [x] `[P1]` Colors lost after bg removal — FIXED: SpriteGridFromPNG auto-detects bg color from corners, preserves all character colors
+- [x] `[P1]` Can't reach Higgins office — FIXED: moved hotspot to (1100, 640) area with walkToAndDo transition
+- [ ] `[P1]` Kids display as frame swapping (two frames at once) — likely wrong grid dimensions for some sprites. Need to verify each kid's actual sprite layout
+- [ ] `[P1]` Kid room exit doors — need clear door hotspots for exiting rooms
+
+- [ ] `[P0]` write in plan mode!!!!
+- [ ] `[P1]` after you finish all the tasks. read the games from folders C:\Users\Roii\Documents\PP HP\HokusPP and C:\Users\Roii\Documents\PP P2P\ppp2p and see how the game is implement there. those are the real retro games so we can learn how to keep build our 
+- [ ] `[P1]` when pp is walking we see him two times.
+- [ ] `[P1]` every object is floating, they go up and down a little insted of staying in plays
+- [ ] `[P1]` higgins idle in first screen is swipping to fast and his idle is not the same. when he talking he become small and double
+- [ ] `[P1]` we still didnt change the way to go to the camp. when click on the top arrow i want the walking back idle to walk for a few seconds then move. then!! when the player coming to the camp i want him to walk from the left side of the screen.
+- [ ] `[P1]` kid frames are swipping, we can see the frames moving between each one.
+- [ ] `[P1]` give me prompt for down right arrow 
+- [ ] `[P1]` when tommy talking he become double, danny not changing to talking idle when needed
+- [ ] `[P1]` it hard to find the right spot to talk to the kids. i want as the icon change to talkin to be able to speak to then
+- [ ] `[P0]` i want to be able to go out of room easly! make the posible to go out in bigger radius
+- [ ] `[P1]` lily senario isnt working, the first time i click on her it said i broght her a flower.remove the clue that higgins give. and also he is not showing up! make him come from his office and place over there around (1010,612). so we need another generate of him walking back
+- [ ] `[P1]` i clicked on marcut and went to his room for some reason.
+- [ ] `[P0]` we didnt create a idle of flower in the lake sceen! , i want it to be placed in (180,456). well i see the marshmello,remove it and put a flower that posible to take up with,
+             assets\images\player\PP grab.png. so we need to modifty it to be with the same name. i want to see the flower in my inventory as it should be
+             - in addition we need to generate pp bring the flower
+             - lily geting the flower
+             -fit the flower idle to the one we picking up and change the name from grab to taking flower or something.
+- [ ] `[P1]` change the talking with danny, hes not behind tree in the first conversation
+- [ ] `[P1]` pp id is one frame
+
+- [ ] `[P0]` night schen again! focus. 
+             1. higgns(need to be already in the frame in the right bottom corner) need to say that it become late.
+             2. we see the pp in the middle of the camp with fire turn on assets\images\locations\camp\campfire_idle.png(for some reason its four rows of frames)
+             3.we only hearing marcus freak out 
+             4.then!! moving to his room and see his freak out assets\images\locations\camp\npc\kids\marcus\npc_marcus_strange_talk copy.png over and over
+             5. morning, pp is waking up . same spot as the sleeping around (298,582) assets\images\player\pp_sleeping.png,assets\images\player\pp_waking.png after finish the senario he need to speak front and said he heard something wired...
+             6. serching marcus
+             7. speak to him and he moving between idle and talkin freak out.
+             8. goin to higgins office, speak about the 
+             9. instruction about the map
+             10. using the map
+- [ ] `[P1]` i added bottom right arrow.
+- [ ] `[P1]` higgins office when speak to him we need to change to position of him to (1065,413)
+- [ ] `[P1]` i want to generate a new animation, higgins give us the map, then we need to walk to him,generate a new idle of us taking it and put in pocket
+- [ ] `[P1]` when getting out of higgins office, we need to go out from the botton right corrner with walking back animation
+- [ ] `[P1]` you didnt use the location in the map!! and the map isnt working so does the airplane animation assets\images\player\pp_airplane.png its 3 lines
+            - location:
+            egypt (755,369),france (646,296),israel (782,349),chaina(1049,344),japan(1164,328),australia(1139,569),brazil(431,504),thailand(1000,397),india(932,399)
