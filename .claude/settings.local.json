@@ -32,7 +32,8 @@
       "Bash(cp npc_know_it_all_idle.png npc_know_it_all_talk.png npc_know_it_all_strange_idle.png npc_know_it_all_strange_talk.png kids/marcus/)",
       "Bash(cp npc_homesick_kid_idle.png npc_homesick_kid_talk.png npc_homesick_kid_strange_idle.png npc_homesick_kid_strange_talk.png kids/tommy/)",
       "Bash(cp npc_bully_kid_idle.png npc_bully_kid_talk.png npc_bully_kid_strange_idle.png npc_bully_kid_strange_talk.png kids/jake/)",
-      "Bash(find . -name \"*.go\" -exec wc -l {} +)"
+      "Bash(find . -name \"*.go\" -exec wc -l {} +)",
+      "Bash(grep -iE \"\\\\.\\(orb|escript|gam|scn|map|dat|cfg|ini|xml|json|txt|lst\\)$\")"
     ]
   }
 }

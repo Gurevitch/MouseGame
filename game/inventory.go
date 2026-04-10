@@ -29,7 +29,7 @@ type inventory struct {
 
 func newInventory(font *engine.BitmapFont, renderer *sdl.Renderer) *inventory {
 	inv := &inventory{font: font}
-	tex, w, h := engine.SafeTextureFromPNGRaw(renderer, "assets/images/ui/inv_circle.png")
+	tex, w, h := engine.SafeTextureFromPNGKeyed(renderer, "assets/images/ui/inv_circle.png")
 	if tex != nil {
 		tex.SetBlendMode(sdl.BLENDMODE_BLEND)
 		inv.circleTex = tex

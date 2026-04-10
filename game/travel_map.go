@@ -27,13 +27,16 @@ func newTravelMap(renderer *sdl.Renderer) *travelMap {
 		renderer: renderer,
 		locations: []travelLocation{
 			{name: "Camp Chilly Wa Wa", scene: "camp_entrance", pinX: 310, pinY: 280, unlocked: true, info: "Camp Chilly Wa Wa - A summer camp in the mountains. Home base for PP and the kids."},
-			{name: "Paris", scene: "paris_street", pinX: 670, pinY: 240, unlocked: false, info: "Paris, France. City of lights! Home of the Eiffel Tower (1889) and the Louvre museum with over 380,000 artworks."},
-			{name: "Jerusalem", scene: "jerusalem_street", pinX: 760, pinY: 310, unlocked: false, info: "Jerusalem, Israel. One of the oldest cities in the world. Home of the Western Wall and ancient underground tunnels."},
-			{name: "Tokyo", scene: "tokyo_street", pinX: 1200, pinY: 280, unlocked: false, info: "Tokyo, Japan. A city of ancient temples and modern towers. Famous for cherry blossoms, torii gates, and Senso-ji temple."},
-			{name: "Rome", scene: "rome_street", pinX: 700, pinY: 275, unlocked: false, info: "Rome, Italy. The Eternal City! Home of the Colosseum (72 AD), where gladiators once fought before 50,000 spectators."},
-			{name: "Rio de Janeiro", scene: "rio_street", pinX: 430, pinY: 490, unlocked: false, info: "Rio de Janeiro, Brazil. Famous for Christ the Redeemer statue, Copacabana beach, and the world's biggest Carnival."},
-			{name: "Buenos Aires", scene: "buenosaires_street", pinX: 400, pinY: 540, unlocked: false, info: "Buenos Aires, Argentina. The birthplace of tango! Known for La Boca neighborhood and the iconic Obelisco."},
-			{name: "Mexico City", scene: "mexico_street", pinX: 240, pinY: 340, unlocked: false, info: "Mexico City, Mexico. Built on ancient Aztec ruins. Home of Teotihuacan pyramids and Frida Kahlo's museum."},
+			{name: "Paris", scene: "paris_street", pinX: 646, pinY: 296, unlocked: false, info: "Paris, France. City of lights! Home of the Eiffel Tower (1889) and the Louvre museum with over 380,000 artworks."},
+			{name: "Jerusalem", scene: "jerusalem_street", pinX: 782, pinY: 349, unlocked: false, info: "Jerusalem, Israel. One of the oldest cities in the world. Home of the Western Wall and ancient underground tunnels."},
+			{name: "Tokyo", scene: "tokyo_street", pinX: 1164, pinY: 328, unlocked: false, info: "Tokyo, Japan. A city of ancient temples and modern towers. Famous for cherry blossoms, torii gates, and Senso-ji temple."},
+			{name: "Rome", scene: "rome_street", pinX: 730, pinY: 330, unlocked: false, info: "Rome, Italy. The Eternal City! Home of the Colosseum (72 AD), where gladiators once fought before 50,000 spectators."},
+			{name: "Rio de Janeiro", scene: "rio_street", pinX: 431, pinY: 504, unlocked: false, info: "Rio de Janeiro, Brazil. Famous for Christ the Redeemer statue, Copacabana beach, and the world's biggest Carnival."},
+			{name: "Egypt", scene: "egypt_street", pinX: 755, pinY: 369, unlocked: false, info: "Egypt. Home of the Great Pyramids of Giza, the Sphinx, and the ancient pharaohs. The Nile River runs through it all."},
+			{name: "India", scene: "india_street", pinX: 932, pinY: 399, unlocked: false, info: "India. Home of the Taj Mahal, a monument of love built in 1632. A land of ancient temples, spices, and vibrant culture."},
+			{name: "Thailand", scene: "thailand_street", pinX: 1000, pinY: 397, unlocked: false, info: "Thailand. Land of golden temples, floating markets, and ancient Buddhist monasteries. Known as the Land of Smiles."},
+			{name: "China", scene: "china_street", pinX: 1049, pinY: 344, unlocked: false, info: "China. Home of the Great Wall (over 13,000 miles long!), the Forbidden City, and thousands of years of civilization."},
+			{name: "Australia", scene: "australia_street", pinX: 1139, pinY: 569, unlocked: false, info: "Australia. Home of the Sydney Opera House, the Great Barrier Reef, and unique wildlife like kangaroos and koalas."},
 		},
 	}
 	// Try to load globe image, fall back to procedural map

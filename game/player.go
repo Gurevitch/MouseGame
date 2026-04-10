@@ -126,7 +126,7 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	p.talkFrames = stripFrames(renderer, "assets/images/player/PP talk front.png", 8)
 	p.talkSideFrames = stripFrames(renderer, "assets/images/player/PP talk side.png", 8)
 
-	p.grabFrames = stripFrames(renderer, "assets/images/player/PP grab.png", 8)
+	p.grabFrames = stripFrames(renderer, "assets/images/player/PP grab flower.png", 8)
 
 	celebrateFrames := stripFrames(renderer, "assets/images/player/PP celebrate.png", 8)
 	p.reactFrames = celebrateFrames

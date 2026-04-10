@@ -297,15 +297,11 @@ func (g *Game) setupCampCallbacks() {
 	// --- Lake: Flower pickup for Lily ---
 	if lake, ok := g.sceneMgr.scenes["camp_lake"]; ok {
 		flowerTex, flowerW, flowerH := engine.SafeTextureFromPNGRaw(g.renderer, "assets/images/items/flower.png")
-		if flowerTex == nil {
-			// Fallback: use marshmallow texture as placeholder
-			flowerTex, flowerW, flowerH = engine.SafeTextureFromPNGRaw(g.renderer, "assets/images/items/marshmallow.png")
-		}
 		flower := &floorItem{
 			tex:     flowerTex,
 			srcW:    flowerW,
 			srcH:    flowerH,
-			bounds:  sdl.Rect{X: 250, Y: 380, W: 40, H: 40},
+			bounds:  sdl.Rect{X: 180, Y: 456, W: 50, H: 50},
 			name:    "Flower",
 			visible: true,
 			onPickup: func() {

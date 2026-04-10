@@ -138,3 +138,9 @@ When fixed, move to the **Resolved** section with the date.
 - [ ] `[P1]` you didnt use the location in the map!! and the map isnt working so does the airplane animation assets\images\player\pp_airplane.png its 3 lines
             - location:
             egypt (755,369),france (646,296),israel (782,349),chaina(1049,344),japan(1164,328),australia(1139,569),brazil(431,504),thailand(1000,397),india(932,399)
+
+ 1a. PP shows twice when walking- 8 frames in two rows
+ 1c. Higgins idle swapping too fast / becomes small and double when talking assets\images\locations\camp\npc\higgins\npc_director_higgins_talk.png first row is 8 frames second is 6. we can use only to top row
+ 3d. Night scene — complete rework per user spec-> fix story.md if needed
+ 4a. Map landmark positions — use user's coordinates ->forgot to add rome, for now remove buenos aires and mexico
+ 4b. Airplane animation — 3 rows -> you can use the only two first rows. add a nice bg with some clouds moveing around us.

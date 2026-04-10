@@ -137,8 +137,8 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 
 func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	return &npc{
-		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 4, 2),
-		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 4, 2),
+		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 8, 2),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 8, 2),
 		bounds:         sdl.Rect{X: 780, Y: 300, W: 120, H: 210},
 		name:           "Director Higgins",
 		dialog:         higginsWorriedDialog,
