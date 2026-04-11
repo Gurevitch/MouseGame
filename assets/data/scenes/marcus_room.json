@@ -1,0 +1,23 @@
+{
+  "name": "marcus_room",
+  "background": "assets/images/locations/camp/background/marcus_room_day.png",
+  "spawnX": 700,
+  "spawnY": 550,
+  "minY": 0,
+  "maxY": 0,
+  "npcs": ["marcus"],
+  "hotspots": [
+    {
+      "bounds": {"x": 350, "y": 580, "w": 700, "h": 220},
+      "targetScene": "camp_grounds",
+      "name": "Exit Cabin",
+      "arrow": "down"
+    }
+  ],
+  "blockers": [
+    {"x": 0, "y": 0, "w": 400, "h": 450},
+    {"x": 400, "y": 0, "w": 500, "h": 300},
+    {"x": 1000, "y": 0, "w": 400, "h": 450}
+  ],
+  "walkSegments": []
+}

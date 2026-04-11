@@ -90,17 +90,19 @@ type player struct {
 }
 
 func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
-	grid := engine.SpriteGridFromPNG(renderer, path, cols, 1)
-	frames := make([]spriteFrame, cols)
-	for c := 0; c < cols; c++ {
-		gf := grid[0][c]
-		frames[c] = spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H}
-	}
-	return frames
+	return gridFrames(renderer, path, cols, 1)
 }
 
-func gridToSprite(gf engine.GridFrame) spriteFrame {
-	return spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H}
+func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFrame {
+	grid := engine.SpriteGridFromPNG(renderer, path, cols, rows)
+	var frames []spriteFrame
+	for r := 0; r < rows; r++ {
+		for c := 0; c < cols; c++ {
+			gf := grid[r][c]
+			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+		}
+	}
+	return frames
 }
 
 func newPlayer(renderer *sdl.Renderer) *player {
@@ -109,33 +111,28 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		y: float64(engine.ScreenHeight) - playerDstH - 100,
 	}
 
-	p.walkSideFrames = stripFrames(renderer, "assets/images/player/PP walk left.png", 8)
-	p.walkDownFrames = stripFrames(renderer, "assets/images/player/PP walk front.png", 8)
-	p.walkUpFrames = stripFrames(renderer, "assets/images/player/PP walk back.png", 8)
+	p.walkSideFrames = gridFrames(renderer, "assets/images/player/PP walk left.png", 8, 2)
+	p.walkDownFrames = gridFrames(renderer, "assets/images/player/PP walk front.png", 8, 2)
+	p.walkUpFrames = gridFrames(renderer, "assets/images/player/PP walk back.png", 8, 2)
 
-	// Idle images are 8x2 grids — use only frame [0][0] as static idle
-	idleFrontGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP idle front.png", 8, 2)
-	p.idleFrontFrames = []spriteFrame{gridToSprite(idleFrontGrid[0][0])}
+	// Idle images — use all frames for animated idle
+	p.idleFrontFrames = gridFrames(renderer, "assets/images/player/PP idle front.png", 8, 2)
+	p.idleSideFrames = gridFrames(renderer, "assets/images/player/PP idle side.png", 8, 2)
+	p.idleBackFrames = gridFrames(renderer, "assets/images/player/PP idle back.png", 8, 2)
 
-	idleSideGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP idle side.png", 8, 2)
-	p.idleSideFrames = []spriteFrame{gridToSprite(idleSideGrid[0][0])}
+	p.talkFrames = gridFrames(renderer, "assets/images/player/PP talk front.png", 8, 2)
+	p.talkSideFrames = gridFrames(renderer, "assets/images/player/PP talk side.png", 8, 2)
 
-	idleBackGrid := engine.SpriteGridFromPNG(renderer, "assets/images/player/PP idle back.png", 8, 2)
-	p.idleBackFrames = []spriteFrame{gridToSprite(idleBackGrid[0][0])}
+	p.grabFrames = gridFrames(renderer, "assets/images/player/PP grab flower.png", 8, 2)
 
-	p.talkFrames = stripFrames(renderer, "assets/images/player/PP talk front.png", 8)
-	p.talkSideFrames = stripFrames(renderer, "assets/images/player/PP talk side.png", 8)
-
-	p.grabFrames = stripFrames(renderer, "assets/images/player/PP grab flower.png", 8)
-
-	celebrateFrames := stripFrames(renderer, "assets/images/player/PP celebrate.png", 8)
+	celebrateFrames := gridFrames(renderer, "assets/images/player/PP celebrate.png", 8, 2)
 	p.reactFrames = celebrateFrames
 	if len(celebrateFrames) >= 2 {
 		p.showInvFrames = celebrateFrames[0:2]
 	}
 
-	p.examineFrames = stripFrames(renderer, "assets/images/player/PP sneak examine.png", 8)
-	p.useItemFrames = stripFrames(renderer, "assets/images/player/PP sneak use.png", 8)
+	p.examineFrames = gridFrames(renderer, "assets/images/player/PP sneak examine.png", 8, 2)
+	p.useItemFrames = gridFrames(renderer, "assets/images/player/PP sneak use.png", 8, 2)
 
 	p.dir = dirDown
 
@@ -221,7 +218,8 @@ func (p *player) currentSprite() spriteFrame {
 	default:
 		frames := p.currentIdleFrames()
 		if len(frames) > 0 {
-			return frames[0]
+			idx := int(p.breathTimer*4) % len(frames)
+			return frames[idx]
 		}
 		return firstAvailableFrame(p.walkDownFrames, p.walkSideFrames, p.walkUpFrames)
 	}

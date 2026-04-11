@@ -1,0 +1,29 @@
+{
+  "dialogs": {
+    "default": [
+      {"speaker": "Jake", "text": "Hey! You the new guy?"},
+      {"speaker": "Pink Panther", "text": "That's right. And you are?"},
+      {"speaker": "Jake", "text": "Jake. I'm the toughest kid at camp. Don't forget it."},
+      {"speaker": "Jake", "text": "I collect stuff. Rocks, coins, anything shiny. Check out this coin my dad brought from Israel."},
+      {"speaker": "Pink Panther", "text": "That's a beautiful coin. Where exactly is it from?"},
+      {"speaker": "Jake", "text": "Some old city with tunnels underneath. Jerusalem, I think. Dad said the tunnels are ANCIENT."},
+      {"speaker": "Pink Panther", "text": "Fascinating collection you've got there."}
+    ],
+    "post": [
+      {"speaker": "Jake", "text": "Don't touch my collection. I'm watching you."},
+      {"speaker": "Pink Panther", "text": "Wouldn't dream of it."}
+    ],
+    "strange": [
+      {"speaker": "Jake", "text": "Something's happening to my coins..."},
+      {"speaker": "Pink Panther", "text": "What do you mean?"},
+      {"speaker": "Jake", "text": "I keep hearing echoes. Like tunnels underground. Voices bouncing off stone walls."},
+      {"speaker": "Jake", "text": "And I can't stop rubbing every metal surface for symbols. Look at this bench - I KNOW there's something underneath!"},
+      {"speaker": "Pink Panther", "text": "Jake, that's just a wooden bench."},
+      {"speaker": "Jake", "text": "NO! There are tunnels! Old ones! Under an ancient city! I can FEEL them!"}
+    ],
+    "postStrange": [
+      {"speaker": "Jake", "text": "The echoes won't stop... tunnels under old stone walls..."},
+      {"speaker": "Jake", "text": "It's like I can see a huge wall... and something hidden behind it."}
+    ]
+  }
+}

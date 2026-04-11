@@ -1,0 +1,12 @@
+{
+  "name": "camp_night",
+  "background": "assets/images/locations/camp/background/camp_night.png",
+  "spawnX": 650,
+  "spawnY": 550,
+  "minY": 0,
+  "maxY": 0,
+  "npcs": [],
+  "hotspots": [],
+  "blockers": [],
+  "walkSegments": []
+}

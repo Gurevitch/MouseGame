@@ -1,0 +1,17 @@
+{
+  "name": "camp_office",
+  "background": "assets/images/locations/camp/background/camp_office.png",
+  "spawnX": 150,
+  "spawnY": 400,
+  "minY": 0,
+  "maxY": 0,
+  "musicPath": "",
+  "npcs": ["office_higgins"],
+  "hotspots": [
+    {"bounds": {"x": 1100, "y": 550, "w": 300, "h": 250}, "targetScene": "camp_grounds", "name": "Back to Camp", "arrow": "downRight"}
+  ],
+  "blockers": [
+    {"x": 500, "y": 0, "w": 900, "h": 360}
+  ],
+  "walkSegments": []
+}

@@ -1,0 +1,19 @@
+{
+  "dialogs": {
+    "opening": [
+      {"speaker": "Pink Panther", "text": "Camp Chilly Wa Wa... it's been a while."},
+      {"speaker": "Pink Panther", "text": "The old sign is barely standing, the cabins have seen better days..."},
+      {"speaker": "Pink Panther", "text": "But a job is a job. Time to meet the kids."}
+    ],
+    "day2": [
+      {"speaker": "Pink Panther", "text": "What a night... I could hear Marcus from across the camp."},
+      {"speaker": "Pink Panther", "text": "I need to find him. He must be in his cabin."},
+      {"speaker": "Pink Panther", "text": "And then I should tell Higgins about this."}
+    ],
+    "paris_street": [
+      {"speaker": "Pink Panther", "text": "Ah, Paris! The city of lights, love, and... mysteries, apparently."},
+      {"speaker": "Pink Panther", "text": "Marcus kept drawing a museum with a glass pyramid. That must be the Louvre."},
+      {"speaker": "Pink Panther", "text": "Time to find out what he's been seeing."}
+    ]
+  }
+}

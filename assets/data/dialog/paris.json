@@ -1,0 +1,44 @@
+{
+  "dialogs": {
+    "colette_default": [
+      {"speaker": "Madame Colette", "text": "Bonjour, monsieur! Welcome to Paris!"},
+      {"speaker": "Pink Panther", "text": "Bonjour, madame. I'm looking for information about the Louvre."},
+      {"speaker": "Madame Colette", "text": "Ah, ze Louvre! Ze largest art museum in ze world!"},
+      {"speaker": "Madame Colette", "text": "It was originally a royal palace, built in ze 12th century."},
+      {"speaker": "Madame Colette", "text": "Today it holds over 380,000 objects and 35,000 works of art!"},
+      {"speaker": "Pink Panther", "text": "Impressive. And what about that glass pyramid?"},
+      {"speaker": "Madame Colette", "text": "Ah, ze Pyramid! Designed by I.M. Pei in 1989. Very controversial at first!"},
+      {"speaker": "Madame Colette", "text": "People said it did not belong. Now it is ze most famous entrance in ze world."},
+      {"speaker": "Madame Colette", "text": "And of course, ze Eiffel Tower behind you — built in 1889 for ze World Fair."},
+      {"speaker": "Madame Colette", "text": "Gustave Eiffel designed it. It was meant to be temporary — just 20 years!"},
+      {"speaker": "Madame Colette", "text": "But zey kept it because it was perfect for radio transmissions."},
+      {"speaker": "Pink Panther", "text": "A temporary tower that became permanent. How fitting."},
+      {"speaker": "Madame Colette", "text": "Ze museum is just down ze street, to ze right. Enjoy, monsieur!"}
+    ],
+    "colette_post": [
+      {"speaker": "Madame Colette", "text": "Ze Louvre is to ze right, monsieur. You cannot miss ze pyramid!"},
+      {"speaker": "Pink Panther", "text": "Merci, madame."}
+    ],
+    "curator_default": [
+      {"speaker": "Curator Beaumont", "text": "Ah, a visitor! Welcome to ze Musee du Louvre."},
+      {"speaker": "Pink Panther", "text": "Thank you. I'm investigating something... unusual."},
+      {"speaker": "Curator Beaumont", "text": "Unusual? In ze Louvre, everything is extraordinary!"},
+      {"speaker": "Curator Beaumont", "text": "Zis hall contains some of ze finest works in history."},
+      {"speaker": "Curator Beaumont", "text": "Ze Mona Lisa, of course — painted by Leonardo da Vinci around 1503."},
+      {"speaker": "Curator Beaumont", "text": "Her smile has puzzled visitors for over 500 years!"},
+      {"speaker": "Curator Beaumont", "text": "And ze Venus de Milo — a Greek sculpture from around 100 BC."},
+      {"speaker": "Pink Panther", "text": "Actually, I'm looking for a specific painting. A boy back at camp keeps drawing it."},
+      {"speaker": "Curator Beaumont", "text": "A boy... drawing paintings he has never seen? How peculiar."},
+      {"speaker": "Curator Beaumont", "text": "Describe what he draws, and perhaps I can identify it."},
+      {"speaker": "Pink Panther", "text": "A woman's face. Ornate golden frames. He says something is 'missing' from it."},
+      {"speaker": "Curator Beaumont", "text": "Mon Dieu... zat sounds like ze portrait in Room 7."},
+      {"speaker": "Curator Beaumont", "text": "A painting zat was recently restored. Ze restorer found a hidden symbol underneath."},
+      {"speaker": "Curator Beaumont", "text": "Perhaps your boy senses what was hidden. Take zis postcard of ze painting."},
+      {"speaker": "Curator Beaumont", "text": "If he sees ze complete image, perhaps his mind will settle."}
+    ],
+    "curator_post": [
+      {"speaker": "Curator Beaumont", "text": "Ze postcard should help your young friend."},
+      {"speaker": "Curator Beaumont", "text": "Ze mysteries of art connect us in ways we do not understand."}
+    ]
+  }
+}

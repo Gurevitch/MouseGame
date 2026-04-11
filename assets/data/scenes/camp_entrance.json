@@ -1,0 +1,21 @@
+{
+  "name": "camp_entrance",
+  "background": "assets/images/locations/camp/background/camp_entrance.png",
+  "spawnX": 500,
+  "spawnY": 570,
+  "minY": 400,
+  "maxY": 620,
+  "musicPath": "",
+  "npcs": ["director_higgins"],
+  "hotspots": [
+    {
+      "bounds": {"x": 500, "y": 100, "w": 300, "h": 250},
+      "name": "Enter Camp",
+      "arrow": "up"
+    }
+  ],
+  "blockers": [
+    {"x": 0, "y": 0, "w": 120, "h": 750}
+  ],
+  "walkSegments": []
+}

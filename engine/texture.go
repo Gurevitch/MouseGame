@@ -131,7 +131,7 @@ func applyColorKey(img *image.NRGBA) {
 		return
 	}
 
-	const matchTol = 12
+	const matchTol = 8
 	transparent := color.NRGBA{0, 0, 0, 0}
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {

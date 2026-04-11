@@ -8,11 +8,12 @@ import (
 )
 
 type inventoryItem struct {
-	name string
-	tex  *sdl.Texture
-	srcW int32
-	srcH int32
-	desc string
+	name  string
+	tex   *sdl.Texture
+	srcW  int32
+	srcH  int32
+	desc  string
+	owner string // "player", "lily", "curator", "none" (on ground)
 }
 
 type inventory struct {
@@ -62,6 +63,27 @@ func (inv *inventory) hasItem(name string) bool {
 		}
 	}
 	return false
+}
+
+// giveItemTo transfers an item's ownership to a new owner and removes it from inventory
+func (inv *inventory) giveItemTo(name, newOwner string) {
+	for _, it := range inv.items {
+		if it.name == name {
+			it.owner = newOwner
+			break
+		}
+	}
+	inv.removeItem(name)
+}
+
+// itemOwner returns who owns a specific item, or "" if not found
+func (inv *inventory) itemOwner(name string) string {
+	for _, it := range inv.items {
+		if it.name == name {
+			return it.owner
+		}
+	}
+	return ""
 }
 
 func (inv *inventory) toggle() {

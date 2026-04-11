@@ -1,0 +1,30 @@
+{
+  "dialogs": {
+    "default": [
+      {"speaker": "Danny", "text": "Psst! Hey! Over here!"},
+      {"speaker": "Pink Panther", "text": "Hmm? What are you doing behind that tree?"},
+      {"speaker": "Danny", "text": "Setting up the ULTIMATE prank! I'm Danny, master of mischief!"},
+      {"speaker": "Danny", "text": "I love treasure stories. My cousin went to Italy once and saw REAL ancient ruins!"},
+      {"speaker": "Danny", "text": "The Colosseum! Gladiators fought there! How cool is that?!"},
+      {"speaker": "Pink Panther", "text": "Very cool, Danny. Try not to prank anyone too badly."}
+    ],
+    "post": [
+      {"speaker": "Danny", "text": "Psst! Want to help me put a frog in Higgins' coffee?"},
+      {"speaker": "Pink Panther", "text": "I'll pretend I didn't hear that."}
+    ],
+    "strange": [
+      {"speaker": "Danny", "text": "Dude! DUDE! There's treasure EVERYWHERE!"},
+      {"speaker": "Pink Panther", "text": "Danny, calm down. What are you talking about?"},
+      {"speaker": "Danny", "text": "I've been mapping the whole camp! It's just like ancient ruins!"},
+      {"speaker": "Danny", "text": "There are gold paths under the ground... I can FEEL them!"},
+      {"speaker": "Danny", "text": "A huge round arena... with arches... thousands of people cheering..."},
+      {"speaker": "Danny", "text": "And tunnels underneath with hidden rooms full of treasure!"},
+      {"speaker": "Pink Panther", "text": "An arena with arches... that sounds like the Colosseum in Rome."},
+      {"speaker": "Danny", "text": "I've never been to Rome! But I drew a map of it! Look!"}
+    ],
+    "postStrange": [
+      {"speaker": "Danny", "text": "The gold paths are getting clearer... arches and tunnels everywhere..."},
+      {"speaker": "Danny", "text": "I've dug three holes behind the cabin already. Higgins is NOT happy."}
+    ]
+  }
+}

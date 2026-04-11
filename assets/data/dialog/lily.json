@@ -1,0 +1,38 @@
+{
+  "dialogs": {
+    "shy": [
+      {"speaker": "Lily", "text": "..."},
+      {"speaker": "Pink Panther", "text": "Hello there. I'm the new counselor."},
+      {"speaker": "Lily", "text": "..."},
+      {"speaker": "Pink Panther", "text": "Not much of a talker, huh?"}
+    ],
+    "flower": [
+      {"speaker": "Pink Panther", "text": "I found this flower by the lake. Would you like it?"},
+      {"speaker": "Lily", "text": "...! A daisy! It's beautiful!"},
+      {"speaker": "Lily", "text": "...thank you... nobody ever brings me flowers..."},
+      {"speaker": "Pink Panther", "text": "I'm the new counselor. What's your name?"},
+      {"speaker": "Lily", "text": "...Lily... I like flowers... and quiet places..."},
+      {"speaker": "Pink Panther", "text": "Nice to meet you, Lily. Those are beautiful flowers you're arranging."},
+      {"speaker": "Lily", "text": "...thank you... you're nice..."}
+    ],
+    "default": [
+      {"speaker": "Lily", "text": "...hi again..."},
+      {"speaker": "Pink Panther", "text": "Hello, Lily. Beautiful day, isn't it?"},
+      {"speaker": "Lily", "text": "*small nod*"}
+    ],
+    "strange": [
+      {"speaker": "Lily", "text": "...the flowers are glowing..."},
+      {"speaker": "Pink Panther", "text": "Glowing? They look normal to me."},
+      {"speaker": "Lily", "text": "Not these flowers... OTHER flowers. In a garden far away..."},
+      {"speaker": "Lily", "text": "I keep arranging petals into shapes... symbols I don't understand..."},
+      {"speaker": "Lily", "text": "And I hear bells. Temple bells. Very old ones."},
+      {"speaker": "Lily", "text": "There's a red gate... and cherry blossoms falling everywhere..."},
+      {"speaker": "Pink Panther", "text": "That sounds like Japan, Lily. Have you ever been there?"},
+      {"speaker": "Lily", "text": "...never... but I can see it when I close my eyes..."}
+    ],
+    "postStrange": [
+      {"speaker": "Lily", "text": "...the bells again... and glowing petals..."},
+      {"speaker": "Lily", "text": "...a temple in the mountains... I can almost touch it..."}
+    ]
+  }
+}

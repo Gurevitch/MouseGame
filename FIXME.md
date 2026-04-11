@@ -106,7 +106,7 @@ When fixed, move to the **Resolved** section with the date.
 - [ ] `[P1]` higgins idle in first screen is swipping to fast and his idle is not the same. when he talking he become small and double
 - [ ] `[P1]` we still didnt change the way to go to the camp. when click on the top arrow i want the walking back idle to walk for a few seconds then move. then!! when the player coming to the camp i want him to walk from the left side of the screen.
 - [ ] `[P1]` kid frames are swipping, we can see the frames moving between each one.
-- [ ] `[P1]` give me prompt for down right arrow 
+- [ ] `[P1]` add down right arrow 
 - [ ] `[P1]` when tommy talking he become double, danny not changing to talking idle when needed
 - [ ] `[P1]` it hard to find the right spot to talk to the kids. i want as the icon change to talkin to be able to speak to then
 - [ ] `[P0]` i want to be able to go out of room easly! make the posible to go out in bigger radius
@@ -144,3 +144,76 @@ When fixed, move to the **Resolved** section with the date.
  3d. Night scene — complete rework per user spec-> fix story.md if needed
  4a. Map landmark positions — use user's coordinates ->forgot to add rome, for now remove buenos aires and mexico
  4b. Airplane animation — 3 rows -> you can use the only two first rows. add a nice bg with some clouds moveing around us.
+
+---
+
+## Retro Architecture Adoption
+
+> Based on analysis of the original PP games (Hokus Pokus Pink + Passport to Peril).
+> See [RETRO_ANALYSIS.md](RETRO_ANALYSIS.md) for full details.
+
+### Phase 1: Data-Driven Content (no architecture change)
+
+- [ ] `[P1]` **Scene JSON files** — Move scene definitions from hardcoded Go (scene.go 800+ lines) to `assets/scenes/*.json`. Each scene: background, spawn, hotspots, NPCs, particles, walk segments, blockers. No recompile to tweak positions.
+- [ ] `[P1]` **Dialog JSON files** — Move all NPC dialog from npc.go (500+ lines) to `assets/dialog/*.json`. Each NPC: default, post, strange, postStrange dialog arrays. Edit content without recompiling.
+- [ ] `[P2]` **NPC config JSON** — NPC definitions (sprite paths, grid sizes, bounds, speeds) to `assets/npc/*.json`. Adjust NPC sizes/positions without code.
+- [ ] `[P2]` **Item registry JSON** — All items in `assets/items/items.json` (name, texture, description). Create items by ID, not by constructing in callbacks.
+
+### Phase 2: State Management (medium refactor)
+
+- [ ] `[P1]` **Variable System (VarStore)** — Replace 15+ flat Game fields (`metKids`, `parisUnlocked`, `nightSceneDone`, etc.) with scoped variables: Game scope (persist forever), Chapter scope (persist within day), Scene scope (reset on scene change). Enables save/load. Currently: `game.go` lines 39-71.
+- [ ] `[P1]` **NPC State Machine** — Replace `onDialogEnd` callback + `dialogDone` bool + manual dialog swapping with named states ("default" → "post" → "strange"). Auto-transition after dialog. Currently: fragile closures in `setupCampCallbacks()`.
+- [ ] `[P2]` **Item Ownership Tracking** — Add `owner` field to items. Track who has what: `"player"`, `"lily"`, `"curator"`, `"none"`. Enables clean give-item-to-NPC flows. Currently: `inv.hasItem("name")` string matching.
+
+### Phase 3: Full Engine Architecture (major refactor)
+
+- [ ] `[P1]` **Sequence System** — Replace nested callback chains (5+ levels deep in `setupCampCallbacks`) with a Sequence player. Each cutscene = list of steps: `{actor, action, data, sideEffects}`. Night scene becomes 10 declarative steps instead of fragile closures. Currently: `nightSceneArrival()`, `checkDay1Complete()` are callback hell.
+- [ ] `[P2]` **Handler + Condition System** — Replace `setupCampCallbacks()` (130+ lines of closures) with declarative handlers: `{event: "click_npc", target: "Lily", condition: "hasItem(Flower)", action: playLilyFlowerSequence}`. Decouple triggers from actions.
+- [ ] `[P2]` **Walk Zones** — Replace walk segments (line pairs) with polygon walk zones defined in scene JSON. More natural movement, easier to tune. Currently: 8 manual line segments per scene.
+- [ ] `[P2]` **Save/Load System** — Serialize VarStore + inventory + scene + position to JSON. Requires VarStore first.
+- [ ] `[P3]` **PDA/Map UI** — Travel map becomes multi-page UI: Map, Clue Book, Travel History. Like the retro PDA system.
+
+### Architecture Mapping
+
+| What Retro Does | What We Have Now | What We Need |
+|----------------|-----------------|--------------|
+| Handler+Condition | `setupCampCallbacks()` closures | Declarative handler registry |
+| Sequences | `nightSceneArrival()` nested callbacks | Sequence player with steps |
+| Game/Module/Page Variables | 15 flat `bool`/`int` fields on Game | `VarStore` with 3 scopes |
+| Item Ownership | `inv.hasItem("name")` | `item.owner` field |
+| Scene Data Files | 800+ lines hardcoded in scene.go | JSON scene files |
+| Dialog Data Files | 500+ lines hardcoded in npc.go | JSON dialog files |
+| NPC State Machine | `onDialogEnd` + manual swap | Named states with auto-transition |
+| Walk Locations | `walkSegments` line pairs | Polygon walk zones |
+| Save/Load | not implemented | VarStore serialization |
+| PDA | simple map overlay | Multi-page UI system |
+
+first code revie:
+- [ ] `[P1]` in the first scene. after pp short monologe, i want to click on higgings to talk with him, now its automatic
+- [ ] `[P1]` from higgings idle. take only the first row
+- [ ] `[P1]` mouse size in screen is huge
+- [ ] `[P1]` flip danny by 180 
+- [ ] `[P1]` when lily is shy, higgings not shown up.
+- [ ] `[P0]` i want the pp to look bigger then the kids regardin size.
+- [ ] `[P1]` in lake remove the bg from the flower 
+- [ ] `[P1]` no animation loading to grab flower 
+- [ ] `[P1]` when i pick up the flower i need to give it to lily,currently the conversation change when i got in my inventory
+- [ ] `[P1]` when goin to marcus room, pp is shown there for some reason even when we need to see only marucs freak out 
+- [ ] `[P1]` rooms dots to enter(make it small radius), also i want an arrow to know we going to enter. tommy:(195,479),jake(441,441),marcus(820,435),lily(1077,403),danny(1243,503)
+- [ ] `[P1]` change marcus possition in night and day to 646,398
+- [ ] `[P1]` higgins sitting need to be in 1062,357, make both object bigger , and make sure pp is not standing on the table so radius to talk is from (86,748),(452,587)->(735,739),(796,562)
+- [ ] `[P0]` i cant move between item in inventory!! remove the yellow arrows, make the cirle bigger, and then i will give you the cords to move between right and left
+- [ ] `[P1]` map starting to look good! but we loose color on the map from every object 
+- [ ] `[P1]` i cant go out from higgins office. radius (82,460)
+- [ ] `[P1]` flying is still not working. im pressing on paris and nothing happen.
+- [ ] `[P1]` remove bg from right/left arrow inside rooms 
+- [ ] `[P1]` no need map to gro on screen, change it to the animation we make of giveing and taking map.
+- [ ] `[P1]` assets\images\locations\camp\npc\kids\jake\npc_jake_idle.png take only the second line here
+- [ ] `[P1]` remove bg from items, we see them in the invertory
+- [ ] `[P1]`  lily dialog is still wrong. the first time i click on her is like i gave the flower 
+- [ ] `[P1]` in the camp scnece i cant reach the inventory normaly, and if i do cant press on the righ kid
+- [ ] `[P1]` in the night senarion, we need to remove the bg from both sleep, wake up and fire. put the fire in (622,573) and the pp in (335,591). when goin to marcus room, the pp is inside there for some reason
+- [ ] `[P0]` we need to make the other kid ot be like lily is displayed. the frames of them are not good and loose colors like tommy and danny
+- [ ] `[P1]` in marcus room, he need to be display in (666,561) and bigger in the size, same with the pink 
+- [ ] `[P1]` in higgins office, he need to be in (1059,370) and no bg
+- [ ] `[P1]` still no location in the map!! and travel to paris isnt working

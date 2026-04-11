@@ -1,0 +1,12 @@
+{
+  "name": "airplane_flight",
+  "background": "assets/images/locations/paris/background/paris_clouds.png",
+  "spawnX": 700,
+  "spawnY": 400,
+  "minY": 0,
+  "maxY": 0,
+  "npcs": [],
+  "hotspots": [],
+  "blockers": [],
+  "walkSegments": []
+}

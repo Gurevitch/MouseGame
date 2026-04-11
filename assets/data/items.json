@@ -1,0 +1,52 @@
+{
+  "items": [
+    {
+      "id": "travel_map",
+      "name": "Travel Map",
+      "texture": "assets/images/items/travel_map_icon.png",
+      "description": "Use the map to travel by dropping it anywhere on the screen."
+    },
+    {
+      "id": "flower",
+      "name": "Flower",
+      "texture": "assets/images/items/flower.png",
+      "description": "A pretty daisy from the lake. Lily might like this."
+    },
+    {
+      "id": "postcard",
+      "name": "Postcard",
+      "texture": "assets/images/items/museum_ticket.png",
+      "description": "A postcard of the painting from the Louvre. Marcus might recognize it."
+    },
+    {
+      "id": "magnifying_glass",
+      "name": "Magnifying Glass",
+      "texture": "assets/images/items/magnifying_glass.png",
+      "description": "A magnifying glass for examining things closely."
+    },
+    {
+      "id": "golden_artifact",
+      "name": "Golden Artifact",
+      "texture": "assets/images/items/golden_artifact.png",
+      "description": "A mysterious golden artifact."
+    },
+    {
+      "id": "comic_book",
+      "name": "Comic Book",
+      "texture": "assets/images/items/comic_book.png",
+      "description": "A colorful comic book."
+    },
+    {
+      "id": "letter",
+      "name": "Letter",
+      "texture": "assets/images/items/letter.png",
+      "description": "A sealed letter."
+    },
+    {
+      "id": "fishing_rod",
+      "name": "Fishing Rod",
+      "texture": "assets/images/items/fishing_rod.png",
+      "description": "A fishing rod from the lake."
+    }
+  ]
+}

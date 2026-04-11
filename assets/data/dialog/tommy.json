@@ -1,0 +1,28 @@
+{
+  "dialogs": {
+    "default": [
+      {"speaker": "Tommy", "text": "Hi! I'm Tommy! Are you the new counselor?"},
+      {"speaker": "Pink Panther", "text": "That's right. Nice to meet you, Tommy."},
+      {"speaker": "Tommy", "text": "I love telling stories! Did you know there's a legend about a treasure at this camp?"},
+      {"speaker": "Tommy", "text": "Probably not true though... I like making things sound more exciting than they are!"},
+      {"speaker": "Pink Panther", "text": "A natural storyteller. I like that."}
+    ],
+    "post": [
+      {"speaker": "Tommy", "text": "Want to hear another story? I've got HUNDREDS!"},
+      {"speaker": "Pink Panther", "text": "Maybe later, Tommy."}
+    ],
+    "strange": [
+      {"speaker": "Tommy", "text": "Do you hear that? The music?"},
+      {"speaker": "Pink Panther", "text": "Music? I don't hear anything."},
+      {"speaker": "Tommy", "text": "It's drums and singing... and there's a GIANT STATUE watching over everyone!"},
+      {"speaker": "Tommy", "text": "People are dancing in the streets! It's like the biggest party in the world!"},
+      {"speaker": "Tommy", "text": "And then... tango? Somewhere else, a different city, a wide road with a tall white tower..."},
+      {"speaker": "Pink Panther", "text": "Tommy, are you alright? You've never been to any of these places."},
+      {"speaker": "Tommy", "text": "I KNOW! That's what's so weird! But I can SEE it!"}
+    ],
+    "postStrange": [
+      {"speaker": "Tommy", "text": "The music won't stop... a giant statue, parades, dancing..."},
+      {"speaker": "Tommy", "text": "It feels like two places at once. I can't explain it."}
+    ]
+  }
+}

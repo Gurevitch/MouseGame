@@ -1,0 +1,27 @@
+{
+  "npcs": {
+    "director_higgins": {
+      "name": "Director Higgins",
+      "idleSprite": "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png",
+      "talkSprite": "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png",
+      "idleGrid": {"cols": 8, "rows": 2},
+      "talkGrid": {"cols": 8, "rows": 1},
+      "bounds": {"x": 700, "y": 400, "w": 160, "h": 230},
+      "dialog": "default",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0
+    },
+    "office_higgins": {
+      "name": "Director Higgins",
+      "idleSprite": "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png",
+      "talkSprite": "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png",
+      "idleGrid": {"cols": 8, "rows": 2},
+      "talkGrid": {"cols": 8, "rows": 2},
+      "bounds": {"x": 1065, "y": 413, "w": 140, "h": 220},
+      "dialog": "worried",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0,
+      "silent": true
+    }
+  }
+}

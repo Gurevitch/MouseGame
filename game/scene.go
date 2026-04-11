@@ -216,8 +216,8 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		name:   "camp_grounds",
 		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_grounds.png"),
 		npcs:   []*npc{newTommy(renderer), newJake(renderer), newLily(renderer), newMarcus(renderer), newDanny(renderer)},
-		spawnX: 650,
-		spawnY: 650,
+		spawnX: 80,
+		spawnY: 490,
 		walkSegments: []walkSegment{
 			{650, 650, 650, 550},
 			{120, 480, 380, 480},
@@ -242,31 +242,31 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 				arrow:       arrowDownRight,
 			},
 			{
-				bounds:      sdl.Rect{X: 70, Y: 370, W: 120, H: 120},
+				bounds:      sdl.Rect{X: 50, Y: 270, W: 150, H: 110},
 				targetScene: "tommy_room",
 				name:        "Tommy's Cabin",
 				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 320, Y: 350, W: 120, H: 120},
+				bounds:      sdl.Rect{X: 300, Y: 250, W: 150, H: 110},
 				targetScene: "jake_room",
 				name:        "Jake's Cabin",
 				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 560, Y: 340, W: 120, H: 120},
+				bounds:      sdl.Rect{X: 540, Y: 240, W: 150, H: 110},
 				targetScene: "lily_room",
 				name:        "Lily's Cabin",
 				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 860, Y: 350, W: 120, H: 120},
+				bounds:      sdl.Rect{X: 840, Y: 250, W: 150, H: 110},
 				targetScene: "marcus_room",
 				name:        "Marcus's Cabin",
 				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 1160, Y: 370, W: 120, H: 120},
+				bounds:      sdl.Rect{X: 1140, Y: 270, W: 150, H: 110},
 				targetScene: "danny_room",
 				name:        "Danny's Cabin",
 				arrow:       arrowNone,
@@ -352,10 +352,10 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		spawnY: 400,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
+				bounds:      sdl.Rect{X: 1100, Y: 550, W: 300, H: 250},
 				targetScene: "camp_grounds",
 				name:        "Back to Camp",
-				arrow:       arrowLeft,
+				arrow:       arrowDownRight,
 			},
 		},
 		blockers: []sdl.Rect{
@@ -602,7 +602,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		spawnY: 500,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1250, Y: 300, W: 130, H: 400},
+				bounds:      sdl.Rect{X: 1100, Y: 200, W: 300, H: 550},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowRight,
@@ -637,7 +637,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		spawnY: 500,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1250, Y: 300, W: 130, H: 400},
+				bounds:      sdl.Rect{X: 1100, Y: 200, W: 300, H: 550},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowRight,
@@ -672,7 +672,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		spawnY: 550,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 600, Y: 650, W: 250, H: 150},
+				bounds:      sdl.Rect{X: 350, Y: 580, W: 700, H: 220},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowDown,
@@ -713,15 +713,17 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm.scenes["lily_room"] = lilyRoom
 
 	// --- Marcus's Room ---
+	roomMarcus := newMarcus(renderer)
+	roomMarcus.bounds = sdl.Rect{X: 666, Y: 461, W: 200, H: 260}
 	marcusRoom := &scene{
 		name:   "marcus_room",
 		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/marcus_room_day.png"),
-		npcs:   []*npc{newMarcus(renderer)},
+		npcs:   []*npc{roomMarcus},
 		spawnX: 700,
 		spawnY: 550,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 600, Y: 650, W: 250, H: 150},
+				bounds:      sdl.Rect{X: 350, Y: 580, W: 700, H: 220},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowDown,
@@ -757,7 +759,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		spawnY: 500,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1250, Y: 300, W: 130, H: 400},
+				bounds:      sdl.Rect{X: 1100, Y: 200, W: 300, H: 550},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowRight,
@@ -782,6 +784,26 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		{x: 400, y: 50, w: 300, h: 300, r: 255, g: 245, b: 210, alpha: 7, pulse: 0.2},
 	}
 	sm.scenes["danny_room"] = dannyRoom
+
+	// ===== Airplane Flight Cutscene =====
+	airplaneFlight := &scene{
+		name:   "airplane_flight",
+		bg:     newPNGBackground(renderer, "assets/images/locations/paris/background/paris_clouds.png"),
+		npcs:   []*npc{},
+		spawnX: 700,
+		spawnY: 400,
+	}
+	for i := 0; i < 10; i++ {
+		airplaneFlight.particles = append(airplaneFlight.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     100 + rand.Float64()*400,
+			vx:    -50 - rand.Float64()*40,
+			alpha: uint8(rand.Intn(12) + 5),
+			size:  int32(50 + rand.Intn(60)),
+			cloud: true,
+		})
+	}
+	sm.scenes["airplane_flight"] = airplaneFlight
 
 	return sm
 }

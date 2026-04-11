@@ -1,0 +1,32 @@
+{
+  "dialogs": {
+    "default": [
+      {"speaker": "Marcus", "text": "Ah, a new counselor! Did you know this camp was founded in 1968?"},
+      {"speaker": "Pink Panther", "text": "I did not. And you are?"},
+      {"speaker": "Marcus", "text": "Marcus. I know everything about everything. Ask me anything!"},
+      {"speaker": "Pink Panther", "text": "Alright. What's the most interesting thing about this camp?"},
+      {"speaker": "Marcus", "text": "Statistically, the mess hall food has a 73 percent chance of being inedible."},
+      {"speaker": "Marcus", "text": "But I also love drawing! Want to see my sketches? I drew the whole campfire!"},
+      {"speaker": "Pink Panther", "text": "Very impressive. You've got talent, Marcus."}
+    ],
+    "post": [
+      {"speaker": "Marcus", "text": "Did you know butterflies taste with their feet? It's TRUE!"},
+      {"speaker": "Pink Panther", "text": "You never stop, do you?"}
+    ],
+    "strange": [
+      {"speaker": "Marcus", "text": "It's WRONG! The picture is WRONG!"},
+      {"speaker": "Pink Panther", "text": "Marcus? What's going on?"},
+      {"speaker": "Marcus", "text": "I keep drawing this woman's face... but I've NEVER seen her before!"},
+      {"speaker": "Marcus", "text": "And these frames... ornate golden frames... and rooftops I've never visited!"},
+      {"speaker": "Marcus", "text": "It's a museum. A HUGE museum. The biggest in the world!"},
+      {"speaker": "Marcus", "text": "There's a glass pyramid in front of it... and inside, a painting that everyone stares at..."},
+      {"speaker": "Marcus", "text": "But something is MISSING from the picture! I can feel it!"},
+      {"speaker": "Pink Panther", "text": "A glass pyramid... the biggest museum... That sounds like the Louvre in Paris."},
+      {"speaker": "Marcus", "text": "I've never been to Paris! But I can't stop drawing it!"}
+    ],
+    "postStrange": [
+      {"speaker": "Marcus", "text": "The woman's face again... the golden frames... something is missing..."},
+      {"speaker": "Marcus", "text": "I filled twelve pages last night. I can't stop."}
+    ]
+  }
+}

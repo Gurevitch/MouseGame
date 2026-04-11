@@ -1,0 +1,26 @@
+{
+  "npcs": {
+    "french_guide": {
+      "name": "Madame Colette",
+      "idleSprite": "assets/images/locations/paris/npc/npc_french_guide_idle.png",
+      "talkSprite": "assets/images/locations/paris/npc/npc_french_guide_talk.png",
+      "idleGrid": {"cols": 8, "rows": 2},
+      "talkGrid": {"cols": 4, "rows": 2},
+      "bounds": {"x": 300, "y": 350, "w": 140, "h": 240},
+      "dialog": "colette_default",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0
+    },
+    "museum_curator": {
+      "name": "Curator Beaumont",
+      "idleSprite": "assets/images/locations/paris/npc/npc_museum_curator_idle.png",
+      "talkSprite": "assets/images/locations/paris/npc/npc_museum_curator_talk.png",
+      "idleGrid": {"cols": 8, "rows": 2},
+      "talkGrid": {"cols": 5, "rows": 2},
+      "bounds": {"x": 500, "y": 320, "w": 130, "h": 250},
+      "dialog": "curator_default",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0
+    }
+  }
+}

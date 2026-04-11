@@ -1,0 +1,30 @@
+{
+  "dialogs": {
+    "default": [
+      {"speaker": "Director Higgins", "text": "Ah, you must be the new counselor! Finally!"},
+      {"speaker": "Pink Panther", "text": "Good afternoon. Pink Panther, at your service."},
+      {"speaker": "Director Higgins", "text": "Yes, yes. Welcome to Camp Chilly Wa Wa."},
+      {"speaker": "Director Higgins", "text": "The kids are through the gate. Go introduce yourself."},
+      {"speaker": "Director Higgins", "text": "They're a good bunch. A little... eccentric, but good."}
+    ],
+    "post": [
+      {"speaker": "Director Higgins", "text": "Go on, the kids are waiting in the camp grounds!"},
+      {"speaker": "Pink Panther", "text": "On my way."}
+    ],
+    "worried": [
+      {"speaker": "Director Higgins", "text": "Something is wrong with the kids."},
+      {"speaker": "Director Higgins", "text": "Marcus has been up all night drawing things he's never seen."},
+      {"speaker": "Director Higgins", "text": "Buildings, paintings, rooftops... from places he's never been!"},
+      {"speaker": "Pink Panther", "text": "I saw him last night by the campfire. He was... not himself."},
+      {"speaker": "Director Higgins", "text": "I've seen this kind of thing before... well, no I haven't. But it's NOT normal!"},
+      {"speaker": "Director Higgins", "text": "A glass pyramid, a woman's face... it sounds like Paris. The Louvre."},
+      {"speaker": "Director Higgins", "text": "Here, take this travel map. Camp Chilly Wa Wa Air can get you there."},
+      {"speaker": "Pink Panther", "text": "A camp... airline?"},
+      {"speaker": "Director Higgins", "text": "Don't ask questions. Just go find out what Marcus is connected to."}
+    ],
+    "postWorried": [
+      {"speaker": "Director Higgins", "text": "Have you talked to Marcus yet? He's in the camp grounds."},
+      {"speaker": "Director Higgins", "text": "And the other kids might have noticed something too."}
+    ]
+  }
+}

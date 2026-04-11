@@ -1,0 +1,79 @@
+{
+  "npcs": {
+    "tommy": {
+      "name": "Tommy",
+      "idleSprite": "assets/images/locations/camp/npc/kids/tommy/npc_tommy_idle.png",
+      "talkSprite": "assets/images/locations/camp/npc/kids/tommy/npc_tommy_talk.png",
+      "idleGrid": {"cols": 8, "rows": 2},
+      "talkGrid": {"cols": 4, "rows": 2},
+      "bounds": {"x": 120, "y": 385, "w": 170, "h": 200},
+      "dialog": "default",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0,
+      "strangeIdleSprite": "assets/images/locations/camp/npc/kids/tommy/npc_tommy_strange_idle.png",
+      "strangeTalkSprite": "assets/images/locations/camp/npc/kids/tommy/npc_tommy_strange_talk.png",
+      "strangeIdleGrid": {"cols": 8, "rows": 2},
+      "strangeTalkGrid": {"cols": 8, "rows": 2}
+    },
+    "jake": {
+      "name": "Jake",
+      "idleSprite": "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png",
+      "talkSprite": "assets/images/locations/camp/npc/kids/jake/npc_jake_talk.png",
+      "idleGrid": {"cols": 5, "rows": 2},
+      "talkGrid": {"cols": 5, "rows": 2},
+      "bounds": {"x": 360, "y": 365, "w": 170, "h": 215},
+      "dialog": "default",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0,
+      "strangeIdleSprite": "assets/images/locations/camp/npc/kids/jake/npc_jake_strange_idle.png",
+      "strangeTalkSprite": "assets/images/locations/camp/npc/kids/jake/npc_jake_strange_talk.png",
+      "strangeIdleGrid": {"cols": 6, "rows": 2},
+      "strangeTalkGrid": {"cols": 8, "rows": 2}
+    },
+    "lily": {
+      "name": "Lily",
+      "idleSprite": "assets/images/locations/camp/npc/kids/lily/npc_lily_idle.png",
+      "talkSprite": "assets/images/locations/camp/npc/kids/lily/npc_lily_talk.png",
+      "idleGrid": {"cols": 8, "rows": 2},
+      "talkGrid": {"cols": 8, "rows": 2},
+      "bounds": {"x": 590, "y": 375, "w": 160, "h": 195},
+      "dialog": "shy",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0,
+      "strangeIdleSprite": "assets/images/locations/camp/npc/kids/lily/npc_lily_strange_idle.png",
+      "strangeTalkSprite": "assets/images/locations/camp/npc/kids/lily/npc_lily_strange_talk.png",
+      "strangeIdleGrid": {"cols": 8, "rows": 2},
+      "strangeTalkGrid": {"cols": 8, "rows": 2}
+    },
+    "marcus": {
+      "name": "Marcus",
+      "idleSprite": "assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png",
+      "talkSprite": "assets/images/locations/camp/npc/kids/marcus/npc_marcus_talk.png",
+      "idleGrid": {"cols": 7, "rows": 2},
+      "talkGrid": {"cols": 8, "rows": 2},
+      "bounds": {"x": 880, "y": 355, "w": 170, "h": 220},
+      "dialog": "default",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0,
+      "strangeIdleSprite": "assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_idle.png",
+      "strangeTalkSprite": "assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_talk.png",
+      "strangeIdleGrid": {"cols": 8, "rows": 2},
+      "strangeTalkGrid": {"cols": 8, "rows": 2}
+    },
+    "danny": {
+      "name": "Danny",
+      "idleSprite": "assets/images/locations/camp/npc/kids/danny/npc_danny_idle.png",
+      "talkSprite": "assets/images/locations/camp/npc/kids/danny/npc_danny_talk.png",
+      "idleGrid": {"cols": 8, "rows": 2},
+      "talkGrid": {"cols": 8, "rows": 2},
+      "bounds": {"x": 1100, "y": 365, "w": 170, "h": 215},
+      "dialog": "default",
+      "talkFrameSpeed": 0.15,
+      "bobAmount": 0,
+      "strangeIdleSprite": "assets/images/locations/camp/npc/kids/danny/npc_danny_strange_idle.png",
+      "strangeTalkSprite": "assets/images/locations/camp/npc/kids/danny/npc_danny_strange_talk.png",
+      "strangeIdleGrid": {"cols": 8, "rows": 2},
+      "strangeTalkGrid": {"cols": 8, "rows": 2}
+    }
+  }
+}
