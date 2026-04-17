@@ -32,7 +32,12 @@ type npc struct {
 	itemMatch      bool
 	elevated       bool
 	silent         bool
-	groupID        string
+	// hidden skips the draw pass for this NPC. Used for story-timed
+	// arrivals (e.g. Higgins appearing next to Lily only after her shy
+	// dialog) so the NPC can sit in the scene list from load without
+	// being visible or clickable until his cue.
+	hidden  bool
+	groupID string
 
 	dialogDone    bool
 	onDialogEnd   func()
@@ -233,6 +238,16 @@ var higginsWorriedDialog = []dialogEntry{
 	{speaker: "Director Higgins", text: "Don't ask questions. Just go find out what Marcus is connected to."},
 }
 
+// higginsLilyHintDialog runs when the camp-grounds Higgins appears next
+// to Lily after her shy dialog. Gives the player the flower clue without
+// them needing to guess.
+var higginsLilyHintDialog = []dialogEntry{
+	{speaker: "Director Higgins", text: "Ah, counselor. Lily's a quiet one, isn't she."},
+	{speaker: "Pink Panther", text: "She barely said two words."},
+	{speaker: "Director Higgins", text: "She loves flowers. Try the lake — daisies grow wild by the water."},
+	{speaker: "Director Higgins", text: "Bring her one and you'll see a different girl."},
+}
+
 var higginsPostWorriedDialog = []dialogEntry{
 	{speaker: "Director Higgins", text: "Have you talked to Marcus yet? He's in the camp grounds."},
 	{speaker: "Director Higgins", text: "And the other kids might have noticed something too."},
@@ -267,7 +282,10 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	return &npc{
 		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 7, 1),
 		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 4, 2),
-		bounds:         sdl.Rect{X: 942, Y: 357, W: 240, H: 320},
+		// User spec 2026-04-17: office Higgins top-left at (1062, 357),
+		// sitting behind the desk. Sized so head lands at ~y=357 and feet
+		// rest on the desk chair around y=640.
+		bounds:         sdl.Rect{X: 1062, Y: 357, W: 220, H: 280},
 		name:           "Director Higgins",
 		dialog:         higginsWorriedDialog,
 		bobAmount:      0,
@@ -331,7 +349,7 @@ func newTommy(renderer *sdl.Renderer) *npc {
 	n := &npc{
 		idleGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/tommy/npc_tommy_idle.png", 8, 2),
 		talkGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/tommy/npc_tommy_talk.png", 8, 2),
-		bounds:         sdl.Rect{X: 120, Y: 385, W: 170, H: 200},
+		bounds:         sdl.Rect{X: 130, Y: 405, W: 150, H: 180},
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0,
@@ -383,7 +401,7 @@ func newJake(renderer *sdl.Renderer) *npc {
 	n := &npc{
 		idleGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png", 8, 2, 1),
 		talkGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/jake/npc_jake_talk.png", 8, 2),
-		bounds:         sdl.Rect{X: 360, Y: 365, W: 170, H: 215},
+		bounds:         sdl.Rect{X: 370, Y: 400, W: 150, H: 180},
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0,
@@ -442,7 +460,7 @@ func newLily(renderer *sdl.Renderer) *npc {
 	n := &npc{
 		idleGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/lily/npc_lily_idle.png", 8, 2, 0),
 		talkGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/lily/npc_lily_talk.png", 8, 2, 0),
-		bounds:         sdl.Rect{X: 590, Y: 375, W: 160, H: 195},
+		bounds:         sdl.Rect{X: 600, Y: 395, W: 150, H: 180},
 		name:           "Lily",
 		dialog:         lilyShyDialog,
 		bobAmount:      0,
@@ -496,7 +514,7 @@ func newMarcus(renderer *sdl.Renderer) *npc {
 	n := &npc{
 		idleGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png", 6, 2),
 		talkGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_talk.png", 6, 2),
-		bounds:         sdl.Rect{X: 880, Y: 355, W: 170, H: 220},
+		bounds:         sdl.Rect{X: 890, Y: 395, W: 150, H: 180},
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0,
@@ -544,7 +562,7 @@ func newDanny(renderer *sdl.Renderer) *npc {
 	n := &npc{
 		idleGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/danny/npc_danny_idle.png", 8, 2, 0),
 		talkGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/danny/npc_danny_talk.png", 8, 2, 0),
-		bounds:         sdl.Rect{X: 1100, Y: 365, W: 170, H: 215},
+		bounds:         sdl.Rect{X: 1110, Y: 400, W: 150, H: 180},
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0,
@@ -608,6 +626,9 @@ func (n *npc) draw(renderer *sdl.Renderer) {
 // scale. The visible sprite is anchored at foot-center so shrinking
 // only trims from the head and shoulders.
 func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
+	if n.hidden {
+		return
+	}
 	if charScale <= 0 {
 		charScale = 1.0
 	}
@@ -656,16 +677,13 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 // shows "talk", a click always lands. We pad generously so small sprites or
 // slightly-missed clicks still register as an interaction.
 func (n *npc) containsPoint(x, y int32) bool {
+	// Strict-bounds hit test (user request 2026-04-17): the cursor must
+	// land inside the NPC's authored rect. No radius padding.
+	// The old padX=70, padY=50 expansion made clicks snap to the wrong
+	// NPC when two kids stood close (Danny vs Marcus at camp_grounds)
+	// and let clicks on empty ground behind an NPC trigger dialog.
 	pt := sdl.Point{X: x, Y: y}
-	padX := int32(70)
-	padY := int32(50)
-	expanded := sdl.Rect{
-		X: n.bounds.X - padX,
-		Y: n.bounds.Y - padY,
-		W: n.bounds.W + padX*2,
-		H: n.bounds.H + padY*2,
-	}
-	return pt.InRect(&expanded)
+	return pt.InRect(&n.bounds)
 }
 
 func (n *npc) footY() int32 {

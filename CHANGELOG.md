@@ -3,6 +3,34 @@
 Short per-session log. One section per working pass. Most recent on top.
 See `FIXME.md` for open issues and `STATUS.md` for feature-level progress.
 
+## 2026-04-17 — Polish pass 5 (FIXME batch)
+
+- **Strict NPC click bounds** — `npc.containsPoint` no longer expands
+  by 70/50 px. Fixes Danny snap-stealing Marcus clicks and dialogs
+  firing from empty ground behind an NPC.
+- **Map reveal removed** — Higgins handing over the Travel Map no
+  longer triggers a grow-onto-screen zoom. The existing take-map
+  animation is the whole beat.
+- **Higgins appears for Lily** — new hidden `Director Higgins` NPC on
+  `camp_grounds` (`(910, 400)`); unhides when Lily's shy dialog ends
+  and delivers the flower clue via `higginsLilyHintDialog`.
+- **Bedtime beat restored** — `checkDay1Complete` plays a short
+  Higgins bedtime dialog on `camp_grounds` before fading to
+  `camp_night`, latched behind `day1BedtimeStarted` so the Lily
+  flower callback can't double-trigger it.
+- **PP sleeping size + halo** — draw scale 1.8 → 1.1; sleep/wake
+  sheets now use `SpriteGridFromPNGCleanAggressive` with inset 4 to
+  strip the cream-white rim.
+- **Flight hides PP** — `Draw` skips the player actor while in
+  `airplane_flight` so PP stops standing on top of the biplane.
+- **Office Higgins** — bounds top-left clamped to the user's spec
+  `(1062, 357)` with size `220x280`.
+- **Kids smaller than PP** — every `camp_grounds` kid bound
+  normalized to `150x180` (PP stays at `170x235`).
+- **`npc.hidden`** — new flag added and honored by `drawScaled`,
+  `scene.checkNPCClick`, and `updateHover` so story-timed NPCs can
+  live in the scene list before their cue.
+
 ## 2026-04-17 — Polish pass 4 (Higgins geometry + positions)
 
 - **Higgins sprite geometry** — aligned every Higgins loader in

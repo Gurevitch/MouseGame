@@ -295,6 +295,17 @@ first code revie:
 - [] `[P1]` higgings in the office is not in place at all
 - [] `[P1]` when we fly to paris the pp is shown in the frame for some reason. also add a color of sky to make the flying more alive 
 
+### Reported (2026-04-17) - this session (pass 5)
+
+- [x] `[P0]` NPC click radius too wide (Danny snap-stealing Marcus clicks, clicks on empty ground triggering dialog). — FIXED: `containsPoint` no longer expands `bounds` by ±70/±50 px; the hit test is now strictly inside the NPC's authored rect (`game/npc.go`). Silent + hidden NPCs skipped in `scene.checkNPCClick` and `updateHover`.
+- [x] `[P0]` Travel Map "grows onto the screen" when Higgins hands it over — broke the give/take-map rhythm. — FIXED: removed the `mapRevealing` zoom tween trigger in `giveMapItem`. The map item just drops into inventory; the existing take-map animation is the whole handoff.
+- [x] `[P1]` Higgins didn't appear when Lily was shy. — FIXED: added hidden `Director Higgins` NPC to `camp_grounds` at `(910, 400, 200, 212)` plus `higginsLilyHintDialog`. He unhides the moment Lily's shy dialog finishes and delivers the flower clue. `npc.hidden` bool added + honored by `drawScaled`, `checkNPCClick`, `updateHover`.
+- [x] `[P1]` Flower-to-Lily felt like the story jumped to night immediately. — FIXED: `checkDay1Complete` now plays a three-line Higgins bedtime beat on `camp_grounds` before transitioning to `camp_night`, latched behind `day1BedtimeStarted` so the flower callback can't double-fire it.
+- [x] `[P1]` PP sleeping sprite too big and showed a white rim. — FIXED: draw scale 1.8 → 1.1; loaders swapped to `SpriteGridFromPNGCleanAggressive` with inset 4 to strip the cream-white halo.
+- [x] `[P1]` PP rendered inside the Paris flight cutscene. — FIXED: `Draw` now hides player actor while `sceneMgr.currentName == "airplane_flight"` (same branch that already hides him during Marcus-room phase 3).
+- [x] `[P1]` Office Higgins "not in place at all". — FIXED: bounds top-left snapped to the user's spec `(1062, 357)` with size `220x280`.
+- [x] `[P1]` Camp kids read the same size as PP — should be noticeably smaller. — FIXED: all five camp_grounds kid bounds clamped to `150x180` (PP stays at `170x235`) and Y adjusted so feet land on the existing walk segments.
+
 --paris!!--
 - [] `[P1]` npc not placed on the ground they are at around 588 y 
 - [] `[P0]` direction! remove the left move to open the map. no need for that, i want to create now a story and object we need to collect before we enter the louver.

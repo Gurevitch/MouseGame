@@ -80,7 +80,11 @@ type Game struct {
 	talkedToMarcus  bool // Talked to Marcus on Day 2 (strange)
 	parisUnlocked   bool // Paris available on travel map
 	nightSceneDone  bool // Night campfire scene completed
-	marcusHealed    bool // Postcard given, strange flip off, chapter 2 closed
+	// day1BedtimeStarted latches the "Higgins bedtime speech on grounds"
+	// beat so the Lily-flower handoff can't retrigger the fade-to-night
+	// sequence if the callback runs twice.
+	day1BedtimeStarted bool
+	marcusHealed       bool // Postcard given, strange flip off, chapter 2 closed
 
 	// Night scene
 	playerSleeping    bool
@@ -158,12 +162,16 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	g.setupTravelHotspots()
 	g.ui.initCursors(renderer)
 
-	sleepGrid := engine.SpriteGridFromPNGClean(renderer, "assets/images/player/pp_sleeping.png", 8, 2, spriteInset)
+	// User reported a white rim on the sleep/wake sprites. The default
+	// color-key in SpriteGridFromPNGClean uses tolerance 8 which leaves
+	// cream-white halos on these two sheets; aggressive mode (tol 24)
+	// + larger inset (4) strips them cleanly.
+	sleepGrid := engine.SpriteGridFromPNGCleanAggressive(renderer, "assets/images/player/pp_sleeping.png", 8, 2, 4)
 	for c := 0; c < 8; c++ {
 		gf := sleepGrid[0][c]
 		g.sleepingFrames = append(g.sleepingFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
 	}
-	wakeGrid := engine.SpriteGridFromPNGClean(renderer, "assets/images/player/pp_waking.png", 8, 2, spriteInset)
+	wakeGrid := engine.SpriteGridFromPNGCleanAggressive(renderer, "assets/images/player/pp_waking.png", 8, 2, 4)
 	for r := 0; r < 2; r++ {
 		for c := 0; c < 8; c++ {
 			gf := wakeGrid[r][c]
@@ -589,6 +597,19 @@ func (g *Game) setupCampCallbacks() {
 					kid.hintState = 1
 					kid.altDialogRequiresHeld = false
 					kid.altDialogRequiresItem = "Flower"
+					// Reveal the camp-grounds Higgins so he can deliver
+					// the flower clue. He stays visible for the rest of
+					// Day 1 so the player can re-ask for the hint.
+					if grounds, ok := game.sceneMgr.scenes["camp_grounds"]; ok {
+						for _, n := range grounds.npcs {
+							if n.name == "Director Higgins" {
+								n.hidden = false
+								n.silent = false
+								break
+							}
+						}
+					}
+					game.dialog.queueDialog(higginsLilyHintDialog)
 				} else if game.day >= 2 && !kid.dialogDone {
 					kid.dialogDone = true
 					kid.dialog = lilyPostStrangeDialog
@@ -645,15 +666,25 @@ func (g *Game) setupCampCallbacks() {
 }
 
 // checkDay1Complete triggers the Day 1 -> Night transition once PP has met
-// all 5 kids. The old version had Higgins deliver the "lights out" speech on
-// camp_grounds before fading to night; the new flow transitions to the night
-// scene immediately so Higgins and PP are both already in frame by the fire
-// when the speech happens. This is less jarring and matches the look of the
-// retro PP campfire scenes.
+// all 5 kids. Higgins delivers a short "it's getting late" beat on
+// camp_grounds first so the fade to night isn't abrupt (user complaint
+// 2026-04-17: "higgins didnt say it time to sleep" — the previous version
+// cut straight to the campfire and the Lily-flower handoff felt swallowed
+// by the transition).
 func (g *Game) checkDay1Complete() {
-	if g.metKids >= 5 && g.day == 1 && !g.sceneMgr.transitioning {
-		g.sceneMgr.transitionTo("camp_night", g.player)
+	if g.metKids < 5 || g.day != 1 || g.sceneMgr.transitioning || g.day1BedtimeStarted {
+		return
 	}
+	// Latch so the handoff can't re-fire the bedtime sequence.
+	g.day1BedtimeStarted = true
+	game := g
+	g.dialog.startDialogWithCallback([]dialogEntry{
+		{speaker: "Director Higgins", text: "Ahem! It's getting very late, counselor."},
+		{speaker: "Director Higgins", text: "All campers to their cabins. NOW."},
+		{speaker: "Pink Panther", text: "Goodnight, Director. I'll turn in by the fire."},
+	}, func() {
+		game.sceneMgr.transitionTo("camp_night", game.player)
+	})
 }
 
 // nightSceneArrival kicks off the campfire cutscene. Both actors are already
@@ -814,13 +845,9 @@ func (g *Game) giveMapItem() {
 		return
 	}
 
-	// Start map reveal animation
-	g.mapRevealing = true
-	g.mapRevealScale = 0.0
-	g.mapRevealTex = item.tex
-	g.mapRevealW = item.srcW
-	g.mapRevealH = item.srcH
-
+	// User request 2026-04-17: no more big "map grows on screen" reveal.
+	// The PP-takes-map gesture already plays in the give-map animation;
+	// just drop the item into inventory silently.
 	g.inv.addItem(item)
 }
 
@@ -1354,7 +1381,10 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 			idx := g.sleepingFrameIdx % len(frames)
 			f := frames[idx]
 			if f.tex != nil {
-				scale := 1.8
+				// User request 2026-04-17: PP sleeping was huge. 1.8 put
+				// him at ~2.5x the campfire; 1.1 lands him at a realistic
+				// size next to the fire at (622,573).
+				scale := 1.1
 				dstW := int32(float64(f.w) * scale)
 				dstH := int32(float64(f.h) * scale)
 				dstX := int32(335) - dstW/2
@@ -1362,7 +1392,9 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 				renderer.Copy(f.tex, nil, &sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH})
 			}
 		}
-	} else if g.nightHidePlayer {
+	} else if g.nightHidePlayer || g.sceneMgr.currentName == "airplane_flight" {
+		// airplane_flight: PP is "inside" the plane sprite, so his
+		// standing idle must not render over the cutscene.
 		scene.drawActorsNoPlayer(renderer)
 	} else {
 		scene.drawActors(renderer, g.player)

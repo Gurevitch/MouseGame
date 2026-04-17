@@ -297,10 +297,21 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm.scenes["camp_entrance"] = campEntrance
 
 	// ===== Camp Chilly Wa Wa: Grounds =====
+	//
+	// groundsHiggins is a hidden NPC that stays out of the scene until
+	// Lily's shy dialog ends (see setupCampCallbacks). At that moment he
+	// becomes visible at (1010, 612) next to the cabin path and delivers
+	// his "she needs a flower" hint. Naming him "Director Higgins" lets
+	// the existing dialog flip code treat him like the entrance Higgins.
+	groundsHiggins := newDirectorHiggins(renderer)
+	groundsHiggins.bounds = sdl.Rect{X: 910, Y: 400, W: 200, H: 212}
+	groundsHiggins.hidden = true
+	groundsHiggins.silent = true
+	groundsHiggins.dialog = higginsLilyHintDialog
 	campGrounds := &scene{
 		name:   "camp_grounds",
 		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_grounds.png"),
-		npcs:   []*npc{newTommy(renderer), newJake(renderer), newLily(renderer), newMarcus(renderer), newDanny(renderer)},
+		npcs:   []*npc{newTommy(renderer), newJake(renderer), newLily(renderer), newMarcus(renderer), newDanny(renderer), groundsHiggins},
 		spawnX: 80,
 		spawnY: 490,
 		walkSegments: []walkSegment{
@@ -1010,7 +1021,7 @@ func (sm *sceneManager) drawTransition(renderer *sdl.Renderer) {
 
 func (s *scene) checkNPCClick(x, y int32) *npc {
 	for _, n := range s.npcs {
-		if n.silent {
+		if n.silent || n.hidden {
 			continue
 		}
 		if n.containsPoint(x, y) {
