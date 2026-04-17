@@ -47,6 +47,30 @@
       "name": "Fishing Rod",
       "texture": "assets/images/items/fishing_rod.png",
       "description": "A fishing rod from the lake."
+    },
+    {
+      "id": "coin_rubbing",
+      "name": "Coin Rubbing",
+      "texture": "assets/images/items/coin_rubbing.png",
+      "description": "A pencil rubbing of an ancient coin from the Jerusalem tunnels."
+    },
+    {
+      "id": "pressed_sakura",
+      "name": "Pressed Sakura",
+      "texture": "assets/images/items/pressed_sakura.png",
+      "description": "A cherry blossom, pressed flat between temple parchment."
+    },
+    {
+      "id": "dance_card",
+      "name": "Dance Card",
+      "texture": "assets/images/items/dance_card.png",
+      "description": "Half of a carnival dance card. The other half is... somewhere else."
+    },
+    {
+      "id": "inscription_rubbing",
+      "name": "Inscription Rubbing",
+      "texture": "assets/images/items/inscription_rubbing.png",
+      "description": "A rubbing taken from a Roman monument — the letters still smell of chalk."
     }
   ]
 }

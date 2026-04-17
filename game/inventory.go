@@ -98,10 +98,8 @@ func (inv *inventory) update(dt float64) {
 }
 
 const (
-	invOvalW      = 360
-	invOvalH      = 300
-	invArrowSize  = 30
-	invArrowPad   = 50
+	invOvalW = 720
+	invOvalH = 600
 )
 
 func invOvalCenter() (int32, int32) {
@@ -114,27 +112,6 @@ func (inv *inventory) handleClick(x, y int32) bool {
 	}
 	cx, cy := invOvalCenter()
 
-	leftArrowX := cx - invOvalW/2 - invArrowPad
-	rightArrowX := cx + invOvalW/2 + invArrowPad
-	arrowY := cy
-
-	if len(inv.items) > 1 {
-		if x >= leftArrowX-invArrowSize && x <= leftArrowX+invArrowSize &&
-			y >= arrowY-invArrowSize && y <= arrowY+invArrowSize {
-			inv.selectedIdx--
-			if inv.selectedIdx < 0 {
-				inv.selectedIdx = len(inv.items) - 1
-			}
-			return true
-		}
-		if x >= rightArrowX-invArrowSize && x <= rightArrowX+invArrowSize &&
-			y >= arrowY-invArrowSize && y <= arrowY+invArrowSize {
-			inv.selectedIdx = (inv.selectedIdx + 1) % len(inv.items)
-			return true
-		}
-	}
-
-	// Click outside oval closes it without selecting
 	dx := float64(x-cx) / float64(invOvalW/2)
 	dy := float64(y-cy) / float64(invOvalH/2)
 	if dx*dx+dy*dy > 1.0 {
@@ -142,7 +119,22 @@ func (inv *inventory) handleClick(x, y int32) bool {
 		return true
 	}
 
-	// Click inside oval selects the current item as held
+	if len(inv.items) > 1 {
+		leftCut := int32(float64(invOvalW) * 0.20)
+		rightCut := int32(float64(invOvalW) * 0.20)
+		if x < cx-leftCut {
+			inv.selectedIdx--
+			if inv.selectedIdx < 0 {
+				inv.selectedIdx = len(inv.items) - 1
+			}
+			return true
+		}
+		if x > cx+rightCut {
+			inv.selectedIdx = (inv.selectedIdx + 1) % len(inv.items)
+			return true
+		}
+	}
+
 	if len(inv.items) > 0 {
 		inv.heldItem = inv.items[inv.selectedIdx]
 		inv.open = false
@@ -172,46 +164,60 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 		drawOvalOutline(renderer, cx, cy, invOvalW/2, invOvalH/2, 255, 200, 220, 120)
 	}
 
-	// Draw current item
 	item := inv.items[inv.selectedIdx]
 	if item.tex != nil {
-		maxW := int32(200)
-		maxH := int32(180)
+		maxW := int32(360)
+		maxH := int32(320)
 		scale := float64(maxW) / float64(item.srcW)
 		if sh := float64(maxH) / float64(item.srcH); sh < scale {
 			scale = sh
 		}
 		dstW := int32(float64(item.srcW) * scale)
 		dstH := int32(float64(item.srcH) * scale)
-		dst := sdl.Rect{X: cx - dstW/2, Y: cy - dstH/2 - 10, W: dstW, H: dstH}
+		dst := sdl.Rect{X: cx - dstW/2, Y: cy - dstH/2 - 20, W: dstW, H: dstH}
 		renderer.Copy(item.tex, nil, &dst)
 	}
 
-	// Item name below
-	nameW := inv.font.TextWidth(item.name, 3)
-	inv.font.DrawText(renderer, item.name, cx-nameW/2+1, cy+invOvalH/2-50+1, 3,
-		sdl.Color{R: 0, G: 0, B: 0, A: 180})
-	inv.font.DrawText(renderer, item.name, cx-nameW/2, cy+invOvalH/2-50, 3,
-		sdl.Color{R: 255, G: 220, B: 100, A: 255})
+	nameW := inv.font.TextWidth(item.name, 4)
+	inv.font.DrawText(renderer, item.name, cx-nameW/2+2, cy+invOvalH/2-90+2, 4,
+		sdl.Color{R: 0, G: 0, B: 0, A: 200})
+	inv.font.DrawText(renderer, item.name, cx-nameW/2, cy+invOvalH/2-90, 4,
+		sdl.Color{R: 255, G: 220, B: 120, A: 255})
 
-	// Item count
-	countTxt := ""
 	if len(inv.items) > 1 {
-		countTxt = string(rune('1'+inv.selectedIdx)) + "/" + string(rune('0'+len(inv.items)))
-	}
-	if countTxt != "" {
-		cw := inv.font.TextWidth(countTxt, 2)
-		inv.font.DrawText(renderer, countTxt, cx-cw/2, cy+invOvalH/2-25, 2,
-			sdl.Color{R: 200, G: 200, B: 200, A: 200})
-	}
+		countTxt := string(rune('1'+inv.selectedIdx)) + "/" + string(rune('0'+len(inv.items)))
+		cw := inv.font.TextWidth(countTxt, 3)
+		inv.font.DrawText(renderer, countTxt, cx-cw/2, cy+invOvalH/2-40, 3,
+			sdl.Color{R: 220, G: 220, B: 220, A: 220})
 
-	// Navigation arrows
-	if len(inv.items) > 1 {
-		pulse := uint8(180 + int(40*math.Sin(inv.pulse*3.0)))
-		leftX := cx - invOvalW/2 - invArrowPad
-		rightX := cx + invOvalW/2 + invArrowPad
-		drawInvArrow(renderer, leftX, cy, invArrowSize, true, pulse)
-		drawInvArrow(renderer, rightX, cy, invArrowSize, false, pulse)
+		pulse := 0.5 + 0.5*math.Sin(inv.pulse*2.4)
+		alpha := uint8(120 + pulse*90)
+		chevSize := int32(28)
+		leftX := cx - invOvalW/2 + 70
+		rightX := cx + invOvalW/2 - 70
+		drawChevron(renderer, leftX, cy, chevSize, true, alpha)
+		drawChevron(renderer, rightX, cy, chevSize, false, alpha)
+	}
+}
+
+// drawChevron renders a simple two-stroke ">" or "<" pointer inside the
+// inventory oval to hint at click-to-cycle zones. No fill, just thick lines
+// so it feels clean instead of arrow-button heavy.
+func drawChevron(renderer *sdl.Renderer, cx, cy, size int32, leftFacing bool, alpha uint8) {
+	renderer.SetDrawColor(255, 230, 160, alpha)
+	thickness := int32(4)
+	for t := -thickness; t <= thickness; t++ {
+		if leftFacing {
+			for i := int32(0); i < size; i++ {
+				renderer.DrawPoint(cx+i+t, cy-size+i)
+				renderer.DrawPoint(cx+i+t, cy+size-i)
+			}
+		} else {
+			for i := int32(0); i < size; i++ {
+				renderer.DrawPoint(cx-i+t, cy-size+i)
+				renderer.DrawPoint(cx-i+t, cy+size-i)
+			}
+		}
 	}
 }
 
@@ -239,41 +245,6 @@ func (inv *inventory) drawHeld(renderer *sdl.Renderer, mx, my int32) {
 		drawFilledOval(renderer, cx, cy, rx, ry, 255, 220, 100, a)
 	}
 	renderer.Copy(item.tex, nil, &dst)
-}
-
-func drawInvArrow(renderer *sdl.Renderer, cx, cy, size int32, leftFacing bool, alpha uint8) {
-	renderer.SetDrawColor(255, 220, 100, alpha)
-	if leftFacing {
-		tipX := cx - size/2
-		baseX := cx + size/2
-		for y := cy - size; y <= cy+size; y++ {
-			t := float64(y-(cy-size)) / float64(2*size)
-			var x0, x1 int32
-			if t <= 0.5 {
-				x1 = baseX
-				x0 = baseX - int32(float64(baseX-tipX)*t*2)
-			} else {
-				x1 = baseX
-				x0 = baseX - int32(float64(baseX-tipX)*(1.0-t)*2)
-			}
-			renderer.DrawLine(x0, y, x1, y)
-		}
-	} else {
-		tipX := cx + size/2
-		baseX := cx - size/2
-		for y := cy - size; y <= cy+size; y++ {
-			t := float64(y-(cy-size)) / float64(2*size)
-			var x0, x1 int32
-			if t <= 0.5 {
-				x0 = baseX
-				x1 = baseX + int32(float64(tipX-baseX)*t*2)
-			} else {
-				x0 = baseX
-				x1 = baseX + int32(float64(tipX-baseX)*(1.0-t)*2)
-			}
-			renderer.DrawLine(x0, y, x1, y)
-		}
-	}
 }
 
 func createComicBookTexture(renderer *sdl.Renderer) *inventoryItem {
@@ -362,7 +333,7 @@ func createBeerTexture(renderer *sdl.Renderer) *inventoryItem {
 }
 
 func createItemFromPNG(renderer *sdl.Renderer, path, name, desc string) *inventoryItem {
-	tex, w, h := engine.SafeTextureFromPNGRaw(renderer, path)
+	tex, w, h := engine.SafeTextureFromPNGKeyed(renderer, path)
 	if tex == nil {
 		return nil
 	}

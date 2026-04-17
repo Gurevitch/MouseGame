@@ -43,6 +43,17 @@ func (ds *dialogSystem) startDialog(entries []dialogEntry) {
 	ds.startDialogWithCallback(entries, nil)
 }
 
+// queueDialog appends entries to the end of the active dialog queue so a
+// cutscene callback can chain a follow-up beat without blowing away the lines
+// that are already playing. If no dialog is active it behaves like startDialog.
+func (ds *dialogSystem) queueDialog(entries []dialogEntry) {
+	if !ds.active {
+		ds.startDialog(entries)
+		return
+	}
+	ds.queue = append(ds.queue, entries...)
+}
+
 func (ds *dialogSystem) startDialogWithCallback(entries []dialogEntry, cb func()) {
 	if len(entries) == 0 {
 		return

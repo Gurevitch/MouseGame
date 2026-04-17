@@ -4,7 +4,7 @@
       "name": "Director Higgins",
       "idleSprite": "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png",
       "talkSprite": "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png",
-      "idleGrid": {"cols": 8, "rows": 2},
+      "idleGrid": {"cols": 7, "rows": 1},
       "talkGrid": {"cols": 8, "rows": 1},
       "bounds": {"x": 700, "y": 400, "w": 160, "h": 230},
       "dialog": "default",

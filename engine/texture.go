@@ -94,6 +94,15 @@ func loadPNG(filename string) (*image.NRGBA, error) {
 // then makes all matching pixels fully transparent. Handles solid backgrounds,
 // white backgrounds, and checkerboard patterns baked into the image.
 func applyColorKey(img *image.NRGBA) {
+	applyColorKeyTol(img, 8)
+}
+
+// applyColorKeyTol is the same as applyColorKey but with an adjustable
+// per-channel tolerance. Use higher values (20-32) for sheets where the
+// background bleeds into anti-aliased edges — e.g. the campfire loop
+// where flame colors vary dramatically across frames and the corner
+// samples sit near fringe pixels.
+func applyColorKeyTol(img *image.NRGBA, matchTol uint8) {
 	b := img.Bounds()
 	midX := (b.Min.X + b.Max.X) / 2
 	midY := (b.Min.Y + b.Max.Y) / 2
@@ -131,7 +140,6 @@ func applyColorKey(img *image.NRGBA) {
 		return
 	}
 
-	const matchTol = 8
 	transparent := color.NRGBA{0, 0, 0, 0}
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
@@ -185,6 +193,12 @@ func findOpaqueBounds(img *image.NRGBA, region image.Rectangle) image.Rectangle 
 		return region
 	}
 	return image.Rect(minX, minY, maxX+1, maxY+1)
+}
+
+// TextureFromNRGBA uploads the full NRGBA image to a new SDL texture.
+// Handy for synthetic/placeholder imagery built in code.
+func TextureFromNRGBA(renderer *sdl.Renderer, img *image.NRGBA) (*sdl.Texture, int32, int32) {
+	return nrgbaToTexture(renderer, img, img.Bounds())
 }
 
 // nrgbaToTexture creates an SDL texture from a cropped region of an NRGBA image.
@@ -422,6 +436,266 @@ func SpriteGridFromPNG(renderer *sdl.Renderer, filename string, cols, rows int) 
 				bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
 				bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
 			)
+			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+		}
+	}
+
+	return grid
+}
+
+// eraseGridLines scans horizontal and vertical strips of the image looking
+// for grid-lines: thin rows/columns of near-uniform dark pixels that span
+// most of the width/height. These dividers get baked into AI-generated
+// sprite sheets. Any line detected is erased to fully transparent.
+//
+// History: earlier versions swept a ±6-pixel window and called anything
+// RGB<80 "dark". That ate dark outlines on the sprite itself — boots,
+// lashes, hairlines, the black rim of a coin. The tighter values below
+// stay focused on the actual divider pixel without chewing into artwork:
+//
+//   - scanThickness ±2 instead of ±6: just enough slack for a 1-2 px
+//     divider that's slightly off the mathematical cell boundary.
+//   - isDark threshold RGB<50 instead of <80: divider black is near-zero;
+//     sprite outlines are often 40-70. The old threshold spanned both.
+//   - outer-edge wipe only touches pixels whose A >= 90. The old version
+//     wiped every dark pixel along the outermost 3 rows/columns, which
+//     meant any sprite that stepped right up to the cell edge lost its
+//     foot or hat silhouette.
+func eraseGridLines(img *image.NRGBA, cols, rows int) {
+	b := img.Bounds()
+	w := b.Dx()
+	h := b.Dy()
+	cellW := w / cols
+	cellH := h / rows
+
+	isDark := func(c color.NRGBA) bool {
+		if c.A < 40 {
+			return false
+		}
+		return c.R < 50 && c.G < 50 && c.B < 50
+	}
+
+	scanThickness := 2
+	transparent := color.NRGBA{0, 0, 0, 0}
+
+	for c := 1; c < cols; c++ {
+		centerX := b.Min.X + c*cellW
+		for dx := -scanThickness; dx <= scanThickness; dx++ {
+			x := centerX + dx
+			if x < b.Min.X || x >= b.Max.X {
+				continue
+			}
+			darkCount := 0
+			for y := b.Min.Y; y < b.Max.Y; y++ {
+				if isDark(img.NRGBAAt(x, y)) {
+					darkCount++
+				}
+			}
+			if float64(darkCount) >= float64(h)*0.70 {
+				for y := b.Min.Y; y < b.Max.Y; y++ {
+					if isDark(img.NRGBAAt(x, y)) {
+						img.SetNRGBA(x, y, transparent)
+					}
+				}
+			}
+		}
+	}
+
+	for r := 1; r < rows; r++ {
+		centerY := b.Min.Y + r*cellH
+		for dy := -scanThickness; dy <= scanThickness; dy++ {
+			y := centerY + dy
+			if y < b.Min.Y || y >= b.Max.Y {
+				continue
+			}
+			darkCount := 0
+			for x := b.Min.X; x < b.Max.X; x++ {
+				if isDark(img.NRGBAAt(x, y)) {
+					darkCount++
+				}
+			}
+			if float64(darkCount) >= float64(w)*0.70 {
+				for x := b.Min.X; x < b.Max.X; x++ {
+					if isDark(img.NRGBAAt(x, y)) {
+						img.SetNRGBA(x, y, transparent)
+					}
+				}
+			}
+		}
+	}
+
+	// Outer-edge wipe: only touch pixels that are simultaneously dark
+	// AND mostly opaque. A pixel with A < 90 is already fading into the
+	// background and is almost certainly a fringe artifact, not a real
+	// sprite pixel we'd want to erase.
+	edgeDarkOpaque := func(c color.NRGBA) bool {
+		if c.A < 90 {
+			return false
+		}
+		return isDark(c)
+	}
+	edgeScan := 3
+	for y := b.Min.Y; y < b.Min.Y+edgeScan && y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			if edgeDarkOpaque(img.NRGBAAt(x, y)) {
+				img.SetNRGBA(x, y, transparent)
+			}
+		}
+	}
+	for y := b.Max.Y - edgeScan; y < b.Max.Y; y++ {
+		if y < b.Min.Y {
+			continue
+		}
+		for x := b.Min.X; x < b.Max.X; x++ {
+			if edgeDarkOpaque(img.NRGBAAt(x, y)) {
+				img.SetNRGBA(x, y, transparent)
+			}
+		}
+	}
+	for x := b.Min.X; x < b.Min.X+edgeScan && x < b.Max.X; x++ {
+		for y := b.Min.Y; y < b.Max.Y; y++ {
+			if edgeDarkOpaque(img.NRGBAAt(x, y)) {
+				img.SetNRGBA(x, y, transparent)
+			}
+		}
+	}
+	for x := b.Max.X - edgeScan; x < b.Max.X; x++ {
+		if x < b.Min.X {
+			continue
+		}
+		for y := b.Min.Y; y < b.Max.Y; y++ {
+			if edgeDarkOpaque(img.NRGBAAt(x, y)) {
+				img.SetNRGBA(x, y, transparent)
+			}
+		}
+	}
+}
+
+// SpriteGridFromPNGClean loads a PNG grid and cleans it thoroughly:
+// 1. Removes the white/solid background via color-key sampling.
+// 2. Detects and erases horizontal/vertical grid-lines between cells.
+// 3. Trims each cell by `inset` pixels to drop any leftover seam.
+// 4. Slices the image into [rows][cols] GridFrames with fixed cell sizes so
+//    frame-to-frame Y positions stay stable (no apparent floating).
+// Use inset=2 for typical AI-generated sheets with visible gridlines; inset=0
+// for already-clean sheets.
+func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+	}
+	applyColorKey(img)
+	eraseGridLines(img, cols, rows)
+
+	bounds := img.Bounds()
+	cellW := bounds.Dx() / cols
+	cellH := bounds.Dy() / rows
+
+	grid := make([][]GridFrame, rows)
+	for r := 0; r < rows; r++ {
+		grid[r] = make([]GridFrame, cols)
+		for c := 0; c < cols; c++ {
+			cellRect := image.Rect(
+				bounds.Min.X+c*cellW+inset,
+				bounds.Min.Y+r*cellH+inset,
+				bounds.Min.X+(c+1)*cellW-inset,
+				bounds.Min.Y+(r+1)*cellH-inset,
+			)
+			if cellRect.Max.X <= cellRect.Min.X || cellRect.Max.Y <= cellRect.Min.Y {
+				cellRect = image.Rect(
+					bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
+					bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
+				)
+			}
+			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+		}
+	}
+
+	return grid
+}
+
+// SpriteGridFromPNGCleanKids sits between the default (tol=8) and the
+// aggressive (tol=32) variants. Tol=16 is wide enough to clear the
+// soft-gradient backgrounds that kid sheets were authored with (cream,
+// beige, pale-pink cells) without eating the saturated shirt colors or
+// the skin-tone anti-aliasing that the aggressive path chews up.
+// Audit the sheet: if default leaves a halo around the character and
+// aggressive turns the shirt into swiss cheese, this is the one to use.
+func SpriteGridFromPNGCleanKids(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+	}
+	applyColorKeyTol(img, 16)
+	eraseGridLines(img, cols, rows)
+
+	bounds := img.Bounds()
+	cellW := bounds.Dx() / cols
+	cellH := bounds.Dy() / rows
+
+	grid := make([][]GridFrame, rows)
+	for r := 0; r < rows; r++ {
+		grid[r] = make([]GridFrame, cols)
+		for c := 0; c < cols; c++ {
+			cellRect := image.Rect(
+				bounds.Min.X+c*cellW+inset,
+				bounds.Min.Y+r*cellH+inset,
+				bounds.Min.X+(c+1)*cellW-inset,
+				bounds.Min.Y+(r+1)*cellH-inset,
+			)
+			if cellRect.Max.X <= cellRect.Min.X || cellRect.Max.Y <= cellRect.Min.Y {
+				cellRect = image.Rect(
+					bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
+					bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
+				)
+			}
+			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+		}
+	}
+
+	return grid
+}
+
+// SpriteGridFromPNGCleanAggressive is the same pipeline as
+// SpriteGridFromPNGClean but with a wider color-key tolerance (32 per
+// channel vs the default 8). Use this for sheets where the background
+// bleeds into anti-aliased edges and the default color-key leaves a
+// visible halo — the campfire loop is the canonical case: dramatic
+// flame color swings between frames move the corner-sample averages,
+// so a gentle tolerance misses the fringe pixels against a saturated
+// background. Do not use as a default — it can eat near-white pixels
+// inside the character itself.
+func SpriteGridFromPNGCleanAggressive(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+	}
+	applyColorKeyTol(img, 32)
+	eraseGridLines(img, cols, rows)
+
+	bounds := img.Bounds()
+	cellW := bounds.Dx() / cols
+	cellH := bounds.Dy() / rows
+
+	grid := make([][]GridFrame, rows)
+	for r := 0; r < rows; r++ {
+		grid[r] = make([]GridFrame, cols)
+		for c := 0; c < cols; c++ {
+			cellRect := image.Rect(
+				bounds.Min.X+c*cellW+inset,
+				bounds.Min.Y+r*cellH+inset,
+				bounds.Min.X+(c+1)*cellW-inset,
+				bounds.Min.Y+(r+1)*cellH-inset,
+			)
+			if cellRect.Max.X <= cellRect.Min.X || cellRect.Max.Y <= cellRect.Min.Y {
+				cellRect = image.Rect(
+					bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
+					bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
+				)
+			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
 			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
 		}

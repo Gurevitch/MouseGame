@@ -36,6 +36,8 @@ func newTravelMap(renderer *sdl.Renderer) *travelMap {
 			{name: "Tokyo", scene: "tokyo_street", pinX: 1164, pinY: 328, unlocked: false, info: "Tokyo, Japan. A city of ancient temples and modern towers. Famous for cherry blossoms, torii gates, and Senso-ji temple.", landmarkPath: "assets/images/ui/landmarks/landmark_torii_gate.png"},
 			{name: "Rome", scene: "rome_street", pinX: 730, pinY: 330, unlocked: false, info: "Rome, Italy. The Eternal City! Home of the Colosseum (72 AD), where gladiators once fought before 50,000 spectators.", landmarkPath: "assets/images/ui/landmarks/landmark_colosseum.png"},
 			{name: "Rio de Janeiro", scene: "rio_street", pinX: 431, pinY: 504, unlocked: false, info: "Rio de Janeiro, Brazil. Famous for Christ the Redeemer statue, Copacabana beach, and the world's biggest Carnival.", landmarkPath: "assets/images/ui/landmarks/landmark_christ_redeemer.png"},
+			{name: "Buenos Aires", scene: "buenos_aires_street", pinX: 410, pinY: 580, unlocked: false, info: "Buenos Aires, Argentina. Tango, empanadas, and the Obelisco at the heart of Avenida 9 de Julio."},
+			{name: "Mexico City", scene: "mexico_street", pinX: 222, pinY: 398, unlocked: false, info: "Mexico City, Mexico. Capital of the Aztec empire, home of Chapultepec, tamales, and mariachi."},
 			{name: "Egypt", scene: "egypt_street", pinX: 755, pinY: 369, unlocked: false, info: "Egypt. Home of the Great Pyramids of Giza, the Sphinx, and the ancient pharaohs. The Nile River runs through it all.", landmarkPath: "assets/images/ui/landmarks/landmark_pyramids.png"},
 			{name: "India", scene: "india_street", pinX: 932, pinY: 399, unlocked: false, info: "India. Home of the Taj Mahal, a monument of love built in 1632. A land of ancient temples, spices, and vibrant culture.", landmarkPath: "assets/images/ui/landmarks/landmark_taj_mahal.png"},
 			{name: "Thailand", scene: "thailand_street", pinX: 1000, pinY: 397, unlocked: false, info: "Thailand. Land of golden temples, floating markets, and ancient Buddhist monasteries. Known as the Land of Smiles.", landmarkPath: "assets/images/ui/landmarks/landmark_thai_temple.png"},
@@ -238,8 +240,8 @@ func (tm *travelMap) drawOverlay(renderer *sdl.Renderer, font *engine.BitmapFont
 				dstH := targetH
 				dstX := px - dstW/2
 				dstY := py - dstH/2
-				loc.landmarkTex.SetColorMod(100, 100, 100)
-				loc.landmarkTex.SetAlphaMod(120)
+				loc.landmarkTex.SetColorMod(180, 180, 180)
+				loc.landmarkTex.SetAlphaMod(180)
 				renderer.Copy(loc.landmarkTex, nil, &sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH})
 				loc.landmarkTex.SetColorMod(255, 255, 255)
 				loc.landmarkTex.SetAlphaMod(255)
@@ -291,6 +293,14 @@ func (tm *travelMap) drawOverlay(renderer *sdl.Renderer, font *engine.BitmapFont
 		sdl.Color{R: 170, G: 160, B: 140, A: 200})
 }
 
+// Hit rectangles are generous so players can click landmark sprite, name
+// label, or surrounding glow and still register. 110x140 covers the ~70px tall
+// landmark, its ~24px label above, and the pulsing glow without overlapping
+// adjacent pins on the map.
+func (tm *travelMap) pinHitRect(loc *travelLocation) sdl.Rect {
+	return sdl.Rect{X: loc.pinX - 55, Y: loc.pinY - 70, W: 110, H: 140}
+}
+
 func (tm *travelMap) hitTest(mx, my int32) *travelLocation {
 	pt := sdl.Point{X: mx, Y: my}
 	for i := range tm.locations {
@@ -298,8 +308,8 @@ func (tm *travelMap) hitTest(mx, my int32) *travelLocation {
 			continue
 		}
 		loc := &tm.locations[i]
-		hitRect := sdl.Rect{X: loc.pinX - 40, Y: loc.pinY - 35, W: 80, H: 70}
-		if pt.InRect(&hitRect) {
+		hit := tm.pinHitRect(loc)
+		if pt.InRect(&hit) {
 			return loc
 		}
 	}
@@ -310,8 +320,8 @@ func (tm *travelMap) hitTestAny(mx, my int32) *travelLocation {
 	pt := sdl.Point{X: mx, Y: my}
 	for i := range tm.locations {
 		loc := &tm.locations[i]
-		hitRect := sdl.Rect{X: loc.pinX - 40, Y: loc.pinY - 35, W: 80, H: 70}
-		if pt.InRect(&hitRect) {
+		hit := tm.pinHitRect(loc)
+		if pt.InRect(&hit) {
 			return loc
 		}
 	}

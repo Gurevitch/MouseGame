@@ -18,6 +18,7 @@ type SaveState struct {
 	ParisUnlocked  bool `json:"parisUnlocked"`
 	NightSceneDone bool `json:"nightSceneDone"`
 	Day2Started    bool `json:"day2Started"`
+	MarcusHealed   bool `json:"marcusHealed"`
 
 	// Current position
 	CurrentScene string  `json:"currentScene"`
@@ -34,6 +35,7 @@ type SaveState struct {
 
 // SaveGame saves the current game state to a file.
 func (g *Game) SaveGame(path string) error {
+	g.syncFlagsToVars()
 	state := SaveState{
 		Vars:                 g.vars,
 		Day:                  g.day,
@@ -42,6 +44,7 @@ func (g *Game) SaveGame(path string) error {
 		ParisUnlocked:        g.parisUnlocked,
 		NightSceneDone:       g.nightSceneDone,
 		Day2Started:          g.day2Started,
+		MarcusHealed:         g.marcusHealed,
 		CurrentScene:         g.sceneMgr.currentName,
 		PlayerX:              g.player.x,
 		PlayerY:              g.player.y,
@@ -78,7 +81,6 @@ func (g *Game) LoadGame(path string) error {
 		return fmt.Errorf("parse save file: %w", err)
 	}
 
-	// Restore VarStore
 	if state.Vars != nil {
 		g.vars = state.Vars
 	}
@@ -90,8 +92,13 @@ func (g *Game) LoadGame(path string) error {
 	g.parisUnlocked = state.ParisUnlocked
 	g.nightSceneDone = state.NightSceneDone
 	g.day2Started = state.Day2Started
+	g.marcusHealed = state.MarcusHealed
 	g.monologuePlayed = state.MonologuePlayed
 	g.parisMonologuePlayed = state.ParisMonologuePlayed
+
+	// If the VarStore is newer than the legacy fields (e.g. save was written
+	// by a city chapter build that stopped writing legacy fields) let it win.
+	g.syncVarsToFlags()
 
 	// Restore inventory
 	g.inv.items = nil
@@ -106,9 +113,14 @@ func (g *Game) LoadGame(path string) error {
 	g.player.x = state.PlayerX
 	g.player.y = state.PlayerY
 
-	// Restore Paris unlock on map
 	if g.parisUnlocked {
 		g.travelMap.setUnlocked("paris_street", true)
+	}
+	if g.marcusHealed {
+		g.travelMap.setUnlocked("jerusalem_street", true)
+		if mRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok && g.marcusRoomBg != nil {
+			mRoom.bg = g.marcusRoomBg
+		}
 	}
 
 	fmt.Printf("Game loaded from %s\n", path)
@@ -124,6 +136,14 @@ func itemIDFromName(name string) string {
 		return "flower"
 	case "Postcard":
 		return "postcard"
+	case "Coin Rubbing":
+		return "coin_rubbing"
+	case "Pressed Sakura":
+		return "pressed_sakura"
+	case "Dance Card":
+		return "dance_card"
+	case "Inscription Rubbing":
+		return "inscription_rubbing"
 	default:
 		return name
 	}

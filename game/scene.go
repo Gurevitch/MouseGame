@@ -3,6 +3,7 @@ package game
 import (
 	"math"
 	"math/rand"
+	"os"
 	"sort"
 
 	"bitbucket.org/Local/games/PP/engine"
@@ -44,6 +45,73 @@ type particle struct {
 	cloud   bool
 	water   bool
 	timer   float64
+	// frameIdx / frameTimer drive the sprite-based ambient upgrade
+	// (birds, butterflies). They stay zero for particle kinds that
+	// still render as filled rectangles so nothing regresses.
+	frameIdx   int
+	frameTimer float64
+}
+
+// Ambient sprite sheets, loaded once per sceneManager construction.
+// They're optional — if the PNGs aren't on disk yet the particle
+// renderer falls back to the original filled-rect drawing. That lets
+// us ship the code change ahead of the art landing.
+var (
+	ambientBirdFrames      []npcFrame
+	ambientButterflyFrames []npcFrame
+	ambientCloudTex        *sdl.Texture
+	ambientCloudW          int32
+	ambientCloudH          int32
+	ambientLoaded          bool
+)
+
+// fileExists returns true when a sprite path is present and readable.
+// We use os.Stat rather than trying to load the PNG first because a
+// missing optional asset should be silent, not panic-inducing.
+func ambientSpriteExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// loadAmbientSprites pre-loads the three shared sprites for camp Day 1
+// flyovers. Safe to call multiple times; only the first call does real
+// work. Missing files are ignored — the engine falls back to dot-style
+// drawing.
+func loadAmbientSprites(renderer *sdl.Renderer) {
+	if ambientLoaded {
+		return
+	}
+	ambientLoaded = true
+
+	birdPath := "assets/images/ambient/bird_silhouette.png"
+	if ambientSpriteExists(birdPath) {
+		ambientBirdFrames = loadNPCGrid(renderer, birdPath, 8, 1)
+	}
+
+	butterflyPath := "assets/images/ambient/butterfly_flutter.png"
+	if ambientSpriteExists(butterflyPath) {
+		ambientButterflyFrames = loadNPCGrid(renderer, butterflyPath, 6, 1)
+	}
+
+	cloudPath := "assets/images/ambient/cloud_puff.png"
+	if ambientSpriteExists(cloudPath) {
+		tex, w, h := engine.TextureFromPNG(renderer, cloudPath)
+		ambientCloudTex = tex
+		ambientCloudW = w
+		ambientCloudH = h
+	}
+}
+
+// isCampOutdoorScene returns true for the three Day 1 camp outdoor
+// scenes that host ambient life. Keeping the list in one place makes
+// it easy to exclude interior/indoor/night scenes without touching
+// every call site.
+func isCampOutdoorScene(name string) bool {
+	switch name {
+	case "camp_entrance", "camp_grounds", "camp_lake":
+		return true
+	}
+	return false
 }
 
 type glowEffect struct {
@@ -84,6 +152,21 @@ type scene struct {
 	musicPath    string
 	minY         float64
 	maxY         float64
+	// characterScale multiplies PP and NPC draw sizes (not hitboxes) so
+	// tight/indoor scenes can render characters smaller without having
+	// to redraw sheets. 1.0 = outdoor default; 0.85-0.9 for rooms. See
+	// CHARACTERS.md.
+	characterScale float64
+}
+
+// charScale returns the effective character-scale multiplier, defaulting
+// to 1.0 when the scene wasn't explicitly configured. Keeps older scene
+// definitions from rendering at 0.
+func (s *scene) charScale() float64 {
+	if s == nil || s.characterScale <= 0 {
+		return 1.0
+	}
+	return s.characterScale
 }
 
 // snapToPath finds the nearest point on any walk segment. If no segments, returns input.
@@ -135,6 +218,8 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		scenes:      make(map[string]*scene),
 		currentName: "camp_entrance",
 	}
+
+	loadAmbientSprites(renderer)
 
 	// ===== Camp Chilly Wa Wa: Entrance =====
 	campEntrance := &scene{
@@ -242,31 +327,31 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 				arrow:       arrowDownRight,
 			},
 			{
-				bounds:      sdl.Rect{X: 50, Y: 270, W: 150, H: 110},
+				bounds:      sdl.Rect{X: 10, Y: 210, W: 240, H: 200},
 				targetScene: "tommy_room",
 				name:        "Tommy's Cabin",
 				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 300, Y: 250, W: 150, H: 110},
+				bounds:      sdl.Rect{X: 260, Y: 195, W: 240, H: 200},
 				targetScene: "jake_room",
 				name:        "Jake's Cabin",
 				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 540, Y: 240, W: 150, H: 110},
+				bounds:      sdl.Rect{X: 500, Y: 185, W: 240, H: 200},
 				targetScene: "lily_room",
 				name:        "Lily's Cabin",
 				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 840, Y: 250, W: 150, H: 110},
+				bounds:      sdl.Rect{X: 800, Y: 195, W: 240, H: 200},
 				targetScene: "marcus_room",
 				name:        "Marcus's Cabin",
 				arrow:       arrowNone,
 			},
 			{
-				bounds:      sdl.Rect{X: 1140, Y: 270, W: 150, H: 110},
+				bounds:      sdl.Rect{X: 1100, Y: 210, W: 240, H: 200},
 				targetScene: "danny_room",
 				name:        "Danny's Cabin",
 				arrow:       arrowNone,
@@ -311,6 +396,16 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			bird:  true,
 		})
 	}
+	for i := 0; i < 2; i++ {
+		campGrounds.particles = append(campGrounds.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     40 + rand.Float64()*70,
+			vx:    4 + rand.Float64()*3,
+			alpha: uint8(rand.Intn(6) + 4),
+			size:  int32(50 + rand.Intn(40)),
+			cloud: true,
+		})
+	}
 	for i := 0; i < 5; i++ {
 		campGrounds.particles = append(campGrounds.particles, particle{
 			x:     620 + (rand.Float64()-0.5)*12,
@@ -345,14 +440,15 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 
 	// ===== Camp Chilly Wa Wa: Higgins' Office =====
 	campOffice := &scene{
-		name:   "camp_office",
-		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_office.png"),
-		npcs:   []*npc{newOfficeHiggins(renderer)},
-		spawnX: 150,
-		spawnY: 400,
+		name:           "camp_office",
+		bg:             newPNGBackground(renderer, "assets/images/locations/camp/background/camp_office.png"),
+		npcs:           []*npc{newOfficeHiggins(renderer)},
+		spawnX:         150,
+		spawnY:         400,
+		characterScale: 0.9,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1100, Y: 550, W: 300, H: 250},
+				bounds:      sdl.Rect{X: 0, Y: 400, W: 200, H: 360},
 				targetScene: "camp_grounds",
 				name:        "Back to Camp",
 				arrow:       arrowDownRight,
@@ -369,12 +465,14 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm.scenes["camp_office"] = campOffice
 
 	// ===== Camp Chilly Wa Wa: Night (campfire scene) =====
+	// Higgins is silent here — the night cutscene drives his dialog via the
+	// g.dialog helper so he appears to speak "in place" at the campfire.
 	campNight := &scene{
 		name:   "camp_night",
 		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/camp_night.png"),
-		npcs:   []*npc{},
-		spawnX: 650,
-		spawnY: 550,
+		npcs:   []*npc{newNightHiggins(renderer)},
+		spawnX: 335,
+		spawnY: 591,
 	}
 	for i := 0; i < 16; i++ {
 		campNight.particles = append(campNight.particles, particle{
@@ -477,6 +575,22 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			timer: rand.Float64() * 10,
 		})
 	}
+	// Shoreline butterflies hovering over the flower patch at (180,456).
+	// These pick up the monarch sprite when the bird_silhouette/butterfly
+	// sheets land; until then they render as the existing dot-insect.
+	butterflyLakeColors := [][3]uint8{{232, 136, 43}, {240, 180, 80}, {210, 120, 60}}
+	for i := 0; i < 3; i++ {
+		c := butterflyLakeColors[i%len(butterflyLakeColors)]
+		campLake.particles = append(campLake.particles, particle{
+			x:      float64(150 + i*30),
+			baseY:  float64(440 + i*6),
+			vx:     4 + rand.Float64()*4,
+			alpha:  uint8(rand.Intn(40) + 55),
+			insect: true,
+			r:      c[0], g: c[1], b: c[2],
+			timer: rand.Float64() * 10,
+		})
+	}
 	campLake.glows = []glowEffect{
 		{x: 400, y: 250, w: 500, h: 200, r: 255, g: 200, b: 120, alpha: 6, pulse: 0.2},
 		{x: 0, y: 0, w: engine.ScreenWidth, h: 200, r: 180, g: 150, b: 200, alpha: 5, pulse: 0.15},
@@ -489,7 +603,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	parisStreet := &scene{
 		name:   "paris_street",
 		bg:     newPNGBackground(renderer, "assets/images/locations/paris/background/paris_street.png"),
-		npcs:   []*npc{newFrenchGuide(renderer)},
+		npcs:   []*npc{newFrenchGuide(renderer), newPierreArtist(renderer), newGendarmeClaude(renderer)},
 		spawnX: 200,
 		spawnY: 400,
 		hotspots: []hotspot{
@@ -504,22 +618,9 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 			{X: 0, Y: 0, W: 180, H: 500},
 		},
 	}
-	// Pigeons
-	for i := 0; i < 4; i++ {
-		dir := 10 + rand.Float64()*15
-		if rand.Float64() < 0.5 {
-			dir = -dir
-		}
-		parisStreet.particles = append(parisStreet.particles, particle{
-			x:     rand.Float64() * float64(engine.ScreenWidth),
-			y:     50 + rand.Float64()*80,
-			vx:    dir,
-			baseY: 50 + rand.Float64()*80,
-			alpha: uint8(rand.Intn(25) + 40),
-			size:  3,
-			bird:  true,
-		})
-	}
+	// Ambient life (flyover birds, clouds) is camp-Day-1 only per the
+	// plan; Paris skips them so the city feels quieter and the scale
+	// reads urban instead of rural.
 	// Cafe steam
 	for i := 0; i < 3; i++ {
 		baseX := 150 + float64(i)*80
@@ -556,11 +657,12 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 
 	// ===== Paris: Louvre Interior =====
 	parisLouvre := &scene{
-		name:   "paris_louvre",
-		bg:     newPNGBackground(renderer, "assets/images/locations/paris/background/paris_museum.png"),
-		npcs:   []*npc{newMuseumCurator(renderer)},
-		spawnX: 200,
-		spawnY: 400,
+		name:           "paris_louvre",
+		bg:             newPNGBackground(renderer, "assets/images/locations/paris/background/paris_museum.png"),
+		npcs:           []*npc{newMuseumCurator(renderer)},
+		spawnX:         200,
+		spawnY:         400,
+		characterScale: 0.9,
 		hotspots: []hotspot{
 			{
 				bounds:      sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
@@ -594,15 +696,19 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	// ===== Cabin Interiors =====
 
 	// --- Tommy's Room ---
+	roomTommy := newTommy(renderer)
+	roomTommy.bounds = sdl.Rect{X: 760, Y: 430, W: 170, H: 260}
+	roomTommy.silent = true
 	tommyRoom := &scene{
-		name:   "tommy_room",
-		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/tommy_room.png"),
-		npcs:   []*npc{},
-		spawnX: 1100,
-		spawnY: 500,
+		name:           "tommy_room",
+		bg:             newPNGBackground(renderer, "assets/images/locations/camp/background/tommy_room.png"),
+		npcs:           []*npc{roomTommy},
+		spawnX:         1100,
+		spawnY:         500,
+		characterScale: 0.85,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1100, Y: 200, W: 300, H: 550},
+				bounds:      sdl.Rect{X: 900, Y: 100, W: 500, H: 660},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowRight,
@@ -629,15 +735,20 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm.scenes["tommy_room"] = tommyRoom
 
 	// --- Jake's Room ---
+	roomJake := newJake(renderer)
+	roomJake.bounds = sdl.Rect{X: 760, Y: 420, W: 170, H: 260}
+	// Start the room Jake silent — he only "appears" once Day 2 is rolling.
+	roomJake.silent = true
 	jakeRoom := &scene{
-		name:   "jake_room",
-		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/jake_room.png"),
-		npcs:   []*npc{},
-		spawnX: 1100,
-		spawnY: 500,
+		name:           "jake_room",
+		bg:             newPNGBackground(renderer, "assets/images/locations/camp/background/jake_room.png"),
+		npcs:           []*npc{roomJake},
+		spawnX:         1100,
+		spawnY:         500,
+		characterScale: 0.85,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1100, Y: 200, W: 300, H: 550},
+				bounds:      sdl.Rect{X: 900, Y: 100, W: 500, H: 660},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowRight,
@@ -664,15 +775,19 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm.scenes["jake_room"] = jakeRoom
 
 	// --- Lily's Room ---
+	roomLily := newLily(renderer)
+	roomLily.bounds = sdl.Rect{X: 666, Y: 461, W: 170, H: 260}
+	roomLily.silent = true
 	lilyRoom := &scene{
-		name:   "lily_room",
-		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/lily_room.png"),
-		npcs:   []*npc{},
-		spawnX: 700,
-		spawnY: 550,
+		name:           "lily_room",
+		bg:             newPNGBackground(renderer, "assets/images/locations/camp/background/lily_room.png"),
+		npcs:           []*npc{roomLily},
+		spawnX:         700,
+		spawnY:         550,
+		characterScale: 0.85,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 350, Y: 580, W: 700, H: 220},
+				bounds:      sdl.Rect{X: 200, Y: 500, W: 1000, H: 260},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowDown,
@@ -713,17 +828,21 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm.scenes["lily_room"] = lilyRoom
 
 	// --- Marcus's Room ---
+	// User request (FIXME 2026-04): place Marcus bigger, foot center near
+	// (666, 561). With W=280 and H=380 the aspect-preserve draw lands him
+	// filling ~half the room without touching the cabin walls.
 	roomMarcus := newMarcus(renderer)
-	roomMarcus.bounds = sdl.Rect{X: 666, Y: 461, W: 200, H: 260}
+	roomMarcus.bounds = sdl.Rect{X: 526, Y: 181, W: 280, H: 380}
 	marcusRoom := &scene{
-		name:   "marcus_room",
-		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/marcus_room_day.png"),
-		npcs:   []*npc{roomMarcus},
-		spawnX: 700,
-		spawnY: 550,
+		name:           "marcus_room",
+		bg:             newPNGBackground(renderer, "assets/images/locations/camp/background/marcus_room_day.png"),
+		npcs:           []*npc{roomMarcus},
+		spawnX:         700,
+		spawnY:         550,
+		characterScale: 0.85,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 350, Y: 580, W: 700, H: 220},
+				bounds:      sdl.Rect{X: 200, Y: 500, W: 1000, H: 260},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowDown,
@@ -751,15 +870,19 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm.scenes["marcus_room"] = marcusRoom
 
 	// --- Danny's Room ---
+	roomDanny := newDanny(renderer)
+	roomDanny.bounds = sdl.Rect{X: 760, Y: 430, W: 170, H: 260}
+	roomDanny.silent = true
 	dannyRoom := &scene{
-		name:   "danny_room",
-		bg:     newPNGBackground(renderer, "assets/images/locations/camp/background/danny_room.png"),
-		npcs:   []*npc{},
-		spawnX: 1100,
-		spawnY: 500,
+		name:           "danny_room",
+		bg:             newPNGBackground(renderer, "assets/images/locations/camp/background/danny_room.png"),
+		npcs:           []*npc{roomDanny},
+		spawnX:         1100,
+		spawnY:         500,
+		characterScale: 0.85,
 		hotspots: []hotspot{
 			{
-				bounds:      sdl.Rect{X: 1100, Y: 200, W: 300, H: 550},
+				bounds:      sdl.Rect{X: 900, Y: 100, W: 500, H: 660},
 				targetScene: "camp_grounds",
 				name:        "Exit Cabin",
 				arrow:       arrowRight,
@@ -804,6 +927,13 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		})
 	}
 	sm.scenes["airplane_flight"] = airplaneFlight
+
+	// --- Extra city chapters (defined in their own files) ---
+	addJerusalemScenes(sm, renderer)
+	addTokyoScenes(sm, renderer)
+	addRioScenes(sm, renderer)
+	addRomeScenes(sm, renderer)
+	addMexicoScenes(sm, renderer)
 
 	return sm
 }
@@ -1026,6 +1156,8 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 		})
 	}
 
+	scale := s.charScale()
+
 	base := len(s.floorItems)
 	for i := range s.npcs {
 		n := s.npcs[i]
@@ -1036,7 +1168,7 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 			footY: n.footY(),
 			order: base + i,
 			draw: func() {
-				n.draw(renderer)
+				n.drawScaled(renderer, scale)
 			},
 		})
 	}
@@ -1046,7 +1178,7 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 			footY: plr.footY(),
 			order: base + len(s.npcs),
 			draw: func() {
-				plr.draw(renderer)
+				plr.drawScaled(renderer, scale)
 			},
 		})
 	}
@@ -1063,11 +1195,21 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 	}
 }
 
-func (s *scene) updateAmbient(dt float64) {
+// updateAmbient ticks all ambient particles. When showAmbientLife is
+// false (Day 2+, night scenes, indoors, cities), bird / insect / cloud
+// particles are skipped so the camp-specific wildlife freezes off
+// without having to rebuild the particle list. Shimmer / smoke / fire
+// / water particles keep running because they're scene-scoped effects
+// (lake shimmer, campfire flames, cabin light).
+func (s *scene) updateAmbient(dt float64, showAmbientLife bool) {
 	for i := range s.particles {
 		p := &s.particles[i]
 
 		if p.twinkle {
+			continue
+		}
+
+		if (p.bird || p.insect || p.cloud) && !showAmbientLife {
 			continue
 		}
 
@@ -1119,6 +1261,13 @@ func (s *scene) updateAmbient(dt float64) {
 			if p.x < -20 {
 				p.x = float64(engine.ScreenWidth) + 20
 			}
+			if len(ambientButterflyFrames) > 0 {
+				p.frameTimer += dt
+				if p.frameTimer >= 0.12 {
+					p.frameTimer = 0
+					p.frameIdx = (p.frameIdx + 1) % len(ambientButterflyFrames)
+				}
+			}
 			continue
 		}
 
@@ -1147,6 +1296,13 @@ func (s *scene) updateAmbient(dt float64) {
 			}
 			if p.vx < 0 && p.x < -20 {
 				p.x = float64(engine.ScreenWidth) + 20
+			}
+			if len(ambientBirdFrames) > 0 {
+				p.frameTimer += dt
+				if p.frameTimer >= 0.10 {
+					p.frameTimer = 0
+					p.frameIdx = (p.frameIdx + 1) % len(ambientBirdFrames)
+				}
 			}
 			continue
 		}
@@ -1179,7 +1335,10 @@ func (s *scene) updateAmbient(dt float64) {
 	}
 }
 
-func (s *scene) drawAmbient(renderer *sdl.Renderer) {
+// drawAmbient draws glows and particles. Like updateAmbient, when
+// showAmbientLife is false the flyover wildlife (birds, butterflies,
+// clouds) is skipped so interior/Day-2/night scenes stay still.
+func (s *scene) drawAmbient(renderer *sdl.Renderer, showAmbientLife bool) {
 	// Glow effects
 	for _, g := range s.glows {
 		base := 0.7 + 0.3*math.Sin(g.timer*g.pulse)
@@ -1231,6 +1390,22 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 		}
 
 		if p.insect {
+			if !showAmbientLife {
+				continue
+			}
+			if len(ambientButterflyFrames) > 0 {
+				f := ambientButterflyFrames[p.frameIdx%len(ambientButterflyFrames)]
+				if f.tex != nil {
+					dst := sdl.Rect{
+						X: int32(p.x) - f.w/2,
+						Y: int32(p.y) - f.h/2,
+						W: f.w,
+						H: f.h,
+					}
+					renderer.Copy(f.tex, nil, &dst)
+					continue
+				}
+			}
 			px := int32(p.x)
 			py := int32(p.y)
 			wingSpread := int32(2 + math.Abs(math.Sin(p.timer*8))*2)
@@ -1243,6 +1418,30 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 		}
 
 		if p.cloud {
+			if !showAmbientLife {
+				continue
+			}
+			if ambientCloudTex != nil {
+				ratio := float64(p.size) / 80.0
+				if ratio < 0.6 {
+					ratio = 0.6
+				}
+				dstW := int32(float64(ambientCloudW) * ratio)
+				dstH := int32(float64(ambientCloudH) * ratio)
+				dst := sdl.Rect{
+					X: int32(p.x),
+					Y: int32(p.y),
+					W: dstW,
+					H: dstH,
+				}
+				modAlpha := 160 + int(p.alpha)
+				if modAlpha > 255 {
+					modAlpha = 255
+				}
+				ambientCloudTex.SetAlphaMod(uint8(modAlpha))
+				renderer.Copy(ambientCloudTex, nil, &dst)
+				continue
+			}
 			renderer.SetDrawColor(255, 255, 255, p.alpha)
 			cx := int32(p.x)
 			cy := int32(p.y)
@@ -1261,6 +1460,26 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer) {
 		}
 
 		if p.bird {
+			if !showAmbientLife {
+				continue
+			}
+			if len(ambientBirdFrames) > 0 {
+				f := ambientBirdFrames[p.frameIdx%len(ambientBirdFrames)]
+				if f.tex != nil {
+					flip := sdl.FLIP_NONE
+					if p.vx < 0 {
+						flip = sdl.FLIP_HORIZONTAL
+					}
+					dst := sdl.Rect{
+						X: int32(p.x) - f.w/2,
+						Y: int32(p.y) - f.h/2,
+						W: f.w,
+						H: f.h,
+					}
+					renderer.CopyEx(f.tex, nil, &dst, 0, nil, flip)
+					continue
+				}
+			}
 			renderer.SetDrawColor(30, 25, 20, p.alpha)
 			px := int32(p.x)
 			py := int32(p.y)

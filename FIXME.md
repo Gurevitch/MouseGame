@@ -16,14 +16,8 @@ When fixed, move to the **Resolved** section with the date.
 
 ### Story / Flow
 
-- [ ] `[P1]` Postcard not added to inventory after Curator dialog (item pickup missing)
-- [ ] `[P1]` No Marcus healing flow — giving postcard to Marcus should cure him
 - [ ] `[P2]` Higgins bedtime dialog uses existing entrance sprite — needs new camp sprite (see STATUS.md assets)
 - [ ] `[P2]` Airplane cutscene uses PP standing idle — needs sitting-in-plane sprite
-
-### Scenes / Navigation
-
-- [ ] `[P2]` Kid rooms (Tommy, Jake, Lily, Danny) have no NPCs inside — should have kids in their rooms on Day 2
 
 ### Travel Map
 
@@ -44,6 +38,17 @@ When fixed, move to the **Resolved** section with the date.
 | Map used dots instead of landmarks | 2026-04-08 | Replaced with landmark images from ui/landmarks/ |
 | Night scene too simple (instant Marcus room) | 2026-04-08 | Reworked to multi-phase: campfire sleep → Marcus freakout → wakeup |
 | No airplane transition before cities | 2026-04-08 | Added airplane_flight scene with 4-second cutscene |
+| Kid rooms have no NPCs inside | 2026-04-16 | `tommy_room`, `jake_room`, `lily_room`, `danny_room` in `game/scene.go` now host the kid NPC; silent until healing chain activates them from `game/game.go` ~260-470 |
+| Postcard not added to inventory after Curator dialog | 2026-04-16 | Paris handoff + Marcus heal at `game/game.go:461` give the Postcard to PP and consume it on Marcus |
+| No Marcus healing flow | 2026-04-16 | Marcus `altDialogFunc`, `VarMarcusHealed`, Jerusalem unlock, day-bg restore (`game/game.go:449`) |
+| Night scene complete rework | 2026-04-16 | 5-phase sequence in `nightSceneArrival` / `nightSceneUpdate` (Higgins speech, PP sleeping/waking, Marcus freakout, Day 2 transition) |
+| Map landmark positions | 2026-04-16 | Travel map pins placed at user coords; Rome added; BA and Mexico pins in place; Paris click-to-fly working |
+| Airplane animation 3-row sheet | 2026-04-16 | Loaded as 4x3 via `SpriteGridFromPNGClean`, drawn in `airplane_flight` with bob |
+| Flying / map / Paris travel broken | 2026-04-16 | `pinHitRect` 110x140 + `HandleClick` rework in `game/travel_map.go` and `game/game.go` |
+| Rooms dots too small / exit radius too tight | 2026-04-16 | Cabin hotspots enlarged to 240x200 in `game/scene.go` |
+| Can't move between inventory items / yellow arrows / circle too small | 2026-04-16 | 720x600 oval + chevrons + 0.20 click zones in `game/inventory.go` |
+| Hard to find talk spot on kids | 2026-04-16 | Partial: `npc.containsPoint` padX=70, padY=50 in `game/npc.go`; cursor/hover alignment still open |
+| Can't exit Higgins office / can't reach it | 2026-04-16 | Office hotspot + exit bounds landed, walk paths extended |
 
 ---
 
@@ -210,10 +215,88 @@ first code revie:
 - [ ] `[P1]` no need map to gro on screen, change it to the animation we make of giveing and taking map.
 - [ ] `[P1]` assets\images\locations\camp\npc\kids\jake\npc_jake_idle.png take only the second line here
 - [ ] `[P1]` remove bg from items, we see them in the invertory
-- [ ] `[P1]`  lily dialog is still wrong. the first time i click on her is like i gave the flower 
+- [x] `[P1]`  lily dialog is still wrong. the first time i click on her is like i gave the flower — FIXED: item-in-bag gate + cursor hint in pass 2 (see Reported 2026-04-16 pass 2 above).
 - [ ] `[P1]` in the camp scnece i cant reach the inventory normaly, and if i do cant press on the righ kid
 - [ ] `[P1]` in the night senarion, we need to remove the bg from both sleep, wake up and fire. put the fire in (622,573) and the pp in (335,591). when goin to marcus room, the pp is inside there for some reason
 - [ ] `[P0]` we need to make the other kid ot be like lily is displayed. the frames of them are not good and loose colors like tommy and danny
 - [ ] `[P1]` in marcus room, he need to be display in (666,561) and bigger in the size, same with the pink 
 - [ ] `[P1]` in higgins office, he need to be in (1059,370) and no bg
 - [ ] `[P1]` still no location in the map!! and travel to paris isnt working
+
+### Reported (2026-04-16) - this session
+
+- [x] `[P0]` Campfire sprite renders with its own background in the night scene. Asset: `assets/images/locations/camp/campfire_idle.png`. Sheet is 8x4 but loaded and flipbooked as a 32-frame cycle in `game/game.go:166-172` and drawn at scale 2.5 at (622,573). Color-key misses read as a visible halo. Fix: load row 0 only, bump inset, add aggressive color-key pass. — FIXED: `SpriteGridFromPNGCleanAggressive` + row 0 + inset 4 in `game/game.go`.
+- [x] `[P1]` Lily first-click triggers flower dialog even when PP hasn't walked up holding the flower. Root cause at `game/player.go:532`: `altDialogFunc` checked unconditionally on normal click-to-talk, not gated on `inv.heldItem`. Fix: add `altDialogRequiresHeld bool` to `npc`, set true for Lily, require held Flower. — FIXED: gate in `canTriggerAltDialog`; Lily uses `altDialogRequiresItem="Flower"` with `altDialogRequiresHeld=false` so the handoff fires as soon as the flower is in the bag.
+- [x] `[P1]` Higgins appears double on `camp_entrance` when talking. `npc_director_higgins_talk.png` is malformed (row 1 has 8 frames, row 2 has 6) but `game/npc.go:166` loads it as `4x2`, so cell slicing picks up half a neighbor figure. Fix: load row 0 only via `loadNPCGridRow(..., 8, 2, 0)` as a stopgap; regenerate the sheet to a clean 8x1 per PROMPTS.md. — FIXED: `loadNPCGridRow(..., 8, 2, 0)` in `newDirectorHiggins`; clean-regen tracked below.
+- [x] `[P1]` Higgins office NPC is 280 px tall (~35% of screen) — too big vs PTP reference. Fix: drop bounds H to 225 and let scene `characterScale 0.9` in `camp_office` finish the job. — FIXED: `newOfficeHiggins` bounds 160x225 + `camp_office` characterScale 0.9.
+- [x] `[P1]` No per-scene camera scale — cabin rooms and outdoor scenes share one size multiplier; PTP's pub shot is tighter than its park shot. Fix: add `characterScale float64` to `scene` struct, multiply PP + NPC draw rects by it, starter values in CHARACTERS.md. — FIXED: `scene.characterScale` + `drawScaled` on player/npc; values seeded for `*_room`, `camp_office`, city tight shots.
+- [x] `[P1]` Camp scenes feel static. Existing "birds" in `game/scene.go:1285-1292` are 3-pixel rectangles, barely visible. Day 1 camp needs real ambient life (sprite birds + butterflies near lake + drifting clouds). Day-1-only so Day 2 grim tone lands. — FIXED: sprite-based `updateAmbient` / `drawAmbient` with bird + butterfly + cloud sheets, gated by `isCampOutdoorScene` + `day == 1`.
+
+### Reported (2026-04-16) - this session (pass 2)
+
+- [x] `[P1]` Higgins still renders small on `camp_entrance` next to PP (reported regression from pass 1). Root cause: bounds were 160x230 and the aspect-preserve draw produced a figure shorter than PP (170x235). — FIXED: `newDirectorHiggins` bounds bumped to 200x265 with Y=345 so the aspect-preserve lands in the 225-235 band from CHARACTERS.md.
+- [x] `[P1]` Flower handoff to Lily broken — clicking Lily after picking up the flower did nothing (reported regression). Root cause: `altDialogRequiresHeld` was too strict; player had to manually select the flower in the inventory to "hold" it before Lily would accept. — FIXED: `canTriggerAltDialog` now also accepts `inv.hasItem(...)` for NPCs that set `altDialogRequiresItem` without `altDialogRequiresHeld`; Lily's setup flipped `altDialogRequiresHeld` off. `updateHover` lights up the cursor when the required item is in the bag.
+- [x] `[P1]` NPCs do not face PP when talking — e.g. Danny stays facing the trees through his whole dialog. — FIXED: `npc.preTalkFlipped` snapshot + flip in `startNPCDialog`, restore in `wrapCb`; drag-onto-NPC path mirrors the same snapshot/restore so Lily's flower handoff leaves her turned toward PP.
+- [x] `[P2]` Camp kid sprite sheets lose color on transparent background — default color-key (tol=8) left halos on pastel backgrounds. — FIXED: added `SpriteGridFromPNGCleanKids` (tol=16), routed every camp kid loader through `loadNPCGridKids` / `loadNPCGridRowKids`, normalized Tommy/Jake/Marcus mismatched idle/talk/strange pairs to 8x2, and tightened `eraseGridLines` (window ±2, RGB<50, outer-edge alpha gate) so sprite outlines stop getting eaten.
+
+### Deferred (2026-04-16) - sprite regens
+
+- [ ] `[P2]` Regenerate `npc_tommy_idle.png` + `npc_tommy_talk.png` as clean 8x1 sheets per PROMPTS.md so we can drop the 8x2 normalization stopgap.
+- [ ] `[P2]` Regenerate `npc_tommy_strange_idle.png` + `npc_tommy_strange_talk.png` as matching 8x1 sheets.
+- [ ] `[P2]` Regenerate `npc_jake_idle.png` (currently row 1 of 8x2) and `npc_jake_talk.png` as matching 8x1 sheets.
+- [ ] `[P2]` Regenerate `npc_jake_strange_idle.png` + `npc_jake_strange_talk.png` as matching 8x1 sheets.
+- [ ] `[P2]` Regenerate `npc_marcus_strange_idle.png` + `npc_marcus_strange_talk.png` as matching 8x1 sheets (currently authored as 8x2 and 5x2).
+- [ ] `[P2]` Regenerate `npc_director_higgins_talk.png` as a clean 8x1 so we can drop the "row 0 only" hack in `newDirectorHiggins`.
+- [x] `[P2]` Regenerate `npc_director_higgins_idle.png` as a clean single-row sheet so we can drop the "row 0 only" / mismatched-grid workaround. — FIXED: regenerated as a clean 7x1 strip at 172x384 per cell (matches `_talk.png` geometry so idle and talk render at the same on-screen size); `newDirectorHiggins` + `newNightHiggins` still call `loadNPCGrid(..., 7, 1)` unchanged. Built via `tools/stitch_higgins_idle.py` from 7 per-pose generations + edge-flood color-key. Stale duplicate at `assets/images/locations/camp/npc/npc_director_higgins_idle.png` deleted.
+
+### Reported (2026-04-16) - this session (pass 3)
+
+- [x] `[P1]` Higgins idle still reads as double on `camp_entrance`. Root cause: the idle sheet was a 2-row mess (row 0 = 8 frames, row 1 = 6) but `newDirectorHiggins` loaded it as `loadNPCGrid(..., 7, 1)`, so cell slicing divided the sheet into 7 wide-and-tall cells that each straddled a pose and its neighbor. — FIXED: regenerated the idle PNG as a clean `7x1` strip at 172x384 per cell via `tools/stitch_higgins_idle.py` (matches talk-sheet cell geometry so both animations render at the same size). `newDirectorHiggins` now loads it cleanly as `loadNPCGrid(..., 7, 1)`; `newNightHiggins` was already on the same path.
+- [x] `[P1]` Lily flow still inconsistent — shy dialog and flower dialog could fire in the wrong order depending on scene re-entry because `lilyHinted` was a closure-local that reset whenever `setupCampCallbacks` ran. — FIXED: promoted to `npc.hintState` (per-NPC, survives reloads). Lily's altDialog is armed at setup but gated on `hintState == 1`, so first click is always shy, and flower handoff fires exactly once after the shy beat finishes.
+- [x] `[P1]` PP visibly walked around inside Marcus's cabin during the night freakout beat. Root cause: phase 3 cleared `playerSleeping` before transitioning, so `Draw` fell through to `scene.drawActors(..., g.player)`. — FIXED: added `nightHidePlayer` bool set true on phase-3 entry and false on phase-4 exit; `Draw` calls `scene.drawActorsNoPlayer` while the flag is on.
+- [x] `[P1]` Warm orange tint bled across the sleep/wake sprites making them look bronzed. — FIXED: `drawWarmTint` now skipped while `camp_night` + `playerSleeping`.
+- [x] `[P1]` Cursor had no held-item state — pointer stayed on `cursorNormal` over empty space even while PP was carrying something. — FIXED: `updateHover` now defaults to `cursorGrab` whenever PP is carrying an item. No new cursor asset added — only the existing cursor PNGs are used.
+
+- [] `[P1]` match every higgins design to the last idle.
+- [] `[P1]` when the icon change to click it got white bg.
+- [] `[P1]` tommy loose color and we can see the frames change,same for jake
+- [] `[P1]` when we first want to talk to lily higgins not shown up as he should.
+- [] `[P1]` make the kid be smaller then the pp 
+- [] `[P1]` i want to click on the exac object and not a big radius around him. currently i want to talk to danny and marcus talk is jumping in 
+- [] `[P1]` lily not getting the flower at all! i just talk to them and it jump to night. i want you to check the size of the fire and match it to the place it need to be around (581,592)-(702,594)
+- [] `[P1]` pp sleeping is huge and got white bg 
+- [] `[P1]` fix the door enter locations
+- [] `[P1]` no need the map to fill the screen when get it. it need to be animation from giving and talking we already made 
+
+### Reported (2026-04-17) - this session (pass 4)
+
+- [x] `[P1]` Higgins sprite sheets were loaded with grid dimensions that did not match PROMPTS.md spec, causing the long-running "doubled Higgins" artefact on talk. — FIXED in `game/npc.go`:
+  - `newDirectorHiggins` talk: `loadNPCGridRow(..., 8, 2, 0)` → `loadNPCGrid(..., 6, 1)` (per spec).
+  - `newOfficeHiggins` idle: `6,2` → `7,1`; talk: `6,2` → `4,2` (per spec).
+  - `newNightHiggins` talk: `4,2` → `6,1` (matched entrance).
+- [x] `[P1]` Office Higgins was at (1062,400) size 160x225 — user wanted him higher and bigger. — FIXED: bounds to `(942, 357) 240x320` so foot lands around y=677 with head at y=357.
+- [x] `[P1]` Night Higgins not clearly in the bottom-right corner. — FIXED: bounds to `(1120, 430) 200x260` so he sits at the campfire's right side with feet at ~(1220, 690).
+- [x] `[P1]` Marcus in his room too small and off-position. — FIXED: bounds to `(526, 181) 280x380` in `scene.go` (bigger body, foot center lands near user-specified (666, 561)).
+
+- [] `[P1]` we need to change the size of the objects. take a look in those pictures C:\go-workspace\src\bitbucket.org\Local\games\PP\london\background\the-pink-panther-passport-to-peril_7 and C:\go-workspace\src\bitbucket.org\Local\games\PP\london\background\pub. currently they fill the image to much imo 
+- [] `[P1]` i want to add object to the bg to make it more alive 
+- [] `[P0]` i dont want radius to talk to npc. we must click or give item to them when the mouse is in the frame of them. probably it because of the bg so we need to think of it. 
+- [] `[P1]` higgins still not showing up when we talking to lily when she is shy 
+- [] `[P1]` i cant pick up the flower... when i got it the story just jumped imidiatily to the night schene. not good! lily didnt got the flower and higgins didnt say it time to sleep
+- [] `[P1]` when the icon change to click it got white bg.
+- [] `[P1]` tommy loose color and we can see the frames change,same for jake
+- [] `[P1]` when we first want to talk to lily higgins not shown up as he should.
+- [] `[P1]` make the kid be smaller then the pp 
+- [] `[P1]` i want to click on the exac object and not a big radius around him. currently i want to talk to danny and marcus talk is jumping in 
+- [] `[P1]` lily not getting the flower at all! i just talk to them and it jump to night. i want you to check the size of the fire and match it to the place it need to be around (581,592)-(702,594)
+- [] `[P1]` pp sleeping is huge and got white bg 
+- [] `[P1]` fix the door enter locations
+- [] `[P0]` no need the map to fill the screen when get it. it need to be animation from giving and talking we already made 
+- [] `[P1]` higgings in the office is not in place at all
+- [] `[P1]` when we fly to paris the pp is shown in the frame for some reason. also add a color of sky to make the flying more alive 
+
+--paris!!--
+- [] `[P1]` npc not placed on the ground they are at around 588 y 
+- [] `[P0]` direction! remove the left move to open the map. no need for that, i want to create now a story and object we need to collect before we enter the louver.
+so we need a bagguete and give more ideas just like every retro pp game had. it need to be a quest game after all.
+- [] `[P1]` can you generate bg people that sit on the chairs and drink coffee in loop regardless to what we doing?

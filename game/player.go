@@ -15,8 +15,8 @@ type spriteFrame struct {
 
 const (
 	playerBaseSpeed = 250.0
-	playerDstW      = 140
-	playerDstH      = 195
+	playerDstW      = 170
+	playerDstH      = 235
 	playerMinX      = 10.0
 	playerMaxX      = engine.ScreenWidth - playerDstW - 10.0
 	playerMinY      = 300.0
@@ -83,7 +83,11 @@ type player struct {
 
 	interactTarget *npc
 	dialogSys      *dialogSystem
-	onArrival      func()
+	// inv is the shared inventory pointer used to gate item-specific
+	// alt dialogs (e.g. Lily's flower handoff). Set once in Game.New
+	// and read on every startNPCDialog call. Nil-safe.
+	inv       *inventory
+	onArrival func()
 
 	sceneMinY float64
 	sceneMaxY float64
@@ -93,12 +97,28 @@ func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
 	return gridFrames(renderer, path, cols, 1)
 }
 
+// spriteInset is the pixel margin trimmed off each cell at load time to strip
+// the black grid-line borders that AI-generated sheets bake in between cells.
+const spriteInset = 3
+
 func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFrame {
-	grid := engine.SpriteGridFromPNG(renderer, path, cols, rows)
+	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, spriteInset)
 	var frames []spriteFrame
 	for r := 0; r < rows; r++ {
 		for c := 0; c < cols; c++ {
 			gf := grid[r][c]
+			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+		}
+	}
+	return frames
+}
+
+func gridFramesRow(renderer *sdl.Renderer, path string, cols, rows, row int) []spriteFrame {
+	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, spriteInset)
+	var frames []spriteFrame
+	if row < len(grid) {
+		for c := 0; c < cols && c < len(grid[row]); c++ {
+			gf := grid[row][c]
 			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H})
 		}
 	}
@@ -111,9 +131,9 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		y: float64(engine.ScreenHeight) - playerDstH - 100,
 	}
 
-	p.walkSideFrames = gridFrames(renderer, "assets/images/player/PP walk left.png", 8, 2)
-	p.walkDownFrames = gridFrames(renderer, "assets/images/player/PP walk front.png", 8, 2)
-	p.walkUpFrames = gridFrames(renderer, "assets/images/player/PP walk back.png", 8, 2)
+	p.walkSideFrames = gridFramesRow(renderer, "assets/images/player/PP walk left.png", 8, 2, 0)
+	p.walkDownFrames = gridFramesRow(renderer, "assets/images/player/PP walk front.png", 8, 2, 0)
+	p.walkUpFrames = gridFramesRow(renderer, "assets/images/player/PP walk back.png", 8, 2, 0)
 
 	// Idle images — use all frames for animated idle
 	p.idleFrontFrames = gridFrames(renderer, "assets/images/player/PP idle front.png", 8, 2)
@@ -479,6 +499,42 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 	}
 }
 
+// canTriggerAltDialog gates give-item alt dialogs so they only fire when
+// the required item is reachable. Two independent flags shape the rule:
+//
+//   - altDialogRequiresHeld: the player must actively carry the item
+//     (inv.heldItem). Use this for flows that visually hand the item over
+//     from the cursor, like drag-and-drop puzzles.
+//   - altDialogRequiresItem: the item must exist in inventory; holding is
+//     optional. Most NPCs (Lily, Jake, Tommy, Danny) use this so the
+//     player just needs to click on the NPC after pickup.
+//
+// Both flags unset -> altDialogFunc is called unconditionally (legacy).
+func (p *player) canTriggerAltDialog(n *npc) bool {
+	if n == nil {
+		return true
+	}
+	if p.inv == nil {
+		return !n.altDialogRequiresHeld && n.altDialogRequiresItem == ""
+	}
+	if n.altDialogRequiresHeld {
+		if p.inv.heldItem == nil {
+			return false
+		}
+		if n.altDialogRequiresItem == "" {
+			return true
+		}
+		return p.inv.heldItem.name == n.altDialogRequiresItem
+	}
+	if n.altDialogRequiresItem != "" {
+		if p.inv.heldItem != nil && p.inv.heldItem.name == n.altDialogRequiresItem {
+			return true
+		}
+		return p.inv.hasItem(n.altDialogRequiresItem)
+	}
+	return true
+}
+
 func (p *player) startNPCDialog() {
 	n := p.interactTarget
 	ds := p.dialogSys
@@ -497,6 +553,13 @@ func (p *player) startNPCDialog() {
 		p.dir = dirRight
 	}
 
+	// Snapshot the NPC's authored facing so we can restore it when the
+	// dialog ends, then flip the NPC to face PP. Sprite sheets are
+	// drawn facing right, so flipped=true means "face left". If PP is
+	// to the left of the NPC's center, the NPC needs to face left.
+	n.preTalkFlipped = n.flipped
+	n.flipped = playerCenter < npcCenter
+
 	if len(n.talkGrid) > 0 {
 		n.setAnimState(npcAnimTalk)
 	}
@@ -507,13 +570,14 @@ func (p *player) startNPCDialog() {
 			if len(target.talkGrid) > 0 {
 				target.setAnimState(npcAnimIdle)
 			}
+			target.flipped = target.preTalkFlipped
 			if inner != nil {
 				inner()
 			}
 		}
 	}
 
-	if n.altDialogFunc != nil {
+	if n.altDialogFunc != nil && p.canTriggerAltDialog(n) {
 		entries, cb := n.altDialogFunc()
 		if entries != nil {
 			ds.startDialogWithCallback(entries, wrapCb(cb))
@@ -562,12 +626,22 @@ func (p *player) depthScale() float64 {
 }
 
 func (p *player) draw(renderer *sdl.Renderer) {
+	p.drawScaled(renderer, 1.0)
+}
+
+// drawScaled renders PP with a character-scale multiplier so tight
+// indoor scenes can shrink PP to match the PTP "pub shot" ratios
+// without altering the underlying 170x235 hitbox.
+func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
+	if charScale <= 0 {
+		charScale = 1.0
+	}
 	frame := p.currentSprite()
 	if frame.tex == nil || frame.h == 0 {
 		return
 	}
 
-	scaledHeight := int32(float64(playerDstH) * p.depthScale())
+	scaledHeight := int32(float64(playerDstH) * p.depthScale() * charScale)
 	frameScale := float64(scaledHeight) / float64(frame.h)
 	dstW := int32(float64(frame.w) * frameScale)
 	dstH := scaledHeight
@@ -593,7 +667,7 @@ func (p *player) draw(renderer *sdl.Renderer) {
 	}
 
 	cx, fy := p.footCenter()
-	drawShadow(renderer, cx, fy, int32(float64(playerDstW-20)*p.depthScale()))
+	drawShadow(renderer, cx, fy, int32(float64(playerDstW-20)*p.depthScale()*charScale))
 
 	renderer.CopyEx(frame.tex, nil,
 		&sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH},

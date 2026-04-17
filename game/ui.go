@@ -64,7 +64,17 @@ func (ui *uiManager) triggerClick() {
 
 func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt float64) {
 	ui.hoverName = ""
-	ui.cursor = cursorNormal
+	// Default to the grab cursor whenever the player is carrying
+	// something so the pointer itself reflects "you are holding an
+	// item" even over empty space. Specific hover branches below
+	// override this (talk/use/arrow). Without this, the only held-item
+	// feedback was the ghost icon drawn beside the cursor, which was
+	// easy to miss in busy scenes like camp_grounds.
+	if inv != nil && inv.heldItem != nil {
+		ui.cursor = cursorGrab
+	} else {
+		ui.cursor = cursorNormal
+	}
 	ui.cursorTimer += dt
 	if ui.cursorClicking {
 		ui.cursorClickTimer -= dt
@@ -84,10 +94,25 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt floa
 			ui.hoverName = n.name
 			n.hovered = true
 			ui.cursor = cursorTalk
-			if inv.heldItem != nil && n.altDialogFunc != nil {
-				entries, _ := n.altDialogFunc()
-				if entries != nil {
-					n.itemMatch = true
+			// itemMatch feedback: pulse on the NPC + swap the cursor tint
+			// whenever clicking will actually run the alt dialog. The held
+			// path still wins (so drag-onto-NPC gives a stronger cue), but
+			// we also light up when the required item is just in the bag —
+			// this is what tells the player "you've got what Lily needs,
+			// click her to give it" without forcing them to manually draw
+			// the flower out first.
+			if n.altDialogFunc != nil && inv != nil {
+				heldMatches := inv.heldItem != nil &&
+					(n.altDialogRequiresItem == "" ||
+						inv.heldItem.name == n.altDialogRequiresItem)
+				bagMatches := !n.altDialogRequiresHeld &&
+					n.altDialogRequiresItem != "" &&
+					inv.hasItem(n.altDialogRequiresItem)
+				if heldMatches || bagMatches {
+					entries, _ := n.altDialogFunc()
+					if entries != nil {
+						n.itemMatch = true
+					}
 				}
 			}
 			return
@@ -116,6 +141,8 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt floa
 			ui.cursor = cursorArrowUp
 		case arrowDown:
 			ui.cursor = cursorArrowDown
+		case arrowDownRight:
+			ui.cursor = cursorArrowDownRight
 		}
 			return
 		}
@@ -176,11 +203,10 @@ func (ui *uiManager) drawCursor(renderer *sdl.Renderer, mx, my int32) {
 		srcW = frameW
 	}
 
-	// Scale cursor to a reasonable size (target ~64px wide)
-	targetW := int32(64)
+	targetW := int32(40)
 	scale := float64(targetW) / float64(srcW)
-	if scale > 2.0 {
-		scale = 2.0
+	if scale > 1.5 {
+		scale = 1.5
 	}
 	w := int32(float64(srcW) * scale)
 	h := int32(float64(srcH) * scale)
