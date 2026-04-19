@@ -23,17 +23,18 @@ type walkSegmentJSON struct {
 }
 
 type sceneDef struct {
-	Name         string            `json:"name"`
-	Background   string            `json:"background"`
-	SpawnX       float64           `json:"spawnX"`
-	SpawnY       float64           `json:"spawnY"`
-	MinY         float64           `json:"minY"`
-	MaxY         float64           `json:"maxY"`
-	MusicPath    string            `json:"musicPath"`
-	NPCs         []string          `json:"npcs"`
-	Hotspots     []hotspotJSON     `json:"hotspots"`
-	Blockers     []boundsJSON      `json:"blockers"`
-	WalkSegments []walkSegmentJSON `json:"walkSegments"`
+	Name           string            `json:"name"`
+	Background     string            `json:"background"`
+	SpawnX         float64           `json:"spawnX"`
+	SpawnY         float64           `json:"spawnY"`
+	MinY           float64           `json:"minY"`
+	MaxY           float64           `json:"maxY"`
+	MusicPath      string            `json:"musicPath"`
+	CharacterScale float64           `json:"characterScale"`
+	NPCs           []string          `json:"npcs"`
+	Hotspots       []hotspotJSON     `json:"hotspots"`
+	Blockers       []boundsJSON      `json:"blockers"`
+	WalkSegments   []walkSegmentJSON `json:"walkSegments"`
 }
 
 type sceneConfigStore struct {

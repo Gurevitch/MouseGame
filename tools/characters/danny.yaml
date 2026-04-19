@@ -1,0 +1,9 @@
+name: danny
+source_dir: ../../assets/images/locations/camp/npc/kids/danny
+color_key_tolerance: 16
+# idle/talk use row 0 only per npc.go:563-564
+animations:
+  idle:         { file: npc_danny_idle.png,          grid: [8, 2], take_row: 0, fps: 8 }
+  talk:         { file: npc_danny_talk.png,          grid: [8, 2], take_row: 0, fps: 10 }
+  strange_idle: { file: npc_danny_strange_idle.png,  grid: [8, 2], fps: 8 }
+  strange_talk: { file: npc_danny_strange_talk.png,  grid: [8, 2], fps: 10 }

@@ -1,0 +1,9 @@
+name: jake
+source_dir: ../../assets/images/locations/camp/npc/kids/jake
+color_key_tolerance: 16
+# idle is authored as 8x2 but the engine reads only row 1 (see npc.go:402)
+animations:
+  idle:         { file: npc_jake_idle.png,          grid: [8, 2], take_row: 1, fps: 8 }
+  talk:         { file: npc_jake_talk.png,          grid: [8, 2], fps: 10 }
+  strange_idle: { file: npc_jake_strange_idle.png,  grid: [8, 2], fps: 8 }
+  strange_talk: { file: npc_jake_strange_talk.png,  grid: [8, 2], fps: 10 }

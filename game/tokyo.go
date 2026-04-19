@@ -245,8 +245,7 @@ func (g *Game) setupTokyoCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.showTravelMap = true
-				game.travelMapFrom = "tokyo_street"
+				game.travelMap.Show("tokyo_street")
 				return true
 			},
 		})

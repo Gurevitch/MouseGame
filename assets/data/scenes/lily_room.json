@@ -5,14 +5,10 @@
   "spawnY": 550,
   "minY": 0,
   "maxY": 0,
-  "npcs": [],
+  "characterScale": 0.85,
+  "npcs": ["room_lily"],
   "hotspots": [
-    {
-      "bounds": {"x": 350, "y": 580, "w": 700, "h": 220},
-      "targetScene": "camp_grounds",
-      "name": "Exit Cabin",
-      "arrow": "down"
-    }
+    {"bounds": {"x": 200, "y": 500, "w": 1000, "h": 260}, "targetScene": "camp_grounds", "name": "Exit Cabin", "arrow": "down"}
   ],
   "blockers": [
     {"x": 0, "y": 0, "w": 300, "h": 500},

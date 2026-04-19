@@ -1,0 +1,16 @@
+{
+  "id": "higgins_walk_in",
+  "steps": [
+    {"type": "npc_teleport", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1400, "y": 612},
+    {"type": "npc_hidden", "scene": "camp_grounds", "npc": "Director Higgins", "hide": false},
+    {"type": "npc_anim", "scene": "camp_grounds", "npc": "Director Higgins", "anim": "talk"},
+    {"type": "npc_move", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1010, "y": 612, "seconds": 2.2},
+    {"type": "npc_anim", "scene": "camp_grounds", "npc": "Director Higgins", "anim": "idle"},
+    {"type": "wait", "seconds": 0.3},
+    {"type": "dialog", "dialog": [
+      {"speaker": "Director Higgins", "text": "Psst — counselor! She barely speaks unless someone brings her a flower."},
+      {"speaker": "Director Higgins", "text": "Try the lake. There's a patch of daisies by the shore."},
+      {"speaker": "Pink Panther", "text": "Thanks, Director. The lake it is."}
+    ]}
+  ]
+}

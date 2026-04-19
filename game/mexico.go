@@ -162,8 +162,7 @@ func (g *Game) setupMexicoCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.showTravelMap = true
-				game.travelMapFrom = "mexico_street"
+				game.travelMap.Show("mexico_street")
 				return true
 			},
 		})

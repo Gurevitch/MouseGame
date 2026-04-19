@@ -6,15 +6,15 @@
   "minY": 0,
   "maxY": 0,
   "musicPath": "",
-  "npcs": ["tommy", "jake", "lily", "marcus", "danny"],
+  "npcs": ["tommy", "jake", "lily", "marcus", "danny", "grounds_higgins_hidden"],
   "hotspots": [
-    {"bounds": {"x": 0, "y": 200, "w": 80, "h": 500}, "targetScene": "camp_lake", "name": "To the Lake", "arrow": "left"},
-    {"bounds": {"x": 1100, "y": 640, "w": 150, "h": 120}, "targetScene": "camp_office", "name": "Higgins' Office", "arrow": "downRight"},
-    {"bounds": {"x": 50, "y": 270, "w": 150, "h": 110}, "targetScene": "tommy_room", "name": "Tommy's Cabin", "arrow": "none"},
-    {"bounds": {"x": 300, "y": 250, "w": 150, "h": 110}, "targetScene": "jake_room", "name": "Jake's Cabin", "arrow": "none"},
-    {"bounds": {"x": 540, "y": 240, "w": 150, "h": 110}, "targetScene": "lily_room", "name": "Lily's Cabin", "arrow": "none"},
-    {"bounds": {"x": 840, "y": 250, "w": 150, "h": 110}, "targetScene": "marcus_room", "name": "Marcus's Cabin", "arrow": "none"},
-    {"bounds": {"x": 1140, "y": 270, "w": 150, "h": 110}, "targetScene": "danny_room", "name": "Danny's Cabin", "arrow": "none"}
+    {"bounds": {"x": 0, "y": 200, "w": 80, "h": 500},      "targetScene": "camp_lake",    "name": "To the Lake",      "arrow": "left"},
+    {"bounds": {"x": 1100, "y": 640, "w": 150, "h": 120},  "targetScene": "camp_office",  "name": "Higgins' Office",  "arrow": "downRight"},
+    {"bounds": {"x": 10, "y": 210, "w": 240, "h": 200},    "targetScene": "tommy_room",   "name": "Tommy's Cabin",    "arrow": "none"},
+    {"bounds": {"x": 260, "y": 195, "w": 240, "h": 200},   "targetScene": "jake_room",    "name": "Jake's Cabin",     "arrow": "none"},
+    {"bounds": {"x": 500, "y": 185, "w": 240, "h": 200},   "targetScene": "lily_room",    "name": "Lily's Cabin",     "arrow": "none"},
+    {"bounds": {"x": 800, "y": 195, "w": 240, "h": 200},   "targetScene": "marcus_room",  "name": "Marcus's Cabin",   "arrow": "none"},
+    {"bounds": {"x": 1100, "y": 210, "w": 240, "h": 200},  "targetScene": "danny_room",   "name": "Danny's Cabin",    "arrow": "none"}
   ],
   "walkSegments": [
     {"x1": 650, "y1": 650, "x2": 650, "y2": 550},

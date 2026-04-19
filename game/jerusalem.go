@@ -277,8 +277,7 @@ func (g *Game) setupJerusalemCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.showTravelMap = true
-				game.travelMapFrom = "jerusalem_street"
+				game.travelMap.Show("jerusalem_street")
 				return true
 			},
 		})

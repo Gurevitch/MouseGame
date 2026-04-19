@@ -6,23 +6,48 @@ import "fmt"
 type SeqActionType int
 
 const (
-	SeqDialog     SeqActionType = iota // Show dialog entries
-	SeqWait                            // Wait for duration (seconds)
-	SeqTransition                      // Transition to a scene
-	SeqCallback                        // Run a callback function
-	SeqSetVar                          // Set a variable in VarStore
+	SeqDialog       SeqActionType = iota // Show dialog entries
+	SeqWait                              // Wait for duration (seconds)
+	SeqTransition                        // Transition to a scene
+	SeqCallback                          // Run a callback function
+	SeqSetVar                            // Set a variable in VarStore
+	SeqNPCAnim                           // Flip a named NPC's animation state (idle/talk)
+	SeqNPCStrange                        // Flip a named NPC in / out of the strange state
+	SeqSetSceneBG                        // Swap a scene's background for an alternate
+	SeqHidePlayer                        // Suppress PP rendering (hide/show)
+	SeqPlayerSleep                       // Toggle PP's sleeping sprite overlay
+	SeqPlayerWake                        // Kick off PP's waking animation
+	SeqStartDay                          // Advance to the next camp day (resets chapter-scope state)
+	SeqNPCHidden                         // Toggle an NPC's hidden + silent flags (un-hide on un-silent)
+	SeqNPCTeleport                       // Snap an NPC to an absolute (x, y) position
+	SeqNPCMove                           // Linearly interpolate an NPC's position over Duration seconds
 )
 
-// SeqStep is one step in a sequence.
+// SeqStep is one step in a sequence. Fields are used by whichever Action
+// type the step declares; unused fields stay zero.
 type SeqStep struct {
 	Action   SeqActionType
 	Dialog   []dialogEntry // for SeqDialog
 	Duration float64       // for SeqWait (seconds)
-	Scene    string        // for SeqTransition
+	Scene    string        // for SeqTransition, SeqNPCAnim, SeqNPCStrange, SeqSetSceneBG
 	Callback func()        // for SeqCallback
 	VarScope string        // for SeqSetVar
 	VarName  string        // for SeqSetVar
 	VarValue int           // for SeqSetVar
+	// NPC / scene-action fields
+	NPC      string // NPC name (matches npc.name) for SeqNPCAnim, SeqNPCStrange
+	Anim     string // "idle" | "talk" for SeqNPCAnim
+	Strange  bool   // for SeqNPCStrange
+	BGKey    string // identifier of the alternate background (e.g. "night")
+	Hide     bool   // for SeqHidePlayer, SeqPlayerSleep, SeqNPCHidden
+	DayNum   int    // for SeqStartDay (1 or 2)
+	// NPC move/teleport targets — absolute pixel coords.
+	TargetX  int32
+	TargetY  int32
+	// Runtime-only scratch space for in-progress moves (start pos + elapsed).
+	moveStartX int32
+	moveStartY int32
+	moveElapsed float64
 }
 
 // Sequence is an ordered list of steps that play automatically.
@@ -88,6 +113,26 @@ func (sp *SequencePlayer) Update(dt float64) {
 				seq.waiting = false
 				sp.nextStep()
 			}
+		case SeqNPCMove:
+			// Linearly interpolate from (moveStartX,Y) to (TargetX,Y) over
+			// Duration. NPC bounds are updated every tick so the render loop
+			// picks up the tween. stepPtr mutates the array in place.
+			stepPtr := &seq.Steps[seq.current]
+			stepPtr.moveElapsed += dt
+			t := stepPtr.moveElapsed / step.Duration
+			if t >= 1.0 {
+				t = 1.0
+			}
+			if n := sp.findNPC(step.Scene, step.NPC); n != nil {
+				dx := float64(step.TargetX - stepPtr.moveStartX)
+				dy := float64(step.TargetY - stepPtr.moveStartY)
+				n.bounds.X = stepPtr.moveStartX + int32(dx*t)
+				n.bounds.Y = stepPtr.moveStartY + int32(dy*t)
+			}
+			if t >= 1.0 {
+				seq.waiting = false
+				sp.nextStep()
+			}
 		}
 	}
 }
@@ -134,8 +179,126 @@ func (sp *SequencePlayer) executeStep() {
 
 	case SeqSetVar:
 		sp.game.vars.Set(step.VarScope, step.VarName, step.VarValue)
-		sp.nextStep() // var sets are instant
+		sp.nextStep()
+
+	case SeqNPCAnim:
+		if n := sp.findNPC(step.Scene, step.NPC); n != nil {
+			switch step.Anim {
+			case "talk":
+				n.setAnimState(npcAnimTalk)
+			default:
+				n.setAnimState(npcAnimIdle)
+			}
+		}
+		sp.nextStep()
+
+	case SeqNPCStrange:
+		if n := sp.findNPC(step.Scene, step.NPC); n != nil {
+			n.setStrange(step.Strange)
+		}
+		sp.nextStep()
+
+	case SeqSetSceneBG:
+		sp.game.setSceneAltBG(step.Scene, step.BGKey)
+		sp.nextStep()
+
+	case SeqHidePlayer:
+		sp.game.nightHidePlayer = step.Hide
+		sp.nextStep()
+
+	case SeqPlayerSleep:
+		sp.game.playerSleeping = step.Hide // Hide=true → sleeping on
+		if step.Hide {
+			sp.game.sleepingFrameIdx = 0
+			sp.game.sleepingTimer = 0
+			sp.game.wakingPhase = 0
+		}
+		sp.nextStep()
+
+	case SeqPlayerWake:
+		sp.game.wakingPhase = 1
+		sp.game.sleepingFrameIdx = 0
+		sp.game.sleepingTimer = 0
+		sp.nextStep()
+
+	case SeqStartDay:
+		if step.DayNum == 2 {
+			sp.game.startDay2()
+			sp.game.day2Started = true
+		}
+		sp.nextStep()
+
+	case SeqNPCHidden:
+		if n := sp.findNPC(step.Scene, step.NPC); n != nil {
+			n.hidden = step.Hide
+			// Un-hide also un-silents so the NPC can be clicked; re-hiding
+			// keeps the silent flag as-is so callers can opt in to either.
+			if !step.Hide {
+				n.silent = false
+			}
+		}
+		sp.nextStep()
+
+	case SeqNPCTeleport:
+		if n := sp.findNPC(step.Scene, step.NPC); n != nil {
+			n.bounds.X = step.TargetX
+			n.bounds.Y = step.TargetY
+		}
+		sp.nextStep()
+
+	case SeqNPCMove:
+		// Snapshot the current position onto the step itself so the Update
+		// tick can lerp from it. Writing back through &seq.Steps[i] so the
+		// array element (not a copy) stores the runtime scratch fields.
+		if n := sp.findNPC(step.Scene, step.NPC); n != nil {
+			stepPtr := &seq.Steps[seq.current]
+			stepPtr.moveStartX = n.bounds.X
+			stepPtr.moveStartY = n.bounds.Y
+			stepPtr.moveElapsed = 0
+			seq.waiting = true
+			seq.timer = 0
+			// Zero-duration moves snap immediately.
+			if step.Duration <= 0 {
+				n.bounds.X = step.TargetX
+				n.bounds.Y = step.TargetY
+				seq.waiting = false
+				sp.nextStep()
+			}
+		} else {
+			// NPC not found — skip the step rather than hang.
+			sp.nextStep()
+		}
 	}
+}
+
+// setSceneAltBG is called by SeqSetSceneBG to swap a scene's background for
+// a pre-loaded alternate. Keys are "scene_name/variant" and live in
+// g.sceneAltBGs, populated in Game.New. To add a new alt background, just
+// load it into the map and emit a scene_bg step from any JSON sequence.
+func (g *Game) setSceneAltBG(sceneName, bgKey string) {
+	scene, ok := g.sceneMgr.scenes[sceneName]
+	if !ok {
+		return
+	}
+	if bg, ok := g.sceneAltBGs[sceneName+"/"+bgKey]; ok {
+		scene.bg = bg
+	}
+}
+
+// findNPC locates a named NPC inside a named scene; returns nil if either is
+// missing (logs silently — sequences that reference an NPC by typo will
+// simply skip the action rather than crash the game).
+func (sp *SequencePlayer) findNPC(sceneName, npcName string) *npc {
+	s, ok := sp.game.sceneMgr.scenes[sceneName]
+	if !ok {
+		return nil
+	}
+	for _, n := range s.npcs {
+		if n.name == npcName {
+			return n
+		}
+	}
+	return nil
 }
 
 // --- Helper constructors for readable sequence building ---

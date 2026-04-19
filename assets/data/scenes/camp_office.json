@@ -6,9 +6,10 @@
   "minY": 0,
   "maxY": 0,
   "musicPath": "",
+  "characterScale": 0.9,
   "npcs": ["office_higgins"],
   "hotspots": [
-    {"bounds": {"x": 1100, "y": 550, "w": 300, "h": 250}, "targetScene": "camp_grounds", "name": "Back to Camp", "arrow": "downRight"}
+    {"bounds": {"x": 0, "y": 400, "w": 200, "h": 360}, "targetScene": "camp_grounds", "name": "Back to Camp", "arrow": "downRight"}
   ],
   "blockers": [
     {"x": 500, "y": 0, "w": 900, "h": 360}

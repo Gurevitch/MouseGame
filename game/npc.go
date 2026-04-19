@@ -12,6 +12,11 @@ type npcFrame struct {
 	tex *sdl.Texture
 	w   int32
 	h   int32
+	// src is the source rectangle inside tex. nil means "draw the whole
+	// texture" (legacy per-frame loaders produce one texture per frame so
+	// they leave this nil). Atlas-backed frames share one texture and set
+	// src to the frame's rect within the atlas.
+	src *sdl.Rect
 }
 
 type npc struct {
@@ -57,7 +62,13 @@ type npc struct {
 	// re-entry and save/load (closures would reset back to zero when
 	// setupCampCallbacks ran again).
 	hintState int
-	sm        *npcStateMachine // optional state machine (Phase 2)
+	sm    *npcStateMachine   // optional state machine (named states: default/post/strange/post_strange)
+	rules []InteractionRule  // optional rule list for data-driven interactions (see npc_rules.go)
+	// game is a back-reference set by spawnNPCs so rule-driven NPCs can
+	// call g.fireTrigger without threading *Game through every handler.
+	// Not set for NPCs built via legacy callbacks — the rules slice stays
+	// empty for those and fireTrigger is a no-op.
+	game *Game
 
 	idleGrid       []npcFrame
 	talkGrid       []npcFrame
@@ -97,27 +108,6 @@ func (n *npc) setStrange(strange bool) {
 }
 
 
-func loadStrangeGrids(renderer *sdl.Renderer, n *npc, idlePath string, idleCols, idleRows int, talkPath string, talkCols, talkRows int) {
-	idle := loadNPCGrid(renderer, idlePath, idleCols, idleRows)
-	talk := loadNPCGrid(renderer, talkPath, talkCols, talkRows)
-	if len(idle) > 0 {
-		n.strangeIdle = idle
-		n.strangeTalk = talk
-	}
-}
-
-// loadStrangeGridsKids is the kid-palette twin of loadStrangeGrids so a
-// strange-state idle/talk pair goes through the same soft-background
-// color-key tolerance as the normal-state pair.
-func loadStrangeGridsKids(renderer *sdl.Renderer, n *npc, idlePath string, idleCols, idleRows int, talkPath string, talkCols, talkRows int) {
-	idle := loadNPCGridKids(renderer, idlePath, idleCols, idleRows)
-	talk := loadNPCGridKids(renderer, talkPath, talkCols, talkRows)
-	if len(idle) > 0 {
-		n.strangeIdle = idle
-		n.strangeTalk = talk
-	}
-}
-
 // ===== Camp Chilly Wa Wa NPCs =====
 
 // npcSpriteInset matches the trim used for player sheets. Keeps cell seams
@@ -153,32 +143,6 @@ func loadNPCGrid(renderer *sdl.Renderer, path string, cols, rows int) []npcFrame
 
 func loadNPCGridRow(renderer *sdl.Renderer, path string, cols, rows, row int) []npcFrame {
 	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, npcSpriteInset)
-	var frames []npcFrame
-	if row < len(grid) {
-		for c := 0; c < cols && c < len(grid[row]); c++ {
-			gf := grid[row][c]
-			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
-		}
-	}
-	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
-		frames = frames[:len(frames)-1]
-	}
-	return frames
-}
-
-// loadNPCGridKids is loadNPCGrid with wider color-key tolerance (16),
-// matching the palette of the camp kid sheets. See
-// engine.SpriteGridFromPNGCleanKids for why. Only the five camp kids
-// should use this path — other NPCs have flatter backgrounds that the
-// default loader handles correctly.
-func loadNPCGridKids(renderer *sdl.Renderer, path string, cols, rows int) []npcFrame {
-	grid := engine.SpriteGridFromPNGCleanKids(renderer, path, cols, rows, npcSpriteInset)
-	return framesFromGrid(grid, cols, rows)
-}
-
-// loadNPCGridRowKids is the row-pick variant of loadNPCGridKids.
-func loadNPCGridRowKids(renderer *sdl.Renderer, path string, cols, rows, row int) []npcFrame {
-	grid := engine.SpriteGridFromPNGCleanKids(renderer, path, cols, rows, npcSpriteInset)
 	var frames []npcFrame
 	if row < len(grid) {
 		for c := 0; c < cols && c < len(grid[row]); c++ {
@@ -264,7 +228,7 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 	//   talk: 6x1 (clipboard lowered, mouth open)
 	return &npc{
 		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
-		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 6, 1),
+		talkGrid:       loadNPCGridRow(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
 		bounds:         sdl.Rect{X: 660, Y: 345, W: 200, H: 265},
 		name:           "Director Higgins",
 		dialog:         higginsDefaultDialog,
@@ -280,8 +244,8 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	// characterScale 0.9 shaves the final render to ~200 which sits
 	// comfortably in the tight indoor shot.
 	return &npc{
-		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 7, 1),
-		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 4, 2),
+		idleGrid:       loadNPCGridRow(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2, 0),
+		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2),
 		// User spec 2026-04-17: office Higgins top-left at (1062, 357),
 		// sitting behind the desk. Sized so head lands at ~y=357 and feet
 		// rest on the desk chair around y=640.
@@ -294,13 +258,71 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	}
 }
 
+// newGroundsHiggins is the hidden Higgins that appears next to the cabin path
+// after Lily's shy dialog ends (see setupCampCallbacks). He delivers the
+// "she needs a flower" hint. Starts hidden + silent; the callback flips both
+// flags when Lily's first dialog completes.
+func newGroundsHiggins(renderer *sdl.Renderer) *npc {
+	// Positioned by the cabin path near the office entrance, not stacked on
+	// top of Marcus (whose bounds start at x=890). 1060x and 570y puts him
+	// visible below/right of the kid row without any overlap.
+	h := newDirectorHiggins(renderer)
+	h.bounds = sdl.Rect{X: 1060, Y: 570, W: 180, H: 200}
+	h.hidden = true
+	h.silent = true
+	h.dialog = higginsLilyHintDialog
+	return h
+}
+
+// newRoomTommy / newRoomJake / newRoomLily / newRoomDanny return the kid's
+// cabin-scene instance: positioned at the room's "bed" spot and silent by
+// default. Callbacks flip .silent off when Day 2 story beats start — that's
+// how the kid "shows up" in their room after Higgins points PP at them.
+//
+// Marcus's room NPC is slightly different: he is not silent (Day 1 flow lets
+// PP peek in on him immediately) and is drawn larger to fill the room. Kept
+// in its own factory to make that intent explicit.
+func newRoomTommy(renderer *sdl.Renderer) *npc {
+	n := newTommy(renderer)
+	n.bounds = sdl.Rect{X: 760, Y: 430, W: 170, H: 260}
+	n.silent = true
+	return n
+}
+
+func newRoomJake(renderer *sdl.Renderer) *npc {
+	n := newJake(renderer)
+	n.bounds = sdl.Rect{X: 760, Y: 420, W: 170, H: 260}
+	n.silent = true
+	return n
+}
+
+func newRoomLily(renderer *sdl.Renderer) *npc {
+	n := newLily(renderer)
+	n.bounds = sdl.Rect{X: 666, Y: 461, W: 170, H: 260}
+	n.silent = true
+	return n
+}
+
+func newRoomMarcus(renderer *sdl.Renderer) *npc {
+	n := newMarcus(renderer)
+	n.bounds = sdl.Rect{X: 526, Y: 181, W: 280, H: 380}
+	return n
+}
+
+func newRoomDanny(renderer *sdl.Renderer) *npc {
+	n := newDanny(renderer)
+	n.bounds = sdl.Rect{X: 760, Y: 430, W: 170, H: 260}
+	n.silent = true
+	return n
+}
+
 // newNightHiggins is the campfire Higgins — silent by default so he doesn't
 // block exploration, but driven directly by the night cutscene so he appears
 // to deliver the "lights out" speech in-place, not at camp grounds.
 func newNightHiggins(renderer *sdl.Renderer) *npc {
 	return &npc{
 		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
-		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 6, 1),
+		talkGrid:       loadNPCGridRow(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
 		bounds:         sdl.Rect{X: 1120, Y: 430, W: 200, H: 260},
 		name:           "Director Higgins",
 		bobAmount:      0,
@@ -340,24 +362,14 @@ var tommyPostStrangeDialog = []dialogEntry{
 }
 
 func newTommy(renderer *sdl.Renderer) *npc {
-	// Tommy sheets were authored with mismatched grids (idle 7x2, talk 8x2,
-	// strange idle 8x2, strange talk 7x2). Interpreting either "7x2" as
-	// 8x2 computes a slightly-wider cell that straddles real frame edges
-	// and produces smearing. We normalize every pair to 8x2 so idle and
-	// talk share the same cell centers; the kids loader then trims any
-	// trailing empty column.
 	n := &npc{
-		idleGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/tommy/npc_tommy_idle.png", 8, 2),
-		talkGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/tommy/npc_tommy_talk.png", 8, 2),
 		bounds:         sdl.Rect{X: 130, Y: 405, W: 150, H: 180},
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.18,
+		talkFrameSpeed: 0.10,
 	}
-	loadStrangeGridsKids(renderer, n,
-		"assets/images/locations/camp/npc/kids/tommy/npc_tommy_strange_idle.png", 8, 2,
-		"assets/images/locations/camp/npc/kids/tommy/npc_tommy_strange_talk.png", 8, 2)
+	applyKidAtlas(renderer, n, "tommy")
 	return n
 }
 
@@ -393,23 +405,14 @@ var jakePostStrangeDialog = []dialogEntry{
 }
 
 func newJake(renderer *sdl.Renderer) *npc {
-	// Jake sheets: idle keeps row 1 of a full 8x2 (the row 0 is the old
-	// discarded pose), talk was authored 7x2 and strange pair was 4x2/7x2.
-	// Normalize talk + both strange sheets to 8x2 so the grid math
-	// matches the authored cell size; the kids loader trims trailing
-	// empty columns if the final slot is blank.
 	n := &npc{
-		idleGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png", 8, 2, 1),
-		talkGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/jake/npc_jake_talk.png", 8, 2),
 		bounds:         sdl.Rect{X: 370, Y: 400, W: 150, H: 180},
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.18,
+		talkFrameSpeed: 0.10,
 	}
-	loadStrangeGridsKids(renderer, n,
-		"assets/images/locations/camp/npc/kids/jake/npc_jake_strange_idle.png", 8, 2,
-		"assets/images/locations/camp/npc/kids/jake/npc_jake_strange_talk.png", 8, 2)
+	applyKidAtlas(renderer, n, "jake")
 	return n
 }
 
@@ -458,17 +461,13 @@ var lilyPostStrangeDialog = []dialogEntry{
 
 func newLily(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		idleGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/lily/npc_lily_idle.png", 8, 2, 0),
-		talkGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/lily/npc_lily_talk.png", 8, 2, 0),
 		bounds:         sdl.Rect{X: 600, Y: 395, W: 150, H: 180},
 		name:           "Lily",
 		dialog:         lilyShyDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.18,
+		talkFrameSpeed: 0.10,
 	}
-	loadStrangeGridsKids(renderer, n,
-		"assets/images/locations/camp/npc/kids/lily/npc_lily_strange_idle.png", 8, 2,
-		"assets/images/locations/camp/npc/kids/lily/npc_lily_strange_talk.png", 8, 2)
+	applyKidAtlas(renderer, n, "lily")
 	return n
 }
 
@@ -507,22 +506,14 @@ var marcusPostStrangeDialog = []dialogEntry{
 }
 
 func newMarcus(renderer *sdl.Renderer) *npc {
-	// Marcus keeps 6x2 for the normal pair (authored cleanly), but the
-	// strange pair was 8x2 vs 5x2 — the mismatch shifted talk cells
-	// leftward, producing a jittery speaker. Snap both to 8x2; the kids
-	// loader trims trailing empty slots if the final columns are blank.
 	n := &npc{
-		idleGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png", 6, 2),
-		talkGrid:       loadNPCGridKids(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_talk.png", 6, 2),
 		bounds:         sdl.Rect{X: 890, Y: 395, W: 150, H: 180},
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.18,
+		talkFrameSpeed: 0.10,
 	}
-	loadStrangeGridsKids(renderer, n,
-		"assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_idle.png", 8, 2,
-		"assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_talk.png", 8, 2)
+	applyKidAtlas(renderer, n, "marcus")
 	return n
 }
 
@@ -560,18 +551,14 @@ var dannyPostStrangeDialog = []dialogEntry{
 
 func newDanny(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		idleGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/danny/npc_danny_idle.png", 8, 2, 0),
-		talkGrid:       loadNPCGridRowKids(renderer, "assets/images/locations/camp/npc/kids/danny/npc_danny_talk.png", 8, 2, 0),
 		bounds:         sdl.Rect{X: 1110, Y: 400, W: 150, H: 180},
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.18,
+		talkFrameSpeed: 0.10,
 		flipped:        true,
 	}
-	loadStrangeGridsKids(renderer, n,
-		"assets/images/locations/camp/npc/kids/danny/npc_danny_strange_idle.png", 8, 2,
-		"assets/images/locations/camp/npc/kids/danny/npc_danny_strange_talk.png", 8, 2)
+	applyKidAtlas(renderer, n, "danny")
 	return n
 }
 
@@ -669,7 +656,7 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	dstY := n.bounds.Y + bobOffset + (n.bounds.H - dstH)
 
 	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
-	renderer.CopyEx(frame.tex, nil, &dst, 0, nil, flip)
+	renderer.CopyEx(frame.tex, frame.src, &dst, 0, nil, flip)
 }
 
 // containsPoint is used for both cursor hover (showing the "talk" icon) and

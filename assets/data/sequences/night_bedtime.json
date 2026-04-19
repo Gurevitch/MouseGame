@@ -1,0 +1,47 @@
+{
+  "id": "night_bedtime",
+  "steps": [
+    {"type": "wait", "seconds": 0.6},
+    {"type": "npc_anim", "scene": "camp_night", "npc": "Director Higgins", "anim": "talk"},
+    {"type": "dialog", "dialog": [
+      {"speaker": "Director Higgins", "text": "Ahem! It's getting very late, counselor."},
+      {"speaker": "Director Higgins", "text": "All campers to their cabins. NOW."},
+      {"speaker": "Director Higgins", "text": "And you — get some rest by the fire. Big day tomorrow."},
+      {"speaker": "Pink Panther", "text": "Goodnight, Director."}
+    ]},
+    {"type": "npc_anim", "scene": "camp_night", "npc": "Director Higgins", "anim": "idle"},
+    {"type": "player_sleep", "hide": true},
+    {"type": "wait", "seconds": 3.0},
+    {"type": "dialog", "dialog": [
+      {"speaker": "Marcus", "text": "*from Marcus's cabin, muffled* No no no... the lines won't stop..."},
+      {"speaker": "Marcus", "text": "A GLASS PYRAMID! The building is ENORMOUS!"},
+      {"speaker": "Marcus", "text": "The painting is WRONG! Something is MISSING!"},
+      {"speaker": "Pink Panther", "text": "*sleepily* Marcus...? That doesn't sound right..."}
+    ]},
+    {"type": "player_sleep", "hide": false},
+    {"type": "hide_player", "hide": true},
+    {"type": "scene_bg", "scene": "marcus_room", "bg": "night"},
+    {"type": "npc_strange", "scene": "marcus_room", "npc": "Marcus", "strange": true},
+    {"type": "transition", "scene": "marcus_room"},
+    {"type": "dialog", "dialog": [
+      {"speaker": "Marcus", "text": "I can't stop... the lines keep coming..."},
+      {"speaker": "Marcus", "text": "A woman's face... golden frames everywhere..."},
+      {"speaker": "Marcus", "text": "I have to draw it... I HAVE to draw it ALL!"},
+      {"speaker": "Pink Panther", "text": "*whispers* He's not even awake... Higgins needs to know."}
+    ]},
+    {"type": "hide_player", "hide": false},
+    {"type": "player_sleep", "hide": true},
+    {"type": "transition", "scene": "camp_night"},
+    {"type": "wait", "seconds": 1.0},
+    {"type": "player_wake"},
+    {"type": "wait", "seconds": 2.0},
+    {"type": "player_sleep", "hide": false},
+    {"type": "dialog", "dialog": [
+      {"speaker": "Pink Panther", "text": "*yawn* What a night..."},
+      {"speaker": "Pink Panther", "text": "I heard Marcus freaking out in his cabin. Something about paintings and pyramids."},
+      {"speaker": "Pink Panther", "text": "I need to check on him. His cabin is in the camp grounds."}
+    ]},
+    {"type": "start_day", "day": 2},
+    {"type": "transition", "scene": "camp_grounds"}
+  ]
+}

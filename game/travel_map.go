@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"math"
 
 	"bitbucket.org/Local/games/PP/engine"
@@ -8,48 +9,95 @@ import (
 )
 
 type travelLocation struct {
+	id           string
 	name         string
 	scene        string
 	pinX         int32
 	pinY         int32
 	unlocked     bool
-	info         string // city facts shown when clicking locked cities
+	info         string // city facts shown when clicking locked or not-currently-relevant cities
 	landmarkPath string
 	landmarkTex  *sdl.Texture
 	landmarkW    int32
 	landmarkH    int32
+	// audio is an optional path to a voice clip describing the place.
+	// If set and the file exists, it plays on click alongside the info popup.
+	// Empty string = popup only (current default).
+	audio string
+	// relevantWhen is an expression (see game/npc_rules.go:evalCondition)
+	// that evaluates to true when THIS location is the current story target.
+	// Drives the "bright glow" tier on the map. Empty string = never relevant
+	// (stays at the unlocked-but-not-current tier even when unlocked).
+	relevantWhen string
 }
 
 type travelMap struct {
 	locations []travelLocation
 	renderer  *sdl.Renderer
 	bgTex     *sdl.Texture
+	// visible + returnScene were previously flags on Game (showTravelMap,
+	// travelMapFrom). Moved here during the Phase 6 god-object collapse —
+	// they're display state that belongs with the widget, not the game loop.
+	visible     bool
+	returnScene string
+	// game is a back-reference set by Game.New so drawOverlay can evaluate
+	// each location's relevantWhen expression against VarStore each frame.
+	// nil during construction (before Game.New finishes); draw handles nil
+	// by treating all locations as not-currently-relevant.
+	game *Game
 }
 
-func newTravelMap(renderer *sdl.Renderer) *travelMap {
-	tm := &travelMap{
-		renderer: renderer,
-		locations: []travelLocation{
-			{name: "Camp Chilly Wa Wa", scene: "camp_entrance", pinX: 310, pinY: 280, unlocked: true, info: "Camp Chilly Wa Wa - A summer camp in the mountains. Home base for PP and the kids."},
-			{name: "Paris", scene: "paris_street", pinX: 646, pinY: 296, unlocked: false, info: "Paris, France. City of lights! Home of the Eiffel Tower (1889) and the Louvre museum with over 380,000 artworks.", landmarkPath: "assets/images/ui/landmarks/landmark_eiffel_tower.png"},
-			{name: "Jerusalem", scene: "jerusalem_street", pinX: 782, pinY: 349, unlocked: false, info: "Jerusalem, Israel. One of the oldest cities in the world. Home of the Western Wall and ancient underground tunnels.", landmarkPath: "assets/images/ui/landmarks/landmark_western_wall.png"},
-			{name: "Tokyo", scene: "tokyo_street", pinX: 1164, pinY: 328, unlocked: false, info: "Tokyo, Japan. A city of ancient temples and modern towers. Famous for cherry blossoms, torii gates, and Senso-ji temple.", landmarkPath: "assets/images/ui/landmarks/landmark_torii_gate.png"},
-			{name: "Rome", scene: "rome_street", pinX: 730, pinY: 330, unlocked: false, info: "Rome, Italy. The Eternal City! Home of the Colosseum (72 AD), where gladiators once fought before 50,000 spectators.", landmarkPath: "assets/images/ui/landmarks/landmark_colosseum.png"},
-			{name: "Rio de Janeiro", scene: "rio_street", pinX: 431, pinY: 504, unlocked: false, info: "Rio de Janeiro, Brazil. Famous for Christ the Redeemer statue, Copacabana beach, and the world's biggest Carnival.", landmarkPath: "assets/images/ui/landmarks/landmark_christ_redeemer.png"},
-			{name: "Buenos Aires", scene: "buenos_aires_street", pinX: 410, pinY: 580, unlocked: false, info: "Buenos Aires, Argentina. Tango, empanadas, and the Obelisco at the heart of Avenida 9 de Julio."},
-			{name: "Mexico City", scene: "mexico_street", pinX: 222, pinY: 398, unlocked: false, info: "Mexico City, Mexico. Capital of the Aztec empire, home of Chapultepec, tamales, and mariachi."},
-			{name: "Egypt", scene: "egypt_street", pinX: 755, pinY: 369, unlocked: false, info: "Egypt. Home of the Great Pyramids of Giza, the Sphinx, and the ancient pharaohs. The Nile River runs through it all.", landmarkPath: "assets/images/ui/landmarks/landmark_pyramids.png"},
-			{name: "India", scene: "india_street", pinX: 932, pinY: 399, unlocked: false, info: "India. Home of the Taj Mahal, a monument of love built in 1632. A land of ancient temples, spices, and vibrant culture.", landmarkPath: "assets/images/ui/landmarks/landmark_taj_mahal.png"},
-			{name: "Thailand", scene: "thailand_street", pinX: 1000, pinY: 397, unlocked: false, info: "Thailand. Land of golden temples, floating markets, and ancient Buddhist monasteries. Known as the Land of Smiles.", landmarkPath: "assets/images/ui/landmarks/landmark_thai_temple.png"},
-			{name: "China", scene: "china_street", pinX: 1049, pinY: 344, unlocked: false, info: "China. Home of the Great Wall (over 13,000 miles long!), the Forbidden City, and thousands of years of civilization.", landmarkPath: "assets/images/ui/landmarks/landmark_great_wall.png"},
-			{name: "Australia", scene: "australia_street", pinX: 1139, pinY: 569, unlocked: false, info: "Australia. Home of the Sydney Opera House, the Great Barrier Reef, and unique wildlife like kangaroos and koalas.", landmarkPath: "assets/images/ui/landmarks/landmark_opera_house.png"},
-		},
+// Visible reports whether the travel-map modal is currently open.
+func (tm *travelMap) Visible() bool { return tm.visible }
+
+// ReturnScene is the scene name the player came from (flight cutscenes
+// deposit the player back here if they close the map without travelling).
+func (tm *travelMap) ReturnScene() string { return tm.returnScene }
+
+// Show opens the travel-map modal and records which scene to return to.
+func (tm *travelMap) Show(fromScene string) {
+	tm.visible = true
+	tm.returnScene = fromScene
+}
+
+// Hide closes the travel-map modal.
+func (tm *travelMap) Hide() { tm.visible = false }
+
+// Toggle flips visibility. When opening, records the fromScene as the
+// return-to scene. When closing, leaves returnScene intact so callers can
+// still read it during the close animation frame.
+func (tm *travelMap) Toggle(fromScene string) {
+	tm.visible = !tm.visible
+	if tm.visible {
+		tm.returnScene = fromScene
 	}
-	// Load landmark textures
+}
+
+// travelMapDataPath is the canonical location of the authoritative travel-
+// map data. Moved out of the constructor so save/load + tests can override
+// it if ever needed. Camp Chilly Wa Wa is intentionally NOT in this file —
+// see docs/FIXME.md "Deferred to follow-up" for why and when to re-add.
+const travelMapDataPath = "assets/data/travel_map.json"
+
+func newTravelMap(renderer *sdl.Renderer) *travelMap {
+	tm := &travelMap{renderer: renderer}
+
+	locs, err := loadTravelLocations(travelMapDataPath)
+	if err != nil {
+		fmt.Printf("travel_map: falling back to empty locations list: %v\n", err)
+	} else {
+		tm.locations = locs
+	}
+
+	// Load landmark textures. SafeTextureFromPNGRaw preserves alpha from the
+	// source PNG and does NOT run the corner-sample color-key, which was
+	// eating pale colors inside landmarks (Eiffel steel, colosseum stone).
+	// Landmark PNGs are authored with transparent backgrounds already.
 	for i := range tm.locations {
 		if tm.locations[i].landmarkPath != "" {
-			tex, w, h := engine.SafeTextureFromPNGKeyed(renderer, tm.locations[i].landmarkPath)
+			tex, w, h := engine.SafeTextureFromPNGRaw(renderer, tm.locations[i].landmarkPath)
 			if tex != nil {
+				tex.SetBlendMode(sdl.BLENDMODE_BLEND)
 				tm.locations[i].landmarkTex = tex
 				tm.locations[i].landmarkW = w
 				tm.locations[i].landmarkH = h
@@ -65,6 +113,21 @@ func newTravelMap(renderer *sdl.Renderer) *travelMap {
 		tm.bgTex = tm.generateMapTexture()
 	}
 	return tm
+}
+
+// attachGame stores a Game back-reference so drawOverlay can evaluate each
+// location's relevantWhen expression against VarStore. Called from Game.New
+// after the Game struct is wired up.
+func (tm *travelMap) attachGame(g *Game) { tm.game = g }
+
+// isRelevant returns true when the location's relevantWhen expression
+// evaluates true in the current VarStore state. nil game (pre-wire) returns
+// false so nothing flashes before state is ready.
+func (tm *travelMap) isRelevant(loc *travelLocation) bool {
+	if tm.game == nil || loc.relevantWhen == "" {
+		return false
+	}
+	return evalCondition(loc.relevantWhen, ruleContext{game: tm.game})
 }
 
 func (tm *travelMap) generateMapTexture() *sdl.Texture {
@@ -180,117 +243,127 @@ func (tm *travelMap) generateMapTexture() *sdl.Texture {
 func (tm *travelMap) drawOverlay(renderer *sdl.Renderer, font *engine.BitmapFont, mx, my int32) {
 	ticks := float64(sdl.GetTicks())
 
-	for _, loc := range tm.locations {
+	for i := range tm.locations {
+		loc := &tm.locations[i]
 		px, py := loc.pinX, loc.pinY
 
-		if loc.unlocked {
-			// === UNLOCKED: Yellow pulsing glow + landmark ===
-			glowPulse := 0.5 + 0.5*math.Sin(ticks*0.004)
-			for r := int32(45); r > 8; r -= 2 {
-				a := uint8(float64(55-r) * glowPulse)
-				renderer.SetDrawColor(255, 220, 50, a)
-				for dy := -r; dy <= r; dy++ {
-					hw := int32(math.Sqrt(float64(r*r - dy*dy)))
-					renderer.FillRect(&sdl.Rect{X: px - hw, Y: py + dy, W: hw * 2, H: 1})
-				}
-			}
-
-			if loc.landmarkTex != nil {
-				targetH := int32(70)
-				scale := float64(targetH) / float64(loc.landmarkH)
-				dstW := int32(float64(loc.landmarkW) * scale)
-				dstH := targetH
-				dstX := px - dstW/2
-				dstY := py - dstH/2
-				loc.landmarkTex.SetColorMod(255, 255, 255)
-				loc.landmarkTex.SetAlphaMod(255)
-				renderer.Copy(loc.landmarkTex, nil, &sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH})
-			} else {
-				renderer.SetDrawColor(200, 50, 40, 255)
-				for dy := int32(-10); dy <= 10; dy++ {
-					hw := int32(math.Sqrt(float64(100 - dy*dy)))
-					renderer.FillRect(&sdl.Rect{X: px - hw, Y: py + dy, W: hw * 2, H: 1})
-				}
-			}
-
-			nameW := font.TextWidth(loc.name, 2)
-			labelX := px - nameW/2
-			labelY := py - 50
-			renderer.SetDrawColor(30, 25, 18, 220)
-			renderer.FillRect(&sdl.Rect{X: labelX - 8, Y: labelY - 4, W: nameW + 16, H: 24})
-			renderer.SetDrawColor(220, 190, 60, 220)
-			renderer.FillRect(&sdl.Rect{X: labelX - 8, Y: labelY - 4, W: nameW + 16, H: 2})
-			renderer.FillRect(&sdl.Rect{X: labelX - 8, Y: labelY + 18, W: nameW + 16, H: 2})
-
-			hoverRect := sdl.Rect{X: px - 50, Y: py - 55, W: 100, H: 110}
-			pt := sdl.Point{X: mx, Y: my}
-			if pt.InRect(&hoverRect) {
-				renderer.SetDrawColor(255, 255, 180, 30)
-				renderer.FillRect(&sdl.Rect{X: px - 55, Y: py - 55, W: 110, H: 110})
-				font.DrawText(renderer, loc.name, labelX, labelY, 2, sdl.Color{R: 255, G: 255, B: 200, A: 255})
-			} else {
-				font.DrawText(renderer, loc.name, labelX, labelY, 2, sdl.Color{R: 255, G: 240, B: 160, A: 255})
-			}
-		} else {
-			// === LOCKED: Dimmed landmark or gray dot ===
-			if loc.landmarkTex != nil {
-				targetH := int32(45)
-				scale := float64(targetH) / float64(loc.landmarkH)
-				dstW := int32(float64(loc.landmarkW) * scale)
-				dstH := targetH
-				dstX := px - dstW/2
-				dstY := py - dstH/2
-				loc.landmarkTex.SetColorMod(180, 180, 180)
-				loc.landmarkTex.SetAlphaMod(180)
-				renderer.Copy(loc.landmarkTex, nil, &sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH})
-				loc.landmarkTex.SetColorMod(255, 255, 255)
-				loc.landmarkTex.SetAlphaMod(255)
-			} else {
-				renderer.SetDrawColor(100, 95, 80, 150)
-				for dy := int32(-4); dy <= 4; dy++ {
-					hw := int32(math.Sqrt(float64(16 - dy*dy)))
-					renderer.FillRect(&sdl.Rect{X: px - hw, Y: py + dy, W: hw * 2, H: 1})
-				}
-			}
-
-			nameW := font.TextWidth(loc.name, 1)
-			labelX := px - nameW/2
-			labelY := py + 30
-			font.DrawText(renderer, loc.name, labelX, labelY, 1, sdl.Color{R: 140, G: 130, B: 110, A: 160})
-		}
-	}
-
-	// Dotted travel routes between unlocked locations
-	renderer.SetDrawColor(220, 190, 60, 50)
-	for i := 0; i < len(tm.locations); i++ {
-		if !tm.locations[i].unlocked {
-			continue
-		}
-		// Draw route from Camp to each unlocked city
-		if tm.locations[i].scene == "camp_entrance" {
-			continue
-		}
-		x1, y1 := float64(tm.locations[0].pinX), float64(tm.locations[0].pinY)
-		x2, y2 := float64(tm.locations[i].pinX), float64(tm.locations[i].pinY)
-		dx := x2 - x1
-		dy := y2 - y1
-		dist := math.Sqrt(dx*dx + dy*dy)
-		steps := int(dist / 10)
-		for s := 0; s < steps; s++ {
-			if s%2 != 0 {
-				continue
-			}
-			t := float64(s) / float64(steps)
-			px := int32(x1 + dx*t)
-			py := int32(y1 + dy*t)
-			renderer.FillRect(&sdl.Rect{X: px, Y: py, W: 3, H: 3})
+		switch {
+		case loc.unlocked && tm.isRelevant(loc):
+			tm.drawRelevantPin(renderer, font, loc, px, py, ticks, mx, my)
+		case loc.unlocked:
+			tm.drawUnlockedIdlePin(renderer, font, loc, px, py, ticks, mx, my)
+		default:
+			tm.drawLockedPin(renderer, font, loc, px, py)
 		}
 	}
 
 	// Instructions at bottom
-	font.DrawText(renderer, "Click a destination to travel  |  ESC to go back",
-		engine.ScreenWidth/2-310, engine.ScreenHeight-35, 2,
+	font.DrawText(renderer, "Click a glowing destination to travel  |  Click a locked pin for info  |  ESC to close",
+		engine.ScreenWidth/2-420, engine.ScreenHeight-35, 2,
 		sdl.Color{R: 170, G: 160, B: 140, A: 200})
+}
+
+// drawRelevantPin renders the bright-gold "go here next" state: full-size
+// landmark, big pulsing glow, always-on label. Only one pin should be in
+// this state at a time in a well-authored story flow.
+func (tm *travelMap) drawRelevantPin(renderer *sdl.Renderer, font *engine.BitmapFont, loc *travelLocation, px, py int32, ticks float64, mx, my int32) {
+	glowPulse := 0.55 + 0.45*math.Sin(ticks*0.005)
+	for r := int32(58); r > 8; r -= 2 {
+		a := uint8(float64(68-r) * glowPulse)
+		renderer.SetDrawColor(255, 220, 60, a)
+		for dy := -r; dy <= r; dy++ {
+			hw := int32(math.Sqrt(float64(r*r - dy*dy)))
+			renderer.FillRect(&sdl.Rect{X: px - hw, Y: py + dy, W: hw * 2, H: 1})
+		}
+	}
+	tm.drawLandmark(renderer, loc, px, py, 70, 255, 255)
+
+	nameW := font.TextWidth(loc.name, 2)
+	labelX := px - nameW/2
+	labelY := py - 50
+	renderer.SetDrawColor(30, 25, 18, 220)
+	renderer.FillRect(&sdl.Rect{X: labelX - 8, Y: labelY - 4, W: nameW + 16, H: 24})
+	renderer.SetDrawColor(220, 190, 60, 220)
+	renderer.FillRect(&sdl.Rect{X: labelX - 8, Y: labelY - 4, W: nameW + 16, H: 2})
+	renderer.FillRect(&sdl.Rect{X: labelX - 8, Y: labelY + 18, W: nameW + 16, H: 2})
+
+	hoverRect := sdl.Rect{X: px - 50, Y: py - 55, W: 100, H: 110}
+	pt := sdl.Point{X: mx, Y: my}
+	if pt.InRect(&hoverRect) {
+		renderer.SetDrawColor(255, 255, 180, 30)
+		renderer.FillRect(&sdl.Rect{X: px - 55, Y: py - 55, W: 110, H: 110})
+		font.DrawText(renderer, loc.name, labelX, labelY, 2, sdl.Color{R: 255, G: 255, B: 200, A: 255})
+	} else {
+		font.DrawText(renderer, loc.name, labelX, labelY, 2, sdl.Color{R: 255, G: 240, B: 160, A: 255})
+	}
+}
+
+// drawUnlockedIdlePin is the "visited / not currently relevant" state:
+// landmark at full color but smaller, a soft low-alpha halo, and the label
+// only shows on hover. Keeps previously-unlocked cities discoverable without
+// competing for attention with the current story target.
+func (tm *travelMap) drawUnlockedIdlePin(renderer *sdl.Renderer, font *engine.BitmapFont, loc *travelLocation, px, py int32, ticks float64, mx, my int32) {
+	haloPulse := 0.35 + 0.25*math.Sin(ticks*0.003)
+	for r := int32(34); r > 12; r -= 3 {
+		a := uint8(float64(40-r) * haloPulse)
+		renderer.SetDrawColor(200, 200, 220, a)
+		for dy := -r; dy <= r; dy++ {
+			hw := int32(math.Sqrt(float64(r*r - dy*dy)))
+			renderer.FillRect(&sdl.Rect{X: px - hw, Y: py + dy, W: hw * 2, H: 1})
+		}
+	}
+	tm.drawLandmark(renderer, loc, px, py, 55, 255, 255)
+
+	hoverRect := sdl.Rect{X: px - 45, Y: py - 40, W: 90, H: 90}
+	pt := sdl.Point{X: mx, Y: my}
+	if pt.InRect(&hoverRect) {
+		nameW := font.TextWidth(loc.name, 2)
+		labelX := px - nameW/2
+		labelY := py - 45
+		renderer.SetDrawColor(30, 25, 18, 200)
+		renderer.FillRect(&sdl.Rect{X: labelX - 6, Y: labelY - 3, W: nameW + 12, H: 22})
+		font.DrawText(renderer, loc.name, labelX, labelY, 2, sdl.Color{R: 220, G: 220, B: 240, A: 255})
+	}
+}
+
+// drawLockedPin renders the gray, dimmed state used for cities that aren't
+// unlocked yet. Clicking still opens an info popup.
+func (tm *travelMap) drawLockedPin(renderer *sdl.Renderer, font *engine.BitmapFont, loc *travelLocation, px, py int32) {
+	if loc.landmarkTex != nil {
+		tm.drawLandmark(renderer, loc, px, py, 45, 180, 180)
+	} else {
+		renderer.SetDrawColor(100, 95, 80, 150)
+		for dy := int32(-4); dy <= 4; dy++ {
+			hw := int32(math.Sqrt(float64(16 - dy*dy)))
+			renderer.FillRect(&sdl.Rect{X: px - hw, Y: py + dy, W: hw * 2, H: 1})
+		}
+	}
+
+	nameW := font.TextWidth(loc.name, 1)
+	labelX := px - nameW/2
+	labelY := py + 30
+	font.DrawText(renderer, loc.name, labelX, labelY, 1, sdl.Color{R: 140, G: 130, B: 110, A: 160})
+}
+
+// drawLandmark is the shared landmark-blit helper. `targetH` sets the on-
+// screen height (scaling preserves aspect); `colorMod` tints and `alphaMod`
+// sets translucency. 255/255 = untouched colors (relevant/idle); 180/180 =
+// desaturated grayed (locked).
+func (tm *travelMap) drawLandmark(renderer *sdl.Renderer, loc *travelLocation, px, py int32, targetH int32, colorMod, alphaMod uint8) {
+	if loc.landmarkTex == nil {
+		return
+	}
+	scale := float64(targetH) / float64(loc.landmarkH)
+	dstW := int32(float64(loc.landmarkW) * scale)
+	dstH := targetH
+	dstX := px - dstW/2
+	dstY := py - dstH/2
+	loc.landmarkTex.SetColorMod(colorMod, colorMod, colorMod)
+	loc.landmarkTex.SetAlphaMod(alphaMod)
+	renderer.Copy(loc.landmarkTex, nil, &sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH})
+	// Reset so subsequent draws aren't tinted.
+	loc.landmarkTex.SetColorMod(255, 255, 255)
+	loc.landmarkTex.SetAlphaMod(255)
 }
 
 // Hit rectangles are generous so players can click landmark sprite, name
@@ -301,13 +374,18 @@ func (tm *travelMap) pinHitRect(loc *travelLocation) sdl.Rect {
 	return sdl.Rect{X: loc.pinX - 55, Y: loc.pinY - 70, W: 110, H: 140}
 }
 
+// hitTest returns the TRAVEL-TARGET at (mx, my). Only story-relevant pins
+// are valid travel targets — unlocked-but-not-currently-relevant pins fall
+// through and behave like locked pins (they open the info popup instead).
+// This keeps the player from accidentally skipping ahead to a previously
+// visited city when a new story target is glowing.
 func (tm *travelMap) hitTest(mx, my int32) *travelLocation {
 	pt := sdl.Point{X: mx, Y: my}
 	for i := range tm.locations {
-		if !tm.locations[i].unlocked {
+		loc := &tm.locations[i]
+		if !loc.unlocked || !tm.isRelevant(loc) {
 			continue
 		}
-		loc := &tm.locations[i]
 		hit := tm.pinHitRect(loc)
 		if pt.InRect(&hit) {
 			return loc

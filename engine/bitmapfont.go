@@ -146,3 +146,11 @@ func (f *BitmapFont) TextWidth(text string, scale int32) int32 {
 	}
 	return int32(len(text)) * (f.charW + 1) * scale
 }
+
+// LineHeight returns the rendered glyph height in pixels for a given scale.
+// Used by UI code that vertically centers text inside a fixed-height box
+// (e.g. menu buttons) and needs the scaled glyph size without reaching into
+// the font's private fields.
+func (f *BitmapFont) LineHeight(scale int32) int32 {
+	return f.charH * scale
+}

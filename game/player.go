@@ -577,6 +577,20 @@ func (p *player) startNPCDialog() {
 		}
 	}
 
+	// Data-driven rules fire first. If any click-trigger rule matches, the
+	// NPC was already handled (dialog, give, state change, etc.) and we
+	// skip the legacy closure path. Rule-less NPCs fall through unchanged.
+	if n.game != nil && len(n.rules) > 0 {
+		if n.game.fireTrigger(n, "click", n.rules) {
+			if len(n.talkGrid) > 0 {
+				n.setAnimState(npcAnimIdle)
+			}
+			n.flipped = n.preTalkFlipped
+			p.interactTarget = nil
+			return
+		}
+	}
+
 	if n.altDialogFunc != nil && p.canTriggerAltDialog(n) {
 		entries, cb := n.altDialogFunc()
 		if entries != nil {

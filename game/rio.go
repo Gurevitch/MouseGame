@@ -358,8 +358,7 @@ func (g *Game) setupRioCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.showTravelMap = true
-				game.travelMapFrom = "rio_street"
+				game.travelMap.Show("rio_street")
 				return true
 			},
 		})
@@ -406,8 +405,7 @@ func (g *Game) setupRioCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.showTravelMap = true
-				game.travelMapFrom = "buenos_aires_street"
+				game.travelMap.Show("buenos_aires_street")
 				return true
 			},
 		})

@@ -1,0 +1,39 @@
+# Director Higgins — one atlas covering every variant the game needs.
+#
+# Color-key tolerance left at the manifest default (8, flood-fill from corners)
+# so interior whites (eye pupils, shirt highlights, desk papers) are preserved.
+# Kids override tolerance to 16; Higgins does not need that.
+#
+# Grid guesses for the new animations (walk, walk_back, shout, give_map, desk)
+# come from the authored 1376x768 format: 8x1 for full-body action loops
+# (matches the standard 8-frame walk cycle) and 4x1 for the short give_map
+# handoff. Desk is a single static frame. Adjust in the yaml if a pose gets
+# chopped in half — no code changes needed, just re-run pack_atlas.py.
+name: higgins
+source_dir: ../../assets/images/locations/camp/npc/higgins
+animations:
+  # Entrance / grounds variant
+  # idle: REMOVED — being regenerated from scratch. Re-enable by uncommenting
+  # once the replacement npc_director_higgins_idle.png is in place.
+  # idle:        { file: npc_director_higgins_idle.png,        grid: [7, 1], fps: 7 }
+  # talk is actually authored as 8x2 (top row 8 poses, bottom row 6+ extras).
+  # The legacy code used to read it as 6x1, which stretched each atlas cell
+  # to span BOTH rows of the source — that's the "doubled Higgins" bug.
+  # take_row: 0 keeps just the clean 8-frame top row.
+  talk:        { file: npc_director_higgins_talk.png,        grid: [8, 2], take_row: 0, fps: 10 }
+  # Walk cycles — face-forward and back-turned; sheets are 8x2, top row
+  # has the main cycle, bottom row may contain alternates we skip for now.
+  walk:        { file: npc_director_higgins_walk.png,        grid: [8, 2], take_row: 0, fps: 10 }
+  walk_back:   { file: npc_director_higgins_walk_back.png,   grid: [8, 2], take_row: 0, fps: 10 }
+  # "Attention!" — the shout pose used when he calls campers in (8x2 source).
+  shout:       { file: npc_director_higgins_shout.png,       grid: [8, 2], take_row: 0, fps: 10 }
+  # Office variant (seated behind desk)
+  # office_idle is 6x2 (top row: reading / thinking poses; bottom row: alt
+  # gestures). The old 7x1 grid chopped each character in half, showing
+  # hands cut at cell edges.
+  office_idle: { file: npc_director_higgins_office_idle.png, grid: [6, 2], take_row: 0, fps: 7 }
+  office_talk: { file: npc_director_higgins_office_talk.png, grid: [6, 2], fps: 10 }
+  # Day 1 handoff: PROMPTS.md says 8x1, original file confirms 8 poses.
+  give_map:    { file: npc_director_higgins_give_map.png,    grid: [8, 1], fps: 8 }
+  # Background prop — desk with Higgins sitting, single static frame.
+  desk:        { file: npc_director_higgins_desk.png,        grid: [1, 1], fps: 1 }

@@ -220,8 +220,7 @@ func (g *Game) setupRomeCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.showTravelMap = true
-				game.travelMapFrom = "rome_street"
+				game.travelMap.Show("rome_street")
 				return true
 			},
 		})

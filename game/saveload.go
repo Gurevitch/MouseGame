@@ -118,8 +118,10 @@ func (g *Game) LoadGame(path string) error {
 	}
 	if g.marcusHealed {
 		g.travelMap.setUnlocked("jerusalem_street", true)
-		if mRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok && g.marcusRoomBg != nil {
-			mRoom.bg = g.marcusRoomBg
+		if mRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok {
+			if day, ok := g.sceneAltBGs["marcus_room/day"]; ok {
+				mRoom.bg = day
+			}
 		}
 	}
 
