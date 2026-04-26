@@ -267,6 +267,33 @@ func applyKidAtlas(renderer *sdl.Renderer, n *npc, atlasName string) bool {
 	return true
 }
 
+// applyNPCAtlas wires just the two canonical adult-NPC animations (idle /
+// talk) from the named atlas. Returns true on success; false if the atlas
+// is missing or either idle/talk is absent, letting the caller fall through
+// to legacy loadNPCGrid*-based PNG loads.
+//
+// Use this for Paris NPCs and other adult flavor NPCs that don't have the
+// strange_* freakout pair. For the kid cast, use applyKidAtlas instead so
+// the freakout rows get wired.
+//
+// Atlas names for Paris live under the "paris/" subfolder:
+//   applyNPCAtlas(renderer, n, "paris/bakery_woman")
+// resolves to assets/sprites/paris/bakery_woman.png + .json.
+func applyNPCAtlas(renderer *sdl.Renderer, n *npc, atlasName string) bool {
+	sheet := GetAtlas(renderer, atlasName)
+	if sheet == nil {
+		return false
+	}
+	idle := sheet.npcFrames("idle")
+	talk := sheet.npcFrames("talk")
+	if len(idle) == 0 || len(talk) == 0 {
+		return false
+	}
+	n.idleGrid = idle
+	n.talkGrid = talk
+	return true
+}
+
 // npcFrames returns the animation as a []npcFrame suitable for assignment to
 // npc.idleGrid / npc.talkGrid. All frames share the atlas texture; each gets
 // its own source rect so the NPC renderer samples the correct cell.

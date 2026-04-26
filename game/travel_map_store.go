@@ -9,17 +9,22 @@ import (
 // travelLocationJSON is the on-disk shape of `assets/data/travel_map.json`.
 // Runtime-only fields (landmarkTex, landmarkW, landmarkH) are populated by
 // newTravelMap after loading, not stored in JSON.
+//
+// `Facts` is a list of short strings displayed as separate paragraphs in the
+// map info panel. Legacy `Info` is still accepted as a one-liner alias and
+// gets appended to Facts on load so older JSON files still work.
 type travelLocationJSON struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Scene        string `json:"scene"`
-	PinX         int32  `json:"pinX"`
-	PinY         int32  `json:"pinY"`
-	Unlocked     bool   `json:"unlocked"`
-	Info         string `json:"info"`
-	Landmark     string `json:"landmark"`
-	Audio        string `json:"audio"`
-	RelevantWhen string `json:"relevantWhen"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Scene        string   `json:"scene"`
+	PinX         int32    `json:"pinX"`
+	PinY         int32    `json:"pinY"`
+	Unlocked     bool     `json:"unlocked"`
+	Info         string   `json:"info"`
+	Facts        []string `json:"facts"`
+	Landmark     string   `json:"landmark"`
+	Audio        string   `json:"audio"`
+	RelevantWhen string   `json:"relevantWhen"`
 }
 
 type travelMapJSON struct {
@@ -42,6 +47,11 @@ func loadTravelLocations(path string) ([]travelLocation, error) {
 	}
 	out := make([]travelLocation, 0, len(raw.Locations))
 	for _, r := range raw.Locations {
+		facts := append([]string{}, r.Facts...)
+		if len(facts) == 0 && r.Info != "" {
+			// Back-compat: older JSON only has a single `info` string.
+			facts = []string{r.Info}
+		}
 		out = append(out, travelLocation{
 			id:           r.ID,
 			name:         r.Name,
@@ -50,6 +60,7 @@ func loadTravelLocations(path string) ([]travelLocation, error) {
 			pinY:         r.PinY,
 			unlocked:     r.Unlocked,
 			info:         r.Info,
+			facts:        facts,
 			landmarkPath: r.Landmark,
 			audio:        r.Audio,
 			relevantWhen: r.RelevantWhen,

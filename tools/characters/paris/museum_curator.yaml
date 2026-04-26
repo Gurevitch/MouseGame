@@ -1,0 +1,15 @@
+# Curator Beaumont — tuxedoed Louvre curator with a silver mustache.
+#
+# Source sheets are a 8x1 idle row and a 4x2 talk grid (8 talk poses spread
+# across two rows because each talk pose needs more vertical room for the
+# gesturing arms). The loader flattens the 4x2 talk grid row-major into a
+# single 8-frame talk cycle — match that by not setting take_row.
+#
+# subfolder: paris — outputs land under assets/sprites/paris/museum_curator.(png|json).
+name: museum_curator
+subfolder: paris
+source_dir: ../../../assets/images/locations/paris/npc
+color_key_tolerance: 8
+animations:
+  idle: { file: npc_museum_curator_idle.png, grid: [8, 1], fps: 8 }
+  talk: { file: npc_museum_curator_talk.png, grid: [4, 2], fps: 10 }

@@ -71,6 +71,24 @@
       "name": "Inscription Rubbing",
       "texture": "assets/images/items/inscription_rubbing.png",
       "description": "A rubbing taken from a Roman monument — the letters still smell of chalk."
+    },
+    {
+      "id": "baguette",
+      "name": "Baguette",
+      "texture": "assets/images/items/baguette.png",
+      "description": "A crusty Parisian baguette, still warm. Smells incredible."
+    },
+    {
+      "id": "press_pass",
+      "name": "Press Pass",
+      "texture": "assets/images/items/press_pass.png",
+      "description": "A photographer's press pass. Should grant museum access."
+    },
+    {
+      "id": "museum_ticket",
+      "name": "Museum Ticket",
+      "texture": "assets/images/items/museum_ticket.png",
+      "description": "A ticket into the Louvre. Don't lose it."
     }
   ]
 }

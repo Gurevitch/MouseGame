@@ -84,6 +84,10 @@ type npc struct {
 	normalIdle  []npcFrame
 	normalTalk  []npcFrame
 	isStrange   bool
+	// strangeTalkFrameSpeed slows the talk animation while the NPC is in
+	// strange state (Marcus's freakout looked too flickery at the default
+	// 0.10 s/frame). 0 = inherit talkFrameSpeed unchanged.
+	strangeTalkFrameSpeed float64
 }
 
 func (n *npc) setStrange(strange bool) {
@@ -213,8 +217,9 @@ var higginsLilyHintDialog = []dialogEntry{
 }
 
 var higginsPostWorriedDialog = []dialogEntry{
-	{speaker: "Director Higgins", text: "Have you talked to Marcus yet? He's in the camp grounds."},
-	{speaker: "Director Higgins", text: "And the other kids might have noticed something too."},
+	{speaker: "Director Higgins", text: "I already gave you the map, Panther."},
+	{speaker: "Director Higgins", text: "Come on — we need to fix this up. The kids are counting on us."},
+	{speaker: "Director Higgins", text: "Marcus is in the camp grounds. Start there."},
 }
 
 func newDirectorHiggins(renderer *sdl.Renderer) *npc {
@@ -512,6 +517,9 @@ func newMarcus(renderer *sdl.Renderer) *npc {
 		dialog:         marcusDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
+		// Freakout feels frantic if it runs at normal talk speed — slow it
+		// down so the strange dialogue has room to breathe.
+		strangeTalkFrameSpeed: 0.16,
 	}
 	applyKidAtlas(renderer, n, "marcus")
 	return n
@@ -583,6 +591,11 @@ func (n *npc) update(dt float64) {
 	speed := n.talkFrameSpeed
 	if speed <= 0 {
 		speed = 0.12
+	}
+	// Strange state gets its own talk speed so the freakout doesn't strobe
+	// (Marcus). NPCs that don't override stay on the default speed.
+	if n.isStrange && n.strangeTalkFrameSpeed > 0 {
+		speed = n.strangeTalkFrameSpeed
 	}
 
 	if len(n.idleGrid) > 1 {
@@ -700,16 +713,103 @@ var frenchGuidePostDialog = []dialogEntry{
 	{speaker: "Pink Panther", text: "Merci, madame."},
 }
 
+// --- Bakery Woman (pre-Louvre quest, step 1) ---
+// Sells PP a baguette, which he trades to Pierre for a press pass, which
+// he shows Claude to get the museum ticket that unlocks the Louvre. Retro-
+// style "collect props before the main door opens" chain.
+var bakeryWomanDialog = []dialogEntry{
+	{speaker: "Madame Poulain", text: "Bonjour, monsieur! Fresh baguettes, straight from ze oven!"},
+	{speaker: "Pink Panther", text: "They smell wonderful. I'd love one."},
+	{speaker: "Madame Poulain", text: "For you, a compliment, and ze bread is yours. Non?"},
+	{speaker: "Pink Panther", text: "Madame, your boulangerie smells like Paris itself."},
+	{speaker: "Madame Poulain", text: "*laughs* Charmant! Here, take a baguette. Tell your friends!"},
+}
+
+var bakeryWomanPostDialog = []dialogEntry{
+	{speaker: "Madame Poulain", text: "Enjoy ze baguette, monsieur! Zhere's a photographer near ze museum — he loves fresh bread."},
+}
+
+func newBakeryWoman(renderer *sdl.Renderer) *npc {
+	// Dedicated Bakery Woman sheet (see docs/EXTRA_PROMPTS.md §8). 8×2
+	// canvas: row 0 = idle (mouth closed), row 1 = talk (mouth open).
+	// Packed atlas at assets/sprites/paris/bakery_woman.(png|json) is the
+	// preferred path; legacy per-row PNG slicing stays as a fallback so
+	// the NPC still spawns if pack_atlas.py hasn't been run.
+	n := &npc{
+		bounds:         sdl.Rect{X: 540, Y: 440, W: 140, H: 240},
+		name:           "Madame Poulain",
+		dialog:         bakeryWomanDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.12,
+		flipped:        false, // sheet draws her facing right already
+	}
+	if !applyNPCAtlas(renderer, n, "paris/bakery_woman") {
+		const sheet = "assets/images/locations/paris/npc/npc_bakery_woman.png"
+		n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
+		n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
+	}
+	return n
+}
+
+// --- Press Photographer (flavor NPC near the Louvre steps) ---
+// Madame Poulain's post-baguette dialog name-drops a photographer near the
+// museum. Nicolas is that flavor NPC — chatty Parisian with a camera slung
+// over his shoulder. He is not on the critical quest chain; Pierre still
+// hands over the press pass in exchange for the baguette.
+var pressPhotographerDialog = []dialogEntry{
+	{speaker: "Nicolas", text: "Ah, a visitor! Hold still — ze light is perfect."},
+	{speaker: "Pink Panther", text: "Are you... photographing me?"},
+	{speaker: "Nicolas", text: "Non, non, I photograph Paris. You happen to be in ze frame."},
+	{speaker: "Nicolas", text: "I have been here twenty years. I have seen ze Louvre in every weather."},
+	{speaker: "Pink Panther", text: "Any advice for a curious traveler?"},
+	{speaker: "Nicolas", text: "Talk to Pierre ze painter and Claude ze gendarme. Zey know ze street better zhan ze guidebooks."},
+}
+
+var pressPhotographerPostDialog = []dialogEntry{
+	{speaker: "Nicolas", text: "Bonne chance, monsieur! Smile for ze camera."},
+}
+
+func newPressPhotographer(renderer *sdl.Renderer) *npc {
+	// Dedicated Press Photographer sheet (see docs/EXTRA_PROMPTS.md §9). 8×2
+	// canvas: row 0 = idle (mouth closed), row 1 = talk (mouth open).
+	// Positioned between Pierre (X=880) and Claude (X=1120) — fits the
+	// Bakery Woman's "photographer near ze museum" breadcrumb. Tight cluster
+	// of Paris street characters by the Louvre entrance hotspot (x=1300).
+	// Packed atlas at assets/sprites/paris/press_photographer.(png|json)
+	// is preferred; legacy PNG slicing stays as a fallback.
+	n := &npc{
+		bounds:         sdl.Rect{X: 1010, Y: 440, W: 110, H: 240},
+		name:           "Nicolas",
+		dialog:         pressPhotographerDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.12,
+		flipped:        false, // sheet draws him facing right already
+	}
+	if !applyNPCAtlas(renderer, n, "paris/press_photographer") {
+		const sheet = "assets/images/locations/paris/npc/npc_press_photographer.png"
+		n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
+		n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
+	}
+	return n
+}
+
 func newFrenchGuide(renderer *sdl.Renderer) *npc {
-	return &npc{
-		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_french_guide_idle.png", 8, 2),
-		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_french_guide_talk.png", 8, 1),
-		bounds:         sdl.Rect{X: 300, Y: 350, W: 140, H: 240},
+	// Packed atlas at assets/sprites/paris/french_guide.(png|json) is the
+	// preferred path; legacy per-sheet PNG loading stays as a fallback.
+	// Feet land at y≈680 on the paris_street floor line; user reported
+	// the previous Y=350 (feet ~590) had NPCs floating above the ground.
+	n := &npc{
+		bounds:         sdl.Rect{X: 300, Y: 440, W: 140, H: 240},
 		name:           "Madame Colette",
 		dialog:         frenchGuideDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.12,
 	}
+	if !applyNPCAtlas(renderer, n, "paris/french_guide") {
+		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_french_guide_idle.png", 8, 2)
+		n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_french_guide_talk.png", 8, 1)
+	}
+	return n
 }
 
 var museumCuratorDialog = []dialogEntry{
@@ -736,15 +836,20 @@ var museumCuratorPostDialog = []dialogEntry{
 }
 
 func newMuseumCurator(renderer *sdl.Renderer) *npc {
-	return &npc{
-		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_idle.png", 8, 1),
-		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_talk.png", 4, 2),
+	// Packed atlas at assets/sprites/paris/museum_curator.(png|json) is the
+	// preferred path; legacy per-sheet PNG loading stays as a fallback.
+	n := &npc{
 		bounds:         sdl.Rect{X: 500, Y: 320, W: 130, H: 250},
 		name:           "Curator Beaumont",
 		dialog:         museumCuratorDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.12,
 	}
+	if !applyNPCAtlas(renderer, n, "paris/museum_curator") {
+		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_idle.png", 8, 1)
+		n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_talk.png", 4, 2)
+	}
+	return n
 }
 
 // --- Pierre the Street Artist ---
@@ -767,15 +872,21 @@ var pierreArtistPostDialog = []dialogEntry{
 }
 
 func newPierreArtist(renderer *sdl.Renderer) *npc {
-	return &npc{
-		idleGrid:       loadNPCGridRow(renderer, "assets/images/locations/paris/npc/npc_art_vendor.png", 8, 2, 0),
-		talkGrid:       loadNPCGridRow(renderer, "assets/images/locations/paris/npc/npc_art_vendor.png", 8, 2, 1),
-		bounds:         sdl.Rect{X: 880, Y: 360, W: 130, H: 240},
+	// Packed atlas at assets/sprites/paris/pierre_artist.(png|json) is the
+	// preferred path; legacy per-row PNG slicing stays as a fallback.
+	n := &npc{
+		bounds:         sdl.Rect{X: 880, Y: 440, W: 130, H: 240},
 		name:           "Pierre",
 		dialog:         pierreArtistDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.12,
 	}
+	if !applyNPCAtlas(renderer, n, "paris/pierre_artist") {
+		const sheet = "assets/images/locations/paris/npc/npc_art_vendor.png"
+		n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
+		n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
+	}
+	return n
 }
 
 // --- Gendarme Claude ---
@@ -797,13 +908,19 @@ var gendarmePostDialog = []dialogEntry{
 }
 
 func newGendarmeClaude(renderer *sdl.Renderer) *npc {
-	return &npc{
-		idleGrid:       loadNPCGridRow(renderer, "assets/images/locations/paris/npc/npc_security_guard.png", 6, 2, 0),
-		talkGrid:       loadNPCGridRow(renderer, "assets/images/locations/paris/npc/npc_security_guard.png", 6, 2, 1),
-		bounds:         sdl.Rect{X: 1120, Y: 340, W: 120, H: 250},
+	// Packed atlas at assets/sprites/paris/gendarme_claude.(png|json) is
+	// the preferred path; legacy per-row PNG slicing stays as a fallback.
+	n := &npc{
+		bounds:         sdl.Rect{X: 1120, Y: 430, W: 120, H: 250},
 		name:           "Claude",
 		dialog:         gendarmeDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.12,
 	}
+	if !applyNPCAtlas(renderer, n, "paris/gendarme_claude") {
+		const sheet = "assets/images/locations/paris/npc/npc_security_guard.png"
+		n.idleGrid = loadNPCGridRow(renderer, sheet, 6, 2, 0)
+		n.talkGrid = loadNPCGridRow(renderer, sheet, 6, 2, 1)
+	}
+	return n
 }

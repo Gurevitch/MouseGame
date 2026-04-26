@@ -1,9 +1,12 @@
 name: jake
 source_dir: ../../assets/images/locations/camp/npc/kids/jake
 color_key_tolerance: 16
-# idle is authored as 8x2 but the engine reads only row 1 (see npc.go:402)
+# All four sheets regenerated 2026-04-19 in canonical cartoon style. Previous
+# idle had row 0 = same pose repeated and row 1 = the real cycle, which is
+# why take_row: 1 was needed. The new sheet has the main 8-frame fidget cycle
+# in row 0 and alt beats in row 1, so we read both rows now.
 animations:
-  idle:         { file: npc_jake_idle.png,          grid: [8, 2], take_row: 1, fps: 8 }
+  idle:         { file: npc_jake_idle.png,          grid: [8, 2], fps: 8 }
   talk:         { file: npc_jake_talk.png,          grid: [8, 2], fps: 10 }
   strange_idle: { file: npc_jake_strange_idle.png,  grid: [8, 2], fps: 8 }
   strange_talk: { file: npc_jake_strange_talk.png,  grid: [8, 2], fps: 10 }

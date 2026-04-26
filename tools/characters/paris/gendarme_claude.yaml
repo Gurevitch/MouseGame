@@ -1,0 +1,14 @@
+# Gendarme Claude — friendly Parisian police officer near the Louvre.
+#
+# Single sheet "npc_security_guard.png" reused from the older Paris cast.
+# This one is a 6x2 grid instead of 8x2 (six frames per row is enough for
+# a slower police-pose animation); idle on row 0, talk on row 1.
+#
+# subfolder: paris — outputs land under assets/sprites/paris/gendarme_claude.(png|json).
+name: gendarme_claude
+subfolder: paris
+source_dir: ../../../assets/images/locations/paris/npc
+color_key_tolerance: 8
+animations:
+  idle: { file: npc_security_guard.png, grid: [6, 2], take_row: 0, fps: 8 }
+  talk: { file: npc_security_guard.png, grid: [6, 2], take_row: 1, fps: 10 }

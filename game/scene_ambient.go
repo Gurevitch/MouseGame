@@ -223,20 +223,20 @@ func decorateCampNight(s *scene) {
 	}
 	for i := 0; i < 6; i++ {
 		s.particles = append(s.particles, particle{
-			x:     620 + (rand.Float64()-0.5)*30,
-			y:     500 - rand.Float64()*20,
+			x:     622 + (rand.Float64()-0.5)*30,
+			y:     568 - rand.Float64()*20,
 			vx:    (rand.Float64() - 0.5) * 8,
 			vy:    -rand.Float64()*25 - 10,
 			alpha: uint8(rand.Intn(40) + 20),
 			size:  int32(rand.Intn(2) + 1),
-			baseY: 505,
-			homeX: 620,
+			baseY: 573,
+			homeX: 622,
 			fire:  true,
 			r:     255, g: 160, b: 40,
 		})
 	}
 	s.glows = append(s.glows,
-		glowEffect{x: 480, y: 400, w: 280, h: 180, r: 255, g: 160, b: 40, alpha: 15, pulse: 3.5},
+		glowEffect{x: 510, y: 470, w: 260, h: 180, r: 255, g: 160, b: 40, alpha: 15, pulse: 3.5},
 		glowEffect{x: 0, y: 0, w: engine.ScreenWidth, h: engine.ScreenHeight, r: 20, g: 15, b: 40, alpha: 12, pulse: 0.1},
 		glowEffect{x: 820, y: 280, w: 180, h: 120, r: 255, g: 200, b: 100, alpha: 8, pulse: 1.5},
 	)
@@ -340,14 +340,14 @@ func decorateCampGrounds(s *scene) {
 	for i := 0; i < 8; i++ {
 		c := fireColors[i%len(fireColors)]
 		s.particles = append(s.particles, particle{
-			x:     620 + (rand.Float64()-0.5)*20,
-			y:     520 - rand.Float64()*30,
+			x:     622 + (rand.Float64()-0.5)*20,
+			y:     568 - rand.Float64()*30,
 			vx:    (rand.Float64() - 0.5) * 12,
 			vy:    -rand.Float64()*35 - 15,
 			alpha: uint8(rand.Intn(50) + 30),
 			size:  int32(rand.Intn(2) + 1),
-			baseY: 525,
-			homeX: 620,
+			baseY: 573,
+			homeX: 622,
 			fire:  true,
 			r:     c[0], g: c[1], b: c[2],
 		})
@@ -375,14 +375,14 @@ func decorateCampGrounds(s *scene) {
 	}
 	for i := 0; i < 5; i++ {
 		s.particles = append(s.particles, particle{
-			x:     620 + (rand.Float64()-0.5)*12,
-			y:     495 - rand.Float64()*20,
+			x:     622 + (rand.Float64()-0.5)*12,
+			y:     543 - rand.Float64()*20,
 			vx:    (rand.Float64() - 0.5) * 4,
 			vy:    -rand.Float64()*12 - 6,
 			alpha: uint8(rand.Intn(15) + 8),
 			size:  int32(rand.Intn(3) + 2),
-			baseY: 495,
-			homeX: 620,
+			baseY: 543,
+			homeX: 622,
 			smoke: true,
 			r:     140, g: 130, b: 120,
 			timer: rand.Float64() * 10,
@@ -401,7 +401,7 @@ func decorateCampGrounds(s *scene) {
 	s.glows = append(s.glows,
 		glowEffect{x: 200, y: 0, w: 800, h: 300, r: 255, g: 245, b: 200, alpha: 8, pulse: 0.2},
 		glowEffect{x: 450, y: 400, w: 300, h: 100, r: 255, g: 200, b: 120, alpha: 6, pulse: 0.35},
-		glowEffect{x: 590, y: 500, w: 60, h: 40, r: 255, g: 160, b: 40, alpha: 18, pulse: 4.0},
+		glowEffect{x: 560, y: 555, w: 130, h: 45, r: 255, g: 160, b: 40, alpha: 18, pulse: 4.0},
 	)
 }
 

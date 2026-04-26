@@ -1,0 +1,34 @@
+{
+  "vars": {
+    "game": {
+      "chapter": 2,
+      "day": 2,
+      "marcus_healed": 0,
+      "monologue_intro_played": 1,
+      "monologue_paris_played": 1,
+      "night_scene_done": 1,
+      "paris_unlocked": 1
+    },
+    "chapter": {
+      "day2_started": 0,
+      "met_kids": 5,
+      "talked_to_marcus": 1
+    },
+    "scene": {}
+  },
+  "day": 2,
+  "metKids": 5,
+  "talkedToMarcus": true,
+  "parisUnlocked": true,
+  "nightSceneDone": true,
+  "day2Started": false,
+  "marcusHealed": false,
+  "currentScene": "paris_street",
+  "playerX": 1132,
+  "playerY": 300,
+  "items": [
+    "Travel Map"
+  ],
+  "monologuePlayed": true,
+  "parisMonologuePlayed": true
+}

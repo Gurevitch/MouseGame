@@ -1,0 +1,14 @@
+# Pierre — beret-wearing street artist selling sidewalk portraits.
+#
+# Single sheet "npc_art_vendor.png" reused from the older Paris cast —
+# pre-regen, this was the catch-all "one vendor" sheet. Layout is 8x2 with
+# idle on row 0 and talk on row 1, same as the modern Paris NPCs.
+#
+# subfolder: paris — outputs land under assets/sprites/paris/pierre_artist.(png|json).
+name: pierre_artist
+subfolder: paris
+source_dir: ../../../assets/images/locations/paris/npc
+color_key_tolerance: 8
+animations:
+  idle: { file: npc_art_vendor.png, grid: [8, 2], take_row: 0, fps: 8 }
+  talk: { file: npc_art_vendor.png, grid: [8, 2], take_row: 1, fps: 10 }

@@ -1,0 +1,15 @@
+# Madame Poulain — apron-wearing baker, breadstick vendor, first step in
+# the pre-Louvre baguette quest chain.
+#
+# Single sheet with idle on row 0 (mouth closed) and talk on row 1 (mouth
+# open, gesturing). We use take_row to slice each row into its own
+# animation; the packed atlas ends up with two 8-frame rows.
+#
+# subfolder: paris — outputs land under assets/sprites/paris/bakery_woman.(png|json).
+name: bakery_woman
+subfolder: paris
+source_dir: ../../../assets/images/locations/paris/npc
+color_key_tolerance: 8
+animations:
+  idle: { file: npc_bakery_woman.png, grid: [8, 2], take_row: 0, fps: 8 }
+  talk: { file: npc_bakery_woman.png, grid: [8, 2], take_row: 1, fps: 10 }

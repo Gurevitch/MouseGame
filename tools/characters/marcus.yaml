@@ -1,18 +1,19 @@
 # Marcus — the know-it-all sketcher, Paris chapter kid.
-# Canonical kid size is 150x180 (see docs/CHARACTERS.md); source sheets use
-# larger 229x384 / 172x384 cells with padding that the runtime renders at
-# Marcus's scene-scale.
+# All four sheets are authored at 1376x768 with an 8x2 grid (172x384 per cell),
+# matching the other camp kids (Tommy / Jake / Danny / Lily). Prior layout was
+# 6x2 idle+talk / 8x2 strange_*; normalized to 8x2 across the board after the
+# 2026-04-19 Hokus-Pokus style unification regen pass.
 name: marcus
 source_dir: ../../assets/images/locations/camp/npc/kids/marcus
 color_key_tolerance: 16
 animations:
   idle:
     file: npc_marcus_idle.png
-    grid: [6, 2]        # 12 poses — matches npc.go line 515
+    grid: [8, 2]
     fps: 8
   talk:
     file: npc_marcus_talk.png
-    grid: [6, 2]
+    grid: [8, 2]
     fps: 10
   strange_idle:
     file: npc_marcus_strange_idle.png
@@ -22,3 +23,7 @@ animations:
     file: npc_marcus_strange_talk.png
     grid: [8, 2]
     fps: 10
+  strange_alt:
+    file: npc_marcus_strange_alt.png
+    grid: [8, 1]
+    fps: 6

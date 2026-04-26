@@ -1,0 +1,15 @@
+# Nicolas — press photographer near the Louvre steps. Not on the critical
+# quest chain; acts as a flavor NPC that Madame Poulain's post-baguette
+# dialog name-drops ("a photographer near ze museum").
+#
+# Single sheet with idle on row 0 (mouth closed, camera slung on hip) and
+# talk on row 1 (mouth open, camera gestures). Same layout as Bakery Woman.
+#
+# subfolder: paris — outputs land under assets/sprites/paris/press_photographer.(png|json).
+name: press_photographer
+subfolder: paris
+source_dir: ../../../assets/images/locations/paris/npc
+color_key_tolerance: 8
+animations:
+  idle: { file: npc_press_photographer.png, grid: [8, 2], take_row: 0, fps: 8 }
+  talk: { file: npc_press_photographer.png, grid: [8, 2], take_row: 1, fps: 10 }

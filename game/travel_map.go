@@ -15,7 +15,8 @@ type travelLocation struct {
 	pinX         int32
 	pinY         int32
 	unlocked     bool
-	info         string // city facts shown when clicking locked or not-currently-relevant cities
+	info         string   // legacy one-liner; facts is now the canonical list
+	facts        []string // multi-line facts shown as bullet paragraphs in the info panel
 	landmarkPath string
 	landmarkTex  *sdl.Texture
 	landmarkW    int32
@@ -45,6 +46,9 @@ type travelMap struct {
 	// nil during construction (before Game.New finishes); draw handles nil
 	// by treating all locations as not-currently-relevant.
 	game *Game
+	// panelLoc is the location whose info panel is currently overlaid on
+	// the map. nil = no panel. Set by openInfoPanel, cleared by click or Esc.
+	panelLoc *travelLocation
 }
 
 // Visible reports whether the travel-map modal is currently open.
@@ -366,12 +370,21 @@ func (tm *travelMap) drawLandmark(renderer *sdl.Renderer, loc *travelLocation, p
 	loc.landmarkTex.SetAlphaMod(255)
 }
 
-// Hit rectangles are generous so players can click landmark sprite, name
-// label, or surrounding glow and still register. 110x140 covers the ~70px tall
-// landmark, its ~24px label above, and the pulsing glow without overlapping
-// adjacent pins on the map.
+// Hit rectangles center on the landmark sprite with enough padding that
+// adjacent pins in Europe don't overlap. 90x110 covers the ~70px landmark
+// plus a bit of its glow, and deliberately excludes the label sitting 50px
+// above the pin so a click on "Rome" doesn't bleed up into "Paris".
 func (tm *travelMap) pinHitRect(loc *travelLocation) sdl.Rect {
-	return sdl.Rect{X: loc.pinX - 55, Y: loc.pinY - 70, W: 110, H: 140}
+	return sdl.Rect{X: loc.pinX - 45, Y: loc.pinY - 55, W: 90, H: 110}
+}
+
+// distanceSqFromPin returns the squared distance from (mx, my) to the
+// location's pin center. Used to tie-break when two hit rects overlap —
+// the click snaps to the closest pin, not the first one in slice order.
+func (tm *travelMap) distanceSqFromPin(loc *travelLocation, mx, my int32) int64 {
+	dx := int64(mx - loc.pinX)
+	dy := int64(my - loc.pinY)
+	return dx*dx + dy*dy
 }
 
 // hitTest returns the TRAVEL-TARGET at (mx, my). Only story-relevant pins
@@ -379,31 +392,48 @@ func (tm *travelMap) pinHitRect(loc *travelLocation) sdl.Rect {
 // through and behave like locked pins (they open the info popup instead).
 // This keeps the player from accidentally skipping ahead to a previously
 // visited city when a new story target is glowing.
+//
+// When two hit rects overlap (Europe is crowded) the closest pin center
+// wins so clicks on Rome don't bleed into Paris.
 func (tm *travelMap) hitTest(mx, my int32) *travelLocation {
 	pt := sdl.Point{X: mx, Y: my}
+	var best *travelLocation
+	var bestDist int64
 	for i := range tm.locations {
 		loc := &tm.locations[i]
 		if !loc.unlocked || !tm.isRelevant(loc) {
 			continue
 		}
 		hit := tm.pinHitRect(loc)
-		if pt.InRect(&hit) {
-			return loc
+		if !pt.InRect(&hit) {
+			continue
+		}
+		d := tm.distanceSqFromPin(loc, mx, my)
+		if best == nil || d < bestDist {
+			best = loc
+			bestDist = d
 		}
 	}
-	return nil
+	return best
 }
 
 func (tm *travelMap) hitTestAny(mx, my int32) *travelLocation {
 	pt := sdl.Point{X: mx, Y: my}
+	var best *travelLocation
+	var bestDist int64
 	for i := range tm.locations {
 		loc := &tm.locations[i]
 		hit := tm.pinHitRect(loc)
-		if pt.InRect(&hit) {
-			return loc
+		if !pt.InRect(&hit) {
+			continue
+		}
+		d := tm.distanceSqFromPin(loc, mx, my)
+		if best == nil || d < bestDist {
+			best = loc
+			bestDist = d
 		}
 	}
-	return nil
+	return best
 }
 
 func (tm *travelMap) setUnlocked(scene string, unlocked bool) {

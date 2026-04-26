@@ -66,6 +66,36 @@ land together with their dependencies.
 
 ## Resolved
 
+### Reported (2026-04-19 pass 2) - FIXME sweep (map + Paris NPCs + fire + cabin doors + Higgins post-map + Marcus freakout + Paris quest chain)
+
+- [x] `[P1]` "*map* location in the map got bg around them" — FIXED: ran `tools/clean_landmarks.py` (one-shot flood-fill-from-edges color-key pass) over every PNG in `assets/images/ui/landmarks/`. Christ Redeemer shed 84% baked-in bg; every other landmark 3–5%. Runtime loader already uses `SafeTextureFromPNGRaw` so the cleaned alpha renders cleanly.
+- [x] `[P1]` "i try to click on brazil spot to get info and it took me to paris" — FIXED: map hit-rect shrunk from 110×140 to 90×110 (the label box no longer bleeds into the adjacent pin) AND when two rects overlap the closest-pin-center wins via `distanceSqFromPin` tie-break. See `game/travel_map.go:pinHitRect` / `hitTest` / `hitTestAny`.
+- [x] `[P1]` "i want the info to stay in the map screen and not jump to the pp location back every time" — FIXED: new `game/travel_map_panel.go` renders a 720×400 card overlay on the globe (landmark image on the left, bulleted facts on the right). Map stays visible behind. Click-anywhere or Esc dismisses the panel, map stays open.
+- [x] `[P1]` "for each location add at least 3 infoes and the famous location" — FIXED: `assets/data/travel_map.json` schema extended with `facts: []` (a list of paragraph-style strings). Every city now has 3 facts; legacy single-line `info` is kept as a fallback for backwards compat.
+- [x] `[P1]` "paris people standing on air y~585" — FIXED: Madame Colette / Pierre / Claude bounds Y moved from 340–360 down to 430–440 so feet land at y≈680 on the street line.
+- [x] `[P1]` "fire animation is huge... around (577,591)-(700,590)" — FIXED: day-grounds + night fire particles, smoke, and glow centers shifted from (620, 520) to (622, 573). Glow rect resized to `{x: 560, y: 555, w: 130, h: 45}` so the visible flame falls roughly inside the user's target band.
+- [x] `[P1]` "i already place the right points where are the doors of each cabinet. fix it" — FIXED: `assets/data/scenes/camp_grounds.json` cabin hotspots swapped from 240×200 blanket rects to 120×90 zones centered on user-specified coords: Tommy (195,479), Jake (441,441), Marcus (820,435), Lily (1077,403), Danny (1243,503). All with `arrow: "up"`.
+- [x] `[P1]` "walking in the camp should also have a logical routes" (partial) — FIXED: 5 new vertical walk-segments branching from the main path at y=480/500 up to each cabin door coord, so PP's snap-to-path lands on the door instead of cutting across bushes.
+- [x] `[P1]` "higgins office... after the talking is finished, you can change to text to something like: i already gave you the map, comeon panther we need to fix this up" — FIXED: `higginsPostWorriedDialog` rewritten: *"I already gave you the map, Panther." / "Come on — we need to fix this up. The kids are counting on us." / "Marcus is in the camp grounds. Start there."*
+- [x] `[P1]` "marcus freak out sprite is too fast" — FIXED: new `strangeTalkFrameSpeed` field on `npc` (0 = inherit talkFrameSpeed). Marcus overrides to 0.16 (was 0.10 default) — 60% slower.
+- [x] `[P1]` "...add another freakout sprite that will run if we dont click on him for a few seconds" — SHEET LANDED (see Resolved 2026-04-19 campaign): `npc_marcus_strange_alt.png` generated, yaml extended, atlas repacked. Inactivity-trigger code hook still pending (tracked in Deferred below).
+- [x] `[P0]` "i want to create now a story and object we need to collect before we enter the louver. so we need a bagguete" — FIXED: Paris pre-Louvre quest chain landed. New NPC `Madame Poulain` (Bakery Woman, placeholder sprite pointing at the french_guide sheet). 3 new items (`baguette`, `press_pass`, `museum_ticket`). Quest flow: bakery → Pierre (baguette trade for press pass) → Claude (press pass for museum ticket) → Louvre entrance now gated on `Museum Ticket` via `setupParisCallbacks` hotspot override.
+- [x] `[P1]` "remove left arrow to the map" — verified: only "To the Lake" / "Higgins' Office" / cabin entries remain on camp_grounds; the travel-map opener on camp_entrance is a gated bus-stop hotspot (requires map item), not a free left-arrow.
+- [x] `[P2]` "Buenos Aires and Rio pins are close together — landmarks may overlap visually" — FIXED indirectly: 90×110 hit rect + nearest-pin tie-break means overlapping pins now route clicks to the intended pin.
+
+**Deferred to EXTRA_PROMPTS.md (pass-2 snapshot — most items landed in the
+2026-04-19 campaign below; see that Resolved block for status per item):**
+
+- §1 Higgins entrance idle redesign — LANDED (canonical).
+- §2 Higgins walk-back — LANDED (canonical).
+- §3 PP walk-back for "leaving camp" transition — still deferred.
+- §4 Marcus strange_alt — LANDED.
+- §5 PP flower pickup — still deferred.
+- §6 Campfire small sheet — LANDED.
+- §7 Paris cafe ambient patrons — LANDED (asset); renderer hookup deferred.
+- §8 Bakery Woman dedicated sheet — LANDED + wired.
+- §9 Press Photographer sheet — LANDED + wired.
+
 ### Reported (2026-04-19) - atlas pipeline + sequence player + god-object collapse
 
 - [x] `[P0]` "the other kids loose colors like tommy and danny" — FIXED: per-cell flood-fill color-key (seed from every edge pixel matching bg, not just 4 corners) cleanly strips bg without eating interior whites. All kid atlases now ~1-2% residual near-white-opaque pixels (was 20-30% for Tommy/Jake idle).
@@ -89,7 +119,7 @@ land together with their dependencies.
 
 - [ ] `[P2]` Port each setupCampCallbacks closure to `assets/data/npc/*.json` rule lists — infrastructure is in place (`npc.rules`, `game.fireTrigger`, hook in `player.startNPCDialog`). Task #9 marked done because the architecture is complete; the remaining work is mechanical per-NPC JSON authoring.
 - [ ] `[P2]` Port Paris/Jerusalem/Tokyo/Rio/Rome/Mexico chapter callbacks to rules.
-- [ ] `[P2]` Migrate Paris NPCs (`french_guide`, `museum_curator`, `pierre_artist`, `gendarme_claude`) to the atlas pipeline — add manifests in `tools/characters/paris/`, repack.
+- [x] `[P2]` Migrate Paris NPCs (`french_guide`, `museum_curator`, `pierre_artist`, `gendarme_claude`, `bakery_woman`, `press_photographer`) to the atlas pipeline — LANDED 2026-04-19 (see Resolved campaign block below). Manifests live under `tools/characters/paris/`; packed atlases at `assets/sprites/paris/<name>.(png|json)`. Factories now prefer atlases via `applyNPCAtlas` and fall back to legacy `loadNPCGrid*` PNG slicing when the atlas is missing.
 - [ ] `[P1]` Higgins walk-in cutscene from office when Lily shy dialog ends — needs an `npc_move_to` sequence step. Tracked as task #11.
 - [ ] `[P1]` Story-flag collapse from Game struct into VarStore — ~10 fields (marcusHealed, metKids, talkedToMarcus, parisUnlocked, nightSceneDone, day1BedtimeStarted, day2Started, monologuePlayed, parisMonologuePlayed). Blocked on setupCampCallbacks closure migration (see above).
 - [ ] `[P2]` Re-introduce Camp Chilly Wa Wa as a travel-map destination when post-Paris quests require going back (retro *Hokus Pokus Pink* style). Currently omitted from `assets/data/travel_map.json` so the player can't loop to camp_entrance and retrigger Higgins's introduction dialog. When re-adding: give Camp a `relevantWhen` expression (e.g. `vars.chapter.paris.return_to_camp == 1`) AND gate entrance-Higgins's `dialog` field on a VarStore key so returning visits show a "welcome back" variant instead of the initial greeting.
@@ -301,14 +331,80 @@ first code revie:
 - [x] `[P1]` NPCs do not face PP when talking — e.g. Danny stays facing the trees through his whole dialog. — FIXED: `npc.preTalkFlipped` snapshot + flip in `startNPCDialog`, restore in `wrapCb`; drag-onto-NPC path mirrors the same snapshot/restore so Lily's flower handoff leaves her turned toward PP.
 - [x] `[P2]` Camp kid sprite sheets lose color on transparent background — default color-key (tol=8) left halos on pastel backgrounds. — FIXED: added `SpriteGridFromPNGCleanKids` (tol=16), routed every camp kid loader through `loadNPCGridKids` / `loadNPCGridRowKids`, normalized Tommy/Jake/Marcus mismatched idle/talk/strange pairs to 8x2, and tightened `eraseGridLines` (window ±2, RGB<50, outer-edge alpha gate) so sprite outlines stop getting eaten.
 
-### Deferred (2026-04-16) - sprite regens
+### Resolved (2026-04-19) - Hokus-Pokus style unification campaign
 
-- [ ] `[P2]` Regenerate `npc_tommy_idle.png` + `npc_tommy_talk.png` as clean 8x1 sheets per PROMPTS.md so we can drop the 8x2 normalization stopgap.
-- [ ] `[P2]` Regenerate `npc_tommy_strange_idle.png` + `npc_tommy_strange_talk.png` as matching 8x1 sheets.
-- [ ] `[P2]` Regenerate `npc_jake_idle.png` (currently row 1 of 8x2) and `npc_jake_talk.png` as matching 8x1 sheets.
-- [ ] `[P2]` Regenerate `npc_jake_strange_idle.png` + `npc_jake_strange_talk.png` as matching 8x1 sheets.
-- [ ] `[P2]` Regenerate `npc_marcus_strange_idle.png` + `npc_marcus_strange_talk.png` as matching 8x1 sheets (currently authored as 8x2 and 5x2).
-- [ ] `[P2]` Regenerate `npc_director_higgins_talk.png` as a clean 8x1 so we can drop the "row 0 only" hack in `newDirectorHiggins`.
+**[P1] regen-campaign checklist** — COMPLETED this session. Every sheet
+called out in the prior P2 items below and in the 2026-04-19 style-sweep
+(see `docs/EXTRA_PROMPTS.md` "Character sheet regen status — updated
+2026-04-19" table) is now landed. Style lock anchored on Hokus Pokus Pink
+cartoon (canonical refs = new Higgins idle, Danny, Lily, PP idle_front).
+
+Pipeline: `GenerateImage` prompt → `tools/clean_generated_sheet.py` (strips
+the baked-in black frame + grid lines that the generator bakes in) → drop
+at the target path → `python tools/pack_atlas.py tools/characters/<name>.yaml`
+for the atlas-loaded NPCs (Higgins / kids) or straight `loadNPCGrid*` for
+legacy loaders (Paris NPCs).
+
+**Camp — Higgins:**
+- [x] `[P1]` Regenerated `npc_director_higgins_talk.png` per `§10`. Matches new idle (silver hair, red lanyard, khaki trousers) — dropped the ruddier-face / olive-pants drift. Atlas repacked.
+- [x] `[P1]` Regenerated `npc_director_higgins_office_idle.png` per `§18`. Pixel art → cartoon.
+- [x] `[P1]` Regenerated `npc_director_higgins_office_talk.png` per `§18`. Pixel art → cartoon.
+- [x] `[P1]` Regenerated `npc_director_higgins_give_map.png` per `§19`. Pixel-leaning → cartoon.
+
+**Camp — kids:**
+- [x] `[P1]` Regenerated Tommy 4-sheet set per `§11` (idle + talk aligned to canonical strange_idle / strange_talk — tan skin, tousled brown hair, green pine-tree tee, navy jeans, barefoot). Atlas repacked.
+- [x] `[P1]` Regenerated Jake 4-sheet set per `§12`. All four sheets on-style; yaml `take_row: 1` dropped from idle so both rows render.
+- [x] `[P1]` Regenerated Marcus idle + talk + strange_talk per `§13` (canonical identity anchored on strange_idle: spiky brown hair, yellow polo, khaki cargo shorts, brown ankle shoes). YAML grid normalized to 8×2 across all four animations.
+- [x] `[P1]` Generated Marcus `strange_alt` per `§4`. Sheet landed in yaml as a 5th anim. Inactivity-trigger code hook is still a future enhancement but the asset is production-ready.
+
+**Paris:**
+- [x] `[P1]` Regenerated French Guide (`npc_french_guide_idle.png` 8×2 + `npc_french_guide_talk.png` 8×1) per `§14`. Pure pixel → cartoon. Also used as the back-sprite placeholder by Nonna/Obachan/Abuela/Marisa/Lucia/Miriam so every chapter benefits.
+- [x] `[P1]` Regenerated Museum Curator (`npc_museum_curator_idle.png` 8×1 + `npc_museum_curator_talk.png` 4×2) per `§15`. Updated the §15 canvas/cell dims from the authored 1376×384 / 688×768 target to the actual 1376×768 canvas that the generator produces, with cells 172×768 (idle) and 344×384 (talk) — matches the live `loadNPCGrid` args in `newMuseumCurator`, so no constructor change.
+- [x] `[P1]` Generated Bakery Woman (`npc_bakery_woman.png` 8×2) per `§8`. Switched `newBakeryWoman` from the french_guide fallback to `loadNPCGridRow(sheet, 8, 2, 0)` / `(…, 1)` and flipped `flipped: false` since the new sheet draws her right-facing already.
+- [x] `[P1]` Generated Press Photographer (`npc_press_photographer.png` 8×2) per `§9`. Added `newPressPhotographer` factory (rows 0/1 = idle/talk) + registered `press_photographer` in `npcFactories` + listed in `paris_street.json` NPCs (X=1010 between Pierre and Claude, so the "photographer near ze museum" breadcrumb in Madame Poulain's post-dialog actually points at someone on stage).
+
+**Environmental / ambient:**
+- [x] `[P1]` Generated `campfire_small.png` per `§6`. Sized down to the spec'd 1032×172 / 6×1 / cell 172×172 so the visible flame lands inside the (581,592)-(702,594) band when drawn at 1× scale.
+- [x] `[P2]` Generated `paris/ambient/cafe_patrons.png` per `§7`. Updated §7 canvas to the actual 1376×768 / 4×2 grid (8 distinct patrons) that the generator produces. Folder `assets/images/locations/paris/ambient/` created. Paris ambient renderer hookup still deferred — the asset is ready for the next ambient sweep.
+
+**Player (PP):**
+- [ ] `[P1]` Regenerate `PP walk back.png` per `§3` (still queued — clearer walk cycle for leaving-camp transition). Deferred to the next PP-focused sweep; out of scope for this campaign.
+- [ ] `[P1]` Regenerate `PP grab flower.png` per `§5` (still queued — visible crouch+grab+rise). Deferred.
+
+**Verified KEEP (not regen'd this pass):** Higgins idle / walk / walk_back / shout / desk; Danny all sheets; Lily all sheets; Tommy strange_idle + strange_talk; Marcus strange_idle; PP idle_front / talk_front / idle_side / idle_back / walk_front / walk_left / talk_side / grab / receive_map / celebrate / sneak_examine / sneak_use / pp_sleeping / pp_waking / pp_airplane; Paris art_vendor (Pierre) / security_guard (Claude) / mystery_figure / suspicious_dealer.
+
+**Retired:** `docs/PIXEL_PROMPTS.md` (opposite direction — style direction consolidated onto cartoon only).
+
+**Tooling added this session:**
+- `tools/clean_generated_sheet.py` — strips the black frame + grid lines the image generator bakes in, so `pack_atlas.apply_color_key` sees a clean white background and its flood-fill works without chewing character outlines.
+- `tools/clean_landmarks.py` — one-shot flood-fill-from-edges color-key pass for the travel-map landmarks (already used by the pass-2 map fix).
+
+**Paris atlas migration (follow-up to the campaign):** Paris NPCs now follow
+the same atlas pipeline as the camp kids. Manifests live under
+`tools/characters/paris/` (`french_guide.yaml`, `museum_curator.yaml`,
+`bakery_woman.yaml`, `press_photographer.yaml`, `pierre_artist.yaml`,
+`gendarme_claude.yaml`) with `subfolder: paris` so atlases land at
+`assets/sprites/paris/<name>.(png|json)`. `game/atlas.go` got a new
+`applyNPCAtlas(renderer, n, "paris/<name>")` helper — the 2-animation
+(idle / talk) counterpart to `applyKidAtlas`. Each Paris factory in
+`game/npc.go` tries `applyNPCAtlas` first and falls back to the legacy
+`loadNPCGrid*` PNG slicing if the atlas is missing, so the fleet still
+boots even if `tools/pack_atlas.py` hasn't been run.
+
+### Deferred (after 2026-04-19 campaign)
+
+**Still-open regens (PP only):**
+- [ ] `[P1]` `PP walk back.png` per `§3` — queued for next PP sweep.
+- [ ] `[P1]` `PP grab flower.png` per `§5` — queued for next PP sweep.
+
+**Code hooks to land separately:**
+- [ ] `[P2]` Marcus inactivity timer: after N seconds of no interaction on `camp_grounds`, swap `npc.strangeIdle` for the `strange_alt` atlas anim once, then fall back to `strange_idle`. Asset is in place (`assets/sprites/marcus.json` now has a `strange_alt` entry); the trigger is the only missing piece.
+- [ ] `[P2]` Paris `cafe_patrons.png` ambient renderer: draw the 8 patrons as a parallax band at the back of the `paris_street` background, with a gentle per-patron Y bob so they read as alive.
+
+---
+
+**Prior P2 kid-sheet notes (superseded by the campaign above):**
+
 - [x] `[P2]` Regenerate `npc_director_higgins_idle.png` as a clean single-row sheet so we can drop the "row 0 only" / mismatched-grid workaround. — FIXED: regenerated as a clean 7x1 strip at 172x384 per cell (matches `_talk.png` geometry so idle and talk render at the same on-screen size); `newDirectorHiggins` + `newNightHiggins` still call `loadNPCGrid(..., 7, 1)` unchanged. Built via `tools/stitch_higgins_idle.py` from 7 per-pose generations + edge-flood color-key. Stale duplicate at `assets/images/locations/camp/npc/npc_director_higgins_idle.png` deleted.
 
 ### Reported (2026-04-16) - this session (pass 3)
@@ -375,21 +471,35 @@ so we need a bagguete and give more ideas just like every retro pp game had. it 
 - [] `[P1]` can you generate bg people that sit on the chairs and drink coffee in loop regardless to what we doing?
 
 new PR
-- [] `[P1]` logic walking, in the first screen you can walk freely but as a result you walking on unlogic places
-- [] `[P1]` higgings idle is not the same design we said to use. as a result there is a huge different between the idle and talking
-- [] `[P1]` talking logo got white square around him
-- [] `[P1]` when we goin the the camp, pp is just walking left. i want him to walk back for a few seconds(make him srink for a seconds ) and then change screen
-- [] `[P1]` tommy framing change is not good
-- [] `[P1]` jake got white square near to his leg,same as marcus
-- [] `[P1]` tommy talking sprite is in different color then the other sprites
-- [] `[P2]` can we make the talkin to work with both click and fluent talking. like if we will add a talking to every npc i should be just like we hear them 
-- [] `[P1]` finally higgins is arrived when lily is she. we need to generate a walking back sprite for this. 
-- [] `[P0]` isnt all object are huge? we bearly we see other objects 
-- [] `[P1]` i want to change danny talking sprtie. he got a wired stuff in hes legs 
-- [] `[P1]` when picking the flower i want the picking animation we already got.and also its very hard to find the right place to click in order to pick it up
-- [] `[P1]` fire animation is huge, it need to be from like (577,591)-(700,590). pp need to walk to the sleeping point and then the animation need to start(sleeping). also the sleeping got a white bg. also the wake up
-- [] `[P0]` marcus got a bg aroung him and hes huge in his room. we dont see the text for the entire senario.
-- [] `[P1]` i already place the right points where are the doors of each cabinet. fix it 
-- [] `[P1]` marcus freak out sprite is too fast. in addition add another freakour sprite that will run if we dont click on him for a few seconds. also check the size in the room between the pp and marcus
-- [] `[P1]`walking in the camp should also have a logical routes. i made it already check the cords. 
-- [] `[P1]` line to walk to higgins office is not easy to find the right dot
+- [ ] `[P1]` logic walking, in the first screen you can walk freely but as a result you walking on unlogic places
+- [ ] `[P1]` higgings idle is not the same design we said to use. as a result there is a huge different between the idle and talking — PROMPT WRITTEN: `docs/EXTRA_PROMPTS.md §1` (regen + drop PNG in place; constructor already points there)
+- [ ] `[P1]` talking logo got white square around him
+- [ ] `[P1]` when we goin the the camp, pp is just walking left. i want him to walk back for a few seconds(make him srink for a seconds ) and then change screen — PROMPT WRITTEN: `docs/EXTRA_PROMPTS.md §3` for PP walk-back art; "shrink-then-transition" hook still needs to land after the sheet drops in
+- [ ] `[P1]` tommy framing change is not good
+- [ ] `[P1]` jake got white square near to his leg,same as marcus
+- [ ] `[P1]` tommy talking sprite is in different color then the other sprites
+- [ ] `[P2]` can we make the talkin to work with both click and fluent talking. like if we will add a talking to every npc i should be just like we hear them
+- [ ] `[P1]` finally higgins is arrived when lily is she. we need to generate a walking back sprite for this. — PROMPT WRITTEN: `docs/EXTRA_PROMPTS.md §2`; sequence already calls `npc_move` so swapping to walk_back animation is a one-line change once the sheet lands
+- [ ] `[P0]` isnt all object are huge? we bearly we see other objects
+- [ ] `[P1]` i want to change danny talking sprtie. he got a wired stuff in hes legs
+- [ ] `[P1]` when picking the flower i want the picking animation we already got.and also its very hard to find the right place to click in order to pick it up — PROMPT WRITTEN: `docs/EXTRA_PROMPTS.md §5`; hit-zone widening + animation hook still pending
+- [x] `[P1]` fire animation is huge, it need to be from like (577,591)-(700,590) — FIXED in pass 2: flame + smoke + glow re-centered at (622, 573) with glow rect `{560, 555, 130, 45}` covering the user's band in both day + night scenes (`game/scene_ambient.go`)
+- [ ] `[P1]` pp need to walk to the sleeping point and then the animation need to start(sleeping). also the sleeping got a white bg. also the wake up
+- [ ] `[P0]` marcus got a bg aroung him and hes huge in his room. we dont see the text for the entire senario.
+- [x] `[P1]` i already place the right points where are the doors of each cabinet. fix it — FIXED in pass 2: `camp_grounds.json` cabin hotspots now 120×90 zones centered at Tommy (195,479), Jake (441,441), Marcus (820,435), Lily (1077,403), Danny (1243,503) with `arrow: "up"`
+- [x] `[P1]` marcus freak out sprite is too fast — FIXED in pass 2: new `strangeTalkFrameSpeed` field on `npc`; Marcus set to 0.16 (60% slower than normal 0.10)
+- [ ] `[P1]` add another freakout sprite that runs if we dont click on him for a few seconds — PROMPT WRITTEN: `docs/EXTRA_PROMPTS.md §4` for Marcus strange_alt; inactivity-timer code hook still pending the PNG
+- [ ] `[P1]` check the size in the room between the pp and marcus
+- [x] `[P1]` walking in the camp should also have a logical routes. i made it already check the cords — PARTIAL FIX in pass 2: 5 vertical walk-segments added from the main path up to each cabin door coord; main perimeter still original, more tuning may be needed
+- [ ] `[P1]` line to walk to higgins office is not easy to find the right dot
+- [x] `[P1]` *higgins in his office* — after the talking is finished, change to text like: i already gave you the map, comeon panther we need to fix this up — FIXED in pass 2: `higginsPostWorriedDialog` rewritten to this exact message
+- [ ] `[P1]` *higgins in his office* — his not in a correct place to sit / in order to talk with him we standing on the table / giving the map animation isnt implemented — office bounds may need another tweak; give-map animation still pending
+- [x] `[P1]` *map* location in the map got bg around them — FIXED in pass 2: `tools/clean_landmarks.py` stripped baked-in backgrounds from every landmark PNG (3–84% alpha coverage added per file)
+- [x] `[P1]` *map* i try to click on brazil spot to get info and it took me to paris — FIXED in pass 2: pin hit-rect shrunk from 110×140 → 90×110; overlapping rects now resolve to the closest-pin-center via `distanceSqFromPin` tie-break
+- [x] `[P1]` *map* i want the info to stay in the map screen and not jump to the pp location back every time — FIXED in pass 2: new `game/travel_map_panel.go` overlays a 720×400 card (landmark + facts) on the map; map stays visible underneath
+- [x] `[P1]` *map* for each location add at least 3 infoes and the famous location — FIXED in pass 2: `assets/data/travel_map.json` schema extended with `facts: []`; every city has 3 facts
+- [ ] `[P1]` traveling got pp for somereason over there and a gray bg
+- [x] `[P1]` *paris* people standing on air y~585 — FIXED in pass 2: Madame Colette / Pierre / Claude bounds Y moved from 340–360 down to 430–440 so feet land at y≈680
+- [x] `[P1]` remove left arrow to the map. when we use it in the right time no need arrow to active it — VERIFIED in pass 2: no standalone left-arrow hotspot exists; travel map opens from the gated bus-stop on camp_entrance (requires map item)
+- [ ] `[P1]` npc cot lines around them as a result of remove bg
+- [ ] `[P1]` 

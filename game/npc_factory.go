@@ -36,6 +36,8 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"museum_curator":          newMuseumCurator,
 	"pierre_artist":           newPierreArtist,
 	"gendarme_claude":         newGendarmeClaude,
+	"bakery_woman":            newBakeryWoman,
+	"press_photographer":      newPressPhotographer,
 }
 
 // registerNPCFactory lets modules (paris.go / jerusalem.go / ...) add their

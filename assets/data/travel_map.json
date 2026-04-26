@@ -1,5 +1,5 @@
 {
-  "_comment": "Travel map destinations. Camp Chilly Wa Wa is intentionally omitted — retro Hokus Pokus Pink does not let the player travel back to camp in Act 1; that beat returns with post-Paris quests. See docs/FIXME.md 'Deferred to follow-up' for when to re-add camp with a relevantWhen gate. `relevantWhen` is an expression evaluated by game/npc_rules.go:evalCondition (supports vars.scope.key ==, !=, &&, ||). When true AND unlocked, the pin glows brightly (= current story destination). When unlocked but relevantWhen is false, the pin only shows a soft halo. Locked pins remain dimmed.",
+  "_comment": "Travel map destinations. Camp Chilly Wa Wa is intentionally omitted per the retro Hokus Pokus Pink reference. `facts` replaces the single `info` string: each entry becomes a paragraph in the info panel. `info` is still honored for backwards compat. `relevantWhen` gates bright-gold glow on the map (see game/npc_rules.go:evalCondition).",
 
   "locations": [
     {
@@ -8,7 +8,11 @@
       "scene": "paris_street",
       "pinX": 646, "pinY": 296,
       "unlocked": false,
-      "info": "Paris, France. City of lights! Home of the Eiffel Tower (1889) and the Louvre museum with over 380,000 artworks.",
+      "facts": [
+        "The City of Lights, capital of France.",
+        "Home of the Eiffel Tower (1889) - 300m of wrought iron built for the World's Fair.",
+        "The Louvre holds 380,000 artworks, including Leonardo's Mona Lisa."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_eiffel_tower.png",
       "audio": "",
       "relevantWhen": "vars.game.paris_unlocked == 1 && vars.game.marcus_healed == 0"
@@ -19,7 +23,11 @@
       "scene": "jerusalem_street",
       "pinX": 782, "pinY": 349,
       "unlocked": false,
-      "info": "Jerusalem, Israel. One of the oldest cities in the world. Home of the Western Wall and ancient underground tunnels.",
+      "facts": [
+        "One of the oldest cities in the world, in modern-day Israel.",
+        "The Western Wall is the last remaining piece of the Second Temple (70 AD).",
+        "Ancient tunnels run beneath the Old City's stone streets."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_western_wall.png",
       "audio": "",
       "relevantWhen": "vars.game.jerusalem_unlocked == 1 && vars.game.jake_healed == 0"
@@ -30,7 +38,11 @@
       "scene": "tokyo_street",
       "pinX": 1164, "pinY": 328,
       "unlocked": false,
-      "info": "Tokyo, Japan. A city of ancient temples and modern towers. Famous for cherry blossoms, torii gates, and Senso-ji temple.",
+      "facts": [
+        "Capital of Japan, a city of ancient temples and modern towers.",
+        "Senso-ji in Asakusa is Tokyo's oldest temple, founded in 645 AD.",
+        "Cherry blossoms bloom every spring - the sakura festival draws millions."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_torii_gate.png",
       "audio": "",
       "relevantWhen": "vars.game.tokyo_unlocked == 1 && vars.game.lily_healed == 0"
@@ -41,7 +53,11 @@
       "scene": "rome_street",
       "pinX": 730, "pinY": 330,
       "unlocked": false,
-      "info": "Rome, Italy. The Eternal City! Home of the Colosseum (72 AD), where gladiators once fought before 50,000 spectators.",
+      "facts": [
+        "The Eternal City, capital of Italy.",
+        "The Colosseum (72 AD) seated 50,000 spectators for gladiator games.",
+        "Throw a coin in the Trevi Fountain to ensure you'll return to Rome."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_colosseum.png",
       "audio": "",
       "relevantWhen": "vars.game.rome_unlocked == 1 && vars.game.danny_healed == 0"
@@ -52,7 +68,11 @@
       "scene": "rio_street",
       "pinX": 431, "pinY": 504,
       "unlocked": false,
-      "info": "Rio de Janeiro, Brazil. Famous for Christ the Redeemer statue, Copacabana beach, and the world's biggest Carnival.",
+      "facts": [
+        "Brazil's famous coastal city, framed by mountains and beaches.",
+        "Christ the Redeemer stands 38m tall atop Corcovado Mountain.",
+        "Carnival draws over 2 million people to Rio's streets each year."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_christ_redeemer.png",
       "audio": "",
       "relevantWhen": "vars.game.rio_unlocked == 1 && vars.game.tommy_healed == 0"
@@ -63,7 +83,11 @@
       "scene": "buenos_aires_street",
       "pinX": 410, "pinY": 580,
       "unlocked": false,
-      "info": "Buenos Aires, Argentina. Tango, empanadas, and the Obelisco at the heart of Avenida 9 de Julio.",
+      "facts": [
+        "Capital of Argentina, famous for tango dance and music.",
+        "The Obelisco marks the heart of Avenida 9 de Julio, the world's widest avenue.",
+        "La Boca's colorful houses were painted with leftover ship paint by dockworkers."
+      ],
       "landmark": "",
       "audio": "",
       "relevantWhen": "vars.game.rio_unlocked == 1 && vars.game.tommy_healed == 0"
@@ -74,7 +98,11 @@
       "scene": "mexico_street",
       "pinX": 222, "pinY": 398,
       "unlocked": false,
-      "info": "Mexico City, Mexico. Capital of the Aztec empire, home of Chapultepec, tamales, and mariachi.",
+      "facts": [
+        "Ancient capital of the Aztec Empire, built on a lake.",
+        "Teotihuacan's Pyramid of the Sun rises 65m above the valley.",
+        "Frida Kahlo's Casa Azul in Coyoacan inspired generations of artists."
+      ],
       "landmark": "",
       "audio": "",
       "relevantWhen": "vars.game.mexico_unlocked == 1"
@@ -85,7 +113,11 @@
       "scene": "egypt_street",
       "pinX": 755, "pinY": 369,
       "unlocked": false,
-      "info": "Egypt. Home of the Great Pyramids of Giza, the Sphinx, and the ancient pharaohs. The Nile River runs through it all.",
+      "facts": [
+        "Ancient cradle of civilization along the Nile River.",
+        "The Great Pyramid of Giza was the tallest man-made structure for 3,800 years.",
+        "The Sphinx has watched over the pyramids for 4,500 years."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_pyramids.png",
       "audio": "",
       "relevantWhen": ""
@@ -96,7 +128,11 @@
       "scene": "india_street",
       "pinX": 932, "pinY": 399,
       "unlocked": false,
-      "info": "India. Home of the Taj Mahal, a monument of love built in 1632. A land of ancient temples, spices, and vibrant culture.",
+      "facts": [
+        "Land of ancient temples, spices, and over 1.4 billion people.",
+        "The Taj Mahal (1653) was built by Emperor Shah Jahan for his late wife.",
+        "Jaipur's Hawa Mahal has 953 windows so royal women could watch the street unseen."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_taj_mahal.png",
       "audio": "",
       "relevantWhen": ""
@@ -107,7 +143,11 @@
       "scene": "thailand_street",
       "pinX": 1000, "pinY": 397,
       "unlocked": false,
-      "info": "Thailand. Land of golden temples, floating markets, and ancient Buddhist monasteries. Known as the Land of Smiles.",
+      "facts": [
+        "The Land of Smiles, in Southeast Asia.",
+        "Wat Pho in Bangkok houses a 46m-long reclining golden Buddha.",
+        "Floating markets on Bangkok's canals sell mangoes, pad thai, and lotus flowers."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_thai_temple.png",
       "audio": "",
       "relevantWhen": ""
@@ -118,7 +158,11 @@
       "scene": "china_street",
       "pinX": 1049, "pinY": 344,
       "unlocked": false,
-      "info": "China. Home of the Great Wall (over 13,000 miles long!), the Forbidden City, and thousands of years of civilization.",
+      "facts": [
+        "One of the world's oldest continuous civilizations.",
+        "The Great Wall stretches over 13,000 miles, built over 2,000 years.",
+        "The Forbidden City in Beijing has 9,999 rooms - emperors believed 10,000 was heaven-only."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_great_wall.png",
       "audio": "",
       "relevantWhen": ""
@@ -129,7 +173,11 @@
       "scene": "australia_street",
       "pinX": 1139, "pinY": 569,
       "unlocked": false,
-      "info": "Australia. Home of the Sydney Opera House, the Great Barrier Reef, and unique wildlife like kangaroos and koalas.",
+      "facts": [
+        "The island continent in the Southern Hemisphere.",
+        "The Sydney Opera House opened in 1973 - its sails were inspired by orange segments.",
+        "The Great Barrier Reef is the only living thing on Earth visible from space."
+      ],
       "landmark": "assets/images/ui/landmarks/landmark_opera_house.png",
       "audio": "",
       "relevantWhen": ""

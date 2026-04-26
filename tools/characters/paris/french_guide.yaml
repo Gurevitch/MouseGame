@@ -1,0 +1,16 @@
+# Madame Colette — Paris street guide (friendly, tour-narrator energy).
+#
+# Source sheets are split across two files: 8x2 idle grid and 8x1 talk row.
+# The legacy loader flattened the full 16-cell idle sheet (both rows) into a
+# single idle loop — we preserve that behavior here by NOT setting take_row,
+# so the packed atlas's idle animation contains all 16 poses in row-major
+# order. Talk is a clean single-row 8-frame cycle.
+#
+# subfolder: paris — outputs land under assets/sprites/paris/french_guide.(png|json).
+name: french_guide
+subfolder: paris
+source_dir: ../../../assets/images/locations/paris/npc
+color_key_tolerance: 8
+animations:
+  idle: { file: npc_french_guide_idle.png, grid: [8, 2], fps: 8 }
+  talk: { file: npc_french_guide_talk.png, grid: [8, 1], fps: 10 }

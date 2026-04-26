@@ -723,6 +723,7 @@ func (g *Game) giveMapItem() {
 func (g *Game) setupParisCallbacks() {
 	// French Guide + the two locals: all swap to post-dialog after first chat.
 	if parisStreet, ok := g.sceneMgr.scenes["paris_street"]; ok {
+		game := g
 		for _, n := range parisStreet.npcs {
 			switch n.name {
 			case "Madame Colette":
@@ -730,17 +731,91 @@ func (g *Game) setupParisCallbacks() {
 				guide.onDialogEnd = func() {
 					guide.dialog = frenchGuidePostDialog
 				}
+			case "Madame Poulain":
+				// Quest step 1: first chat hands over the baguette.
+				bakery := n
+				bakery.onDialogEnd = func() {
+					if !game.inv.hasItem("Baguette") {
+						if item := game.items.createItem("baguette"); item != nil {
+							game.inv.addItem(item)
+						}
+					}
+					bakery.dialog = bakeryWomanPostDialog
+				}
 			case "Pierre":
+				// Quest step 2: once PP is carrying the baguette, Pierre
+				// trades his press pass for it. altDialogFunc fires only
+				// when the Baguette is in the bag.
 				pierre := n
 				pierre.onDialogEnd = func() {
 					pierre.dialog = pierreArtistPostDialog
 				}
+				pierre.altDialogRequiresItem = "Baguette"
+				pierre.altDialogRequiresHeld = false
+				pierre.altDialogFunc = func() ([]dialogEntry, func()) {
+					if !game.inv.hasItem("Baguette") || game.inv.hasItem("Press Pass") {
+						return nil, nil
+					}
+					return []dialogEntry{
+						{speaker: "Pierre", text: "Mon Dieu! Is that a fresh baguette from Madame Poulain?"},
+						{speaker: "Pink Panther", text: "It can be yours, Pierre. I need a favor."},
+						{speaker: "Pierre", text: "Anything for bread, mon ami! Take my press pass — it gets you past ze gendarme."},
+					}, func() {
+						game.inv.giveItemTo("Baguette", "pierre")
+						if item := game.items.createItem("press_pass"); item != nil {
+							game.inv.addItem(item)
+						}
+						pierre.altDialogFunc = nil
+						pierre.altDialogRequiresItem = ""
+					}
+				}
 			case "Claude":
+				// Quest step 3: press pass → museum ticket. Claude waves PP
+				// past the queue and hands over the ticket that opens the
+				// Louvre entrance hotspot.
 				claude := n
 				claude.onDialogEnd = func() {
 					claude.dialog = gendarmePostDialog
 				}
+				claude.altDialogRequiresItem = "Press Pass"
+				claude.altDialogRequiresHeld = false
+				claude.altDialogFunc = func() ([]dialogEntry, func()) {
+					if !game.inv.hasItem("Press Pass") || game.inv.hasItem("Museum Ticket") {
+						return nil, nil
+					}
+					return []dialogEntry{
+						{speaker: "Claude", text: "A press pass? Ah, press, very well. I zink I have a ticket for ze museum here..."},
+						{speaker: "Claude", text: "Pardon ze queue. Follow ze line around ze pyramid."},
+						{speaker: "Pink Panther", text: "Merci, Claude. Very kind."},
+					}, func() {
+						if item := game.items.createItem("museum_ticket"); item != nil {
+							game.inv.addItem(item)
+						}
+						claude.altDialogFunc = nil
+						claude.altDialogRequiresItem = ""
+					}
+				}
 			}
+		}
+
+		// Louvre entrance gate: needs Museum Ticket.
+		for i := range parisStreet.hotspots {
+			if parisStreet.hotspots[i].name != "To the Louvre" {
+				continue
+			}
+			h := &parisStreet.hotspots[i]
+			h.onInteract = func() bool {
+				if !game.inv.hasItem("Museum Ticket") {
+					game.dialog.startDialog([]dialogEntry{
+						{speaker: "Gendarme", text: "Monsieur, you need a ticket to enter the museum."},
+						{speaker: "Gendarme", text: "Ask around the street — someone always has a spare."},
+					})
+					return true
+				}
+				game.sceneMgr.transitionTo("paris_louvre", game.player)
+				return true
+			}
+			break
 		}
 	}
 
@@ -850,6 +925,11 @@ func (g *Game) HandleClick(x, y int32) {
 	}
 
 	if g.travelMap.Visible() {
+		// Info panel eats clicks: any click while open dismisses it,
+		// leaving the map visible underneath.
+		if g.travelMap.panelHandleClick() {
+			return
+		}
 		if loc := g.travelMap.hitTest(x, y); loc != nil {
 			if loc.scene == g.travelMap.ReturnScene() {
 				g.travelMap.Hide()
@@ -865,18 +945,16 @@ func (g *Game) HandleClick(x, y int32) {
 			return
 		}
 
-		// Non-travel click: open info popup for locked pins AND for unlocked
-		// pins that aren't the current story target. Only the relevant pin
-		// gets through to hitTest above and actually travels; everything
-		// else falls through to this info branch.
-		if anyLoc := g.travelMap.hitTestAny(x, y); anyLoc != nil && anyLoc.info != "" {
-			g.travelMap.Hide()
-			if anyLoc.audio != "" {
-				g.audio.playSFX(anyLoc.audio)
+		// Non-travel click: open info panel for locked pins AND for
+		// unlocked pins that aren't the current story target. Only the
+		// relevant pin gets through to hitTest above and actually travels.
+		if anyLoc := g.travelMap.hitTestAny(x, y); anyLoc != nil {
+			if len(anyLoc.facts) > 0 || anyLoc.info != "" {
+				if anyLoc.audio != "" {
+					g.audio.playSFX(anyLoc.audio)
+				}
+				g.travelMap.openInfoPanel(anyLoc)
 			}
-			g.dialog.startDialog([]dialogEntry{
-				{speaker: anyLoc.name, text: anyLoc.info},
-			})
 			return
 		}
 		return
@@ -1018,6 +1096,9 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 	// while adding a universal pause option.
 	if scancode == sdl.SCANCODE_ESCAPE {
 		switch {
+		case g.travelMap.Visible() && g.travelMap.panelVisible():
+			// First Esc closes the map info panel; a second Esc closes the map.
+			g.travelMap.closeInfoPanel()
 		case g.travelMap.Visible():
 			g.travelMap.Hide()
 		case g.menu.Visible():
@@ -1207,6 +1288,10 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 		renderer.Copy(g.travelMap.bgTex, nil,
 			&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
 		g.travelMap.drawOverlay(renderer, g.ui.font, g.mouseX, g.mouseY)
+		// Info panel sits on top of the map so the player can keep spatial
+		// context while reading. drawInfoPanel is a no-op when no pin is
+		// being inspected.
+		g.travelMap.drawInfoPanel(renderer, g.ui.font)
 		drawVignette(renderer)
 		g.ui.drawCursor(renderer, g.mouseX, g.mouseY)
 		return
