@@ -1,0 +1,23 @@
+{
+  "name": "paris_bakery",
+  "background": "assets/images/locations/paris/background/paris_bakery.png",
+  "spawnX": 700,
+  "spawnY": 600,
+  "minY": 0,
+  "maxY": 0,
+  "characterScale": 0.9,
+  "npcs": ["bakery_woman"],
+  "hotspots": [
+    {
+      "bounds": {"x": 0, "y": 200, "w": 100, "h": 500},
+      "targetScene": "paris_street",
+      "name": "Back to the street",
+      "arrow": "left"
+    }
+  ],
+  "blockers": [
+    {"x": 0, "y": 0, "w": 200, "h": 500},
+    {"x": 1100, "y": 0, "w": 300, "h": 600}
+  ],
+  "walkSegments": []
+}

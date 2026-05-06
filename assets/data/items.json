@@ -73,6 +73,12 @@
       "description": "A rubbing taken from a Roman monument — the letters still smell of chalk."
     },
     {
+      "id": "rolling_pin",
+      "name": "Rolling Pin",
+      "texture": "assets/images/items/rolling_pin.png",
+      "description": "Madame Poulain's wooden rolling pin. She'll be relieved to have it back."
+    },
+    {
       "id": "baguette",
       "name": "Baguette",
       "texture": "assets/images/items/baguette.png",

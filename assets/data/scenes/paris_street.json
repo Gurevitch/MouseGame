@@ -5,13 +5,19 @@
   "spawnY": 400,
   "minY": 0,
   "maxY": 0,
-  "npcs": ["french_guide", "bakery_woman", "pierre_artist", "press_photographer", "gendarme_claude"],
+  "npcs": ["french_guide", "pierre_artist", "press_photographer", "gendarme_claude"],
   "hotspots": [
     {
       "bounds": {"x": 1300, "y": 200, "w": 100, "h": 400},
       "targetScene": "paris_louvre",
       "name": "To the Louvre",
       "arrow": "right"
+    },
+    {
+      "bounds": {"x": 0, "y": 200, "w": 100, "h": 500},
+      "targetScene": "paris_bakery",
+      "name": "Madame Poulain's Bakery",
+      "arrow": "left"
     }
   ],
   "blockers": [

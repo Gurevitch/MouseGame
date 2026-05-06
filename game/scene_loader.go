@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"image/color"
 
 	"bitbucket.org/Local/games/PP/engine"
 
@@ -14,13 +15,12 @@ import (
 // additions (particles, glow effects) are layered on by scene-specific
 // decorators called from newSceneManager after this returns.
 //
-// Unknown NPC ids are logged and skipped; missing backgrounds panic through
-// engine.TextureFromPNGRaw the same way the hardcoded scenes would, so failure
-// modes match the pre-refactor build.
+// Unknown NPC ids are skipped. Missing background PNGs use a gradient
+// placeholder so JSON-authored scenes can load before their art exists.
 func buildSceneFromDef(renderer *sdl.Renderer, def sceneDef) *scene {
 	s := &scene{
 		name:           def.Name,
-		bg:             newPNGBackground(renderer, def.Background),
+		bg:             newPNGBackgroundOr(renderer, def.Background, color.NRGBA{R: 140, G: 110, B: 85, A: 255}),
 		npcs:           spawnNPCs(renderer, def.NPCs),
 		spawnX:         def.SpawnX,
 		spawnY:         def.SpawnY,

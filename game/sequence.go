@@ -21,6 +21,9 @@ const (
 	SeqNPCHidden                         // Toggle an NPC's hidden + silent flags (un-hide on un-silent)
 	SeqNPCTeleport                       // Snap an NPC to an absolute (x, y) position
 	SeqNPCMove                           // Linearly interpolate an NPC's position over Duration seconds
+	SeqGiveItem                          // Add an item to inventory by id (silent — no UI pop)
+	SeqPlayerAnim                        // Play a one-shot PP animation (e.g. "receive_map") for Duration seconds
+	SeqNPCOneShotAnim                    // Play a one-shot named anim on an NPC ("give_map") for Duration seconds
 )
 
 // SeqStep is one step in a sequence. Fields are used by whichever Action
@@ -35,12 +38,13 @@ type SeqStep struct {
 	VarName  string        // for SeqSetVar
 	VarValue int           // for SeqSetVar
 	// NPC / scene-action fields
-	NPC      string // NPC name (matches npc.name) for SeqNPCAnim, SeqNPCStrange
-	Anim     string // "idle" | "talk" for SeqNPCAnim
+	NPC      string // NPC name (matches npc.name) for SeqNPCAnim, SeqNPCStrange, SeqNPCOneShotAnim
+	Anim     string // "idle" | "talk" for SeqNPCAnim; arbitrary anim name for SeqPlayerAnim, SeqNPCOneShotAnim
 	Strange  bool   // for SeqNPCStrange
 	BGKey    string // identifier of the alternate background (e.g. "night")
 	Hide     bool   // for SeqHidePlayer, SeqPlayerSleep, SeqNPCHidden
 	DayNum   int    // for SeqStartDay (1 or 2)
+	ItemID   string // for SeqGiveItem — matches assets/data/items.json id
 	// NPC move/teleport targets — absolute pixel coords.
 	TargetX  int32
 	TargetY  int32
@@ -130,6 +134,19 @@ func (sp *SequencePlayer) Update(dt float64) {
 				n.bounds.Y = stepPtr.moveStartY + int32(dy*t)
 			}
 			if t >= 1.0 {
+				seq.waiting = false
+				sp.nextStep()
+			}
+
+		case SeqNPCOneShotAnim:
+			dur := step.Duration
+			if dur <= 0 {
+				dur = 1.0
+			}
+			if seq.timer >= dur {
+				if n := sp.findNPC(step.Scene, step.NPC); n != nil {
+					n.endOneShotAnim()
+				}
 				seq.waiting = false
 				sp.nextStep()
 			}
@@ -268,6 +285,49 @@ func (sp *SequencePlayer) executeStep() {
 			// NPC not found — skip the step rather than hang.
 			sp.nextStep()
 		}
+
+	case SeqGiveItem:
+		// Silent add — no inventory bar pop. Skips the add if PP already
+		// owns the item (idempotent, matches giveMapItem's old guard).
+		if step.ItemID != "" && sp.game.items != nil && sp.game.inv != nil {
+			def, ok := sp.game.items.getDef(step.ItemID)
+			if ok && !sp.game.inv.hasItem(def.Name) {
+				if item := sp.game.items.createItem(step.ItemID); item != nil {
+					sp.game.inv.addItem(item)
+				}
+			}
+		}
+		sp.nextStep()
+
+	case SeqPlayerAnim:
+		// One-shot PP animation. Wraps the existing player.playOneShot helper.
+		// Currently supports anim names whose frames are loaded into the
+		// player's named one-shot frame map (see player.playOneShot).
+		dur := step.Duration
+		if dur <= 0 {
+			dur = 1.0
+		}
+		seq.waiting = true
+		seq.timer = 0
+		sp.game.player.playOneShot(step.Anim, dur, func() {
+			seq.waiting = false
+			sp.nextStep()
+		})
+
+	case SeqNPCOneShotAnim:
+		// One-shot named anim on a specific NPC (e.g. Higgins's "give_map").
+		// Falls back to a fixed wait if the NPC or anim isn't registered, so
+		// missing assets don't deadlock the sequence.
+		dur := step.Duration
+		if dur <= 0 {
+			dur = 1.0
+		}
+		n := sp.findNPC(step.Scene, step.NPC)
+		if n != nil {
+			n.playOneShotAnim(step.Anim, dur)
+		}
+		seq.waiting = true
+		seq.timer = 0
 	}
 }
 

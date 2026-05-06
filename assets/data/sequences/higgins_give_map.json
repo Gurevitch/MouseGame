@@ -1,0 +1,27 @@
+{
+  "name": "higgins_give_map",
+  "steps": [
+    {
+      "type": "npc_one_shot",
+      "scene": "camp_office",
+      "npc": "Director Higgins",
+      "anim": "give_map",
+      "seconds": 1.4
+    },
+    {
+      "type": "player_anim",
+      "anim": "receive_map",
+      "seconds": 1.4
+    },
+    {
+      "type": "give_item",
+      "item": "travel_map"
+    },
+    {
+      "type": "dialog",
+      "dialog": [
+        {"speaker": "Director Higgins", "text": "Here. Use this map. Find what's gone wrong out there."}
+      ]
+    }
+  ]
+}

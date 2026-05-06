@@ -88,6 +88,25 @@ type npc struct {
 	// strange state (Marcus's freakout looked too flickery at the default
 	// 0.10 s/frame). 0 = inherit talkFrameSpeed unchanged.
 	strangeTalkFrameSpeed float64
+
+	// oneShotAnims holds named, non-loop animations the sequence player
+	// can trigger (e.g. Higgins's "give_map"). When activeOneShot != "" the
+	// draw loop renders from oneShotAnims[activeOneShot] using oneShotIdx
+	// instead of idleGrid/talkGrid. Duration is enforced by the sequence
+	// player which calls endOneShotAnim() when the timeline ends.
+	oneShotAnims    map[string][]npcFrame
+	activeOneShot   string
+	oneShotIdx      int
+	oneShotTimer    float64
+	oneShotDuration float64
+
+	// lastDrawRect caches the on-screen rect from the most recent
+	// drawScaled call (after characterScale + aspect-preserve). containsPoint
+	// uses this so hover + click only register on the visible sprite, not
+	// the wider bounds rect (which is sized for design-time anchoring).
+	// Zero until the first frame; containsPoint falls back to bounds in
+	// that case so initial-frame clicks aren't lost.
+	lastDrawRect sdl.Rect
 }
 
 func (n *npc) setStrange(strange bool) {
@@ -248,7 +267,7 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	// to put him in the 210-225 band from CHARACTERS.md; camp_office's
 	// characterScale 0.9 shaves the final render to ~200 which sits
 	// comfortably in the tight indoor shot.
-	return &npc{
+	n := &npc{
 		idleGrid:       loadNPCGridRow(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2, 0),
 		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2),
 		// User spec 2026-04-17: office Higgins top-left at (1062, 357),
@@ -261,6 +280,14 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		talkFrameSpeed: 0.25,
 		silent:         true,
 	}
+	// Register the give-map one-shot animation so the higgins_give_map
+	// sequence can call playOneShotAnim("give_map", duration). Sheet is
+	// authored as a clean 8x1 strip per docs/EXTRA_PROMPTS.md §19.
+	giveFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 8, 1)
+	if len(giveFrames) > 0 {
+		n.oneShotAnims = map[string][]npcFrame{"give_map": giveFrames}
+	}
+	return n
 }
 
 // newGroundsHiggins is the hidden Higgins that appears next to the cabin path
@@ -309,8 +336,13 @@ func newRoomLily(renderer *sdl.Renderer) *npc {
 }
 
 func newRoomMarcus(renderer *sdl.Renderer) *npc {
+	// User feedback 2026-04-26: room Marcus was reading huge — bounds 280x380
+	// + characterScale 0.85 still rendered him oversize next to PP. Shrunk to
+	// 200x300 (roughly PP's 170x235 plus a hair, since Marcus Day-2 is a touch
+	// larger by design but not "fills the doorway" larger). Foot lands at
+	// y=560 to keep him standing on the cabin floor.
 	n := newMarcus(renderer)
-	n.bounds = sdl.Rect{X: 526, Y: 181, W: 280, H: 380}
+	n.bounds = sdl.Rect{X: 600, Y: 260, W: 200, H: 300}
 	return n
 }
 
@@ -585,8 +617,56 @@ func (n *npc) setAnimState(state int) {
 	n.frameTimer = 0
 }
 
+// playOneShotAnim starts a named non-looping animation registered under
+// n.oneShotAnims[name]. duration is wall-clock seconds; the sequence player
+// is expected to call endOneShotAnim when its own timer expires. If the
+// requested anim isn't registered, this is a silent no-op so the sequence
+// keeps moving.
+func (n *npc) playOneShotAnim(name string, duration float64) {
+	if n.oneShotAnims == nil {
+		return
+	}
+	if _, ok := n.oneShotAnims[name]; !ok {
+		return
+	}
+	n.activeOneShot = name
+	n.oneShotIdx = 0
+	n.oneShotTimer = 0
+	n.oneShotDuration = duration
+}
+
+func (n *npc) endOneShotAnim() {
+	n.activeOneShot = ""
+	n.oneShotIdx = 0
+	n.oneShotTimer = 0
+}
+
 func (n *npc) update(dt float64) {
 	n.bobTimer += dt
+
+	// One-shot anim (e.g. Higgins's give_map) overrides idle/talk while
+	// active. Frames advance at the standard talkFrameSpeed; the sequence
+	// player owns end-of-anim cleanup via endOneShotAnim.
+	if n.activeOneShot != "" {
+		frames := n.oneShotAnims[n.activeOneShot]
+		n.oneShotTimer += dt
+		stepLen := 0.12
+		if n.talkFrameSpeed > 0 {
+			stepLen = n.talkFrameSpeed
+		}
+		// Spread frames evenly across the anim's wall-clock duration so a
+		// short asset (6 frames) over a long timeline (1.4 s) doesn't loop
+		// twice. Falls back to talkFrameSpeed if duration unset.
+		if n.oneShotDuration > 0 && len(frames) > 0 {
+			stepLen = n.oneShotDuration / float64(len(frames))
+		}
+		if n.oneShotTimer >= stepLen && len(frames) > 0 {
+			n.oneShotTimer -= stepLen
+			if n.oneShotIdx < len(frames)-1 {
+				n.oneShotIdx++
+			}
+		}
+	}
 
 	speed := n.talkFrameSpeed
 	if speed <= 0 {
@@ -645,7 +725,11 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	}
 
 	var frame npcFrame
-	if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
+	if n.activeOneShot != "" {
+		if frames, ok := n.oneShotAnims[n.activeOneShot]; ok && len(frames) > 0 {
+			frame = frames[n.oneShotIdx%len(frames)]
+		}
+	} else if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
 		frame = n.talkGrid[n.curFrame%len(n.talkGrid)]
 	} else if len(n.idleGrid) > 0 {
 		frame = n.idleGrid[n.idleCurFrame%len(n.idleGrid)]
@@ -670,19 +754,26 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 
 	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
 	renderer.CopyEx(frame.tex, frame.src, &dst, 0, nil, flip)
+	// Cache the actual on-screen rect so containsPoint can hit-test against
+	// the visible sprite (post-characterScale + aspect-preserve) instead of
+	// the looser n.bounds rect. Bounds stay design-time stable for layout
+	// math; lastDrawRect tracks what the user actually clicks on.
+	n.lastDrawRect = dst
 }
 
 // containsPoint is used for both cursor hover (showing the "talk" icon) and
 // actual click detection. Keeping them unified means: wherever the cursor
-// shows "talk", a click always lands. We pad generously so small sprites or
-// slightly-missed clicks still register as an interaction.
+// shows "talk", a click always lands.
 func (n *npc) containsPoint(x, y int32) bool {
-	// Strict-bounds hit test (user request 2026-04-17): the cursor must
-	// land inside the NPC's authored rect. No radius padding.
-	// The old padX=70, padY=50 expansion made clicks snap to the wrong
-	// NPC when two kids stood close (Danny vs Marcus at camp_grounds)
-	// and let clicks on empty ground behind an NPC trigger dialog.
+	// User 2026-04-26: hit-test the actual drawn rect (post-characterScale)
+	// instead of n.bounds. Indoor scenes shrink the sprite to 0.85-0.9× and
+	// the unscaled bounds rect made hover register on dead air around the
+	// character. lastDrawRect is set every frame in drawScaled; falls back
+	// to bounds if a frame hasn't been drawn yet (first-tick clicks).
 	pt := sdl.Point{X: x, Y: y}
+	if n.lastDrawRect.W > 0 && n.lastDrawRect.H > 0 {
+		return pt.InRect(&n.lastDrawRect)
+	}
 	return pt.InRect(&n.bounds)
 }
 
@@ -717,12 +808,24 @@ var frenchGuidePostDialog = []dialogEntry{
 // Sells PP a baguette, which he trades to Pierre for a press pass, which
 // he shows Claude to get the museum ticket that unlocks the Louvre. Retro-
 // style "collect props before the main door opens" chain.
-var bakeryWomanDialog = []dialogEntry{
-	{speaker: "Madame Poulain", text: "Bonjour, monsieur! Fresh baguettes, straight from ze oven!"},
-	{speaker: "Pink Panther", text: "They smell wonderful. I'd love one."},
-	{speaker: "Madame Poulain", text: "For you, a compliment, and ze bread is yours. Non?"},
-	{speaker: "Pink Panther", text: "Madame, your boulangerie smells like Paris itself."},
-	{speaker: "Madame Poulain", text: "*laughs* Charmant! Here, take a baguette. Tell your friends!"},
+// bakeryWomanLostPinDialog is the new initial beat — Madame Poulain has lost
+// her rolling pin somewhere on the floor and won't bake until it's recovered.
+// Replaces the old "free baguette on first click" beat so the Paris arc has
+// a real intro puzzle (user 2026-04-26 retro-style rework).
+var bakeryWomanLostPinDialog = []dialogEntry{
+	{speaker: "Madame Poulain", text: "Mon dieu! Bonjour, monsieur — but I cannot serve you!"},
+	{speaker: "Pink Panther", text: "What's wrong, madame?"},
+	{speaker: "Madame Poulain", text: "My rolling pin! It rolled off ze counter and I cannot find it!"},
+	{speaker: "Madame Poulain", text: "Without it, no dough, no bread, no baguette."},
+	{speaker: "Pink Panther", text: "I'll take a look around."},
+	{speaker: "Madame Poulain", text: "Merci, monsieur! Find it and ze first baguette is yours."},
+}
+
+// bakeryWomanPinTradeDialog fires once PP returns the rolling pin (altDialog).
+var bakeryWomanPinTradeDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "I think I found what you were looking for, madame."},
+	{speaker: "Madame Poulain", text: "My rolling pin! Bless you, monsieur!"},
+	{speaker: "Madame Poulain", text: "Here — your baguette, fresh and warm. Tell Pierre I send my regards."},
 }
 
 var bakeryWomanPostDialog = []dialogEntry{
@@ -738,7 +841,7 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 	n := &npc{
 		bounds:         sdl.Rect{X: 540, Y: 440, W: 140, H: 240},
 		name:           "Madame Poulain",
-		dialog:         bakeryWomanDialog,
+		dialog:         bakeryWomanLostPinDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.12,
 		flipped:        false, // sheet draws her facing right already

@@ -68,7 +68,10 @@ queued but out of scope for this sweep (currently only the two PP sheets).
 | `npc_suspicious_dealer.png` | keep | — | Canonical cartoon, 8×2. |
 | `npc_bakery_woman.png` | DONE | §8 | New sheet + `newBakeryWoman` switched from french_guide fallback to the real sheet (`loadNPCGridRow(..., 8, 2, 0/1)`). |
 | `npc_press_photographer.png` | DONE | §9 | New sheet + `newPressPhotographer` factory + `press_photographer` NPC id added to `paris_street.json`. |
-| `paris/ambient/cafe_patrons.png` | DONE | §7 | New folder + sheet (1376×768 / 4×2 / 8 distinct patrons). Paris ambient renderer hookup still deferred. |
+| `paris/ambient/cafe_patrons.png` | superseded | §7 | First-pass mock-up (8 single-frame poses with baked-in white table edge) replaced by six per-patron sheets (`cafe_patron_<name>.png`) — see §7.1–§7.6. Renderer hookup still deferred. |
+| `paris/ambient/cafe_patron_<yvette\|bernard\|camille\|henri\|lucien\|elise>.png` | TODO | §7.1–§7.6 | Six new chest-up seated patron sheets (8×2 each, 100×170 cell, no baked-in table). Pair with the §NEW Paris Bakery café-corner regen. |
+| `paris/background/paris_bakery.png` | TODO (regen) | §NEW Paris Bakery | Café-corner rework: counter shifts right, three bistro tables + chairs added on the left, rolling-pin floor patch moves to `(740, 720)`. JSON wiring follow-up tracked in FIXME. |
+| `paris/background/paris_clouds.png` | TODO (regen) | §NEW Paris Clouds | Replaces the static transparent-bg cloud row with a full 1400×800 sky background for the airplane flight cutscene. |
 
 ### Player (Pink Panther)
 
@@ -255,33 +258,174 @@ game draws it centered at (622, 573) at 1x scale.
 
 ---
 
-## 7. Paris cafe ambient patrons
+## 7. Paris cafe ambient patrons (six individual sheets)
 
-**Canvas:** 1376×768. **Grid:** 4×2 (8 patrons total).
-**Cell:** 344×384.
-**Path:** `assets/images/locations/paris/ambient/cafe_patrons.png` (new
-folder — create it).
+**Replaces** the original single 4×2 `cafe_patrons.png` mock-up. That sheet
+had every patron as a single-frame pose with a baked-in white table edge,
+which clashes once the bakery BG paints real oak bistro tables in (see
+§NEW Paris Bakery below). These six sheets are **chest-up only, no table,
+no saucer, no chair back** — the engine drops them on top of the painted
+tables in `paris_bakery.png` and the BG's table reads behind their hands.
 
-User asks for "background people that sit on the chairs and drink coffee in
-loop". Authored small so they read as background detail, not interactive
-NPCs.
+**Per-sheet canvas:** 800 × 340. **Grid:** 8 × 2 (row 0 idle, row 1 talk).
+**Cell:** 100 × 170 — sized to the engine bounds proposed in
+`paris_bakery.json`.
 
-> [style lock]
+**Shared style lock (paste at the top of every prompt below):**
+
+> Hand-drawn 1990s Saturday-morning cartoon, Pink Panther *Hokus Pokus
+> Pink* (1997) / *Passport to Peril* (1996). Confident black ink linework
+> ~2 px, flat saturated fills, two cel tones max per color region, no
+> airbrush, no gradients, no pixel art. **Pure #FFFFFF background.**
 >
-> Eight small seated Parisian patrons, each roughly 80 px tall, seen in
-> front/three-quarter view. Each is an individual idle loop showing a
-> different person sipping coffee, reading a newspaper, or chatting to an
-> unseen companion. No two patrons look alike — vary hats, scarves, berets,
-> coat colors.
+> Each cell shows the patron **from the waist up only** in a seated pose.
+> **Do NOT draw the table, the chair back, the saucer, the chair seat,
+> any table props, or any floor surface** — the engine composites the
+> patron over the bakery background which already paints those in. Only
+> the patron's body, clothing, hands, and the item they hold (cup,
+> newspaper, etc.) appear in the cell. Background behind the patron is
+> pure white.
 >
-> **Animation (per frame, each frame = a different patron, not a cycle):**
-> each frame is its own 1-frame "pose" for that patron. The game will
-> loop-render them in place with a tiny y-bob so they feel alive without
-> dedicated per-patron cycles.
+> Baseline (bottom of the patron's silhouette — typically forearms or
+> jacket hem) locked across all 16 frames of the sheet. Silhouette width
+> within ±3 px of frame 1. Hands stay at the same Y position across the
+> sheet so the BG's table-edge line reads continuous behind them.
+
+---
+
+### 7.1 Madame Yvette — beret + pearls, sipping tea
+
+**Path:** `assets/images/locations/paris/ambient/cafe_patron_yvette.png`
+
+> Elderly Parisienne, late 70s, fair skin with soft wrinkles. Short
+> curled silver hair under a **black wool beret** tilted slightly right.
+> Single strand of pearls at the throat. Wears a **mustard-yellow knit
+> cardigan** over a cream blouse with a brown brooch. Warm dignified
+> expression. Holds a small white teacup in both hands at chest height.
 >
-> Mouths closed, eyes half-lidded, each holds a small white coffee cup or
-> pastry. No legs visible — they're seated at tables (the table edge is
-> drawn as a thin line at the bottom of each cell).
+> **Row 0 (idle, 8 frames, mouth closed):** 1) cup at chest, eyes lowered
+> to it; 2) lifts cup toward mouth; 3) sips (eyes closed contented);
+> 4) lowers cup back to chest height; 5) free finger touches lip;
+> 6) gentle nod; 7) glances right; 8) returns to neutral.
+>
+> **Row 1 (talk, 8 frames, mouth open):** Same pose anchor, cup still
+> at chest. 1) mouth open mid-word, both hands on cup; 2) free hand
+> rises in a soft palm-up gesture; 3) wags finger gently; 4) nods while
+> speaking; 5) raises eyebrows; 6) tilts head 4° left; 7) chuckles
+> silently (eyes crinkle); 8) returns to neutral.
+
+---
+
+### 7.2 Monsieur Bernard — bearded man reading *Le Figaro*
+
+**Path:** `assets/images/locations/paris/ambient/cafe_patron_bernard.png`
+
+> Mid-50s man, warm tan skin, **full salt-and-pepper beard**, brown eyes,
+> **brown tweed flat cap**. Wears a **mustard-brown corduroy jacket**
+> over a charcoal shirt. Holds a folded **broadsheet newspaper** open at
+> chest height in both hands ("LE FIGARO" header readable on the top
+> edge).
+>
+> **Row 0 (idle):** 1) reading paper, eyes scanning; 2) turns a page
+> (paper crinkles wider); 3) eyebrows raise at headline; 4) lowers paper
+> to lap level (paper still in both hands); 5) raises paper back to
+> chest; 6) reads, slight frown; 7) folds paper edge in; 8) neutral
+> read.
+>
+> **Row 1 (talk):** Lowers paper to lap. 1) mouth open, gestures to
+> paper with right hand; 2) taps headline with index finger; 3) shakes
+> head slightly; 4) palms up "can you believe it"; 5) leans forward
+> slightly; 6) shrugs; 7) huffs (mouth in O-shape); 8) returns to
+> neutral, paper at lap.
+
+---
+
+### 7.3 Mademoiselle Camille — red-beret art student
+
+**Path:** `assets/images/locations/paris/ambient/cafe_patron_camille.png`
+
+> Young woman, early 20s, fair skin with light freckles, dark brown
+> chin-length bob. **Bright scarlet beret** tilted left. **Emerald-green
+> wrap dress** with a small gold collar pin. Cradles a small white
+> cappuccino cup in both hands at chin height — a heart in the foam
+> visible from above.
+>
+> **Row 0 (idle):** 1) cup at chin, eyes lowered to foam; 2) blows
+> softly on cup; 3) sips; 4) lowers cup to chest; 5) tucks hair behind
+> ear with right hand; 6) raises cup again; 7) glances down; 8) neutral.
+>
+> **Row 1 (talk):** 1) mouth open, cup in left hand only at chest, right
+> hand gestures forward; 2) excited finger-point; 3) both hands raise
+> palms up; 4) laughs (head tips back 5°); 5) eyes wide; 6) shrugs;
+> 7) leans on left elbow; 8) returns to neutral with cup at chin.
+
+---
+
+### 7.4 Monsieur Henri — silver-haired gentleman with pastry
+
+**Path:** `assets/images/locations/paris/ambient/cafe_patron_henri.png`
+
+> Distinguished older man, late 60s, fair skin, **thick white handlebar
+> mustache**, neatly combed silver hair parted on the side, small round
+> wire-rim glasses. **Navy three-piece suit** with a **burgundy bowtie**
+> and a small white pocket square. Holds a **golden croissant** in his
+> right hand at chest height; left hand rests at chest height as if
+> resting near a cup.
+>
+> **Row 0 (idle):** 1) breaks off a corner of croissant; 2) brings piece
+> to mouth; 3) chews (mustache twitches); 4) lowers croissant to chest;
+> 5) raises left hand as if lifting a cup (no cup drawn); 6) lowers left
+> hand; 7) brushes mustache with index finger; 8) neutral with croissant
+> in right hand again.
+>
+> **Row 1 (talk):** 1) mouth open, croissant in left hand at chest,
+> right hand gestures; 2) raises right index finger as a point;
+> 3) pats chest with right hand; 4) taps temple with right finger;
+> 5) gestures wide with right palm; 6) nods firmly; 7) chuckles (eyes
+> squint); 8) neutral.
+
+---
+
+### 7.5 Lucien — young man in gray turtleneck
+
+**Path:** `assets/images/locations/paris/ambient/cafe_patron_lucien.png`
+
+> Late 20s man, olive skin, dark wavy black hair just past ears, faint
+> stubble, thoughtful brown eyes. Wears a **slate-gray turtleneck
+> sweater** with rolled cuffs at the wrists. Both hands cradle a small
+> white espresso cup at chest height.
+>
+> **Row 0 (idle):** 1) cup at chest, eyes lowered; 2) raises cup to
+> mouth; 3) sips with eyes closed; 4) lowers cup to chest; 5) drums
+> fingers of right hand once at chest height (cup in left); 6) glances
+> left out of frame; 7) head tilts back as he reflects; 8) neutral.
+>
+> **Row 1 (talk):** 1) mouth open, cup in left hand at chest, right hand
+> gestures palm-up; 2) finger-point forward; 3) palm pat at chest height
+> (no table drawn); 4) shrugs; 5) looks aside (sarcastic); 6) leans
+> forward intently; 7) eyebrows raise; 8) returns to neutral with both
+> hands around cup.
+
+---
+
+### 7.6 Madame Élise — red-haired woman in autumn scarf
+
+**Path:** `assets/images/locations/paris/ambient/cafe_patron_elise.png`
+
+> Mid-40s woman, fair skin, **shoulder-length wavy auburn-red hair**,
+> green eyes, soft smile. Wears a **chunky cream cable-knit sweater**
+> with a **floral autumn-print scarf** (orange, mustard, brick red)
+> wrapped twice around the neck. Holds a small white cup at chin height
+> with both hands.
+>
+> **Row 0 (idle):** 1) cup at chin, eyes lowered; 2) sips; 3) lowers cup
+> to chest, exhales steam; 4) adjusts scarf with right hand; 5) tucks a
+> curl behind ear; 6) lifts cup again; 7) glances right; 8) neutral.
+>
+> **Row 1 (talk):** 1) mouth open, cup in left hand at chest, right hand
+> gestures softly; 2) hand to chest (sincere); 3) palm up; 4) nods, eyes
+> close briefly; 5) leans forward; 6) gestures outward; 7) laughs
+> silently; 8) returns to neutral with both hands on cup.
 
 ---
 
@@ -742,3 +886,275 @@ PP's existing `receive map` animation without a style jump.
 If a cell looks chopped after regeneration, the grid is wrong — adjust
 `grid: [X, Y]` in the manifest or the constructor's `loadNPCGrid(..., X,
 Y)` call and re-run.
+
+---
+
+## §NEW: PP full-set regen — restore saturation, kill background bleed
+
+**Why:** PP sheets have been losing color and picking up cream-white halos
+across regen passes. This prompt locks the look so every PP anim renders
+with the same Pink Panther silhouette, palette, and outline weight.
+
+**Per-anim canvas:** 1376 × 384 (8 frames in one row, cell 172 × 384).
+For 2-row sheets (e.g. PP idle front 8×2) double the canvas height to
+768 px and use the second row for the same character in a held breath /
+slight wiggle variation.
+
+**Prompt body** (copy verbatim, swap the `[POSE]` token per anim):
+
+> Generate a clean Pink Panther sprite sheet, 8 frames in one row, 172×384
+> per cell, total canvas 1376×384. **Pure white background**: RGB
+> (255,255,255), flat, no gradient, no shadow, no painted halo, no rim
+> light. Character is the classic Pink Panther: bright bubblegum pink
+> body (#F58FB7), crisp dark pink shading on belly + tail (#D14E92),
+> thin black ink outline (1-2 px). Yellow eyes (#FFE15A) with black
+> pupils. Loose comedic posture, slightly off-balance.
+>
+> **Pose:** [POSE].
+>
+> Cartoon line art, NOT pixel art. Every frame must read as the same
+> character — same pose anchor, same shading style, same outline
+> thickness. No painted backdrop, no drop shadow, no decorative elements
+> beside or behind the character. Hokus Pokus Pink reference style.
+
+**`[POSE]` substitutions per sheet** (matches files in
+`assets/images/player/`):
+
+| Sheet | POSE token |
+|---|---|
+| `pp_idle_front.png` | "facing the camera, arms relaxed at sides, weight shifting between feet" |
+| `pp_idle_side.png` | "in profile facing right, tail trailing behind, hands at hips" |
+| `pp_idle_back.png` | "back to camera, looking over shoulder, tail flick" |
+| `pp_walk_front.png` | "walking toward camera, alternating leg swings, tail counter-swinging" |
+| `PP walk back.png` | "walking away from camera (back to viewer), alternating leg swings, tail counter-swinging" |
+| `pp_walk_left.png` | "walking left in profile, full stride cycle" |
+| `pp_talk_front.png` | "facing camera, mouth open in conversation, hands gesturing softly" |
+| `pp_talk_side.png` | "in profile facing right, talking, one hand raised palm-up" |
+| `PP grab flower.png` | "starting upright, crouching down to pick a flower from the ground, then rising holding the flower in front" |
+| `PP receive map.png` | "facing right (toward Higgins), hand extended to receive a folded map, then bringing it to chest level and slipping it into pocket" |
+| `pp_celebrate.png` | "joyful jump, arms up, tail curled exclamation" |
+| `pp_sneak_examine.png` | "crouched, holding a magnifying glass to a small object" |
+| `pp_sneak_use.png` | "crouched, applying an item with focused expression" |
+| `pp_sleeping.png` | "lying on side, head on rolled jacket, slow rise-and-fall breathing" |
+| `pp_waking.png` | "lifting head from sleep, stretch, rub eye, sit up" |
+| `pp_airplane.png` | "seated inside a small biplane cockpit visible through the side window, head turning side to side" |
+
+**After-generation pipeline:**
+
+1. Run `python tools/clean_generated_sheet.py <path>` to strip the black
+   frame + grid lines the generator bakes in.
+2. Drop the cleaned PNG at the target path (overwrite the existing
+   sheet).
+3. Re-launch the game — runtime loaders use `gridFrames` /
+   `SpriteGridFromPNGCleanAggressive` (tol 24, inset 4) which key out
+   any residual white halo. **No code changes required**: paths and grid
+   args are unchanged.
+
+If a frame looks chopped, the generator gave back a different cell
+count — verify the canvas is exactly 1376 × 384 (or 1376 × 768 for
+2-row sheets) before slicing.
+
+---
+
+## §NEW: Paris Bakery Interior — café-corner regen
+
+**Why:** First pass produced a counter-only bakery (no seating). To host
+the six café patrons from §7 we need three small bistro tables in the
+left foreground. The counter shifts right to make room; Madame Poulain
+relocates accordingly; the rolling-pin floor item moves to the corridor
+between the seating area and the counter.
+
+**Path:** `assets/images/locations/paris/background/paris_bakery.png`
+(overwrite).
+
+**Canvas:** 1400 × 800.
+
+### Spatial constraints (do not deviate)
+
+- Madame Poulain renders at bounds `(820, 440, 140, 240)` (shifted right
+  from `(540, 440)`) — feet at `y≈680`. She must read as standing behind
+  a counter with the counter top edge at `y=620–650`.
+- Six patron NPCs render at the bounds in the table below (matches §7
+  cell size 100 × 170). Each pair faces each other across a small
+  bistro table painted into the BG.
+
+  | Patron | Table | Bounds (x, y, w, h) |
+  |---|---|---|
+  | Yvette  | A (left chair)   | `(170, 540, 90, 160)` |
+  | Bernard | A (right chair)  | `(270, 540, 90, 160)` |
+  | Camille | B (left chair)   | `(380, 555, 90, 160)` |
+  | Henri   | B (right chair)  | `(480, 555, 90, 160)` |
+  | Lucien  | C (left chair)   | `(560, 540, 90, 160)` |
+  | Élise   | C (right chair)  | `(660, 540, 90, 160)` |
+
+- Rolling-pin floor item moves to `(740, 720)` — clean floor patch
+  between the café area and the counter.
+- Walking corridor for PP: `x=200–1100, y=730–790` must be visually
+  clean (no rugs, no debris).
+- Left blocker `x=0–180, y=0–500` (curtained street exit) and right
+  blocker `x=1080–1400, y=0–600` (shelving) are unchanged.
+
+### Prompt
+
+> **Style:** hand-drawn 1990s Saturday-morning cartoon, Pink Panther
+> *Hokus Pokus Pink* (1997) / *Passport to Peril* (1996). Confident
+> black ink linework ~2-3 px around major shapes, flat saturated fills,
+> two cel tones max per material region, no airbrush, no gradients, no
+> photorealism, no pixel art. Warm cozy golden-hour interior glow.
+>
+> **Scene:** small Parisian boulangerie that doubles as a tiny café.
+> View from inside facing the back wall. **No people, no animals.**
+> Three empty bistro tables on the left, an empty counter on the right,
+> ready for the engine to drop sprites in.
+>
+> **Composition (left → right across the 1400 × 800 canvas):**
+>
+> - **x=0–180, y=200–760:** open arched doorway with a **half-drawn
+>   red-and-white striped curtain** pulled aside. Sliver of cobblestone
+>   street and a Paris lamppost peek through. Exit hotspot — must read
+>   as "way out."
+> - **x=180–700, y=540–790 — CAFÉ SEATING AREA:** three small **round
+>   dark-oak bistro tables**, each ~120 px diameter, with **two bentwood
+>   Thonet chairs** facing each other across the table. Tables are
+>   empty: Table A has a small white espresso cup + saucer, Table B has
+>   a folded *Le Figaro* newspaper resting on the edge, Table C has a
+>   tiny vase with a single daisy. Approximate centers:
+>   - Table A: center `(220, 680)` — chairs at `(170, 680)` and `(270, 680)`.
+>   - Table B: center `(430, 695)` — chairs at `(380, 695)` and `(480, 695)`.
+>   - Table C: center `(610, 680)` — chairs at `(560, 680)` and `(660, 680)`.
+>   Chair seats at `y≈700`, chair backs rising to `y≈620`. Tables read
+>   slightly behind the chairs so a seated patron sprite anchored at
+>   the chair overlaps the table edge naturally.
+> - **x=180–700, y=100–540 — café back wall:** cream plaster wall with
+>   a small **black framed chalkboard menu** ("CAFÉ — 2F EXPRESSO,
+>   5F CROISSANT") above Table B; a **vintage Paris poster** (Eiffel
+>   Tower silhouette in red and black) above Table A; a small **brass
+>   wall sconce** above Table C casting a warm pool of light.
+> - **x=720–1080, y=580–700 — COUNTER (shifted right):** wooden bakery
+>   counter, dark stained oak, top edge at `y=620` so an NPC anchored
+>   at `(820, 440)` size `140×240` reads as standing behind it from
+>   the waist up. **Brass scale** on the left end, **wicker basket of
+>   golden baguettes** standing upright on the right end, **glass-domed
+>   pastry display** in the center showing croissants, pain au chocolat,
+>   and macarons.
+> - **x=720–1080, y=100–580 — back wall behind counter:** **brick
+>   wood-fire oven** built into the wall, dome-shaped iron door open
+>   with a warm **orange glow** inside (`#F4A23C` core, `#C25A2C` rim),
+>   three loaves of bread on the brick lip cooling. **Stack of split
+>   firewood** at the oven's base on the left side of the counter.
+> - **x=1080–1400, y=100–600 — right wall:** floor-to-ceiling **wooden
+>   shelving** with stacked round country loaves on every shelf, two
+>   sacks of flour stenciled "FARINE" leaning against the base, a
+>   **chalkboard sign** ("BOULANGERIE POULAIN") hanging on the right
+>   side with prices in francs scrawled in white chalk.
+> - **Above all (y=0–180):** wooden rafter beams across the ceiling
+>   with **dried wheat sheaves** hanging at each end and a single
+>   **filament bulb** centered over the counter.
+> - **Floor (y=620–800):** wide-plank wooden floor, warm honey-tan
+>   (`#C8965A`), visible plank seams running toward the camera. Keep
+>   the strip `x=200–1100, y=730–790` visually clean. Small clear
+>   floor patch near `(740, 720)` for the rolling-pin floor item.
+>
+> **Palette:** warm cream walls (`#F5E6C8`), oak counter + tables
+> (`#8B5A2B` outline, `#A87044` mid, `#5A3A1E` shadow), oven brick
+> (`#A24A2C`), oven glow (`#F4A23C` → `#FFD074` core), bread crusts
+> (`#D6A45C` with darker `#8B5A2B` scoring lines), red-white awning
+> stripes (`#C4412A` + `#FFFFFF`), bentwood chairs (`#6E4A28`).
+>
+> **Hard rules:** No characters. No floating props. The walking
+> corridor `y=730–790, x=200–1100` must be clear. The counter top edge
+> is a clean horizontal line at `y=620`. Tables and chairs stay in
+> `x=180–700, y=540–790`. No painted shadows on the floor (the engine
+> adds those per-actor at runtime).
+
+### Companion item — `assets/images/items/rolling_pin.png` (64 × 64)
+
+> A simple wooden rolling pin viewed from the side, warm tan wood
+> (`#D2A877`), darker grain lines, two small handles. Centered on a
+> transparent background. Cartoon line art, no shadow.
+
+After the BG and patron sheets land, the JSON wiring follow-up: update
+`assets/data/scenes/paris_bakery.json` to (a) add the six patron NPC
+ids to `npcs`, (b) move Madame Poulain's bounds to `(820, 440, 140,
+240)`, and (c) move the floor-item drop to `(740, 720)`. (Tracked in
+FIXME.md.)
+
+---
+
+## §NEW: Paris Clouds — airplane flight sky
+
+**Why:** Current `paris_clouds.png` is a transparent canvas with a static
+row of cloud puffs frozen near the top. Used as the airplane flight
+cutscene background, it reads as cardboard cutouts in checkerboard void.
+Needs to be a proper full-canvas sky so PP's biplane sprite has
+something to fly through.
+
+**Path:** `assets/images/locations/paris/background/paris_clouds.png`
+(overwrite).
+
+**Canvas:** 1400 × 800.
+
+### Spatial constraints
+
+- Background must fill the entire 1400 × 800 frame (no transparency).
+- The `flight_cutscene` renderer parallax-scrolls this image
+  horizontally; the painting must read as continuous flight, not
+  floating-in-place clouds.
+- PP's biplane sprite renders centered around `(700, 400)` at flight
+  altitude — keep clouds away from a soft-focus zone of roughly
+  `(550–850, 320–480)` so the biplane silhouette stays readable
+  against the sky.
+
+### Prompt
+
+> **Style:** hand-drawn 1990s Saturday-morning cartoon, Pink Panther
+> *Hokus Pokus Pink* (1997) / *Passport to Peril* (1996). Confident
+> black ink linework ~2 px on cloud silhouettes, flat saturated fills,
+> two cel tones max per element, no airbrush, no gradients (band the
+> sky as discrete cel tones, not a smooth gradient), no pixel art.
+>
+> **Scene:** sunny daytime sky seen from cruising altitude. **No
+> aircraft, no characters.** The painting is a backdrop that the engine
+> will scroll horizontally behind PP's biplane.
+>
+> **Sky bands (top → bottom, flat cel tones, no gradient):**
+> - `y=0–250`: bright sky blue (`#7ED4F2`) — the upper sky.
+> - `y=250–520`: mid sky (`#B8E5F8`) — where the biplane will fly.
+> - `y=520–740`: pale haze (`#E6F4FA`) — the air just above the
+>   horizon.
+> - `y=740–800`: a thin band of distant landscape — soft blue-gray
+>   silhouettes (`#9FB6C8`) of rolling hills, a hint of a small
+>   château or church spire in profile, no sharp detail. Gives the
+>   biplane scale.
+>
+> **Clouds (8–12 total, NOT a single neat row):** cartoon
+> Pink-Panther-era cumulus puffs, **off-white** (`#FAFAFA`) bodies with
+> a single **soft gray shadow** (`#D8D8D8`) tucked under each cloud's
+> belly. Vary the cloud sizes, Y positions, and shapes so the parallax
+> scroll reads as forward flight.
+>
+> Suggested placement:
+> - 3 large foreground clouds (~300 × 110 px) at `y≈200`, `y≈610`, and
+>   `y≈100` — these scroll fastest in parallax.
+> - 4 medium midground clouds (~180 × 70 px) scattered across `y=80`,
+>   `y=350`, `y=480`, `y=620` — slightly lighter outline weight.
+> - 3–5 small distant clouds (~100 × 40 px) drifting near `y=550–700`
+>   — very faint outlines, mostly silhouette, suggest distance.
+>
+> Each cloud is **horizontally tilt-stretched ~5–10°** (subtly slanted
+> trailing edges, as if motion-streaked) so the parallax scroll
+> visually reinforces forward flight rather than sideways drift.
+>
+> **Avoid zone:** keep `(550–850, 320–480)` clear of large clouds so
+> PP's biplane sprite (which the engine renders centered there) reads
+> cleanly against the mid-sky band.
+>
+> **Hard rules:** Solid sky fills the entire canvas — no transparency,
+> no checkerboard. No sun, no rainbow, no birds, no painted shadow on
+> the clouds beyond the single soft underside tone. Cloud outlines are
+> consistent ink weight (~2 px). The whole image must tile reasonably
+> well horizontally (left edge sky color matches right edge sky color)
+> so the parallax loop doesn't seam-pop.
+
+After the PNG lands, the airplane flight cutscene auto-uses it via
+`assets/data/scenes/airplane_flight.json` — no code changes.

@@ -26,6 +26,10 @@ type inventory struct {
 	circleTex   *sdl.Texture
 	circleW     int32
 	circleH     int32
+	// onSelectItem lets Game intercept item-clicks for items that should
+	// trigger an action instead of being held (e.g. Travel Map opens the
+	// globe). Return true to consume the click and skip the held-item path.
+	onSelectItem func(*inventoryItem) bool
 }
 
 func newInventory(font *engine.BitmapFont, renderer *sdl.Renderer) *inventory {
@@ -136,7 +140,16 @@ func (inv *inventory) handleClick(x, y int32) bool {
 	}
 
 	if len(inv.items) > 0 {
-		inv.heldItem = inv.items[inv.selectedIdx]
+		picked := inv.items[inv.selectedIdx]
+		// Some items (Travel Map) should fire an action immediately instead
+		// of being held for the next world click. Game registers the hook
+		// via onSelectItem in Game.New; if the hook consumes the click, we
+		// close the inventory without setting heldItem.
+		if inv.onSelectItem != nil && inv.onSelectItem(picked) {
+			inv.open = false
+			return true
+		}
+		inv.heldItem = picked
 		inv.open = false
 	}
 	return true

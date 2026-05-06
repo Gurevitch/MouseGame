@@ -68,6 +68,8 @@ type Game struct {
 	seqStore  *sequenceStore
 	eventBus  *EventBus
 	menu      *gameMenu
+	devMenu   *devMenu
+	font      *engine.BitmapFont
 	lastScene string
 	mouseX    int32
 	mouseY    int32
@@ -134,6 +136,17 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	g.lastScene = g.sceneMgr.currentName
 	g.audio.playMusic(g.sceneMgr.current().musicPath)
 
+	// Travel Map item: clicking it in the inventory opens the travel map
+	// from the current scene. Replaces the camp_entrance / paris_street
+	// scene-edge map hotspots (user 2026-04-26 retro-style cleanup).
+	g.inv.onSelectItem = func(it *inventoryItem) bool {
+		if it == nil || it.name != "Travel Map" {
+			return false
+		}
+		g.travelMap.Show(g.sceneMgr.currentName)
+		return true
+	}
+
 	g.travelMap = newTravelMap(renderer)
 	g.travelMap.attachGame(g)
 	g.items = newItemRegistry(renderer, "assets/data/items.json")
@@ -147,6 +160,8 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	g.seqStore = newSequenceStore("assets/data/sequences", g)
 	g.eventBus = newEventBus()
 	g.menu = newGameMenu()
+	g.devMenu = newDevMenu()
+	g.font = font
 	g.attachGameToNPCs()
 	g.setupCampCallbacks()
 	g.setupParisCallbacks()
@@ -175,14 +190,12 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 		}
 	}
 
-	// Campfire sheet is authored as 8x4 but in practice rows 1-3 vary
-	// wildly in background tint — flipbooking all 32 frames created
-	// strobing fringes and a visible halo at draw scale 2.5. We use the
-	// aggressive color-key variant (wider tolerance) and only row 0,
-	// giving us a clean 8-frame flame loop without background bleed.
-	// Inset is bumped to 4 so the outer fringe pixels never survive the
-	// trim.
-	fireGrid := engine.SpriteGridFromPNGCleanAggressive(renderer, "assets/images/locations/camp/campfire_idle.png", 8, 4, 4)
+	// User feedback 2026-04-26: switched from the bulky campfire_idle.png
+	// (8x4, rows 1-3 had bg drift) to the dedicated campfire_small.png
+	// generated for the 2026-04-19 campaign — clean 6x1 grid sized to land
+	// the visible flame inside the (581,592)-(702,594) target band at 1×
+	// draw. Aggressive color-key + inset 4 still strip any white halo.
+	fireGrid := engine.SpriteGridFromPNGCleanAggressive(renderer, "assets/images/locations/camp/campfire_small.png", 6, 1, 4)
 	if len(fireGrid) > 0 {
 		for c := 0; c < len(fireGrid[0]); c++ {
 			gf := fireGrid[0][c]
@@ -517,7 +530,16 @@ func (g *Game) setupCampCallbacks() {
 					if !game.parisUnlocked {
 						game.parisUnlocked = true
 						game.travelMap.setUnlocked("paris_street", true)
-						game.giveMapItem()
+						// User 2026-04-26: replace the silent giveMapItem
+						// with the higgins_give_map sequence — Higgins
+						// plays his give-map anim, PP plays receive_map,
+						// then the item drops into inventory. No more
+						// inventory-bar pop on map handover.
+						if seq := game.seqStore.Get("higgins_give_map"); seq != nil {
+							game.seqPlayer.Play(seq)
+						} else {
+							game.giveMapItem()
+						}
 					}
 					officeHiggins.dialog = higginsPostWorriedDialog
 				}
@@ -532,12 +554,19 @@ func (g *Game) setupCampCallbacks() {
 			kid := n
 			switch kid.name {
 			case "Marcus":
+				// metInDay1 latches once so re-clicking Marcus after the post
+				// dialog swap doesn't bump metKids twice (user 2026-04-26:
+				// "i spoke with the kids and then the night scene just
+				// started" — the unguarded Day 1 branch let metKids hit 5
+				// from one or two kids alone).
+				marcusMet := false
 				kid.onDialogEnd = func() {
-					if game.day == 1 {
+					if game.day == 1 && !marcusMet {
+						marcusMet = true
 						game.metKids++
 						kid.dialog = marcusPostDialog
 						game.checkDay1Complete()
-					} else {
+					} else if game.day >= 2 {
 						if !game.talkedToMarcus {
 							game.talkedToMarcus = true
 						}
@@ -545,23 +574,27 @@ func (g *Game) setupCampCallbacks() {
 					}
 				}
 		case "Tommy":
+			tommyMet := false
 			kid.onDialogEnd = func() {
-				if game.day == 1 {
+				if game.day == 1 && !tommyMet {
+					tommyMet = true
 					game.metKids++
 					kid.dialog = tommyPostDialog
 					game.checkDay1Complete()
-				} else if !kid.dialogDone {
+				} else if game.day >= 2 && !kid.dialogDone {
 					kid.dialogDone = true
 					kid.dialog = tommyPostStrangeDialog
 				}
 			}
 		case "Jake":
+			jakeMet := false
 			kid.onDialogEnd = func() {
-				if game.day == 1 {
+				if game.day == 1 && !jakeMet {
+					jakeMet = true
 					game.metKids++
 					kid.dialog = jakePostDialog
 					game.checkDay1Complete()
-				} else if !kid.dialogDone {
+				} else if game.day >= 2 && !kid.dialogDone {
 					kid.dialogDone = true
 					kid.dialog = jakePostStrangeDialog
 				}
@@ -618,12 +651,14 @@ func (g *Game) setupCampCallbacks() {
 				}
 			}
 		case "Danny":
+			dannyMet := false
 			kid.onDialogEnd = func() {
-				if game.day == 1 {
+				if game.day == 1 && !dannyMet {
+					dannyMet = true
 					game.metKids++
 					kid.dialog = dannyPostDialog
 					game.checkDay1Complete()
-				} else if !kid.dialogDone {
+				} else if game.day >= 2 && !kid.dialogDone {
 					kid.dialogDone = true
 					kid.dialog = dannyPostStrangeDialog
 				}
@@ -676,6 +711,17 @@ func (g *Game) setupCampCallbacks() {
 func (g *Game) checkDay1Complete() {
 	if g.metKids < 5 || g.day != 1 || g.sceneMgr.transitioning || g.day1BedtimeStarted {
 		return
+	}
+	// Belt-and-braces (user 2026-04-26): require Lily's flower handoff to
+	// have completed before night triggers, even if metKids somehow hits 5
+	// without it. hintState reaches 2 only inside Lily's altDialogFunc
+	// callback (see setupCampCallbacks "Lily" case).
+	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
+		for _, n := range grounds.npcs {
+			if n.name == "Lily" && n.hintState < 2 {
+				return
+			}
+		}
 	}
 	// Latch so the handoff can't re-fire the bedtime sequence.
 	g.day1BedtimeStarted = true
@@ -730,17 +776,6 @@ func (g *Game) setupParisCallbacks() {
 				guide := n
 				guide.onDialogEnd = func() {
 					guide.dialog = frenchGuidePostDialog
-				}
-			case "Madame Poulain":
-				// Quest step 1: first chat hands over the baguette.
-				bakery := n
-				bakery.onDialogEnd = func() {
-					if !game.inv.hasItem("Baguette") {
-						if item := game.items.createItem("baguette"); item != nil {
-							game.inv.addItem(item)
-						}
-					}
-					bakery.dialog = bakeryWomanPostDialog
 				}
 			case "Pierre":
 				// Quest step 2: once PP is carrying the baguette, Pierre
@@ -852,18 +887,77 @@ func (g *Game) setupParisCallbacks() {
 		})
 	}
 
-	// Paris street: travel map access
-	if parisStreet, ok := g.sceneMgr.scenes["paris_street"]; ok {
+	// User 2026-04-26: removed the paris_street left-arrow that opened the
+	// travel map. The map now opens by clicking the Travel Map item in the
+	// inventory (see inventory.handleClick). The left-arrow on paris_street
+	// is repurposed in paris_street.json to open paris_bakery.
+
+	// --- Paris Bakery: Madame Poulain's rolling-pin quest ---
+	// Retro-style intro beat (user 2026-04-26): the baguette is no longer a
+	// freebie. PP has to find Madame Poulain's lost rolling pin on the bakery
+	// floor, hand it over, and only then does she trade the baguette.
+	if bakery, ok := g.sceneMgr.scenes["paris_bakery"]; ok {
 		game := g
-		parisStreet.hotspots = append(parisStreet.hotspots, hotspot{
-			bounds: sdl.Rect{X: 0, Y: 200, W: 100, H: 400},
-			name:   "Travel Map",
-			arrow:  arrowLeft,
-			onInteract: func() bool {
-				game.travelMap.Show("paris_street")
-				return true
-			},
-		})
+		for _, n := range bakery.npcs {
+			if n.name != "Madame Poulain" {
+				continue
+			}
+			poulain := n
+			poulain.onDialogEnd = func() {
+				// Subsequent clicks while the rolling pin is still missing
+				// just replay the lost-pin beat (no flag flip yet).
+			}
+			poulain.altDialogRequiresItem = "Rolling Pin"
+			poulain.altDialogRequiresHeld = false
+			poulain.altDialogFunc = func() ([]dialogEntry, func()) {
+				if !game.inv.hasItem("Rolling Pin") || game.inv.hasItem("Baguette") {
+					return nil, nil
+				}
+				return bakeryWomanPinTradeDialog, func() {
+					game.inv.giveItemTo("Rolling Pin", "madame_poulain")
+					if item := game.items.createItem("baguette"); item != nil {
+						game.inv.addItem(item)
+					}
+					poulain.dialog = bakeryWomanPostDialog
+					poulain.altDialogFunc = nil
+					poulain.altDialogRequiresItem = ""
+				}
+			}
+			break
+		}
+
+		// Floor item: rolling pin lying on the bakery floor. Same mechanism
+		// as the lake's flower (camp_lake floorItems above). Clickable hit
+		// area is intentionally generous so the puzzle reads as findable.
+		pinDef, ok := game.items.getDef("rolling_pin")
+		if ok {
+			pinTex, pinW, pinH := engine.SafeTextureFromPNGKeyed(g.renderer, pinDef.Texture)
+			pin := &floorItem{
+				tex:     pinTex,
+				srcW:    pinW,
+				srcH:    pinH,
+				bounds:  sdl.Rect{X: 420, Y: 660, W: 90, H: 60},
+				name:    "Rolling Pin",
+				visible: true,
+				onPickup: func() {
+					if item := game.items.createItem("rolling_pin"); item != nil {
+						game.inv.addItem(item)
+					}
+					if b, ok := game.sceneMgr.scenes["paris_bakery"]; ok {
+						for _, fi := range b.floorItems {
+							if fi.name == "Rolling Pin" {
+								fi.visible = false
+								break
+							}
+						}
+					}
+					game.dialog.startDialog([]dialogEntry{
+						{speaker: "Pink Panther", text: "A wooden rolling pin. Madame Poulain will be happy."},
+					})
+				},
+			}
+			bakery.floorItems = append(bakery.floorItems, pin)
+		}
 	}
 }
 
@@ -874,10 +968,10 @@ func (g *Game) setupTravelHotspots() {
 		for i := range campEntrance.hotspots {
 			if campEntrance.hotspots[i].name == "Enter Camp" {
 				campEntrance.hotspots[i].onInteract = func() bool {
-					game.player.dir = dirUp
-					game.player.allowOffscreen = true
-					game.player.walkToAndDo(599, 200, func() {
-						game.player.allowOffscreen = false
+					// User 2026-04-26: PP no longer strafes left to (599,200);
+					// instead he walks back-facing in place and shrinks into
+					// the distance over ~1.6s, then the scene transitions.
+					game.player.playRecede(1.6, 0.35, 80, func() {
 						if grounds, ok := game.sceneMgr.scenes["camp_grounds"]; ok {
 							grounds.spawnX = 30
 							grounds.spawnY = 490
@@ -918,6 +1012,14 @@ func (g *Game) Close() {
 
 func (g *Game) HandleClick(x, y int32) {
 	g.ui.triggerClick()
+
+	// Dev menu (F1 toggleable) sits above everything else so a click on a
+	// scenario row routes here before the world / inventory.
+	if g.devMenu != nil && g.devMenu.Visible() {
+		if g.devMenu.handleClick(x, y, g) {
+			return
+		}
+	}
 
 	// Pause menu sits above everything — click routes here first.
 	if g.menuHandleClick(x, y) {
@@ -1091,6 +1193,19 @@ func (g *Game) HandleClick(x, y int32) {
 }
 
 func (g *Game) HandleKey(scancode sdl.Scancode) {
+	// F1 toggles the dev/chapter-jump menu from anywhere. Keep this above
+	// the menu modal-eat so the dev can dismiss the dev menu even when the
+	// pause menu is open.
+	if scancode == sdl.SCANCODE_F1 {
+		if g.devMenu != nil {
+			g.devMenu.toggle()
+		}
+		return
+	}
+	if g.devMenu != nil && g.devMenu.Visible() {
+		// Eat other input while dev menu is up.
+		return
+	}
 	// Esc: first press closes the travel map if open; otherwise toggles the
 	// pause menu. This keeps the existing "Esc to leave globe" behavior
 	// while adding a universal pause option.
@@ -1365,6 +1480,10 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	g.sceneMgr.drawTransition(renderer)
 	// Pause menu goes on top of everything except the cursor.
 	g.menu.Draw(renderer, g.ui.font, g.mouseX, g.mouseY)
+	// Dev menu sits above the pause menu so it can always be dismissed.
+	if g.devMenu != nil {
+		g.devMenu.draw(renderer, g.ui.font)
+	}
 	g.ui.drawCursor(renderer, g.mouseX, g.mouseY)
 }
 

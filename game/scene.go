@@ -258,7 +258,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		sm.scenes["camp_lake"] = s
 	}
 
-	// ===== Paris: Street + Louvre (JSON-driven) =====
+	// ===== Paris: Street + Louvre + Bakery (JSON-driven) =====
 	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "paris_street"); s != nil {
 		decorateParisStreet(s)
 		sm.scenes["paris_street"] = s
@@ -266,6 +266,13 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "paris_louvre"); s != nil {
 		decorateParisLouvre(s)
 		sm.scenes["paris_louvre"] = s
+	}
+	// User 2026-04-26: Paris bakery interior. NPC = bakery_woman, floor item
+	// = rolling pin (registered in setupParisCallbacks). No decorate hook
+	// yet — the JSON + factory are enough; add one later if ambient is
+	// needed (e.g. flour particles).
+	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "paris_bakery"); s != nil {
+		sm.scenes["paris_bakery"] = s
 	}
 
 	// ===== Cabin Interiors (JSON-driven) =====

@@ -97,9 +97,8 @@ func LoadAtlas(renderer *sdl.Renderer, name string) *AtlasSheet {
 		return nil
 	}
 
-	tex, _, _ := engine.TextureFromPNGRaw(renderer, pngPath)
+	tex, _, _ := engine.SafeTextureFromPNGRaw(renderer, pngPath)
 	if tex == nil {
-		fmt.Printf("atlas: failed to load texture %s\n", pngPath)
 		return nil
 	}
 	tex.SetBlendMode(sdl.BLENDMODE_BLEND)

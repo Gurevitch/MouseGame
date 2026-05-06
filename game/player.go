@@ -91,6 +91,33 @@ type player struct {
 
 	sceneMinY float64
 	sceneMaxY float64
+
+	// Recede-into-distance tween used by the "walk to camp" transition.
+	// While recedeActive: state stays stateWalking with dir=dirUp so the
+	// back-walk frames cycle, position drifts up by (recedeDyUp * t), and
+	// recedeScale lerps from 1.0 to recedeEndScale. drawScaled multiplies
+	// recedeScale into the final draw rect. On completion, recedeOnDone
+	// fires (typically a sceneMgr.transitionTo).
+	recedeActive    bool
+	recedeStartX    float64
+	recedeStartY    float64
+	recedeEndScale  float64
+	recedeDyUp      float64
+	recedeDuration  float64
+	recedeElapsed   float64
+	recedeScale     float64
+	recedeOnDone    func()
+
+	// One-shot named animations triggered by the sequence player. While
+	// activeOneShot != "" the player draws frames from oneShotAnims[name]
+	// instead of the state-based idle/walk/talk cycle. Used for the
+	// give-map sequence (PP plays "receive_map") and similar short clips.
+	oneShotAnims    map[string][]spriteFrame
+	activeOneShot   string
+	oneShotIdx      int
+	oneShotTimer    float64
+	oneShotDuration float64
+	oneShotOnDone   func()
 }
 
 func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
@@ -154,9 +181,45 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	p.examineFrames = gridFrames(renderer, "assets/images/player/PP sneak examine.png", 8, 2)
 	p.useItemFrames = gridFrames(renderer, "assets/images/player/PP sneak use.png", 8, 2)
 
+	// One-shot named animations for sequence playback. receive_map drives
+	// the give-map handoff so PP visibly takes the map from Higgins instead
+	// of having it appear in the inventory bar.
+	receiveMap := gridFrames(renderer, "assets/images/player/PP receive map.png", 8, 2)
+	if len(receiveMap) > 0 {
+		p.oneShotAnims = map[string][]spriteFrame{"receive_map": receiveMap}
+	}
+
 	p.dir = dirDown
 
 	return p
+}
+
+// playOneShot runs a registered one-shot animation for `dur` seconds, then
+// fires onDone. If the named anim isn't registered, onDone is invoked
+// immediately so sequences don't deadlock on missing assets.
+func (p *player) playOneShot(name string, dur float64, onDone func()) {
+	if p.oneShotAnims == nil {
+		if onDone != nil {
+			onDone()
+		}
+		return
+	}
+	if _, ok := p.oneShotAnims[name]; !ok {
+		if onDone != nil {
+			onDone()
+		}
+		return
+	}
+	if dur <= 0 {
+		dur = 1.0
+	}
+	p.activeOneShot = name
+	p.oneShotIdx = 0
+	p.oneShotTimer = 0
+	p.oneShotDuration = dur
+	p.oneShotOnDone = onDone
+	p.state = stateIdle
+	p.moving = false
 }
 
 func (p *player) currentWalkFrames() []spriteFrame {
@@ -216,6 +279,12 @@ func (p *player) actionFrames() []spriteFrame {
 }
 
 func (p *player) currentSprite() spriteFrame {
+	// One-shot anim (sequence player) overrides state-based selection.
+	if p.activeOneShot != "" {
+		if frames, ok := p.oneShotAnims[p.activeOneShot]; ok && len(frames) > 0 {
+			return frames[p.oneShotIdx%len(frames)]
+		}
+	}
 	switch p.state {
 	case stateWalking:
 		frames := p.currentWalkFrames()
@@ -319,6 +388,39 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 	p.onArrival = action
 }
 
+// playRecede starts the "walk into the distance" tween used by the camp
+// entrance transition. PP stays anchored near his current X (no left-drift),
+// faces upward so the back-walk frames cycle, drifts up by dyUp pixels over
+// dur seconds, and shrinks from 1.0 to endScale. onDone fires once the tween
+// completes — typically a sceneMgr.transitionTo call.
+//
+// User 2026-04-26: replaces the old walkToAndDo(599, 200, ...) that read as
+// "walking left then up". Recede is intended to read as "walking away into
+// the camp" without a strafe.
+func (p *player) playRecede(dur, endScale, dyUp float64, onDone func()) {
+	if dur <= 0 {
+		dur = 1.0
+	}
+	if endScale <= 0 || endScale > 1 {
+		endScale = 0.4
+	}
+	p.recedeActive = true
+	p.recedeStartX = p.x
+	p.recedeStartY = p.y
+	p.recedeEndScale = endScale
+	p.recedeDyUp = dyUp
+	p.recedeDuration = dur
+	p.recedeElapsed = 0
+	p.recedeScale = 1.0
+	p.recedeOnDone = onDone
+	p.dir = dirUp
+	p.facingLeft = false
+	p.state = stateWalking
+	p.moving = false      // movement is driven by the tween, not setTarget
+	p.interactTarget = nil
+	p.onArrival = nil
+}
+
 func (p *player) walkToExit(dir arrowDir, action func()) {
 	p.targetY = engine.Clamp(p.y, p.minY(), p.maxY())
 	switch dir {
@@ -359,6 +461,76 @@ func (p *player) walkToExit(dir arrowDir, action func()) {
 
 func (p *player) update(dt float64, blockers []sdl.Rect) {
 	p.breathTimer += dt
+
+	// One-shot named anim (sequence player). Frames advance evenly across
+	// the requested duration; on completion the registered callback fires.
+	// Short-circuits the rest of update so the anim can't be interrupted by
+	// state machine churn while it's running.
+	if p.activeOneShot != "" {
+		frames := p.oneShotAnims[p.activeOneShot]
+		p.oneShotTimer += dt
+		stepLen := actionFrameTime
+		if p.oneShotDuration > 0 && len(frames) > 0 {
+			stepLen = p.oneShotDuration / float64(len(frames))
+		}
+		if p.oneShotTimer >= stepLen && len(frames) > 0 {
+			p.oneShotTimer -= stepLen
+			if p.oneShotIdx < len(frames)-1 {
+				p.oneShotIdx++
+			}
+		}
+		if p.oneShotDuration > 0 && p.oneShotTimer+(stepLen*float64(p.oneShotIdx)) >= p.oneShotDuration {
+			// Wall-clock guard so the callback fires even if the per-frame
+			// math undershoots (rounding on short anims).
+		}
+		// Total elapsed = stepLen * idx + leftover timer
+		totalElapsed := stepLen*float64(p.oneShotIdx+1) - (stepLen - p.oneShotTimer)
+		if totalElapsed >= p.oneShotDuration {
+			cb := p.oneShotOnDone
+			p.activeOneShot = ""
+			p.oneShotIdx = 0
+			p.oneShotTimer = 0
+			p.oneShotOnDone = nil
+			if cb != nil {
+				cb()
+			}
+		}
+		return
+	}
+
+	// Recede tween (camp-entrance transition) — drives position+scale itself
+	// and short-circuits the rest of update so movement / blocker code can't
+	// fight the tween. Walk-frame ticking still runs so PP cycles his back
+	// walk during the recede.
+	if p.recedeActive {
+		p.recedeElapsed += dt
+		t := p.recedeElapsed / p.recedeDuration
+		if t > 1 {
+			t = 1
+		}
+		p.y = p.recedeStartY - p.recedeDyUp*t
+		p.recedeScale = 1.0 - (1.0-p.recedeEndScale)*t
+
+		p.walkTimer += dt
+		if p.walkTimer >= walkFrameTime {
+			p.walkTimer -= walkFrameTime
+			frames := p.currentWalkFrames()
+			if len(frames) > 0 {
+				p.walkCycleIdx = (p.walkCycleIdx + 1) % len(frames)
+			}
+		}
+
+		if t >= 1 {
+			p.recedeActive = false
+			p.recedeScale = 1.0
+			p.state = stateIdle
+			if cb := p.recedeOnDone; cb != nil {
+				p.recedeOnDone = nil
+				cb()
+			}
+		}
+		return
+	}
 
 	if p.moving {
 		p.walkTimer += dt
@@ -649,6 +821,10 @@ func (p *player) draw(renderer *sdl.Renderer) {
 func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	if charScale <= 0 {
 		charScale = 1.0
+	}
+	// Recede tween multiplies into the same render scale path.
+	if p.recedeActive && p.recedeScale > 0 {
+		charScale *= p.recedeScale
 	}
 	frame := p.currentSprite()
 	if frame.tex == nil || frame.h == 0 {
