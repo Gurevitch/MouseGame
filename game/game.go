@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"strings"
 
 	"bitbucket.org/Local/games/PP/engine"
 	"github.com/veandco/go-sdl2/sdl"
@@ -68,7 +69,8 @@ type Game struct {
 	seqStore  *sequenceStore
 	eventBus  *EventBus
 	menu      *gameMenu
-	devMenu   *devMenu
+	devMenu    *devMenu
+	clickProbe *clickProbe
 	font      *engine.BitmapFont
 	lastScene string
 	mouseX    int32
@@ -161,6 +163,7 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	g.eventBus = newEventBus()
 	g.menu = newGameMenu()
 	g.devMenu = newDevMenu()
+	g.clickProbe = newClickProbe()
 	g.font = font
 	g.attachGameToNPCs()
 	g.setupCampCallbacks()
@@ -224,10 +227,13 @@ func (g *Game) startDay2() {
 	}
 	g.day = 2
 
-	// Make Marcus strange in his room
+	// Make Marcus strange in his room and (re-)reveal him there. Day-1 he
+	// starts hidden so peeking into the cabin doesn't pre-spoil the
+	// freakout; night cutscene + Day 2 are when he's actually in his room.
 	if marcusRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok {
 		for _, n := range marcusRoom.npcs {
 			if n.name == "Marcus" {
+				n.hidden = false
 				n.dialog = marcusStrangeDialog
 				n.dialogDone = false
 				n.setStrange(true)
@@ -236,10 +242,16 @@ func (g *Game) startDay2() {
 		}
 	}
 
-	// Make other kids silent on camp_grounds (they're in their rooms now)
+	// Make other kids silent on camp_grounds (they're in their rooms now).
+	// Marcus specifically should be HIDDEN on the grounds from Day 2 onward —
+	// he's in his cabin freaking out, not waiting on the path. Without this
+	// hide, ground Marcus is double-rendered alongside room Marcus.
 	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
 		for _, n := range grounds.npcs {
 			n.silent = true
+			if n.name == "Marcus" {
+				n.hidden = true
+			}
 		}
 	}
 
@@ -608,6 +620,12 @@ func (g *Game) setupCampCallbacks() {
 				if kid.hintState != 1 || !game.inv.hasItem("Flower") {
 					return nil, nil
 				}
+				// Kick off Lily's receive-flower animation in parallel with
+				// the dialog so the user actually sees the handoff. The
+				// one-shot's duration loosely covers her opening lines; the
+				// standard wrapCb in startNPCDialog resets her anim state
+				// when dialog ends.
+				kid.playOneShotAnim("receive_flower", 1.4)
 				return lilyFlowerDialog, func() {
 					game.inv.giveItemTo("Flower", "lily")
 					game.metKids++
@@ -679,11 +697,8 @@ func (g *Game) setupCampCallbacks() {
 			name:    "Flower",
 			visible: true,
 			onPickup: func() {
-				item := game.items.createItem("flower")
-				if item != nil {
-					game.inv.addItem(item)
-				}
-				// Hide flower in scene
+				// Hide flower in scene first so the grab anim doesn't play
+				// over a still-visible daisy on the ground.
 				if lake, ok := game.sceneMgr.scenes["camp_lake"]; ok {
 					for _, fi := range lake.floorItems {
 						if fi.name == "Flower" {
@@ -692,8 +707,17 @@ func (g *Game) setupCampCallbacks() {
 						}
 					}
 				}
-				game.dialog.startDialog([]dialogEntry{
-					{speaker: "Pink Panther", text: "A pretty daisy. I bet Lily would like this."},
+				// Play the grab one-shot before the inventory pulse so the
+				// player visibly bends, picks, and rises. Falls through
+				// instantly if the asset isn't registered.
+				game.player.playOneShot("grab_flower", 0.9, func() {
+					item := game.items.createItem("flower")
+					if item != nil {
+						game.inv.addItem(item)
+					}
+					game.dialog.startDialog([]dialogEntry{
+						{speaker: "Pink Panther", text: "A pretty daisy. I bet Lily would like this."},
+					})
 				})
 			},
 		}
@@ -1026,6 +1050,19 @@ func (g *Game) HandleClick(x, y int32) {
 		return
 	}
 
+	// Click probe (F2) intercepts clicks before any game logic runs:
+	// validate the bbox-hit against the source PNG alpha and place a
+	// green/red marker. Always swallows the click so probing doesn't also
+	// trigger talk dialog or movement.
+	if g.clickProbe != nil && g.clickProbe.active {
+		if scene := g.sceneMgr.current(); scene != nil {
+			g.clickProbe.recordClick(scene, x, y)
+		} else {
+			g.clickProbe.pushMarker(x, y, sdl.Color{R: 160, G: 160, B: 160, A: 255}, "no scene")
+		}
+		return
+	}
+
 	if g.travelMap.Visible() {
 		// Info panel eats clicks: any click while open dismisses it,
 		// leaving the map visible underneath.
@@ -1075,14 +1112,30 @@ func (g *Game) HandleClick(x, y int32) {
 	}
 	scene := g.sceneMgr.current()
 
+	// Click on PP toggles the inventory — but only if nothing actionable
+	// sits under the click. PP's hit rect is the full 170x235 and in cabin
+	// scenes he stands smack in the middle of the exit hotspot, so without
+	// this guard clicking the bottom of the cabin hijacks the exit click
+	// to open inventory instead. Same risk for NPCs / floor items / other
+	// hotspots that overlap PP's rect.
 	if g.player.containsPoint(x, y) {
-		if g.inv.heldItem != nil {
-			g.inv.toggle()
-			return
+		var hotspotUnder *hotspot
+		var npcUnder *npc
+		var floorUnder *floorItem
+		if scene != nil {
+			hotspotUnder = scene.checkHotspotClick(x, y)
+			npcUnder = scene.checkNPCClick(x, y)
+			floorUnder = scene.checkFloorItemClick(x, y)
 		}
-		if len(g.inv.items) > 0 {
-			g.inv.toggle()
-			return
+		if hotspotUnder == nil && npcUnder == nil && floorUnder == nil {
+			if g.inv.heldItem != nil {
+				g.inv.toggle()
+				return
+			}
+			if len(g.inv.items) > 0 {
+				g.inv.toggle()
+				return
+			}
 		}
 	}
 
@@ -1176,6 +1229,20 @@ func (g *Game) HandleClick(x, y int32) {
 		plr := g.player
 		sm := g.sceneMgr
 		onArrival := func() { sm.transitionTo(tgt, plr) }
+		// Cabin doors: walk to the door anchor, then shrink-and-rise into the
+		// frame instead of marching off the top of the screen. The hotspot's
+		// arrow is "up" but walkToExit("up") drives Y to -playerDstH which
+		// reads as PP "flying to the sky". playRecede holds X, drifts up by
+		// dyUp and shrinks 1.0 -> endScale, which reads as "stepping through
+		// the door". See FIXME.md trailing "new PR" block.
+		if hs.arrow == arrowUp && strings.HasSuffix(tgt, "_room") {
+			doorX := float64(hs.bounds.X + hs.bounds.W/2)
+			doorY := float64(hs.bounds.Y + hs.bounds.H/2)
+			plr.walkToAndDo(doorX, doorY, func() {
+				plr.playRecede(0.7, 0.45, 60, onArrival)
+			})
+			return
+		}
 		if hs.arrow == arrowLeft || hs.arrow == arrowRight || hs.arrow == arrowDown || hs.arrow == arrowUp || hs.arrow == arrowDownRight {
 			plr.walkToExit(hs.arrow, onArrival)
 		} else {
@@ -1185,6 +1252,13 @@ func (g *Game) HandleClick(x, y int32) {
 				onArrival,
 			)
 		}
+		return
+	}
+	// If a pending NPC interaction is still in flight (PP is walking to talk
+	// to someone), don't let a stray floor click clear it. The user often
+	// double-clicks NPCs while waiting; the second click would normally
+	// snap-to-path and call setTarget which nukes interactTarget.
+	if g.player.interactTarget != nil && g.player.moving {
 		return
 	}
 	tx, ty := float64(x), float64(y)
@@ -1199,6 +1273,15 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 	if scancode == sdl.SCANCODE_F1 {
 		if g.devMenu != nil {
 			g.devMenu.toggle()
+		}
+		return
+	}
+	// F2 toggles the click probe — a dev diagnostic that, while active,
+	// turns clicks into alpha-channel hit-tests on NPC sprites and drops
+	// a green/red marker at the click point. See click_probe.go.
+	if scancode == sdl.SCANCODE_F2 {
+		if g.clickProbe != nil {
+			g.clickProbe.toggle()
 		}
 		return
 	}
@@ -1308,6 +1391,18 @@ func (g *Game) Update(dt float64, mx, my int32) {
 	// Finale: plays once the player lands in Mexico City with every heal flag set.
 	if g.sceneMgr.currentName == "mexico_street" && !g.sceneMgr.transitioning && !g.dialog.active {
 		g.triggerFinaleMonologue()
+	}
+
+	// Animate the active scene's background (no-op for static scenes).
+	// Runs every frame so animated sheets like airplane_flight's cloud sky
+	// keep looping even while the flight cutscene drives the foreground.
+	if cur := g.sceneMgr.current(); cur != nil && cur.bg != nil {
+		cur.bg.update(dt)
+	}
+
+	// Click-probe markers fade with TTL.
+	if g.clickProbe != nil {
+		g.clickProbe.update(dt)
 	}
 
 	// Airplane flight cutscene
@@ -1483,6 +1578,11 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	// Dev menu sits above the pause menu so it can always be dismissed.
 	if g.devMenu != nil {
 		g.devMenu.draw(renderer, g.ui.font)
+	}
+	// Click-probe markers + banner sit on top of the dev menu so the
+	// markers stay visible even if the menu was just used to jump scenes.
+	if g.clickProbe != nil {
+		g.clickProbe.draw(renderer, g.ui.font)
 	}
 	g.ui.drawCursor(renderer, g.mouseX, g.mouseY)
 }

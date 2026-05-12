@@ -360,6 +360,11 @@ func (sm *sceneManager) update(dt float64) {
 				sm.transPlayer.state = stateIdle
 				sm.transPlayer.sceneMinY = s.minY
 				sm.transPlayer.sceneMaxY = s.maxY
+				// Clear any active recede tween so the new scene draws PP
+				// at full size from spawn. Without this, PP would keep
+				// rendering at recedeEndScale (e.g. 0.45) after a cabin
+				// or camp-entrance transition completed.
+				sm.transPlayer.clearRecede()
 			}
 		}
 	} else {

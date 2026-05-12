@@ -183,10 +183,17 @@ func newPlayer(renderer *sdl.Renderer) *player {
 
 	// One-shot named animations for sequence playback. receive_map drives
 	// the give-map handoff so PP visibly takes the map from Higgins instead
-	// of having it appear in the inventory bar.
+	// of having it appear in the inventory bar. grab_flower plays when the
+	// flower floor item at the lake is picked up (and re-used when handing
+	// it over to Lily).
+	p.oneShotAnims = map[string][]spriteFrame{}
 	receiveMap := gridFrames(renderer, "assets/images/player/PP receive map.png", 8, 2)
 	if len(receiveMap) > 0 {
-		p.oneShotAnims = map[string][]spriteFrame{"receive_map": receiveMap}
+		p.oneShotAnims["receive_map"] = receiveMap
+	}
+	grabFlower := gridFrames(renderer, "assets/images/player/PP grab flower.png", 8, 2)
+	if len(grabFlower) > 0 {
+		p.oneShotAnims["grab_flower"] = grabFlower
 	}
 
 	p.dir = dirDown
@@ -370,12 +377,27 @@ func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
 	}
 	p.targetX = tx
 	p.targetY = engine.Clamp(ty, p.minY(), p.maxY())
-	p.moving = true
-	p.allowOffscreen = false
-	p.state = stateWalking
 	p.interactTarget = target
 	p.dialogSys = ds
 	p.onArrival = nil
+	// User 2026-05-10: clicking an NPC must always open the dialog as the
+	// direct result of THE CLICK. If PP is already standing close to the
+	// resolved talk-target, don't run a 1–2s walk first — the user
+	// perceives that as "my click did nothing". Snap to the talk position
+	// and fire startNPCDialog right away.
+	dx := p.targetX - p.x
+	dy := p.targetY - p.y
+	if dx*dx+dy*dy < 80*80 {
+		p.x = p.targetX
+		p.y = p.targetY
+		p.moving = false
+		p.state = stateIdle
+		p.startNPCDialog()
+		return
+	}
+	p.moving = true
+	p.allowOffscreen = false
+	p.state = stateWalking
 }
 
 func (p *player) walkToAndDo(x, y float64, action func()) {
@@ -397,6 +419,20 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 // User 2026-04-26: replaces the old walkToAndDo(599, 200, ...) that read as
 // "walking left then up". Recede is intended to read as "walking away into
 // the camp" without a strafe.
+// clearRecede resets the recede tween state so PP renders at full size
+// again. Call after a scene transition repositions the player so the
+// next scene starts fresh — without this PP would keep rendering at
+// recedeEndScale after the cabin/camp-entrance transition completes.
+func (p *player) clearRecede() {
+	p.recedeActive = false
+	p.recedeScale = 1.0
+	p.recedeElapsed = 0
+	p.recedeOnDone = nil
+	if p.state == stateWalking && !p.moving {
+		p.state = stateIdle
+	}
+}
+
 func (p *player) playRecede(dur, endScale, dyUp float64, onDone func()) {
 	if dur <= 0 {
 		dur = 1.0
@@ -521,9 +557,15 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 		}
 
 		if t >= 1 {
-			p.recedeActive = false
-			p.recedeScale = 1.0
-			p.state = stateIdle
+			// User 2026-05-10: don't reset scale to 1.0 here — that lets
+			// one frame render at full size between this update and the
+			// scene transition's first fade tick, which the user sees as
+			// "shrink, then a beat at full size, then transition". Clamp
+			// to endScale and keep recedeActive=true so subsequent draws
+			// stay scaled-down. The scene transition fires from cb(), and
+			// scene.transitionTo's new-spawn handler clears the recede
+			// state (player.clearRecede) once the player is repositioned.
+			p.recedeScale = p.recedeEndScale
 			if cb := p.recedeOnDone; cb != nil {
 				p.recedeOnDone = nil
 				cb()

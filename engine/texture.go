@@ -245,6 +245,19 @@ func TextureFromPNG(renderer *sdl.Renderer, filename string) (*sdl.Texture, int3
 	return nrgbaToTexture(renderer, img, crop)
 }
 
+// TextureFromPNGAggressive is TextureFromPNG with a wider color-key tolerance
+// (16 per channel vs default 8). For UI assets like cursor PNGs whose
+// generator leaves an off-white halo the default tolerance can't lift.
+func TextureFromPNGAggressive(renderer *sdl.Renderer, filename string) (*sdl.Texture, int32, int32) {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG %s: %v", filename, err))
+	}
+	applyColorKeyTol(img, 16)
+	crop := findOpaqueBounds(img, img.Bounds())
+	return nrgbaToTexture(renderer, img, crop)
+}
+
 // TextureFromPNGKeyed loads a PNG, applies color-key background removal, and
 // returns the full image as a texture without auto-cropping.
 func TextureFromPNGKeyed(renderer *sdl.Renderer, filename string) (*sdl.Texture, int32, int32) {

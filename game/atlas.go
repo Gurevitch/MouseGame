@@ -44,6 +44,10 @@ func GetAtlas(renderer *sdl.Renderer, name string) *AtlasSheet {
 type AtlasSheet struct {
 	Texture    *sdl.Texture
 	Animations map[string]*AtlasAnimation
+	// pngPath is the on-disk path of the texture PNG. Frames built via
+	// npcFrames() copy this onto each npcFrame so the click probe can
+	// re-decode the file and sample alpha at the clicked pixel.
+	pngPath string
 }
 
 // AtlasAnimation is a named animation strip inside an atlas: frame rectangles
@@ -106,6 +110,7 @@ func LoadAtlas(renderer *sdl.Renderer, name string) *AtlasSheet {
 	sheet := &AtlasSheet{
 		Texture:    tex,
 		Animations: make(map[string]*AtlasAnimation, len(meta.Animations)),
+		pngPath:    pngPath,
 	}
 	for animName, a := range meta.Animations {
 		frames := make([]sdl.Rect, len(a.Frames))
@@ -266,6 +271,35 @@ func applyKidAtlas(renderer *sdl.Renderer, n *npc, atlasName string) bool {
 	return true
 }
 
+// applyKidAtlasOrFallback tries the packed atlas first; if missing, falls
+// back to slicing the per-kid PNGs under
+// assets/images/locations/camp/npc/kids/<name>/. Authored sheets are 8x2.
+// Without this fallback a missing atlas would render the kid as a frameless
+// ghost.
+//
+// Color-key tolerance: uses the default tol=8 path (loadNPCGrid). The
+// 2026-04-16 pass had bumped to tol=16 for pastel-bg sheets, but the
+// 2026-04-29 source PNGs ship with cleaner backgrounds and tol=16 was
+// chewing into pastel shirt colors (Tommy talk, Jake idle reported by
+// user 2026-05-10). Drop back to default and only override per-kid if a
+// halo regression appears.
+func applyKidAtlasOrFallback(renderer *sdl.Renderer, n *npc, atlasName string) {
+	if applyKidAtlas(renderer, n, atlasName) {
+		return
+	}
+	base := "assets/images/locations/camp/npc/kids/" + atlasName + "/npc_" + atlasName
+	loadIfExists := func(path string) []npcFrame {
+		if _, err := os.Stat(path); err != nil {
+			return nil
+		}
+		return loadNPCGrid(renderer, path, 8, 2)
+	}
+	n.idleGrid = loadIfExists(base + "_idle.png")
+	n.talkGrid = loadIfExists(base + "_talk.png")
+	n.strangeIdle = loadIfExists(base + "_strange_idle.png")
+	n.strangeTalk = loadIfExists(base + "_strange_talk.png")
+}
+
 // applyNPCAtlas wires just the two canonical adult-NPC animations (idle /
 // talk) from the named atlas. Returns true on success; false if the atlas
 // is missing or either idle/talk is absent, letting the caller fall through
@@ -310,7 +344,7 @@ func (s *AtlasSheet) npcFrames(animName string) []npcFrame {
 	out := make([]npcFrame, len(a.Frames))
 	for i, f := range a.Frames {
 		r := f
-		out[i] = npcFrame{tex: s.Texture, w: f.W, h: f.H, src: &r}
+		out[i] = npcFrame{tex: s.Texture, w: f.W, h: f.H, src: &r, srcPath: s.pngPath}
 	}
 	return out
 }

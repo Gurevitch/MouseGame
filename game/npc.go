@@ -17,6 +17,12 @@ type npcFrame struct {
 	// they leave this nil). Atlas-backed frames share one texture and set
 	// src to the frame's rect within the atlas.
 	src *sdl.Rect
+	// srcPath is the on-disk PNG this frame came from. Used by the click
+	// probe diagnostic (F2) to re-decode the file and sample the alpha
+	// channel at the clicked pixel — that's how we tell a "real" hit on
+	// the cartoon outline apart from a click in a transparent halo of a
+	// sloppy BG-cut. Empty when the loader didn't track the path.
+	srcPath string
 }
 
 type npc struct {
@@ -107,6 +113,12 @@ type npc struct {
 	// Zero until the first frame; containsPoint falls back to bounds in
 	// that case so initial-frame clicks aren't lost.
 	lastDrawRect sdl.Rect
+	// lastDrawnFrame mirrors lastDrawRect for the source side: the exact
+	// npcFrame that was rendered most recently (idle vs talk vs one-shot,
+	// frame index baked in). The click probe samples this frame's PNG
+	// alpha to validate the BG cut.
+	lastDrawnFrame npcFrame
+	lastDrawnFlip  bool
 }
 
 func (n *npc) setStrange(strange bool) {
@@ -145,12 +157,12 @@ const npcSpriteInset = 3
 // 5-7 real cells in a row of 8 usually keep the last slot either fully
 // transparent or a duplicate of the last pose, neither of which hurts
 // the idle loop as much as getting the grid geometry wrong.
-func framesFromGrid(grid [][]engine.GridFrame, cols, rows int) []npcFrame {
+func framesFromGrid(grid [][]engine.GridFrame, cols, rows int, srcPath string) []npcFrame {
 	var frames []npcFrame
 	for r := 0; r < rows && r < len(grid); r++ {
 		for c := 0; c < cols && c < len(grid[r]); c++ {
 			gf := grid[r][c]
-			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, srcPath: srcPath})
 		}
 	}
 	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
@@ -161,7 +173,7 @@ func framesFromGrid(grid [][]engine.GridFrame, cols, rows int) []npcFrame {
 
 func loadNPCGrid(renderer *sdl.Renderer, path string, cols, rows int) []npcFrame {
 	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, npcSpriteInset)
-	return framesFromGrid(grid, cols, rows)
+	return framesFromGrid(grid, cols, rows, path)
 }
 
 func loadNPCGridRow(renderer *sdl.Renderer, path string, cols, rows, row int) []npcFrame {
@@ -170,7 +182,31 @@ func loadNPCGridRow(renderer *sdl.Renderer, path string, cols, rows, row int) []
 	if row < len(grid) {
 		for c := 0; c < cols && c < len(grid[row]); c++ {
 			gf := grid[row][c]
-			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, srcPath: path})
+		}
+	}
+	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
+		frames = frames[:len(frames)-1]
+	}
+	return frames
+}
+
+// loadNPCGridClean is loadNPCGrid with a wider color-key tolerance (16 vs the
+// default 8). Use for sheets whose background leaves a visible halo at the
+// default tolerance — Higgins idle/talk are the canonical adult case.
+func loadNPCGridClean(renderer *sdl.Renderer, path string, cols, rows int) []npcFrame {
+	grid := engine.SpriteGridFromPNGCleanKids(renderer, path, cols, rows, npcSpriteInset)
+	return framesFromGrid(grid, cols, rows, path)
+}
+
+// loadNPCGridRowClean is the row-indexed twin of loadNPCGridClean.
+func loadNPCGridRowClean(renderer *sdl.Renderer, path string, cols, rows, row int) []npcFrame {
+	grid := engine.SpriteGridFromPNGCleanKids(renderer, path, cols, rows, npcSpriteInset)
+	var frames []npcFrame
+	if row < len(grid) {
+		for c := 0; c < cols && c < len(grid[row]); c++ {
+			gf := grid[row][c]
+			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, srcPath: path})
 		}
 	}
 	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
@@ -251,8 +287,8 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 	//   idle: 7x1 at 172x384 per cell
 	//   talk: 6x1 (clipboard lowered, mouth open)
 	return &npc{
-		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
-		talkGrid:       loadNPCGridRow(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
+		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
+		talkGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
 		bounds:         sdl.Rect{X: 660, Y: 345, W: 200, H: 265},
 		name:           "Director Higgins",
 		dialog:         higginsDefaultDialog,
@@ -268,8 +304,8 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	// characterScale 0.9 shaves the final render to ~200 which sits
 	// comfortably in the tight indoor shot.
 	n := &npc{
-		idleGrid:       loadNPCGridRow(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2, 0),
-		talkGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2),
+		idleGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2, 0),
+		talkGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2),
 		// User spec 2026-04-17: office Higgins top-left at (1062, 357),
 		// sitting behind the desk. Sized so head lands at ~y=357 and feet
 		// rest on the desk chair around y=640.
@@ -283,7 +319,7 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	// Register the give-map one-shot animation so the higgins_give_map
 	// sequence can call playOneShotAnim("give_map", duration). Sheet is
 	// authored as a clean 8x1 strip per docs/EXTRA_PROMPTS.md §19.
-	giveFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 8, 1)
+	giveFrames := loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 8, 1)
 	if len(giveFrames) > 0 {
 		n.oneShotAnims = map[string][]npcFrame{"give_map": giveFrames}
 	}
@@ -303,6 +339,15 @@ func newGroundsHiggins(renderer *sdl.Renderer) *npc {
 	h.hidden = true
 	h.silent = true
 	h.dialog = higginsLilyHintDialog
+	// Register the back-walk one-shot used by the higgins_walk_in sequence
+	// when he enters from the right edge after Lily's shy dialog. PNG is
+	// 1376×768; load as 8×2 take_row=0 to mirror the talk sheet's geometry.
+	walkBackFrames := loadNPCGridRowClean(renderer,
+		"assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_back.png",
+		8, 2, 0)
+	if len(walkBackFrames) > 0 {
+		h.oneShotAnims = map[string][]npcFrame{"walk_back": walkBackFrames}
+	}
 	return h
 }
 
@@ -343,6 +388,10 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	// y=560 to keep him standing on the cabin floor.
 	n := newMarcus(renderer)
 	n.bounds = sdl.Rect{X: 600, Y: 260, W: 200, H: 300}
+	// Hidden until the night freakout cutscene unhides him. Without this,
+	// peeking into Marcus's cabin on Day 1 already shows him there even
+	// though Day-1 Marcus belongs on the camp grounds.
+	n.hidden = true
 	return n
 }
 
@@ -358,8 +407,8 @@ func newRoomDanny(renderer *sdl.Renderer) *npc {
 // to deliver the "lights out" speech in-place, not at camp grounds.
 func newNightHiggins(renderer *sdl.Renderer) *npc {
 	return &npc{
-		idleGrid:       loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
-		talkGrid:       loadNPCGridRow(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
+		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
+		talkGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
 		bounds:         sdl.Rect{X: 1120, Y: 430, W: 200, H: 260},
 		name:           "Director Higgins",
 		bobAmount:      0,
@@ -406,7 +455,7 @@ func newTommy(renderer *sdl.Renderer) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 	}
-	applyKidAtlas(renderer, n, "tommy")
+	applyKidAtlasOrFallback(renderer, n, "tommy")
 	return n
 }
 
@@ -449,7 +498,7 @@ func newJake(renderer *sdl.Renderer) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 	}
-	applyKidAtlas(renderer, n, "jake")
+	applyKidAtlasOrFallback(renderer, n, "jake")
 	return n
 }
 
@@ -504,7 +553,18 @@ func newLily(renderer *sdl.Renderer) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 	}
-	applyKidAtlas(renderer, n, "lily")
+	applyKidAtlasOrFallback(renderer, n, "lily")
+	// Receive-flower one-shot played when PP hands her the flower. Sheet
+	// is 1024×128 = 8×1 single-row strip per the file dims (cells 128×128).
+	receiveFlower := loadNPCGrid(renderer,
+		"assets/images/locations/camp/npc/kids/lily/npc_lily_receive_flower.png",
+		8, 1)
+	if len(receiveFlower) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["receive_flower"] = receiveFlower
+	}
 	return n
 }
 
@@ -553,7 +613,7 @@ func newMarcus(renderer *sdl.Renderer) *npc {
 		// down so the strange dialogue has room to breathe.
 		strangeTalkFrameSpeed: 0.16,
 	}
-	applyKidAtlas(renderer, n, "marcus")
+	applyKidAtlasOrFallback(renderer, n, "marcus")
 	return n
 }
 
@@ -598,7 +658,7 @@ func newDanny(renderer *sdl.Renderer) *npc {
 		talkFrameSpeed: 0.10,
 		flipped:        true,
 	}
-	applyKidAtlas(renderer, n, "danny")
+	applyKidAtlasOrFallback(renderer, n, "danny")
 	return n
 }
 
@@ -759,6 +819,8 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	// the looser n.bounds rect. Bounds stay design-time stable for layout
 	// math; lastDrawRect tracks what the user actually clicks on.
 	n.lastDrawRect = dst
+	n.lastDrawnFrame = frame
+	n.lastDrawnFlip = n.flipped
 }
 
 // containsPoint is used for both cursor hover (showing the "talk" icon) and

@@ -20,3 +20,4 @@ secrets.yaml
 
 # Ignore log files
 *.log
+*/images/retro_frames/*

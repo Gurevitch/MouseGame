@@ -202,9 +202,21 @@ func (sp *SequencePlayer) executeStep() {
 		if n := sp.findNPC(step.Scene, step.NPC); n != nil {
 			switch step.Anim {
 			case "talk":
+				n.endOneShotAnim()
 				n.setAnimState(npcAnimTalk)
-			default:
+			case "idle":
+				n.endOneShotAnim()
 				n.setAnimState(npcAnimIdle)
+			default:
+				// Treat any other anim name as a registered one-shot (e.g.
+				// Higgins's "walk_back" used during the walk-in sequence).
+				// Long duration so the loop runs across the subsequent
+				// blocking npc_move; a later npc_anim "idle"/"talk" ends it.
+				if _, ok := n.oneShotAnims[step.Anim]; ok {
+					n.playOneShotAnim(step.Anim, 60.0)
+				} else {
+					n.setAnimState(npcAnimIdle)
+				}
 			}
 		}
 		sp.nextStep()

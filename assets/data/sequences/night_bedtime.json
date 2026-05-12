@@ -22,6 +22,7 @@
     {"type": "hide_player", "hide": true},
     {"type": "scene_bg", "scene": "marcus_room", "bg": "night"},
     {"type": "npc_strange", "scene": "marcus_room", "npc": "Marcus", "strange": true},
+    {"type": "npc_hidden", "scene": "marcus_room", "npc": "Marcus", "hide": false},
     {"type": "transition", "scene": "marcus_room"},
     {"type": "dialog", "dialog": [
       {"speaker": "Marcus", "text": "I can't stop... the lines keep coming..."},

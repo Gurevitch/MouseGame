@@ -39,8 +39,12 @@ func newUIManager(font *engine.BitmapFont) *uiManager {
 }
 
 func (ui *uiManager) initCursors(renderer *sdl.Renderer) {
+	// Cursor PNGs come out of the image generator with an off-white halo
+	// the default tol=8 color-key can't fully lift; use the wider tol=16
+	// pass so cursor_talk in particular doesn't render with a visible
+	// white square around it.
 	load := func(path string) (*sdl.Texture, int32, int32) {
-		tex, w, h := engine.TextureFromPNG(renderer, path)
+		tex, w, h := engine.TextureFromPNGAggressive(renderer, path)
 		if tex != nil {
 			tex.SetBlendMode(sdl.BLENDMODE_BLEND)
 		}
@@ -192,21 +196,30 @@ func (ui *uiManager) drawCursor(renderer *sdl.Renderer, mx, my int32) {
 	srcW := ui.cursorW[c]
 	srcH := ui.cursorH[c]
 
+	// Cursor PNGs were updated 2026-05-09 to single-frame portrait images
+	// (cursor_normal is a single arrow, not the old 2-frame idle|click
+	// strip). Click feedback now comes from the bob/pulse animation only,
+	// so we render the full texture for every cursor state.
 	var src *sdl.Rect
-	if c == cursorNormal {
-		frameW := srcW / 2
-		if ui.cursorClicking {
-			src = &sdl.Rect{X: frameW, Y: 0, W: frameW, H: srcH}
-		} else {
-			src = &sdl.Rect{X: 0, Y: 0, W: frameW, H: srcH}
-		}
-		srcW = frameW
-	}
 
 	targetW := int32(40)
 	scale := float64(targetW) / float64(srcW)
 	if scale > 1.5 {
 		scale = 1.5
+	}
+	// Brief scale-up while clicking so the click still has a visual cue
+	// now that the cursor sheet is single-frame. cursorClickTimer counts
+	// down from 0.15s; pulse peaks at +20% in the middle of that window.
+	if ui.cursorClicking {
+		t := ui.cursorClickTimer / 0.15
+		if t < 0 {
+			t = 0
+		} else if t > 1 {
+			t = 1
+		}
+		// Triangle pulse: 0 -> 1 -> 0 across the window
+		pulse := 1.0 - 2.0*math.Abs(t-0.5)
+		scale *= 1.0 + 0.20*pulse
 	}
 	w := int32(float64(srcW) * scale)
 	h := int32(float64(srcH) * scale)

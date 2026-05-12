@@ -33,7 +33,11 @@
       "Bash(cp npc_homesick_kid_idle.png npc_homesick_kid_talk.png npc_homesick_kid_strange_idle.png npc_homesick_kid_strange_talk.png kids/tommy/)",
       "Bash(cp npc_bully_kid_idle.png npc_bully_kid_talk.png npc_bully_kid_strange_idle.png npc_bully_kid_strange_talk.png kids/jake/)",
       "Bash(find . -name \"*.go\" -exec wc -l {} +)",
-      "Bash(grep -iE \"\\\\.\\(orb|escript|gam|scn|map|dat|cfg|ini|xml|json|txt|lst\\)$\")"
+      "Bash(grep -iE \"\\\\.\\(orb|escript|gam|scn|map|dat|cfg|ini|xml|json|txt|lst\\)$\")",
+      "Bash(go test *)",
+      "Bash(python -c 'from PIL import Image; import os *)",
+      "Bash(python -c ' *)",
+      "Bash(ls \"C:\\\\Users\\\\Roii\\\\Documents\\\\PP HP\" \"C:\\\\Users\\\\Roii\\\\Documents\\\\PP P2P\" 2>&1 | head -40)"
     ]
   }
 }

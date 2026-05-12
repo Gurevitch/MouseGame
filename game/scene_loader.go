@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"image/color"
+	"os"
 
 	"bitbucket.org/Local/games/PP/engine"
 
@@ -20,7 +21,7 @@ import (
 func buildSceneFromDef(renderer *sdl.Renderer, def sceneDef) *scene {
 	s := &scene{
 		name:           def.Name,
-		bg:             newPNGBackgroundOr(renderer, def.Background, color.NRGBA{R: 140, G: 110, B: 85, A: 255}),
+		bg:             buildBackground(renderer, def),
 		npcs:           spawnNPCs(renderer, def.NPCs),
 		spawnX:         def.SpawnX,
 		spawnY:         def.SpawnY,
@@ -60,6 +61,22 @@ func (sm *sceneManager) loadSceneFromJSON(renderer *sdl.Renderer, store *sceneCo
 		return nil
 	}
 	return buildSceneFromDef(renderer, def)
+}
+
+// buildBackground picks the right background constructor based on the
+// scene def. Animated sheets (backgroundFrames > 1) bypass the placeholder
+// fallback because they're authored sprite sheets, not single stills — if
+// the file is missing we still want the gradient placeholder rather than a
+// crash, so route through the animated path only when the file exists.
+func buildBackground(renderer *sdl.Renderer, def sceneDef) *background {
+	fallback := color.NRGBA{R: 140, G: 110, B: 85, A: 255}
+	if def.BackgroundFrames > 1 && def.BackgroundFrameSeconds > 0 {
+		if _, err := os.Stat(def.Background); err == nil {
+			return newAnimatedPNGBackground(renderer, def.Background, def.BackgroundFrames, def.BackgroundFrameSeconds)
+		}
+		return newPlaceholderBackground(renderer, fallback)
+	}
+	return newPNGBackgroundOr(renderer, def.Background, fallback)
 }
 
 // Compile-time: keep engine package referenced in case buildSceneFromDef
