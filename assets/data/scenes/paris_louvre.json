@@ -2,10 +2,11 @@
   "name": "paris_louvre",
   "background": "assets/images/locations/paris/background/paris_museum.png",
   "spawnX": 200,
-  "spawnY": 400,
+  "spawnY": 365,
   "minY": 0,
   "maxY": 0,
-  "characterScale": 0.9,
+  "musicPath": "assets/audio/music/paris.mp3",
+  "characterScale": 1.0,
   "npcs": ["museum_curator"],
   "hotspots": [
     {

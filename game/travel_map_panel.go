@@ -145,9 +145,13 @@ func (tm *travelMap) drawInfoPanel(renderer *sdl.Renderer, font *engine.BitmapFo
 	cy := factsY
 	for _, fact := range facts {
 		for _, line := range wrapLine(fact, maxChars) {
-			font.DrawText(renderer, "• "+line, textX+1, cy+1, panelFactScale,
+			// User 2026-05-12: bullet swapped from "• " to "- " — the bitmap
+			// font atlas doesn't have a U+2022 glyph, and the renderer
+			// treats each missing UTF-8 byte as its own char so the bullet
+			// rendered as "???" (3 question marks per fact line).
+			font.DrawText(renderer, "- "+line, textX+1, cy+1, panelFactScale,
 				sdl.Color{R: 0, G: 0, B: 0, A: 140})
-			font.DrawText(renderer, "• "+line, textX, cy, panelFactScale,
+			font.DrawText(renderer, "- "+line, textX, cy, panelFactScale,
 				sdl.Color{R: 50, G: 38, B: 28, A: 255})
 			cy += font.LineHeight(panelFactScale) + panelFactLineGap
 		}

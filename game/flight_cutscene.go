@@ -29,11 +29,12 @@ const flightDurationSeconds = 4.0
 const flightFrameIntervalSeconds = 0.12
 
 // loadAirplaneFrames loads the PP-in-biplane animation frames from the
-// pp_airplane sheet (4x3 grid per the existing author layout). Variable
-// row lengths are tolerated so sheets with trailing short rows don't
-// produce nil textures.
+// pp_airplane sheet. User 2026-05-12: the real layout is **6 cols × 2
+// rows** (12 frames, 295×443 each on the 1774×887 sheet). Previously
+// loaded as 4×3 which cropped half-of-frame + half-of-next per cell so
+// the plane rendered mis-aligned.
 func loadAirplaneFrames(renderer *sdl.Renderer) []npcFrame {
-	grid := engine.SpriteGridFromPNGClean(renderer, "assets/images/player/pp_airplane.png", 4, 3, spriteInset)
+	grid := engine.SpriteGridFromPNGClean(renderer, "assets/images/player/pp_airplane.png", 6, 2, spriteInset)
 	var frames []npcFrame
 	for r := 0; r < len(grid); r++ {
 		for c := 0; c < len(grid[r]); c++ {
@@ -78,8 +79,11 @@ func (f *flightCutscene) Update(dt float64) (bool, string) {
 	return true, dest
 }
 
-// Draw renders the current airplane frame centered on screen, scaled 3x
-// with a subtle sinusoidal bob so the biplane feels airborne.
+// Draw renders the current airplane frame centered on screen with a
+// subtle sinusoidal bob so the biplane feels airborne. User 2026-05-12:
+// scale dropped from 3.0 to 1.5 — the cells are already 295×443 each,
+// so 1.5× gives 443×665 on screen (was 885×1329 at 3.0 which dwarfed
+// the 1400×800 background).
 func (f *flightCutscene) Draw(renderer *sdl.Renderer) {
 	if !f.Active() || len(f.frames) == 0 {
 		return
@@ -88,7 +92,7 @@ func (f *flightCutscene) Draw(renderer *sdl.Renderer) {
 	if frame.tex == nil {
 		return
 	}
-	const scale = 3.0
+	const scale = 1.5
 	bob := math.Sin(f.timer*2.0) * 8
 	dstW := int32(float64(frame.w) * scale)
 	dstH := int32(float64(frame.h) * scale)

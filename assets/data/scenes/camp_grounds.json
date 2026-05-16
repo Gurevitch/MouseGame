@@ -2,10 +2,10 @@
   "name": "camp_grounds",
   "background": "assets/images/locations/camp/background/camp_grounds.png",
   "spawnX": 80,
-  "spawnY": 490,
+  "spawnY": 455,
   "minY": 0,
   "maxY": 0,
-  "musicPath": "",
+  "musicPath": "assets/audio/music/camp.mp3",
   "npcs": ["tommy", "jake", "lily", "marcus", "danny", "grounds_higgins_hidden"],
   "hotspots": [
     {"bounds": {"x": 0, "y": 200, "w": 80, "h": 500},      "targetScene": "camp_lake",    "name": "To the Lake",      "arrow": "left"},

@@ -14,6 +14,12 @@ const (
 type dialogEntry struct {
 	speaker string
 	text    string
+	// audio is an optional voice-clip path played when this line begins.
+	// "" = silent (current behavior). When populated, the dialog system
+	// calls audioManager.playSFX(audio) on line start. The audio manager
+	// no-ops on missing files so the entry doesn't break gameplay until
+	// voice files are authored.
+	audio string
 }
 
 type dialogSystem struct {
@@ -26,6 +32,10 @@ type dialogSystem struct {
 	showContinue  bool
 	continueTimer float64
 	onComplete    func()
+	// audio fires per-line voice clips. Set once at construction (see
+	// newDialogSystem in game/dialog.go); nil-safe — when nil, dialog
+	// entries' `audio` fields are ignored.
+	audio *audioManager
 }
 
 func newDialogSystem(font *engine.BitmapFont) *dialogSystem {
@@ -66,6 +76,23 @@ func (ds *dialogSystem) startDialogWithCallback(entries []dialogEntry, cb func()
 	ds.showContinue = false
 	ds.continueTimer = 0
 	ds.onComplete = cb
+	ds.playLineAudio()
+}
+
+// playLineAudio plays the current entry's voice clip (if any). No-op when
+// the audio manager isn't wired or the entry has no audio path.
+func (ds *dialogSystem) playLineAudio() {
+	if ds.audio == nil {
+		return
+	}
+	if ds.currentIndex >= len(ds.queue) {
+		return
+	}
+	path := ds.queue[ds.currentIndex].audio
+	if path == "" {
+		return
+	}
+	ds.audio.playSFX(path)
 }
 
 func (ds *dialogSystem) advance() {
@@ -92,6 +119,7 @@ func (ds *dialogSystem) advance() {
 	ds.displayedLen = 0
 	ds.typingTimer = 0
 	ds.showContinue = false
+	ds.playLineAudio()
 }
 
 func (ds *dialogSystem) update(dt float64) {

@@ -136,6 +136,9 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	}
 	g.player.inv = g.inv
 	g.lastScene = g.sceneMgr.currentName
+	// Wire per-line voice playback (no-op until dialog entries have an
+	// audio field set + the file lands at the path).
+	g.dialog.audio = g.audio
 	g.audio.playMusic(g.sceneMgr.current().musicPath)
 
 	// Travel Map item: clicking it in the inventory opens the travel map

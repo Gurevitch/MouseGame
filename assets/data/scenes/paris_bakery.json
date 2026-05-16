@@ -2,10 +2,11 @@
   "name": "paris_bakery",
   "background": "assets/images/locations/paris/background/paris_bakery.png",
   "spawnX": 700,
-  "spawnY": 600,
+  "spawnY": 565,
   "minY": 0,
   "maxY": 0,
-  "characterScale": 0.9,
+  "musicPath": "assets/audio/music/paris.mp3",
+  "characterScale": 1.0,
   "npcs": ["bakery_woman"],
   "hotspots": [
     {

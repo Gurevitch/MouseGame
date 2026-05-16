@@ -2,11 +2,11 @@
   "name": "camp_office",
   "background": "assets/images/locations/camp/background/camp_office.png",
   "spawnX": 150,
-  "spawnY": 400,
+  "spawnY": 365,
   "minY": 0,
   "maxY": 0,
-  "musicPath": "",
-  "characterScale": 0.9,
+  "musicPath": "assets/audio/music/camp_office.mp3",
+  "characterScale": 1.0,
   "npcs": ["office_higgins"],
   "hotspots": [
     {"bounds": {"x": 0, "y": 400, "w": 200, "h": 360}, "targetScene": "camp_grounds", "name": "Back to Camp", "arrow": "downRight"}

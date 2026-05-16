@@ -352,14 +352,28 @@ func (sm *sceneManager) update(dt float64) {
 			if sm.transPlayer != nil {
 				s := sm.scenes[sm.currentName]
 				sm.transPlayer.x = s.spawnX
-				sm.transPlayer.y = s.spawnY
+				// Set scene Y bounds FIRST so the clamp below uses the new
+				// scene's range (not the previous scene's).
+				sm.transPlayer.sceneMinY = s.minY
+				sm.transPlayer.sceneMaxY = s.maxY
+				// User 2026-05-12: clamp spawnY to the player's max Y range
+				// so a scene whose authored spawnY drifted past the new
+				// (post-rebalance) playerMaxY doesn't drop PP below-screen.
+				// The walking clamp catches normal movement; transitionTo is
+				// a direct assignment path that bypassed it.
+				py := s.spawnY
+				if py > sm.transPlayer.maxY() {
+					py = sm.transPlayer.maxY()
+				}
+				if py < sm.transPlayer.minY() {
+					py = sm.transPlayer.minY()
+				}
+				sm.transPlayer.y = py
 				sm.transPlayer.moving = false
 				sm.transPlayer.allowOffscreen = false
 				sm.transPlayer.facingLeft = false
 				sm.transPlayer.dir = dirDown
 				sm.transPlayer.state = stateIdle
-				sm.transPlayer.sceneMinY = s.minY
-				sm.transPlayer.sceneMaxY = s.maxY
 				// Clear any active recede tween so the new scene draws PP
 				// at full size from spawn. Without this, PP would keep
 				// rendering at recedeEndScale (e.g. 0.45) after a cabin

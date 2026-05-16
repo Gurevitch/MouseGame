@@ -2,10 +2,10 @@
   "name": "camp_entrance",
   "background": "assets/images/locations/camp/background/camp_entrance.png",
   "spawnX": 500,
-  "spawnY": 570,
-  "minY": 400,
-  "maxY": 620,
-  "musicPath": "",
+  "spawnY": 535,
+  "minY": 365,
+  "maxY": 530,
+  "musicPath": "assets/audio/music/camp.mp3",
   "npcs": ["director_higgins"],
   "hotspots": [
     {

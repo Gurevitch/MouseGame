@@ -203,17 +203,23 @@ func (sp *SequencePlayer) executeStep() {
 			switch step.Anim {
 			case "talk":
 				n.endOneShotAnim()
+				n.restoreSwappedIdle()
 				n.setAnimState(npcAnimTalk)
 			case "idle":
 				n.endOneShotAnim()
+				n.restoreSwappedIdle()
 				n.setAnimState(npcAnimIdle)
 			default:
-				// Treat any other anim name as a registered one-shot (e.g.
-				// Higgins's "walk_back" used during the walk-in sequence).
-				// Long duration so the loop runs across the subsequent
-				// blocking npc_move; a later npc_anim "idle"/"talk" ends it.
+				// User 2026-05-12: looping named animation (e.g. Higgins's
+				// "walk_back" during an npc_move). The old approach used
+				// playOneShotAnim with a 60s duration, which stretched each
+				// frame to 7.5s and froze at frame 0 for the move's 2.5s
+				// (this was the L544 bug). New approach: swap idleGrid for
+				// the named anim's frames so the existing idle-frame cycler
+				// loops it at the natural pace; restore on the next idle/
+				// talk anim step.
 				if _, ok := n.oneShotAnims[step.Anim]; ok {
-					n.playOneShotAnim(step.Anim, 60.0)
+					n.swapIdleForOneShot(step.Anim)
 				} else {
 					n.setAnimState(npcAnimIdle)
 				}

@@ -2,10 +2,11 @@
   "name": "marcus_room",
   "background": "assets/images/locations/camp/background/marcus_room_day.png",
   "spawnX": 700,
-  "spawnY": 550,
+  "spawnY": 515,
   "minY": 0,
   "maxY": 0,
-  "characterScale": 0.85,
+  "musicPath": "assets/audio/music/camp_cabin.mp3",
+  "characterScale": 1.0,
   "npcs": ["room_marcus"],
   "hotspots": [
     {"bounds": {"x": 200, "y": 500, "w": 1000, "h": 260}, "targetScene": "camp_grounds", "name": "Exit Cabin", "arrow": "down"}

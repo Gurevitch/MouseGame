@@ -2,9 +2,10 @@
   "name": "paris_street",
   "background": "assets/images/locations/paris/background/paris_street.png",
   "spawnX": 200,
-  "spawnY": 400,
+  "spawnY": 365,
   "minY": 0,
   "maxY": 0,
+  "musicPath": "assets/audio/music/paris.mp3",
   "npcs": ["french_guide", "pierre_artist", "press_photographer", "gendarme_claude"],
   "hotspots": [
     {
@@ -21,7 +22,7 @@
     }
   ],
   "blockers": [
-    {"x": 0, "y": 0, "w": 180, "h": 500}
+    {"x": 0, "y": 0, "w": 180, "h": 200}
   ],
   "walkSegments": []
 }

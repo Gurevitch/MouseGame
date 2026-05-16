@@ -15,25 +15,39 @@ prompts follow.
 ## Canonical draw sizes (1.0x scene)
 
 All heights are what the character should render at in pixels on a
-**1400x800** screen when the scene's `characterScale` is **1.0**. See
-`PROMPTS.md` -> "Framing & Scale" for the ratios this table descends
-from.
+**1400x800** screen when the scene's `characterScale` is **1.0**.
+
+**Rebalanced 2026-05-12 to retro proportions, then moderated** (Hokus
+Pokus Pink + PtP reference frames in `assets/images/retro_frames/`).
+The initial bump targeted raw retro 54% screen-fill (PP H=340), but
+that overwhelmed the existing background composition (cabins, fire pit
+etc. were painted at a smaller character scale than retro PtP). Pulled
+back to a "moderate retro" pass: PP still the tallest on screen, but
+characters no longer dwarf cabins. Adults sit at ~80% of PP's height,
+kids at ~65%.
 
 ### Pink Panther
 
-- Draw size: **170 x 235**
+- Draw size: **200 x 270** (was 170 x 235 original; the 245x340 bump
+  on 2026-05-12 overshot — characters dwarfed cabins).
 - Palette: body `#E88BB5`, outline `#1C1C1C`, eyes `#FFFFFF` sclera with
   `#1C1C1C` pupil, gloves `#F5D547`, shoes `#E6B429`.
-- Anchor: foot-center (bottom of the 235 px box sits on the walk path).
+- Anchor: foot-center (bottom of the 340 px box sits on the walk path).
 - Silhouette: tall slim pink panther, long tail, small eyes, relaxed
-  slouch. Never draw him bigger than **1.25x** the tallest NPC in the
-  scene.
+  slouch. **PP is the tallest character on every screen.** No NPC may
+  exceed 0.85× PP's height (except oversize "freakout" Marcus in his
+  room, who sits at PP's height by design).
 
 ### Director Higgins
 
-- Draw size: **160 x 225** on `camp_entrance` and `camp_night`.
-- Draw size: **160 x 225** on `camp_office` (was 180x280 — too tall;
-  scene scale 0.9 brings the final render down a touch further).
+- Draw size: **168 x 220** on `camp_entrance` and **172 x 220** on
+  `camp_night`.
+- Draw size: **182 x 235** on `camp_office` (sits behind desk; tighter
+  framing). camp_office's `characterScale` is now 1.0 — the size lives
+  in `bounds`, not in scene scale.
+- Frame speed `talkFrameSpeed = 0.18` (idle cycles at 0.18 × 2.5 =
+  0.45 s/frame). Bumped from 0.25 so the 7-frame idle reads smoothly
+  rather than snapping between long-held poses.
 - Palette: safari hat `#8B5A2B`, shirt `#A47148`, shorts `#C79A5A`,
   belt `#5A3A1E`, mustache `#2B1B10`.
 - Props: clipboard in talk/shout frames; sits behind desk in
@@ -41,7 +55,9 @@ from.
 
 ### Marcus (know-it-all)
 
-- Draw size: **170 x 215**
+- Draw size: **145 x 175** on `camp_grounds`. Room override: **187 x 270**
+  (matches PP's 270 — Marcus is intentionally the "looming presence" in
+  his Day-2 freakout cabin).
 - Palette: messy brown hair `#4A2E1B`, red bandage strip `#C4412A` on
   nose, tan shirt `#D8B47A`, green shorts `#4F7A3A`, sketchbook clamped
   under one arm.
@@ -50,7 +66,7 @@ from.
 
 ### Jake (tough kid)
 
-- Draw size: **170 x 210**
+- Draw size: **145 x 175** on `camp_grounds`. Room: **162 x 245**.
 - Palette: red cap `#C4412A`, freckles `#B06A3A`, navy t-shirt
   `#2B3A5C`, jeans `#4A5A78`, arms crossed or hands in pockets.
 - Strange state: gripping a coin or rubbing something metallic; eyes
@@ -58,39 +74,44 @@ from.
 
 ### Lily (shy girl)
 
-- Draw size: **160 x 195**
-- Palette: lavender dress `#B89AC4`, braids `#5A3A1E`, daisy in hair
-  `#FFFFFF` with `#F5D547` center, white socks.
+- Draw size: **145 x 175** on `camp_grounds`. Room: **162 x 245**.
+- Palette: long brown hair `#7B4A2E`, mint-green sleeveless dress
+  `#9FC9E8`-tinted-pale-mint, brown ankle boots, holds a small bouquet
+  at chest height.
 - Receives-flower pose: hands cupped at chest height to receive the
-  daisy. Used in the give-item animation.
+  daisy. Used in the give-item animation (`receive_flower` one-shot).
 - Strange state: petals scattered at her feet, distant stare, same
   dress/hair.
 
 ### Tommy (storyteller)
 
-- Draw size: **170 x 200**
+- Draw size: **145 x 175** on `camp_grounds`. Room: **162 x 245**.
 - Palette: small backpack `#3A5A7A`, blue t-shirt `#4A7AA8`, brown
   shorts `#8B5A2B`, floppy hair `#D8B47A`.
 - Strange state: hand cupped to ear (listening), mouth agape.
 
 ### Danny (prankster)
 
-- Draw size: **170 x 210**
+- Draw size: **145 x 175** on `camp_grounds`. Room: **162 x 245**.
 - Palette: green cap `#4F7A3A` (backwards), yellow t-shirt `#F5D547`,
   red shorts `#C4412A`, slingshot in back pocket silhouette, mischievous
   grin.
 - Strange state: dirt smudge across cheek, trembling hands, eyes look
   offscreen.
 
-### Paris locals (`paris_street`, `paris_louvre`)
+### Paris locals (`paris_street`, `paris_louvre`, `paris_bakery`)
 
-- Pierre the Artist: **160 x 215**. Beret `#1C1C1C`, striped shirt
-  `#FFFFFF` + `#1C1C1C` stripes, easel in talk frames.
-- Gendarme Claude: **160 x 225**. Navy uniform `#2B3A5C`, red armband
+All Paris adults rebalanced to the **230-240** band (moderate retro).
+
+- Pierre the Artist: **126 x 230**. Beret `#1C1C1C`, striped shirt
+  with `#1C1C1C` stripes, easel in talk frames.
+- Gendarme Claude: **115 x 240**. Navy uniform `#2B3A5C`, red armband
   `#C4412A`, kepi hat, whistle.
-- French Guide: **140 x 220**. Blazer `#2B3A5C`, map in hand, glasses.
-- Museum Curator: **130 x 220**. White shirt `#FFFFFF`, tweed jacket
-  `#8B5A2B`, reading glasses.
+- French Guide: **135 x 230**. Blazer `#2B3A5C`, map in hand, glasses.
+- Museum Curator: **125 x 240**. Cream shirt (not pure white per the
+  no-white-on-character rule), tweed jacket `#8B5A2B`, reading glasses.
+- Madame Poulain (Bakery Woman): **135 x 230**.
+- Press Photographer: **106 x 230**.
 
 ### City locals (Jerusalem / Tokyo / Rio + BA / Rome / Mexico)
 
@@ -118,42 +139,46 @@ character's draw W/H at render time. **Hitboxes stay at authored size**
 so click targets do not shrink with the scale. Props like the campfire
 and the airplane are *not* characters and ignore this value.
 
-Starter values:
+**Post-2026-05-12 rebalance: all scenes are now 1.0.** The old
+0.85/0.9 indoor shrink fudges were band-aids for the pre-rebalance "PP
+too big in rooms" complaint; with PP's authored bounds bumped to
+245×340 (matching retro), every scene renders him at full size. If a
+specific indoor shot ever needs a tighter camera again, prefer scaling
+the BACKGROUND, not the characters.
 
 - `camp_entrance`: **1.0** — wide park shot.
 - `camp_grounds`: **1.0**
 - `camp_lake`: **1.0**
 - `camp_night`: **1.0** — the fire is the focal point, characters stay
   full-size.
-- `camp_office`: **0.9** — tighter room, Higgins sits closer to camera.
+- `camp_office`: **1.0** (was 0.9 pre-rebalance).
 - `tommy_room`, `jake_room`, `lily_room`, `marcus_room`,
-  `danny_room`: **0.85** — cabin interior, PTP pub-style tight shot.
-- `airplane_flight`: **1.0** (airplane itself is a prop and does not
-  use the scale; PP is drawn inside the plane texture, not as a
-  character sprite, so this is a no-op in practice).
-- Paris `paris_street`, `paris_louvre`: **1.0**
-- Jerusalem / Tokyo / Rio / BA / Rome / Mexico `*_street`: **1.0**
-- Jerusalem / Tokyo / Rio / BA / Rome `*_interior` /
-  `*_temple` / `*_bar` / `*_tango_school` / `*_colosseum` /
-  `*_tunnel`: **0.9**
+  `danny_room`: **1.0** (was 0.85 pre-rebalance).
+- `airplane_flight`: **1.0**
+- Paris `paris_street`, `paris_louvre`, `paris_bakery`: **1.0**
+- Jerusalem / Tokyo / Rio / BA / Rome / Mexico `*`: **1.0**
 
 ---
 
 ## Hard rules
 
-1. **No standing NPC > 230 px** in a 1.0 scene. Beyond that the
-   character dominates the frame and the PTP look breaks.
-2. **No character > 1.25x PP's current draw height** (so no one taller
-   than ~294 px including Higgins). Higgins specifically was drawn at
-   280 tall — that fails this rule; bring him to 225 and let scene
-   scale do the rest.
-3. **At least 25% of screen height remains above the tallest character's
-   head** so there is sky / ceiling room for the background to breathe.
-4. When a new city gets drawn, artists target **215 px** as the default
-   adult height. Deviations need a specific in-world reason (child
-   character, seated character, priest standing on a step, etc).
+Rebalanced 2026-05-12 to retro proportions (see `assets/images/retro_frames/`
+for source frames). PP is the size baseline, and adults / kids are sized
+relative to him.
+
+1. **PP is the tallest character on screen.** PP draws at **270 px**
+   tall. No NPC may exceed **0.85× PP's draw height** (= 230 px). The
+   one exception is the oversize "freakout Marcus" in his Day-2 room,
+   which matches PP at 270 — and that's intentional.
+2. **Adult NPCs draw in the 220–240 band.** Adult cell aspect is
+   portrait (height ≈ 1.7–1.9 × width).
+3. **Kids draw in the 175–245 band.** Grounds kids ~175, room kids
+   ~245. Always shorter than PP.
+4. **At least 15% of screen height remains above the tallest character's
+   head** (~120 px above the tallest NPC's head) so there is sky /
+   ceiling room for the background to breathe.
 5. Pair every new sheet with an entry in `PROMPTS.md` and update this
-   file if the size is not in the 195-225 band.
+   file. When in doubt about size, anchor to PP (270) and divide.
 
 ---
 

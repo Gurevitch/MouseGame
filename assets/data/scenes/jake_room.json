@@ -2,10 +2,11 @@
   "name": "jake_room",
   "background": "assets/images/locations/camp/background/jake_room.png",
   "spawnX": 1100,
-  "spawnY": 500,
+  "spawnY": 465,
   "minY": 0,
   "maxY": 0,
-  "characterScale": 0.85,
+  "musicPath": "assets/audio/music/camp_cabin.mp3",
+  "characterScale": 1.0,
   "npcs": ["room_jake"],
   "hotspots": [
     {"bounds": {"x": 900, "y": 100, "w": 500, "h": 660}, "targetScene": "camp_grounds", "name": "Exit Cabin", "arrow": "right"}

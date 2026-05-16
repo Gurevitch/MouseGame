@@ -15,13 +15,21 @@ type spriteFrame struct {
 
 const (
 	playerBaseSpeed = 250.0
-	playerDstW      = 170
-	playerDstH      = 235
+	// User 2026-05-12: PP made the tallest character on screen by design
+	// (see docs/CHARACTERS.md + retro_frames reference). Initial rebalance
+	// targeted H=340 to match raw retro 54% screen-fill, but that
+	// overshot — our background art is composed at a smaller character
+	// scale than retro PtP, so PP at 340 dwarfed the cabins and the kids
+	// rose above the cabin doorways. Pulled back to H=270, which keeps PP
+	// the tallest on screen (still > all NPCs) without overwhelming the
+	// background composition. Width 200 keeps the same cell aspect.
+	playerDstW      = 200
+	playerDstH      = 270
 	playerMinX      = 10.0
 	playerMaxX      = engine.ScreenWidth - playerDstW - 10.0
-	playerMinY      = 300.0
-	playerMaxY      = 430.0
-	walkFrameTime   = 0.12
+	playerMinY      = 265.0
+	playerMaxY      = 395.0
+	walkFrameTime   = 0.08
 	talkFrameTime   = 0.07
 	actionFrameTime = 0.10
 )
@@ -117,6 +125,7 @@ type player struct {
 	oneShotIdx      int
 	oneShotTimer    float64
 	oneShotDuration float64
+	oneShotElapsed  float64 // wall-clock elapsed since playOneShot start; drives completion
 	oneShotOnDone   func()
 }
 
@@ -170,7 +179,12 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	p.talkFrames = gridFrames(renderer, "assets/images/player/PP talk front.png", 8, 2)
 	p.talkSideFrames = gridFrames(renderer, "assets/images/player/PP talk side.png", 8, 2)
 
-	p.grabFrames = gridFrames(renderer, "assets/images/player/PP grab flower.png", 8, 2)
+	// User 2026-05-12: swapped from "PP grab flower.png" (square 128×128
+	// cells) to the canonical "PP grab.png" (portrait 172×384 cells). The
+	// square cells made the grab anim render shorter than idle inside the
+	// 245×340 bounds — full size now matches idle. PP grab.png shows the
+	// same crouch-and-rise cycle with a flower in the last frames.
+	p.grabFrames = gridFrames(renderer, "assets/images/player/PP grab.png", 8, 2)
 
 	celebrateFrames := gridFrames(renderer, "assets/images/player/PP celebrate.png", 8, 2)
 	p.reactFrames = celebrateFrames
@@ -191,7 +205,9 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if len(receiveMap) > 0 {
 		p.oneShotAnims["receive_map"] = receiveMap
 	}
-	grabFlower := gridFrames(renderer, "assets/images/player/PP grab flower.png", 8, 2)
+	// "grab_flower" one-shot reuses the canonical PP grab.png (portrait
+	// cells matching idle aspect). Same change as p.grabFrames above.
+	grabFlower := gridFrames(renderer, "assets/images/player/PP grab.png", 8, 2)
 	if len(grabFlower) > 0 {
 		p.oneShotAnims["grab_flower"] = grabFlower
 	}
@@ -223,6 +239,7 @@ func (p *player) playOneShot(name string, dur float64, onDone func()) {
 	p.activeOneShot = name
 	p.oneShotIdx = 0
 	p.oneShotTimer = 0
+	p.oneShotElapsed = 0
 	p.oneShotDuration = dur
 	p.oneShotOnDone = onDone
 	p.state = stateIdle
@@ -504,29 +521,46 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 	// state machine churn while it's running.
 	if p.activeOneShot != "" {
 		frames := p.oneShotAnims[p.activeOneShot]
+		// User 2026-05-12: track wall-clock elapsed directly so the one-shot
+		// completes after `oneShotDuration` seconds regardless of frame
+		// pacing. The previous totalElapsed-from-idx formula stopped
+		// advancing once idx hit the last frame (idx capped at len-1 while
+		// the timer kept decrementing), so the one-shot never crossed the
+		// completion threshold and PP froze on the final grab frame.
 		p.oneShotTimer += dt
 		stepLen := actionFrameTime
 		if p.oneShotDuration > 0 && len(frames) > 0 {
 			stepLen = p.oneShotDuration / float64(len(frames))
 		}
-		if p.oneShotTimer >= stepLen && len(frames) > 0 {
+		p.oneShotElapsed += dt
+		// Frame index follows elapsed time, capped at the last frame so
+		// the final pose holds until completion.
+		if p.oneShotDuration > 0 && len(frames) > 0 {
+			idx := int(p.oneShotElapsed / stepLen)
+			if idx >= len(frames) {
+				idx = len(frames) - 1
+			}
+			p.oneShotIdx = idx
+		} else if p.oneShotTimer >= stepLen && len(frames) > 0 {
 			p.oneShotTimer -= stepLen
 			if p.oneShotIdx < len(frames)-1 {
 				p.oneShotIdx++
 			}
 		}
-		if p.oneShotDuration > 0 && p.oneShotTimer+(stepLen*float64(p.oneShotIdx)) >= p.oneShotDuration {
-			// Wall-clock guard so the callback fires even if the per-frame
-			// math undershoots (rounding on short anims).
-		}
-		// Total elapsed = stepLen * idx + leftover timer
-		totalElapsed := stepLen*float64(p.oneShotIdx+1) - (stepLen - p.oneShotTimer)
-		if totalElapsed >= p.oneShotDuration {
+		if p.oneShotDuration > 0 && p.oneShotElapsed >= p.oneShotDuration {
 			cb := p.oneShotOnDone
 			p.activeOneShot = ""
 			p.oneShotIdx = 0
 			p.oneShotTimer = 0
+			p.oneShotElapsed = 0
 			p.oneShotOnDone = nil
+			// User 2026-05-12: reset state to idle BEFORE the callback so PP
+			// doesn't appear "stuck" mid-walk after a grab/receive one-shot
+			// completes. Without this, if PP was stateWalking when the
+			// one-shot started (he walked to the flower), state stayed
+			// walking after — the user sees PP frozen in a walk pose.
+			p.state = stateIdle
+			p.moving = false
 			if cb != nil {
 				cb()
 			}

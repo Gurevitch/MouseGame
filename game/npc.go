@@ -106,6 +106,14 @@ type npc struct {
 	oneShotTimer    float64
 	oneShotDuration float64
 
+	// swappedIdleBackup holds the original idleGrid when a sequence step
+	// temporarily swaps it for a looping named animation (e.g. Higgins's
+	// "walk_back" cycle during an npc_move). The next idle/talk anim step
+	// restores it via restoreSwappedIdle(). Unlike one-shots this path
+	// uses the existing idle frame cycler so the animation loops at the
+	// natural talkFrameSpeed × 2.5 pace.
+	swappedIdleBackup []npcFrame
+
 	// lastDrawRect caches the on-screen rect from the most recent
 	// drawScaled call (after characterScale + aspect-preserve). containsPoint
 	// uses this so hover + click only register on the visible sprite, not
@@ -289,11 +297,11 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 	return &npc{
 		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
 		talkGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
-		bounds:         sdl.Rect{X: 660, Y: 345, W: 200, H: 265},
+		bounds:         sdl.Rect{X: 660, Y: 390, W: 168, H: 220},
 		name:           "Director Higgins",
 		dialog:         higginsDefaultDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.25,
+		talkFrameSpeed: 0.18,
 	}
 }
 
@@ -308,12 +316,14 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		talkGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2),
 		// User spec 2026-04-17: office Higgins top-left at (1062, 357),
 		// sitting behind the desk. Sized so head lands at ~y=357 and feet
-		// rest on the desk chair around y=640.
-		bounds:         sdl.Rect{X: 1062, Y: 357, W: 220, H: 280},
+		// rest on the desk chair around y=640. 2026-05-12 (revised after
+		// screenshot showed NPCs dwarfing the bg): moderate scale instead
+		// of the full retro-proportion bump.
+		bounds:         sdl.Rect{X: 1062, Y: 360, W: 182, H: 235},
 		name:           "Director Higgins",
 		dialog:         higginsWorriedDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.25,
+		talkFrameSpeed: 0.18,
 		silent:         true,
 	}
 	// Register the give-map one-shot animation so the higgins_give_map
@@ -335,7 +345,7 @@ func newGroundsHiggins(renderer *sdl.Renderer) *npc {
 	// top of Marcus (whose bounds start at x=890). 1060x and 570y puts him
 	// visible below/right of the kid row without any overlap.
 	h := newDirectorHiggins(renderer)
-	h.bounds = sdl.Rect{X: 1060, Y: 570, W: 180, H: 200}
+	h.bounds = sdl.Rect{X: 1060, Y: 560, W: 180, H: 210}
 	h.hidden = true
 	h.silent = true
 	h.dialog = higginsLilyHintDialog
@@ -361,21 +371,21 @@ func newGroundsHiggins(renderer *sdl.Renderer) *npc {
 // in its own factory to make that intent explicit.
 func newRoomTommy(renderer *sdl.Renderer) *npc {
 	n := newTommy(renderer)
-	n.bounds = sdl.Rect{X: 760, Y: 430, W: 170, H: 260}
+	n.bounds = sdl.Rect{X: 760, Y: 445, W: 162, H: 245}
 	n.silent = true
 	return n
 }
 
 func newRoomJake(renderer *sdl.Renderer) *npc {
 	n := newJake(renderer)
-	n.bounds = sdl.Rect{X: 760, Y: 420, W: 170, H: 260}
+	n.bounds = sdl.Rect{X: 760, Y: 435, W: 162, H: 245}
 	n.silent = true
 	return n
 }
 
 func newRoomLily(renderer *sdl.Renderer) *npc {
 	n := newLily(renderer)
-	n.bounds = sdl.Rect{X: 666, Y: 461, W: 170, H: 260}
+	n.bounds = sdl.Rect{X: 666, Y: 476, W: 162, H: 245}
 	n.silent = true
 	return n
 }
@@ -383,11 +393,11 @@ func newRoomLily(renderer *sdl.Renderer) *npc {
 func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	// User feedback 2026-04-26: room Marcus was reading huge — bounds 280x380
 	// + characterScale 0.85 still rendered him oversize next to PP. Shrunk to
-	// 200x300 (roughly PP's 170x235 plus a hair, since Marcus Day-2 is a touch
-	// larger by design but not "fills the doorway" larger). Foot lands at
-	// y=560 to keep him standing on the cabin floor.
+	// 200x300. 2026-05-12 (revised): aligned with the moderate global scale
+	// so Marcus matches PP's 270 height (he's the freakout-giant silhouette
+	// but the room-internal composition can't take him much bigger).
 	n := newMarcus(renderer)
-	n.bounds = sdl.Rect{X: 600, Y: 260, W: 200, H: 300}
+	n.bounds = sdl.Rect{X: 600, Y: 290, W: 187, H: 270}
 	// Hidden until the night freakout cutscene unhides him. Without this,
 	// peeking into Marcus's cabin on Day 1 already shows him there even
 	// though Day-1 Marcus belongs on the camp grounds.
@@ -397,7 +407,7 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 
 func newRoomDanny(renderer *sdl.Renderer) *npc {
 	n := newDanny(renderer)
-	n.bounds = sdl.Rect{X: 760, Y: 430, W: 170, H: 260}
+	n.bounds = sdl.Rect{X: 760, Y: 445, W: 162, H: 245}
 	n.silent = true
 	return n
 }
@@ -409,10 +419,10 @@ func newNightHiggins(renderer *sdl.Renderer) *npc {
 	return &npc{
 		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
 		talkGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
-		bounds:         sdl.Rect{X: 1120, Y: 430, W: 200, H: 260},
+		bounds:         sdl.Rect{X: 1120, Y: 430, W: 172, H: 220},
 		name:           "Director Higgins",
 		bobAmount:      0,
-		talkFrameSpeed: 0.25,
+		talkFrameSpeed: 0.18,
 		silent:         true,
 	}
 }
@@ -449,7 +459,7 @@ var tommyPostStrangeDialog = []dialogEntry{
 
 func newTommy(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		bounds:         sdl.Rect{X: 130, Y: 405, W: 150, H: 180},
+		bounds:         sdl.Rect{X: 130, Y: 410, W: 145, H: 175},
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0,
@@ -492,7 +502,7 @@ var jakePostStrangeDialog = []dialogEntry{
 
 func newJake(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		bounds:         sdl.Rect{X: 370, Y: 400, W: 150, H: 180},
+		bounds:         sdl.Rect{X: 395, Y: 405, W: 145, H: 175},
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0,
@@ -547,7 +557,7 @@ var lilyPostStrangeDialog = []dialogEntry{
 
 func newLily(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		bounds:         sdl.Rect{X: 600, Y: 395, W: 150, H: 180},
+		bounds:         sdl.Rect{X: 600, Y: 400, W: 145, H: 175},
 		name:           "Lily",
 		dialog:         lilyShyDialog,
 		bobAmount:      0,
@@ -604,7 +614,7 @@ var marcusPostStrangeDialog = []dialogEntry{
 
 func newMarcus(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		bounds:         sdl.Rect{X: 890, Y: 395, W: 150, H: 180},
+		bounds:         sdl.Rect{X: 890, Y: 400, W: 145, H: 175},
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0,
@@ -651,7 +661,7 @@ var dannyPostStrangeDialog = []dialogEntry{
 
 func newDanny(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		bounds:         sdl.Rect{X: 1110, Y: 400, W: 150, H: 180},
+		bounds:         sdl.Rect{X: 1110, Y: 405, W: 145, H: 175},
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0,
@@ -699,6 +709,40 @@ func (n *npc) endOneShotAnim() {
 	n.activeOneShot = ""
 	n.oneShotIdx = 0
 	n.oneShotTimer = 0
+}
+
+// swapIdleForOneShot temporarily replaces idleGrid with the frames of a
+// registered one-shot animation, so the existing idle frame cycler loops it
+// at natural pace. Use this for looping named animations like Higgins's
+// "walk_back" during an npc_move — the one-shot pathway alone freezes at
+// the last frame (it's authored as fire-and-forget). Restored by
+// restoreSwappedIdle() on the next idle/talk anim step.
+func (n *npc) swapIdleForOneShot(name string) {
+	if n.oneShotAnims == nil {
+		return
+	}
+	frames, ok := n.oneShotAnims[name]
+	if !ok || len(frames) == 0 {
+		return
+	}
+	if n.swappedIdleBackup == nil {
+		n.swappedIdleBackup = n.idleGrid
+	}
+	n.idleGrid = frames
+	n.idleCurFrame = 0
+	n.idleFrameTimer = 0
+	n.animState = npcAnimIdle
+}
+
+// restoreSwappedIdle undoes swapIdleForOneShot if a swap is active.
+func (n *npc) restoreSwappedIdle() {
+	if n.swappedIdleBackup == nil {
+		return
+	}
+	n.idleGrid = n.swappedIdleBackup
+	n.swappedIdleBackup = nil
+	n.idleCurFrame = 0
+	n.idleFrameTimer = 0
 }
 
 func (n *npc) update(dt float64) {
@@ -818,7 +862,14 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	// the visible sprite (post-characterScale + aspect-preserve) instead of
 	// the looser n.bounds rect. Bounds stay design-time stable for layout
 	// math; lastDrawRect tracks what the user actually clicks on.
-	n.lastDrawRect = dst
+	//
+	// User 2026-05-12: pad the hit-rect horizontally so clicks land easily
+	// on portrait-aspect sprites (which render at ~50-60% of bounds.W).
+	// Without this, kid sprites' visible columns are ~98 px wide inside
+	// 145-wide bounds — users complained Marcus/Danny were "hard to hit."
+	// Vertical pad stays 0 — the foot anchor is still meaningful.
+	const hitPadX int32 = 25
+	n.lastDrawRect = sdl.Rect{X: dstX - hitPadX, Y: dstY, W: dstW + 2*hitPadX, H: dstH}
 	n.lastDrawnFrame = frame
 	n.lastDrawnFlip = n.flipped
 }
@@ -901,7 +952,7 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 	// preferred path; legacy per-row PNG slicing stays as a fallback so
 	// the NPC still spawns if pack_atlas.py hasn't been run.
 	n := &npc{
-		bounds:         sdl.Rect{X: 540, Y: 440, W: 140, H: 240},
+		bounds:         sdl.Rect{X: 540, Y: 400, W: 135, H: 230},
 		name:           "Madame Poulain",
 		dialog:         bakeryWomanLostPinDialog,
 		bobAmount:      0,
@@ -943,7 +994,7 @@ func newPressPhotographer(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/press_photographer.(png|json)
 	// is preferred; legacy PNG slicing stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 1010, Y: 440, W: 110, H: 240},
+		bounds:         sdl.Rect{X: 950, Y: 400, W: 106, H: 230},
 		name:           "Nicolas",
 		dialog:         pressPhotographerDialog,
 		bobAmount:      0,
@@ -964,7 +1015,7 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 	// Feet land at y≈680 on the paris_street floor line; user reported
 	// the previous Y=350 (feet ~590) had NPCs floating above the ground.
 	n := &npc{
-		bounds:         sdl.Rect{X: 300, Y: 440, W: 140, H: 240},
+		bounds:         sdl.Rect{X: 300, Y: 400, W: 135, H: 230},
 		name:           "Madame Colette",
 		dialog:         frenchGuideDialog,
 		bobAmount:      0,
@@ -1004,7 +1055,7 @@ func newMuseumCurator(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/museum_curator.(png|json) is the
 	// preferred path; legacy per-sheet PNG loading stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 500, Y: 320, W: 130, H: 250},
+		bounds:         sdl.Rect{X: 500, Y: 320, W: 125, H: 240},
 		name:           "Curator Beaumont",
 		dialog:         museumCuratorDialog,
 		bobAmount:      0,
@@ -1040,7 +1091,7 @@ func newPierreArtist(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/pierre_artist.(png|json) is the
 	// preferred path; legacy per-row PNG slicing stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 880, Y: 440, W: 130, H: 240},
+		bounds:         sdl.Rect{X: 720, Y: 400, W: 126, H: 230},
 		name:           "Pierre",
 		dialog:         pierreArtistDialog,
 		bobAmount:      0,
@@ -1076,7 +1127,7 @@ func newGendarmeClaude(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/gendarme_claude.(png|json) is
 	// the preferred path; legacy per-row PNG slicing stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 1120, Y: 430, W: 120, H: 250},
+		bounds:         sdl.Rect{X: 1180, Y: 390, W: 115, H: 240},
 		name:           "Claude",
 		dialog:         gendarmeDialog,
 		bobAmount:      0,
