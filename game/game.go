@@ -696,7 +696,11 @@ func (g *Game) setupCampCallbacks() {
 			tex:     flowerTex,
 			srcW:    flowerW,
 			srcH:    flowerH,
-			bounds:  sdl.Rect{X: 180, Y: 456, W: 50, H: 50},
+			// User 2026-05-19: bounds widened from 50×50 → 100×100 so the
+			// pickup feels findable. Cursor change (in updateHover) +
+			// click hit-test both use these bounds, so the icon and
+			// action align across the full 100×100 patch.
+			bounds:  sdl.Rect{X: 150, Y: 440, W: 100, H: 100},
 			name:    "Flower",
 			visible: true,
 			onPickup: func() {
@@ -1362,10 +1366,23 @@ func (g *Game) Update(dt float64, mx, my int32) {
 
 	if !g.monologuePlayed && g.sceneMgr.currentName == "camp_entrance" && !g.sceneMgr.transitioning {
 		g.monologuePlayed = true
-		g.player.state = stateTalking
-		g.player.dir = dirDown
-		g.dialog.startDialogWithCallback(openingMonologue, func() {
-			g.player.state = stateIdle
+		// User 2026-05-18: drive the walk-in via a dedicated tween
+		// (`playWalkIn`) instead of the moving/allowOffscreen pipeline.
+		// The previous approach had PP set up with `moving=true`,
+		// `allowOffscreen=true`, but `player.update`'s "if !moving"
+		// branch was resetting allowOffscreen on subsequent frames in
+		// edge cases, leaving PP stuck off-screen until a click. The
+		// tween drives p.x/y directly and short-circuits the normal
+		// update pipeline (same pattern as `playRecede`).
+		startX := -float64(playerDstW)
+		endX := scene.spawnX - float64(playerDstW)/2
+		walkY := g.player.y
+		g.player.playWalkIn(startX, endX, walkY, 2.5, func() {
+			g.player.state = stateTalking
+			g.player.dir = dirDown
+			g.dialog.startDialogWithCallback(openingMonologue, func() {
+				g.player.state = stateIdle
+			})
 		})
 	}
 
@@ -1517,15 +1534,18 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	scene.drawAmbient(renderer, showAmbient)
 	scene.drawHotspots(renderer, g.ui.hoverName, g.mouseX, g.mouseY)
 
-	// Draw campfire animation in night scene
+	// Draw campfire animation in night scene. User 2026-05-19: scale
+	// 2.5 → 1.5 (fire was reading way too large vs the camp bg), anchor
+	// (622, 573) → (646, 598) — slight shift right + down so the fire
+	// sits on the actual fire-pit position in the camp_night.png art.
 	if g.sceneMgr.currentName == "camp_night" && len(g.campfireFrames) > 0 {
 		f := g.campfireFrames[g.campfireFrameIdx%len(g.campfireFrames)]
 		if f.tex != nil {
-			fireScale := 2.5
+			fireScale := 1.5
 			dstW := int32(float64(f.w) * fireScale)
 			dstH := int32(float64(f.h) * fireScale)
-			fireX := int32(622) - dstW/2
-			fireY := int32(573) - dstH
+			fireX := int32(646) - dstW/2
+			fireY := int32(615) - dstH
 			renderer.Copy(f.tex, nil, &sdl.Rect{X: fireX, Y: fireY, W: dstW, H: dstH})
 		}
 	}
@@ -1547,14 +1567,15 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 			idx := g.sleepingFrameIdx % len(frames)
 			f := frames[idx]
 			if f.tex != nil {
-				// User request 2026-04-17: PP sleeping was huge. 1.8 put
-				// him at ~2.5x the campfire; 1.1 lands him at a realistic
-				// size next to the fire at (622,573).
+				// User request 2026-04-17: PP sleeping was huge. 1.1 lands
+				// him at a realistic size next to the fire.
+				// User 2026-05-17: anchor (335, 591) → (335, 615) so the
+				// sleep+wake foot aligns with the new fire Y=615 anchor.
 				scale := 1.1
 				dstW := int32(float64(f.w) * scale)
 				dstH := int32(float64(f.h) * scale)
 				dstX := int32(335) - dstW/2
-				dstY := int32(591) - dstH
+				dstY := int32(615) - dstH
 				renderer.Copy(f.tex, nil, &sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH})
 			}
 		}

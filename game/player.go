@@ -116,6 +116,20 @@ type player struct {
 	recedeScale     float64
 	recedeOnDone    func()
 
+	// Walk-in tween (opening-cutscene PP entering from off-screen-left).
+	// Drives p.x directly each frame via lerp, bypassing the moving /
+	// allowOffscreen / clamp machinery so the engine can't shove PP back
+	// on-screen mid-walk. Side-walk frames cycle exactly like the
+	// recede tween. On completion, walkInOnDone fires (typically starts
+	// the opening monologue).
+	walkInActive   bool
+	walkInStartX   float64
+	walkInEndX     float64
+	walkInY        float64
+	walkInDuration float64
+	walkInElapsed  float64
+	walkInOnDone   func()
+
 	// One-shot named animations triggered by the sequence player. While
 	// activeOneShot != "" the player draws frames from oneShotAnims[name]
 	// instead of the state-based idle/walk/talk cycle. Used for the
@@ -169,7 +183,7 @@ func newPlayer(renderer *sdl.Renderer) *player {
 
 	p.walkSideFrames = gridFramesRow(renderer, "assets/images/player/PP walk left.png", 8, 2, 0)
 	p.walkDownFrames = gridFramesRow(renderer, "assets/images/player/PP walk front.png", 8, 2, 0)
-	p.walkUpFrames = gridFramesRow(renderer, "assets/images/player/PP walk back.png", 8, 2, 0)
+	p.walkUpFrames = gridFrames(renderer, "assets/images/player/PP walk back.png", 8, 2)
 
 	// Idle images — use all frames for animated idle
 	p.idleFrontFrames = gridFrames(renderer, "assets/images/player/PP idle front.png", 8, 2)
@@ -474,6 +488,33 @@ func (p *player) playRecede(dur, endScale, dyUp float64, onDone func()) {
 	p.onArrival = nil
 }
 
+// playWalkIn lerps PP horizontally from startX to endX at fixed y over
+// `dur` seconds, with the side-walk frames cycling. Used for the opening
+// "PP enters camp from off-screen-left" cutscene. Drives position
+// directly so it's immune to the clamp / blocker / setTarget machinery.
+// On completion, fires `onDone` (typically the monologue start).
+func (p *player) playWalkIn(startX, endX, y, dur float64, onDone func()) {
+	if dur <= 0 {
+		dur = 2.0
+	}
+	p.walkInActive = true
+	p.walkInStartX = startX
+	p.walkInEndX = endX
+	p.walkInY = y
+	p.walkInDuration = dur
+	p.walkInElapsed = 0
+	p.walkInOnDone = onDone
+	p.x = startX
+	p.y = y
+	p.dir = dirRight
+	p.facingLeft = false
+	p.state = stateWalking
+	p.moving = false
+	p.allowOffscreen = false
+	p.interactTarget = nil
+	p.onArrival = nil
+}
+
 func (p *player) walkToExit(dir arrowDir, action func()) {
 	p.targetY = engine.Clamp(p.y, p.minY(), p.maxY())
 	switch dir {
@@ -602,6 +643,39 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 			p.recedeScale = p.recedeEndScale
 			if cb := p.recedeOnDone; cb != nil {
 				p.recedeOnDone = nil
+				cb()
+			}
+		}
+		return
+	}
+
+	// Walk-in tween (opening cutscene). Drives p.x directly via lerp +
+	// cycles the side-walk frames. Short-circuits the rest of update so
+	// the normal moving/clamp/blocker pipeline can't fight it (the same
+	// pattern used by playRecede above).
+	if p.walkInActive {
+		p.walkInElapsed += dt
+		t := p.walkInElapsed / p.walkInDuration
+		if t > 1 {
+			t = 1
+		}
+		p.x = p.walkInStartX + (p.walkInEndX-p.walkInStartX)*t
+		p.y = p.walkInY
+
+		p.walkTimer += dt
+		if p.walkTimer >= walkFrameTime {
+			p.walkTimer -= walkFrameTime
+			frames := p.currentWalkFrames()
+			if len(frames) > 0 {
+				p.walkCycleIdx = (p.walkCycleIdx + 1) % len(frames)
+			}
+		}
+
+		if t >= 1 {
+			p.walkInActive = false
+			p.state = stateIdle
+			if cb := p.walkInOnDone; cb != nil {
+				p.walkInOnDone = nil
 				cb()
 			}
 		}

@@ -51,7 +51,7 @@
       "id": "rome",
       "name": "Rome",
       "scene": "rome_street",
-      "pinX": 730, "pinY": 330,
+      "pinX": 730, "pinY": 280,
       "unlocked": false,
       "facts": [
         "The Eternal City, capital of Italy.",

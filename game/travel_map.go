@@ -93,13 +93,15 @@ func newTravelMap(renderer *sdl.Renderer) *travelMap {
 		tm.locations = locs
 	}
 
-	// Load landmark textures. SafeTextureFromPNGRaw preserves alpha from the
-	// source PNG and does NOT run the corner-sample color-key, which was
-	// eating pale colors inside landmarks (Eiffel steel, colosseum stone).
-	// Landmark PNGs are authored with transparent backgrounds already.
+	// Load landmark textures. User 2026-05-19: swapped from
+	// SafeTextureFromPNGRaw to SafeTextureFromPNGKeyed because the user
+	// hand-edited the landmark PNGs to have a solid white background.
+	// The Keyed loader runs the corner-sample color-key, lifting the
+	// white BG transparent at load. Already-transparent PNGs still
+	// work — the color-key is a no-op when corners are alpha=0.
 	for i := range tm.locations {
 		if tm.locations[i].landmarkPath != "" {
-			tex, w, h := engine.SafeTextureFromPNGRaw(renderer, tm.locations[i].landmarkPath)
+			tex, w, h := engine.SafeTextureFromPNGKeyed(renderer, tm.locations[i].landmarkPath)
 			if tex != nil {
 				tex.SetBlendMode(sdl.BLENDMODE_BLEND)
 				tm.locations[i].landmarkTex = tex

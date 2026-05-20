@@ -13,13 +13,12 @@
     {"type": "player_sleep", "hide": true},
     {"type": "wait", "seconds": 3.0},
     {"type": "dialog", "dialog": [
-      {"speaker": "Marcus", "text": "*from Marcus's cabin, muffled* No no no... the lines won't stop..."},
-      {"speaker": "Marcus", "text": "A GLASS PYRAMID! The building is ENORMOUS!"},
-      {"speaker": "Marcus", "text": "The painting is WRONG! Something is MISSING!"},
-      {"speaker": "Pink Panther", "text": "*sleepily* Marcus...? That doesn't sound right..."}
+      {"speaker": "", "text": " No no no... the lines won't stop..."},
+      {"speaker": "", "text": "A GLASS PYRAMID! The building is ENORMOUS!"},
+      {"speaker": "", "text": "The painting is WRONG! Something is MISSING!"}
     ]},
-    {"type": "player_sleep", "hide": false},
     {"type": "hide_player", "hide": true},
+    {"type": "player_sleep", "hide": false},
     {"type": "scene_bg", "scene": "marcus_room", "bg": "night"},
     {"type": "npc_strange", "scene": "marcus_room", "npc": "Marcus", "strange": true},
     {"type": "npc_hidden", "scene": "marcus_room", "npc": "Marcus", "hide": false},

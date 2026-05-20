@@ -157,6 +157,95 @@ func applyColorKeyTol(img *image.NRGBA, matchTol uint8) {
 	}
 }
 
+// applyColorKeyConnectedTol removes only background-colored pixels connected
+// to the image edge. This keeps enclosed whites, such as cartoon eye whites,
+// from being treated as background.
+func applyColorKeyConnectedTol(img *image.NRGBA, matchTol uint8) {
+	b := img.Bounds()
+	midX := (b.Min.X + b.Max.X) / 2
+	midY := (b.Min.Y + b.Max.Y) / 2
+
+	samples := []color.NRGBA{
+		img.NRGBAAt(b.Min.X, b.Min.Y),
+		img.NRGBAAt(b.Max.X-1, b.Min.Y),
+		img.NRGBAAt(b.Min.X, b.Max.Y-1),
+		img.NRGBAAt(b.Max.X-1, b.Max.Y-1),
+		img.NRGBAAt(b.Min.X+1, b.Min.Y),
+		img.NRGBAAt(b.Min.X, b.Min.Y+1),
+		img.NRGBAAt(midX, b.Min.Y),
+		img.NRGBAAt(b.Min.X, midY),
+	}
+
+	var bgColors []color.NRGBA
+	const dedupTol = 5
+	for _, s := range samples {
+		if s.A < 200 {
+			continue
+		}
+		dup := false
+		for _, bg := range bgColors {
+			if absDiffU8(s.R, bg.R) <= dedupTol && absDiffU8(s.G, bg.G) <= dedupTol && absDiffU8(s.B, bg.B) <= dedupTol {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			bgColors = append(bgColors, s)
+		}
+	}
+	if len(bgColors) == 0 {
+		return
+	}
+
+	matchesBG := func(c color.NRGBA) bool {
+		if c.A < 200 {
+			return false
+		}
+		for _, bg := range bgColors {
+			if absDiffU8(c.R, bg.R) <= matchTol && absDiffU8(c.G, bg.G) <= matchTol && absDiffU8(c.B, bg.B) <= matchTol {
+				return true
+			}
+		}
+		return false
+	}
+
+	w := b.Dx()
+	h := b.Dy()
+	seen := make([]bool, w*h)
+	stack := make([]image.Point, 0, 2*w+2*h)
+	push := func(x, y int) {
+		if x < b.Min.X || x >= b.Max.X || y < b.Min.Y || y >= b.Max.Y {
+			return
+		}
+		idx := (y-b.Min.Y)*w + (x - b.Min.X)
+		if seen[idx] || !matchesBG(img.NRGBAAt(x, y)) {
+			return
+		}
+		seen[idx] = true
+		stack = append(stack, image.Point{X: x, Y: y})
+	}
+
+	for x := b.Min.X; x < b.Max.X; x++ {
+		push(x, b.Min.Y)
+		push(x, b.Max.Y-1)
+	}
+	for y := b.Min.Y + 1; y < b.Max.Y-1; y++ {
+		push(b.Min.X, y)
+		push(b.Max.X-1, y)
+	}
+
+	transparent := color.NRGBA{0, 0, 0, 0}
+	for len(stack) > 0 {
+		p := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		img.SetNRGBA(p.X, p.Y, transparent)
+		push(p.X+1, p.Y)
+		push(p.X-1, p.Y)
+		push(p.X, p.Y+1)
+		push(p.X, p.Y-1)
+	}
+}
+
 func absDiffU8(a, b uint8) uint8 {
 	if a > b {
 		return a - b
@@ -586,11 +675,12 @@ func eraseGridLines(img *image.NRGBA, cols, rows int) {
 }
 
 // SpriteGridFromPNGClean loads a PNG grid and cleans it thoroughly:
-// 1. Removes the white/solid background via color-key sampling.
-// 2. Detects and erases horizontal/vertical grid-lines between cells.
-// 3. Trims each cell by `inset` pixels to drop any leftover seam.
-// 4. Slices the image into [rows][cols] GridFrames with fixed cell sizes so
-//    frame-to-frame Y positions stay stable (no apparent floating).
+//  1. Removes the white/solid background via color-key sampling.
+//  2. Detects and erases horizontal/vertical grid-lines between cells.
+//  3. Trims each cell by `inset` pixels to drop any leftover seam.
+//  4. Slices the image into [rows][cols] GridFrames with fixed cell sizes so
+//     frame-to-frame Y positions stay stable (no apparent floating).
+//
 // Use inset=2 for typical AI-generated sheets with visible gridlines; inset=0
 // for already-clean sheets.
 func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
@@ -599,6 +689,45 @@ func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows,
 		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
 	}
 	applyColorKey(img)
+	eraseGridLines(img, cols, rows)
+
+	bounds := img.Bounds()
+	cellW := bounds.Dx() / cols
+	cellH := bounds.Dy() / rows
+
+	grid := make([][]GridFrame, rows)
+	for r := 0; r < rows; r++ {
+		grid[r] = make([]GridFrame, cols)
+		for c := 0; c < cols; c++ {
+			cellRect := image.Rect(
+				bounds.Min.X+c*cellW+inset,
+				bounds.Min.Y+r*cellH+inset,
+				bounds.Min.X+(c+1)*cellW-inset,
+				bounds.Min.Y+(r+1)*cellH-inset,
+			)
+			if cellRect.Max.X <= cellRect.Min.X || cellRect.Max.Y <= cellRect.Min.Y {
+				cellRect = image.Rect(
+					bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
+					bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
+				)
+			}
+			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+		}
+	}
+
+	return grid
+}
+
+// SpriteGridFromPNGCleanConnected is like SpriteGridFromPNGClean, but removes
+// only background-colored pixels connected to the image edge. Use it for
+// character sheets whose eye whites or teeth match the white background.
+func SpriteGridFromPNGCleanConnected(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+	}
+	applyColorKeyConnectedTol(img, 8)
 	eraseGridLines(img, cols, rows)
 
 	bounds := img.Bounds()

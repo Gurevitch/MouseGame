@@ -12,7 +12,8 @@
     {"bounds": {"x": 0, "y": 400, "w": 200, "h": 360}, "targetScene": "camp_grounds", "name": "Back to Camp", "arrow": "downRight"}
   ],
   "blockers": [
-    {"x": 500, "y": 0, "w": 900, "h": 360}
+    {"x": 500, "y": 0, "w": 900, "h": 360},
+    {"x": 950, "y": 480, "w": 450, "h": 200}
   ],
   "walkSegments": []
 }

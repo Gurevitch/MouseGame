@@ -227,3 +227,4 @@ Each kid follows the same pattern:
 | Rio de Janeiro | Tommy | Not yet implemented |
 | Buenos Aires | Tommy | Not yet implemented |
 | Mexico City | Secret | Not yet implemented |
+| Stonehenge / London countryside | TBD | **Planned** — inspired by the PtP "part 3" clip ending (PP flies from London to a stone circle for a druid puzzle). Use as a side destination or a step inside the Jerusalem/Tokyo chain. Authoring workflow lives at `docs/SKILL.md §4a`. |

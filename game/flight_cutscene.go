@@ -32,9 +32,10 @@ const flightFrameIntervalSeconds = 0.12
 // pp_airplane sheet. User 2026-05-12: the real layout is **6 cols × 2
 // rows** (12 frames, 295×443 each on the 1774×887 sheet). Previously
 // loaded as 4×3 which cropped half-of-frame + half-of-next per cell so
-// the plane rendered mis-aligned.
+// the plane rendered mis-aligned. Do not apply spriteInset here: this sheet
+// has no cell grid lines, and trimming each edge clips the propeller/tail.
 func loadAirplaneFrames(renderer *sdl.Renderer) []npcFrame {
-	grid := engine.SpriteGridFromPNGClean(renderer, "assets/images/player/pp_airplane.png", 6, 2, spriteInset)
+	grid := engine.SpriteGridFromPNGClean(renderer, "assets/images/player/pp_airplane.png", 6, 2, 0)
 	var frames []npcFrame
 	for r := 0; r < len(grid); r++ {
 		for c := 0; c < len(grid[r]); c++ {

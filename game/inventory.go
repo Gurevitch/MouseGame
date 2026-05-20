@@ -124,8 +124,12 @@ func (inv *inventory) handleClick(x, y int32) bool {
 	}
 
 	if len(inv.items) > 1 {
-		leftCut := int32(float64(invOvalW) * 0.20)
-		rightCut := int32(float64(invOvalW) * 0.20)
+		// User 2026-05-17: cuts tightened 0.20 → 0.10. With center at 700
+		// and oval 720 wide, the prev region is now x < 628 (was 556) and
+		// next is x > 772 (was 844). Wider prev/next bands, narrower
+		// "pick the current item" center band — easier to flip through.
+		leftCut := int32(float64(invOvalW) * 0.10)
+		rightCut := int32(float64(invOvalW) * 0.10)
 		if x < cx-leftCut {
 			inv.selectedIdx--
 			if inv.selectedIdx < 0 {

@@ -1158,3 +1158,106 @@ something to fly through.
 
 After the PNG lands, the airplane flight cutscene auto-uses it via
 `assets/data/scenes/airplane_flight.json` — no code changes.
+
+---
+
+## §NEW: Kid walk-away sheets (Tommy + Jake)
+
+After PP finishes talking to a Day-1 camp kid, the kid walks out of the
+scene so PP doesn't end up surrounded by a static cluster. **This pass:
+Tommy walks left (out toward the lake path), Jake walks up-into-frame
+toward his cabin door.** Danny right-bottom is queued for a later pass.
+
+Both sheets are full body, side / 3⁄4 angle, **no white on the
+character** (matches the `feedback_no_white_in_prompts.md` rule — the
+engine's color-key strips white and would erase any white shirt detail
+along with the BG). Background is plain pure-white `#FFFFFF` (engine
+color-keys it on load).
+
+Style lock: cartoon outlines, flat fills, **no pixel art**, no
+gradients. Match the existing Tommy / Jake idle sheets at
+`assets/images/locations/camp/npc/kids/{tommy,jake}/*_idle.png` —
+same head shape, same outline weight, same palette.
+
+### §20 Tommy walk-left
+
+**Path:** `assets/images/locations/camp/npc/kids/tommy/npc_tommy_walk_left.png`
+**Grid:** 8 columns × 1 row, **each cell 172 wide × 384 tall**
+(sheet 1376×384).
+
+> Cartoon child, exactly the same character as in
+> `npc_tommy_idle.png` — tan skin, tousled medium-brown hair, GREEN
+> short-sleeved t-shirt with a small pine-tree silhouette on the
+> chest, NAVY-blue rolled-cuff jeans, BAREFOOT. Slim 8-year-old build,
+> friendly excitable face, dimples. **Do not redesign him — match the
+> idle sheet exactly.** Cartoon outlines, flat fills, NO pixel art,
+> NO gradients.
+>
+> 8-frame walk-cycle strip, view from the SIDE, **facing LEFT** (he
+> is leaving the scene toward the left edge). Each cell shows the
+> same character in a different step of a natural walk cycle:
+> 1. Right foot forward, left foot back (contact pose)
+> 2. Right knee bent, body rising over right foot (down pose)
+> 3. Right leg straight, body at peak height (passing pose)
+> 4. Left foot lifting, right pushing off (high pose)
+> 5. Left foot forward, right foot back (contact mirror)
+> 6. Left knee bent, body rising over left foot
+> 7. Left leg straight, body at peak height
+> 8. Right foot lifting, left pushing off
+>
+> Arms swing in opposition to legs. Hair has subtle motion — slight
+> trailing tilt opposite to the walk direction. Eyes looking forward
+> (to the left). Slight forward lean to read as "walking away."
+>
+> Strict colors matching the idle sheet — green tee `#5BA84A`, navy
+> jeans `#2B3A5C`, tan skin `#E0B894`, BLACK outlines. NO white pixels
+> on the character (the eye whites in idle are off-white `#F3E9DE`
+> already — preserve that). Pine-tree chest motif is a small darker-
+> green silhouette. Background is solid pure white `#FFFFFF` (engine
+> strips it).
+
+### §21 Jake walk-up (back-walk toward his cabin)
+
+**Path:** `assets/images/locations/camp/npc/kids/jake/npc_jake_walk_back.png`
+**Grid:** 8 columns × 1 row, **each cell 172 wide × 384 tall**
+(sheet 1376×384).
+
+> Cartoon child, exactly the same character as in `npc_jake_idle.png`
+> — peach-tan skin with light freckles, RED baseball cap worn
+> straight, NAVY t-shirt, mid-blue rolled-cuff jeans, scuffed brown
+> ankle sneakers. Stocky 9-year-old build, slightly tough/proud
+> expression. **Do not redesign — match idle exactly.** Cartoon
+> outlines, flat fills, NO pixel art, NO gradients.
+>
+> 8-frame walk-cycle strip, view from BEHIND (back of head and
+> shoulders facing the camera). Jake is walking **UP into the frame**
+> (away from camera, toward his cabin door). Cell sequence is a
+> standard back-walk cycle — same contact / down / passing / high
+> beats as a side walk, but the body silhouette is now back-of-head
+> + back-of-shoulders + heels lifting alternately. Hat brim visible
+> in profile silhouette. Shoulders shift left/right with each step.
+>
+> Strict colors matching the idle sheet — red cap `#C53A2C`, navy
+> tee `#1F2D4E`, mid-blue jeans `#4A6FA0`, brown sneakers `#7A4E2B`,
+> BLACK outlines. NO white pixels on the character. Background is
+> solid pure white `#FFFFFF`.
+
+### Wiring after the sheets land
+
+Both sheets are loaded as `oneShotAnims["walk_away"]` on Tommy / Jake
+respectively. The kid factory in [game/npc.go](game/npc.go) registers
+them on construction; the `onDialogEnd` callback in
+`setupCampCallbacks` ([game/game.go](game/game.go)) plays the one-shot
+and translates the NPC's `bounds.X / bounds.Y` over the anim duration
+so the kid visibly walks off:
+
+- **Tommy** — one-shot for ~2.5 s while `bounds.X` lerps from his
+  authored 130 to −180 (off-screen left). At the end, set
+  `n.hidden = true` so he doesn't pop back on re-entry.
+- **Jake** — one-shot for ~2.0 s while `bounds.Y` lerps from 405 to
+  220 (up into the cabin doorway band). Set `n.hidden = true` at
+  the end.
+
+Both `hidden` flips can be reverted by the Day 2 trigger if we want
+them back in their rooms; track in FIXME for the wire-up PR after the
+PNGs land.

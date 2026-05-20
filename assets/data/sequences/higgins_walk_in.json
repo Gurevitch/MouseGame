@@ -1,16 +1,11 @@
 {
   "id": "higgins_walk_in",
+  "_comment": "User 2026-05-18: removed the auto-dialog step at the end — Higgins arrives and waits silently. PP must CLICK on him to trigger his hint dialog (higginsLilyHintDialog, set on the grounds Higgins factory). The npc_hidden step's un-hide also flips silent=false so he's clickable.",
   "steps": [
     {"type": "npc_teleport", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1266, "y": 750},
     {"type": "npc_hidden", "scene": "camp_grounds", "npc": "Director Higgins", "hide": false},
     {"type": "npc_anim", "scene": "camp_grounds", "npc": "Director Higgins", "anim": "walk_back"},
-    {"type": "npc_move", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1058, "y": 640, "seconds": 3.0},
-    {"type": "npc_anim", "scene": "camp_grounds", "npc": "Director Higgins", "anim": "idle"},
-    {"type": "wait", "seconds": 0.3},
-    {"type": "dialog", "dialog": [
-      {"speaker": "Director Higgins", "text": "Psst — counselor! She barely speaks unless someone brings her a flower."},
-      {"speaker": "Director Higgins", "text": "Try the lake. There's a patch of daisies by the shore."},
-      {"speaker": "Pink Panther", "text": "Thanks, Director. The lake it is."}
-    ]}
+    {"type": "npc_move", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1058, "y": 580, "seconds": 3.0},
+    {"type": "npc_anim", "scene": "camp_grounds", "npc": "Director Higgins", "anim": "idle"}
   ]
 }

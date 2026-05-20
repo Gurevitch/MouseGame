@@ -60,6 +60,7 @@ Minimum JSON:
   "background": "assets/images/locations/foo/background/my_scene.png",
   "spawnX": 700, "spawnY": 600,
   "characterScale": 1.0,
+  "musicPath": "assets/audio/music/foo.mp3",
   "npcs": ["npc_id_from_atlas"],
   "hotspots": [{"name":"door","bounds":{"x":0,"y":0,"w":100,"h":100},"targetScene":"other_scene","arrow":"left"}],
   "blockers": [{"x":0,"y":700,"w":1400,"h":100}],
@@ -70,10 +71,58 @@ Minimum JSON:
 Then **register it** in `scene.go` — find the block of `sm.loadSceneFromJSON(renderer, sceneDefs, "...")` calls (~`scene.go:230` onward) and add a line for the new scene name.
 
 Conventions:
-- `characterScale` 0.85 for cabin interiors, 0.9 for offices, 1.0 for outdoor scenes.
-- `spawnY` should sit on the visual ground line; ground line is usually y≈600 in 1400×800 scenes.
+- `characterScale` 1.0 for everything post-2026-05-12 rebalance (the old 0.85 cabin / 0.9 office shrink fudges are gone — see CHARACTERS.md).
+- `spawnY` should sit so PP's foot lands on the visual ground line. PP H = 270, so `spawnY` = (ground line Y) − 270. The scene transition clamps spawnY against `playerMinY/playerMaxY` (or scene-specific `minY/maxY` if set), so a too-low spawn auto-corrects.
 - `walkSegments` define the horizontal corridors PP can stand on. Without them PP can't move.
 - Place a `blocker` rect across any visual obstacle to prevent walk-through.
+- `musicPath` — set the canonical path even before the MP3 exists (`audioManager.playMusic` no-ops silently on missing files).
+
+### 4a. Adding a NEW DESTINATION (travel-map pin + scene + story flag)
+
+When the new scene is reachable from the travel map (Stonehenge,
+Buenos Aires, Mexico City — anything PP flies to), the work is bigger
+than a single JSON. Five layers:
+
+1. **Background art** — paint at 1400×800, transparent characters
+   layer NOT included (NPCs render on top at runtime). Drop at
+   `assets/images/locations/<region>/background/<scene>.png`.
+
+2. **Scene JSON** — minimum template above. Place at
+   `assets/data/scenes/<scene>.json` and register the load call in
+   `game/scene.go:newSceneManager` next to the existing `paris_*`
+   loads. `name` field MUST match the registration string.
+
+3. **Travel-map pin + landmark** — append a location entry to
+   `assets/data/travel_map.json` with:
+   - `id`, `name`, `scene` (matches the scene JSON `name`)
+   - `pinX`, `pinY` (map coords — check existing pins to avoid the
+     90×110 hit-rect overlap, see Rome/Jerusalem near-miss fix)
+   - `unlocked: false`
+   - `facts: [...]` — 2–3 paragraph strings for the info popup
+   - `landmark` — path to a transparent-BG PNG (run
+     `tools/clean_landmarks.py` to color-key the white if needed)
+   - `audio` — voice-clip path (leave empty until recorded)
+   - `relevantWhen` — gate expression like
+     `vars.game.<region>_unlocked == 1 && vars.game.<kid>_healed == 0`
+
+4. **NPCs for the scene** — add factories in `game/npc.go` (e.g.
+   `newStonehengeDruid(renderer)`), register their atlas under
+   `assets/sprites/<region>/<name>.{png,json}` via
+   `tools/pack_atlas.py`, and list their ids in the scene JSON's
+   `npcs` array. Talk + idle dialogs follow the existing
+   `parisGuideDialog` shape.
+
+5. **Story flags + setup callback** — add a `setupStonehengeCallbacks`
+   in `game/<region>.go` (see `game/rome.go`, `game/jerusalem.go` for
+   the pattern). Wire onDialogEnd handlers that set vars and toggle
+   pins in `vars` for the `relevantWhen` chain.
+
+Verification: F1 → dev menu chapter-jump to the new region. PP arrives,
+NPCs render at the correct foot line, talk works, story flag flips.
+
+**Tracked want:** Stonehenge specifically (per the PtP "part 3" clip
+ending — PP flies from London to Stonehenge for a druid puzzle). When
+the art lands, follow the 5-step flow above.
 
 ## 5. Adding a sequence (multi-phase cutscene)
 

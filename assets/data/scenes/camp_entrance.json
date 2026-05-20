@@ -1,7 +1,7 @@
 {
   "name": "camp_entrance",
   "background": "assets/images/locations/camp/background/camp_entrance.png",
-  "spawnX": 500,
+  "spawnX": 580,
   "spawnY": 535,
   "minY": 365,
   "maxY": 530,

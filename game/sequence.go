@@ -247,6 +247,18 @@ func (sp *SequencePlayer) executeStep() {
 			sp.game.sleepingFrameIdx = 0
 			sp.game.sleepingTimer = 0
 			sp.game.wakingPhase = 0
+		} else if sp.game.player != nil {
+			// User 2026-05-17: when the sleep overlay turns off (waking
+			// complete), snap PP's coords to the sleep anchor (335, 615)
+			// so the normal idle/walk path picks up at the campfire
+			// position instead of wherever the player was before the
+			// sequence started. Foot at y=615 matches the sleep render.
+			sp.game.player.x = float64(335 - playerDstW/2)
+			sp.game.player.y = float64(615 - playerDstH)
+			sp.game.player.targetX = sp.game.player.x
+			sp.game.player.targetY = sp.game.player.y
+			sp.game.player.moving = false
+			sp.game.player.state = stateIdle
 		}
 		sp.nextStep()
 

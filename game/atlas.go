@@ -53,25 +53,25 @@ type AtlasSheet struct {
 // AtlasAnimation is a named animation strip inside an atlas: frame rectangles
 // plus playback speed.
 type AtlasAnimation struct {
-	Name    string
-	FPS     float64
-	FrameW  int32
-	FrameH  int32
-	Frames  []sdl.Rect
-	sheet   *AtlasSheet
+	Name   string
+	FPS    float64
+	FrameW int32
+	FrameH int32
+	Frames []sdl.Rect
+	sheet  *AtlasSheet
 }
 
 // atlasJSON matches the on-disk schema emitted by pack_atlas.py.
 type atlasJSON struct {
-	Image      string                     `json:"image"`
-	Animations map[string]atlasAnimJSON   `json:"animations"`
+	Image      string                   `json:"image"`
+	Animations map[string]atlasAnimJSON `json:"animations"`
 }
 
 type atlasAnimJSON struct {
-	FPS     float64         `json:"fps"`
-	FrameW  int32           `json:"frame_w"`
-	FrameH  int32           `json:"frame_h"`
-	Frames  []atlasFrameJSON `json:"frames"`
+	FPS    float64          `json:"fps"`
+	FrameW int32            `json:"frame_w"`
+	FrameH int32            `json:"frame_h"`
+	Frames []atlasFrameJSON `json:"frames"`
 }
 
 type atlasFrameJSON struct {
@@ -79,7 +79,9 @@ type atlasFrameJSON struct {
 }
 
 // LoadAtlas loads an atlas by base name (no extension), looking up
-//   assets/sprites/<name>.png and assets/sprites/<name>.json
+//
+//	assets/sprites/<name>.png and assets/sprites/<name>.json
+//
 // Subfolders inside assets/sprites/ are fine too: LoadAtlas(r, "paris/pierre")
 // resolves to assets/sprites/paris/pierre.png + .json.
 //
@@ -250,7 +252,9 @@ func (a *Animation) Tex() *sdl.Texture {
 // it, in which case the caller should fall back to legacy per-PNG loading.
 //
 // This is the one-call replacement for loadNPCGridKids + loadStrangeGridsKids:
-//   applyKidAtlas(renderer, n, "tommy")
+//
+//	applyKidAtlas(renderer, n, "tommy")
+//
 // covers what used to be 4 separate PNG loads.
 func applyKidAtlas(renderer *sdl.Renderer, n *npc, atlasName string) bool {
 	sheet := GetAtlas(renderer, atlasName)
@@ -292,7 +296,7 @@ func applyKidAtlasOrFallback(renderer *sdl.Renderer, n *npc, atlasName string) {
 		if _, err := os.Stat(path); err != nil {
 			return nil
 		}
-		return loadNPCGrid(renderer, path, 8, 2)
+		return loadNPCGridConnected(renderer, path, 8, 2)
 	}
 	n.idleGrid = loadIfExists(base + "_idle.png")
 	n.talkGrid = loadIfExists(base + "_talk.png")
@@ -310,7 +314,9 @@ func applyKidAtlasOrFallback(renderer *sdl.Renderer, n *npc, atlasName string) {
 // the freakout rows get wired.
 //
 // Atlas names for Paris live under the "paris/" subfolder:
-//   applyNPCAtlas(renderer, n, "paris/bakery_woman")
+//
+//	applyNPCAtlas(renderer, n, "paris/bakery_woman")
+//
 // resolves to assets/sprites/paris/bakery_woman.png + .json.
 func applyNPCAtlas(renderer *sdl.Renderer, n *npc, atlasName string) bool {
 	sheet := GetAtlas(renderer, atlasName)

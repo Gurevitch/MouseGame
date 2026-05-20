@@ -68,8 +68,8 @@ type npc struct {
 	// re-entry and save/load (closures would reset back to zero when
 	// setupCampCallbacks ran again).
 	hintState int
-	sm    *npcStateMachine   // optional state machine (named states: default/post/strange/post_strange)
-	rules []InteractionRule  // optional rule list for data-driven interactions (see npc_rules.go)
+	sm        *npcStateMachine  // optional state machine (named states: default/post/strange/post_strange)
+	rules     []InteractionRule // optional rule list for data-driven interactions (see npc_rules.go)
 	// game is a back-reference set by spawnNPCs so rule-driven NPCs can
 	// call g.fireTrigger without threading *Game through every handler.
 	// Not set for NPCs built via legacy callbacks — the rules slice stays
@@ -150,7 +150,6 @@ func (n *npc) setStrange(strange bool) {
 	n.animState = npcAnimIdle
 }
 
-
 // ===== Camp Chilly Wa Wa NPCs =====
 
 // npcSpriteInset matches the trim used for player sheets. Keeps cell seams
@@ -204,6 +203,11 @@ func loadNPCGridRow(renderer *sdl.Renderer, path string, cols, rows, row int) []
 // default tolerance — Higgins idle/talk are the canonical adult case.
 func loadNPCGridClean(renderer *sdl.Renderer, path string, cols, rows int) []npcFrame {
 	grid := engine.SpriteGridFromPNGCleanKids(renderer, path, cols, rows, npcSpriteInset)
+	return framesFromGrid(grid, cols, rows, path)
+}
+
+func loadNPCGridConnected(renderer *sdl.Renderer, path string, cols, rows int) []npcFrame {
+	grid := engine.SpriteGridFromPNGCleanConnected(renderer, path, cols, rows, npcSpriteInset)
 	return framesFromGrid(grid, cols, rows, path)
 }
 
@@ -291,13 +295,16 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 	// "adult NPC" row in CHARACTERS.md (PP is 170x235 for reference).
 	// Do not shrink below 200x260 or Higgins reads as a kid.
 	//
-	// Both sheets are clean single-row grids per PROMPTS.md:
-	//   idle: 7x1 at 172x384 per cell
+	// Both sheets are clean grids per PROMPTS.md:
+	//   idle: 6x1
 	//   talk: 6x1 (clipboard lowered, mouth open)
 	return &npc{
-		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
+		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 6, 1),
 		talkGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
-		bounds:         sdl.Rect{X: 660, Y: 390, W: 168, H: 220},
+		// User 2026-05-18: shifted X 660 → 760 so PP's walk-up-to-talk
+		// position lands clear of the left gate post / fence rail. PP
+		// resting spot (post walk-in) also shifted to keep the same gap.
+		bounds:         sdl.Rect{X: 760, Y: 390, W: 168, H: 220},
 		name:           "Director Higgins",
 		dialog:         higginsDefaultDialog,
 		bobAmount:      0,
@@ -312,14 +319,18 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	// characterScale 0.9 shaves the final render to ~200 which sits
 	// comfortably in the tight indoor shot.
 	n := &npc{
-		idleGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2, 0),
-		talkGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2),
+		idleGrid: loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2, 0),
+		talkGrid: loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2),
 		// User spec 2026-04-17: office Higgins top-left at (1062, 357),
 		// sitting behind the desk. Sized so head lands at ~y=357 and feet
 		// rest on the desk chair around y=640. 2026-05-12 (revised after
 		// screenshot showed NPCs dwarfing the bg): moderate scale instead
 		// of the full retro-proportion bump.
-		bounds:         sdl.Rect{X: 1062, Y: 360, W: 182, H: 235},
+		// User 2026-05-19: anchor at (1106, 480) per playtest — Higgins
+		// "sits" with his torso/head visible at this top-left. Foot now
+		// at y=715 (below PP foot max 665); PP walks up to him and
+		// stands in front of the desk.
+		bounds:         sdl.Rect{X: 1106, Y: 480, W: 182, H: 235},
 		name:           "Director Higgins",
 		dialog:         higginsWorriedDialog,
 		bobAmount:      0,
@@ -397,7 +408,9 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	// so Marcus matches PP's 270 height (he's the freakout-giant silhouette
 	// but the room-internal composition can't take him much bigger).
 	n := newMarcus(renderer)
-	n.bounds = sdl.Rect{X: 600, Y: 290, W: 187, H: 270}
+	// User 2026-05-19: Y 290 → 350 so Marcus's foot drops to y=620
+	// (cabin floor line) instead of mid-room.
+	n.bounds = sdl.Rect{X: 600, Y: 350, W: 187, H: 270}
 	// Hidden until the night freakout cutscene unhides him. Without this,
 	// peeking into Marcus's cabin on Day 1 already shows him there even
 	// though Day-1 Marcus belongs on the camp grounds.
@@ -858,18 +871,13 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 
 	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
 	renderer.CopyEx(frame.tex, frame.src, &dst, 0, nil, flip)
-	// Cache the actual on-screen rect so containsPoint can hit-test against
-	// the visible sprite (post-characterScale + aspect-preserve) instead of
-	// the looser n.bounds rect. Bounds stay design-time stable for layout
-	// math; lastDrawRect tracks what the user actually clicks on.
-	//
-	// User 2026-05-12: pad the hit-rect horizontally so clicks land easily
-	// on portrait-aspect sprites (which render at ~50-60% of bounds.W).
-	// Without this, kid sprites' visible columns are ~98 px wide inside
-	// 145-wide bounds — users complained Marcus/Danny were "hard to hit."
-	// Vertical pad stays 0 — the foot anchor is still meaningful.
-	const hitPadX int32 = 25
-	n.lastDrawRect = sdl.Rect{X: dstX - hitPadX, Y: dstY, W: dstW + 2*hitPadX, H: dstH}
+	// lastDrawRect tracks the actual visible sprite rect — used by the
+	// click probe (F2) for alpha-channel diagnostics. NOT used for the
+	// click hit-test anymore: containsPoint uses the authored bounds
+	// rect directly so the user's hover/click area matches the
+	// design-time NPC rect (post-rebalance bounds are tight enough to
+	// hug the visible character with a small forgiveness margin).
+	n.lastDrawRect = dst
 	n.lastDrawnFrame = frame
 	n.lastDrawnFlip = n.flipped
 }
@@ -877,16 +885,16 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 // containsPoint is used for both cursor hover (showing the "talk" icon) and
 // actual click detection. Keeping them unified means: wherever the cursor
 // shows "talk", a click always lands.
+//
+// User 2026-05-19: reverted to bounds-based hit-test. The previous
+// lastDrawRect approach narrowed the click area to the post-aspect-preserve
+// visible sprite (e.g. 98×175 inside a 145×175 bounds for kids), making
+// Marcus/Danny feel "edge-only clickable." Post-rebalance bounds are
+// already snug around the visible character with ~30 px of natural
+// forgiveness — using bounds directly gives the cursor + click area the
+// user expects.
 func (n *npc) containsPoint(x, y int32) bool {
-	// User 2026-04-26: hit-test the actual drawn rect (post-characterScale)
-	// instead of n.bounds. Indoor scenes shrink the sprite to 0.85-0.9× and
-	// the unscaled bounds rect made hover register on dead air around the
-	// character. lastDrawRect is set every frame in drawScaled; falls back
-	// to bounds if a frame hasn't been drawn yet (first-tick clicks).
 	pt := sdl.Point{X: x, Y: y}
-	if n.lastDrawRect.W > 0 && n.lastDrawRect.H > 0 {
-		return pt.InRect(&n.lastDrawRect)
-	}
 	return pt.InRect(&n.bounds)
 }
 

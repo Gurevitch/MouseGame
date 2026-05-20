@@ -1,6 +1,8 @@
 package game
 
 import (
+	"encoding/json"
+
 	"bitbucket.org/Local/games/PP/engine"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -20,6 +22,27 @@ type dialogEntry struct {
 	// no-ops on missing files so the entry doesn't break gameplay until
 	// voice files are authored.
 	audio string
+}
+
+// UnmarshalJSON lets dialog entries parse from JSON sequence files even
+// though the struct fields are unexported. Without this, `json.Unmarshal`
+// would silently skip every `"speaker"` / `"text"` JSON key (Go's reflect
+// can't write unexported fields), producing dialog steps with empty
+// strings — the root cause of "Marcus freakout dialog not showing" and
+// the Higgins post-Lily-shy dialog disappearing.
+func (d *dialogEntry) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Speaker string `json:"speaker"`
+		Text    string `json:"text"`
+		Audio   string `json:"audio"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	d.speaker = raw.Speaker
+	d.text = raw.Text
+	d.audio = raw.Audio
+	return nil
 }
 
 type dialogSystem struct {
