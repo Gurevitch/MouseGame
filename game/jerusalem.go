@@ -34,17 +34,17 @@ import (
 const (
 	// Eli kiosk owner — art vendor sheet (8x2 split idle/talk)
 	jerArtEli     = "assets/images/locations/jerusalem/npc/npc_eli_idle.png"
-	jerArtEliBack = "assets/images/locations/paris/npc/npc_art_vendor.png"
+	jerArtEliBack = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 
 	// Gary the tourist — we reuse the security guard sheet (6x2)
 	jerArtGary     = "assets/images/locations/jerusalem/npc/npc_gary_tourist.png"
-	jerArtGaryBack = "assets/images/locations/paris/npc/npc_security_guard.png"
+	jerArtGaryBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 
 	// Miriam the archeologist — French guide sheet layout
 	jerArtMiriamIdle     = "assets/images/locations/jerusalem/npc/npc_miriam_idle.png"
-	jerArtMiriamIdleBack = "assets/images/locations/paris/npc/npc_french_guide_idle.png"
+	jerArtMiriamIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
 	jerArtMiriamTalk     = "assets/images/locations/jerusalem/npc/npc_miriam_talk.png"
-	jerArtMiriamTalkBack = "assets/images/locations/paris/npc/npc_french_guide_talk.png"
+	jerArtMiriamTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
 
 	// Dov, a curious local kid — borrows the camp kid idle sheet (8x2)
 	jerArtDov     = "assets/images/locations/jerusalem/npc/npc_dov_idle.png"

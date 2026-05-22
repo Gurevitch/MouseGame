@@ -30,18 +30,18 @@ const (
 	// NPC art: each Tokyo local has a preferred path and a fallback that
 	// reuses an existing sheet with matching cols/rows.
 	tokArtHiroIdle     = "assets/images/locations/tokyo/npc/npc_hiro_idle.png"
-	tokArtHiroIdleBack = "assets/images/locations/paris/npc/npc_art_vendor.png"
+	tokArtHiroIdleBack = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 
 	tokArtKenjiIdle     = "assets/images/locations/tokyo/npc/npc_kenji_idle.png"
-	tokArtKenjiIdleBack = "assets/images/locations/paris/npc/npc_security_guard.png"
+	tokArtKenjiIdleBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 
 	tokArtObaIdle     = "assets/images/locations/tokyo/npc/npc_obachan_idle.png"
-	tokArtObaIdleBack = "assets/images/locations/paris/npc/npc_french_guide_idle.png"
+	tokArtObaIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
 	tokArtObaTalk     = "assets/images/locations/tokyo/npc/npc_obachan_talk.png"
-	tokArtObaTalkBack = "assets/images/locations/paris/npc/npc_french_guide_talk.png"
+	tokArtObaTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
 
 	tokArtGaryIdle     = "assets/images/locations/tokyo/npc/npc_gary_idle.png"
-	tokArtGaryIdleBack = "assets/images/locations/paris/npc/npc_security_guard.png"
+	tokArtGaryIdleBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 )
 
 var (

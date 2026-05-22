@@ -14,6 +14,33 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### Reported (2026-05-20) - sizes, sprites, story progression sweep
+
+- [~] `[P1]` Size re-audit: PP idle vs talk drawn at different visual sizes. FIXED engine-side compensations land via cell-size standardization in EXTRA_PROMPTS §A-§D regens. JSON bounds adjusted for Paris NPCs (Poulain Y 400→490, Nicolas 950/400→950/490 + W 106→86, Colette Y 400→490, Pierre to back-of-line, Claude Y 390→480, Marcus room Y 350→385, office Higgins X 1106→1091 / Y 480→365). PP talk/side/grab-flower canvas regen pending (art-only).
+- [ ] `[P1]` PP walk-the-line: PP foot is NEAR the camp path but not on it. **File:** `assets/data/scenes/camp_grounds.json` walkSegments + `game/player.go` foot anchor.
+- [ ] `[P1]` After PP talks to Tommy, Tommy should walk left off-scene. **File:** `game/game.go` Tommy post-dialog callback (line ~396). Prompt for `npc_tommy_walk.png` landed in EXTRA_PROMPTS §E; wire-up after PNG.
+- [ ] `[P1]` After PP talks to Jake, Jake should walk into his room. **File:** `game/game.go` Jake post-dialog callback (line ~297). Prompt for `npc_jake_walk.png` landed in EXTRA_PROMPTS §F; wire-up after PNG.
+- [ ] `[P1]` PP talk sprite shows two frames at once + one frame makes PP "jump". Regen prompts landed in EXTRA_PROMPTS §A (`PP talk front`) and §B (`PP talk side`). Art-only.
+- [x] `[P1]` Higgins walk-back too slow / not smooth. FIXED: swapped-idle frames now cycle at 0.10s (was 0.45s) in `game/npc.go:update`; `higgins_walk_in.json` move duration shortened 3.0→1.8s.
+- [~] `[P1]` Marcus talking and idle different sizes; talk two-frames-at-one. Engine reads `kids.json` 8×2 talk grid correctly; sheet regen to 7×2 (matching idle) tracked in EXTRA_PROMPTS §D. Art-only.
+- [ ] `[P1]` PP pick-flower sheet: two frames at one. Regen tracked in EXTRA_PROMPTS §C. Art-only.
+- [ ] `[P1]` After PP has flower, talking to Lily doesn't auto-give it. Needs `altDialogRequiresItem` wiring on Lily + `inv.giveItemTo` on dialog end. **File:** `game/npc.go` newLily + `game/game.go` setupCampCallbacks. Tracked for next pass.
+- [x] `[P1]` Higgins night "go to sleep" plays normal talk sprite instead of shout. FIXED: `npc_director_higgins_shout.png` now loaded as `oneShotAnims["shout"]` on newNightHiggins; `night_bedtime.json` swapped `anim: "talk"` → `anim: "shout"`.
+- [~] `[P1]` Marcus room cleanup. FIXED: Marcus moved down (Y 350→385); sleeping PP overlay gated to `camp_night` only (was leaking into marcus_room during transition). `_strange_alt` ambient hook tracked for next pass (`game/atlas.go` + npc inactivity timer).
+- [ ] `[P1]` PP exits his room walking through the table — add blocker. **File:** PP-bedroom scene json `blockers`. Need to identify which cabin scene the user means; deferred pending in-game check.
+- [x] `[P1]` Higgins office Higgins position wrong + PP on air. FIXED: office Higgins bounds (1091, 365) in `game/npc.go`; `camp_office.json` spawnY 365→480 + spawnX 150→220 so PP foot lands on the office floor.
+- [x] `[P1]` Camp-return arrow in office points down-right; should point left. FIXED: `camp_office.json` hotspot arrow `downRight` → `left`.
+- [ ] `[P1]` PP should talk to Higgins from farther; Higgins should throw map and PP should catch it. Plan + art prompts landed in EXTRA_PROMPTS §I (`npc_director_higgins_throw_map.png` + `pp_catch_map.png` + `inv_travel_map_throw.png`). New sequence + tween_item step type pending after PNGs. Current give_map sequence still plays as fallback.
+- [ ] `[P1]` Map item sprite not clear at all — regen. Tracked in EXTRA_PROMPTS §J (`travel_map_icon.png` regen). Art-only.
+- [ ] `[P2]` Unified action arrow design — single sprite used on PP-hover (inventory) and travel-map relevant pin. Plan + prompt landed in EXTRA_PROMPTS §K. Engine wiring pending after PNG.
+- [~] `[P1]` Airplane bounce. STOPGAP FIX: row-1 frames now lift -127px in `game/flight_cutscene.go` to compensate for in-cell Y drift; sheet regen with locked fuselage centerline tracked in EXTRA_PROMPTS §H. Once art lands, drop the offset block.
+- [x] `[P1]` Paris NPCs floating at y≈627. FIXED: Poulain, Nicolas, Colette, Claude all moved Y +90 in `game/npc.go` so feet land on the street floor (~y=720). Pierre placed back-of-line per Step 6 (Y=390 W=95 H=175).
+- [x] `[P1]` Madame Colette talk sheet two-frames-at-one. FIXED: `game/npc.go:1034` now loads talk as 8×2 (was 8×1); `paris.json` already declared 8×2 → engine + data now agree. PNG is genuinely 8 cells wide (1686/8=210).
+- [~] `[P2]` Pierre shrink + back-of-line. PARTIAL: Pierre bounds shrunk + moved back (820,390,95,175). PP's existing `depthScale` (driven by player.y) auto-shrinks PP when he walks up to Pierre. Smooth tween between scales is the engine default. Verify in playtest.
+- [~] `[P1]` Nicolas click opens map. FIXED: Nicolas hit-rect W shrunk 106→86 in `game/npc.go` so it no longer overlaps with the Louvre exit hotspot (x≥1300). Verify in playtest.
+- [~] `[P1]` Story progression: bakery lady + officer dialog stale. FIXED text + wiring: `higginsPostMarcusHealedDialog` plays in office once `marcusHealed=true` (points PP at Lily/Tokyo); `bakeryWomanLouvreSouvenirDialog` armed in Paris bakery callback once `marcusHealed=true` (asks for Louvre postcard for grandson). 8 missing item PNGs (postcard, baguette, rolling_pin, press_pass, coin_rubbing, pressed_sakura, dance_card, inscription_rubbing) tracked in EXTRA_PROMPTS §L.
+- [ ] `[P1]` Wire the 6 café patrons (Yvette, Bernard, Camille, Henri, Lucien, Élise) into `paris_bakery` as clickable flavor NPCs with idle+talk anims and short dialogs (each gives a hint as described in `docs/STORY.md` Paris bakery flow). Needs the 12 new patron sheets from EXTRA_PROMPTS §7.1–§7.6 first, then new NPC factories in `game/npc.go` + bounds in `paris_bakery.json`'s `npcs` list.
+
 ### Refactor: Phase 6 deferred (god-object collapse)
 
 These items are blocked on Phase 4b (rules evaluator) and Phase 5b (sequence

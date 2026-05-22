@@ -108,37 +108,187 @@ Use Travel Map (from inventory, click anywhere) --> Globe opens
 Click Paris --> [Airplane cutscene ~4 seconds, PP idle in plane] --> Fly to Paris
 ```
 
-## PARIS — The Louvre
+## PARIS — Marcus's Anchor (Louvre Postcard)
+
+Paris is a multi-step pre-Louvre puzzle: PP can't just walk into the
+museum, he has to assemble a press pass via three street NPCs first. This
+matches the retro PP "collect props before the main door opens" rhythm
+from *Hokus Pokus Pink* / *Passport to Peril* and gives the city its own
+mini-quest before the anchor-object reveal.
+
+### Cast (paris_street + paris_bakery + paris_louvre scenes)
+
+| NPC | Scene | Role |
+|-----|-------|------|
+| Madame Poulain | paris_bakery (interior) | Baker; gives baguette in trade for her lost rolling pin |
+| Pierre | paris_street (back of line, smaller in perspective) | Street artist; gives press pass in trade for baguette |
+| Gendarme Claude | paris_street (right side, near Louvre steps) | Police officer; gives museum ticket in trade for press pass |
+| Madame Colette | paris_street (left side) | Flavor guide; chats about Paris landmarks, points toward the museum |
+| Nicolas | paris_street (mid) | Flavor NPC; chatty photographer near the Louvre, no items |
+| Curator Beaumont | paris_louvre (interior) | Curator; identifies Marcus's painting, hands over the postcard |
+| Madame Yvette | paris_bakery (left table) | Flavor — camp gossip about the Marcus drawings |
+| Monsieur Bernard | paris_bakery (left table) | Flavor — newspaper headline about the museum restoration |
+| Mademoiselle Camille | paris_bakery (mid table) | Flavor — Pierre's pink-painting hint |
+| Monsieur Henri | paris_bakery (mid table) | Flavor — rolling-pin location hint ("near ze ovens") |
+| Lucien | paris_bakery (right table) | Flavor — foreshadows Lily / Tokyo arc |
+| Madame Élise | paris_bakery (right table) | Flavor — warm encouragement, no quest info |
+
+### Quest flow
 
 ```
-Paris Street (Eiffel Tower visible)
+[Airplane cutscene ~4 s, PP in biplane] -> Arrive paris_street
     |
     v
-Talk to Madame Colette (French cafe owner):
-  - Eiffel Tower: Built 1889, was temporary, Gustave Eiffel
-  - Louvre: Largest museum, 380,000 objects
+Talk to Madame Colette (flavor):
+  - Eiffel Tower: built 1889, was temporary, Gustave Eiffel
+  - Louvre: largest museum, 380,000 objects
   - Glass Pyramid: I.M. Pei, 1989
+  - Points: "Ze museum is to ze right, monsieur"
     |
-    v (arrow RIGHT)
+    v
+Talk to Pierre (flavor pre-baguette):
+  - Painting Pink Panthers on the easel
+  - Hint: "Ze Curator knows every face in Paris. Ask her."
     |
-Louvre Interior
+    v
+Talk to Nicolas (flavor):
+  - Photographer near the museum, 20 years on the street
+  - "Talk to Pierre ze painter and Claude ze gendarme"
+    |
+    v
+Try to enter Louvre (right arrow on paris_street)
+  -> GATED. Need: Museum Ticket.
+    |
+    v
+Enter paris_bakery (down/left arrow on paris_street)
+    |
+    v
+Talk to Madame Poulain (initial):
+  - She's lost her rolling pin
+  - "Find it and ze first baguette is yours"
+
+Café patrons seated around the bakery — flavor only, optional clicks
+(no `|/v` chain; player can hit any/all/none in any order before the
+rolling pin):
+
+  - Madame Yvette (beret + pearls, tea): camp gossip about Marcus's
+    drawings being seen at the museum
+  - Monsieur Bernard (bearded, *Le Figaro*): "Ze restorer found a
+    hidden symbol under ze portrait, did you read about it?"
+  - Mademoiselle Camille (red beret, art student): admires PP's
+    cartoon-pink coloring, hints Pierre paints the same hue
+  - Monsieur Henri (silver mustache, croissant): rolling-pin hint —
+    "I heard Poulain's pin roll past my shoe. Look near ze ovens."
+  - Lucien (gray turtleneck, espresso): mutters about strange dreams,
+    foreshadows Lily/Tokyo arc
+  - Madame Élise (auburn hair, autumn scarf): warm encouragement,
+    free recipe tip, no quest info
+
+Find rolling pin on bakery floor -> pick up
+    |
+    v
+Talk to Madame Poulain (alt dialog, holding Rolling Pin):
+  -> Trade Rolling Pin for Baguette
+  -> Inventory: -Rolling Pin, +Baguette
+  -> Poulain post-dialog: "Tell Pierre I send my regards"
+    |
+    v
+Back to paris_street -> Talk to Pierre (alt dialog, holding Baguette):
+  -> Trade Baguette for Press Pass
+  -> Inventory: -Baguette, +Press Pass
+    |
+    v
+Talk to Gendarme Claude (alt dialog, holding Press Pass):
+  -> Trade Press Pass for Museum Ticket
+  -> Inventory: -Press Pass, +Museum Ticket
+    |
+    v
+Right arrow on paris_street -> Enter paris_louvre (now ungated)
     |
     v
 Talk to Curator Beaumont:
   - Mona Lisa: Leonardo da Vinci, 1503
   - Venus de Milo: Greek, 100 BC
-  - Identifies Marcus's painting
-  - Gives postcard of the painting (anchor object)
+  - PP describes Marcus's drawings (woman's face, golden frames,
+    "something missing")
+  - Curator: "Zat sounds like ze portrait in Room 7"
+  - Gives postcard of the restored painting (ANCHOR OBJECT)
     |
     v
-[Use Travel Map --> Return to Camp]
-    |
-    v
+Use Travel Map -> Return to Camp Chilly Wa Wa
 ```
 
-- [ ] Give postcard to Marcus --> Marcus calms down
-- [ ] Marcus returns to normal sprite
-- [ ] Next kid starts showing strange behavior
+### Healing Marcus (back at camp)
+
+```
+Camp grounds, Day 2 (post-Paris)
+    |
+    v
+Walk to Marcus's cabin (arrow UP)
+    |
+    v
+Marcus in strange state, drawing endlessly
+    |
+    v
+Give Postcard to Marcus (use item on NPC):
+  - Marcus sees the complete painting
+  - Realizes what was "missing" was a hidden symbol
+  - Strange sprite swap OFF, normal sprite ON
+  - VarStore: marcusHealed = true
+  - Higgins office dialog pivots to "now Lily is the one I'm worried
+    about" (postMarcusHealed branch)
+    |
+    v
+Lily begins showing strange behavior (next chapter, see Tokyo)
+```
+
+### Return-to-Paris beat (post-Marcus-healed)
+
+User 2026-05-20: keep the city alive after PP heals Marcus. The bakery
+gains a new dialog when PP comes back to Paris:
+
+- Madame Poulain (`bakeryWomanLouvreSouvenirDialog`): asks PP to bring
+  her another Louvre postcard for her grandson in Lyon as a thank-you
+- Doesn't gate further quests — pure flavor / world-warmth beat
+- Triggered automatically when `marcusHealed == true` on next bakery
+  visit (see `setupParisCallbacks` in `game/game.go`)
+
+### Paris perspective polish (2026-05-20)
+
+- Pierre stands "back of line" in the street scene — smaller bounds
+  (~95×175 vs the 135×230 of front-line NPCs) so the street reads as
+  having depth
+- PP's existing `depthScale` (driven by player.y) automatically shrinks
+  PP as he walks up toward Pierre and restores his size as he walks
+  back, matching the retro perspective rule
+- All Paris NPCs feet anchored to street tile y≈720 (was floating
+  at y≈630 before)
+
+### Items used in this chapter
+
+| Item | Source | Used on | Result |
+|------|--------|---------|--------|
+| Rolling Pin | Bakery floor (pickup) | Madame Poulain | Trade for Baguette |
+| Baguette | Madame Poulain | Pierre | Trade for Press Pass |
+| Press Pass | Pierre | Gendarme Claude | Trade for Museum Ticket |
+| Museum Ticket | Gendarme Claude | Louvre door (auto-consume) | Unlocks museum |
+| Postcard | Curator Beaumont | Marcus (back at camp) | Heals Marcus |
+
+### Checklist (current status)
+
+- [x] Paris street + bakery + Louvre scenes all rendering
+- [x] Rolling-pin → baguette → press pass → museum ticket trade chain
+- [x] Louvre entrance gated on Museum Ticket
+- [x] Curator gives postcard
+- [x] Pierre moved back-of-line with depth scaling
+- [x] Madame Colette talk frames fixed (was reading 8×1 of an 8×2 sheet)
+- [x] Paris NPCs grounded at street tile y≈720
+- [x] Nicolas hit-radius shrunk so clicks don't bleed into Louvre exit
+- [x] Post-Marcus-healed bakery beat (postcard-for-grandson) wired
+- [ ] Give postcard to Marcus → Marcus calms down (Day 2 anchor handover wiring)
+- [ ] Marcus auto-swaps to normal sprite after postcard
+- [ ] Higgins office dialog confirmed to switch to postMarcusHealed branch in playtest
+- [ ] Lily begins showing strange behavior (next chapter trigger)
 
 ---
 

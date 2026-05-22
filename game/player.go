@@ -106,15 +106,15 @@ type player struct {
 	// recedeScale lerps from 1.0 to recedeEndScale. drawScaled multiplies
 	// recedeScale into the final draw rect. On completion, recedeOnDone
 	// fires (typically a sceneMgr.transitionTo).
-	recedeActive    bool
-	recedeStartX    float64
-	recedeStartY    float64
-	recedeEndScale  float64
-	recedeDyUp      float64
-	recedeDuration  float64
-	recedeElapsed   float64
-	recedeScale     float64
-	recedeOnDone    func()
+	recedeActive   bool
+	recedeStartX   float64
+	recedeStartY   float64
+	recedeEndScale float64
+	recedeDyUp     float64
+	recedeDuration float64
+	recedeElapsed  float64
+	recedeScale    float64
+	recedeOnDone   func()
 
 	// Walk-in tween (opening-cutscene PP entering from off-screen-left).
 	// Drives p.x directly each frame via lerp, bypassing the moving /
@@ -219,9 +219,9 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if len(receiveMap) > 0 {
 		p.oneShotAnims["receive_map"] = receiveMap
 	}
-	// "grab_flower" one-shot reuses the canonical PP grab.png (portrait
-	// cells matching idle aspect). Same change as p.grabFrames above.
-	grabFlower := gridFrames(renderer, "assets/images/player/PP grab.png", 8, 2)
+	// Dedicated six-frame flower pickup strip: neutral, crouch, reach, grab,
+	// stand holding low, stand holding chest-high.
+	grabFlower := gridFrames(renderer, "assets/images/player/PP grab flower.png", 6, 1)
 	if len(grabFlower) > 0 {
 		p.oneShotAnims["grab_flower"] = grabFlower
 	}
@@ -483,7 +483,7 @@ func (p *player) playRecede(dur, endScale, dyUp float64, onDone func()) {
 	p.dir = dirUp
 	p.facingLeft = false
 	p.state = stateWalking
-	p.moving = false      // movement is driven by the tween, not setTarget
+	p.moving = false // movement is driven by the tween, not setTarget
 	p.interactTarget = nil
 	p.onArrival = nil
 }

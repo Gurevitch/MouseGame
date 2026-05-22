@@ -89,7 +89,8 @@ func (f *flightCutscene) Draw(renderer *sdl.Renderer) {
 	if !f.Active() || len(f.frames) == 0 {
 		return
 	}
-	frame := f.frames[f.frameIdx%len(f.frames)]
+	idx := f.frameIdx % len(f.frames)
+	frame := f.frames[idx]
 	if frame.tex == nil {
 		return
 	}
@@ -97,9 +98,21 @@ func (f *flightCutscene) Draw(renderer *sdl.Renderer) {
 	bob := math.Sin(f.timer*2.0) * 8
 	dstW := int32(float64(frame.w) * scale)
 	dstH := int32(float64(frame.h) * scale)
+	// User 2026-05-20: pp_airplane is a 6×2 sheet where the row 1 cells
+	// have the plane drawn ~85px lower than row 0 within the same cell
+	// box. Without compensation, the plane bounces top-to-bottom as the
+	// animation cycles 0→11. Compensate by lifting row-1 frames (idx 6-11)
+	// up by the per-cell offset, scaled to render size. Final art regen
+	// (locking fuselage centerline per EXTRA_PROMPTS) will let us drop
+	// this table to all-zeros.
+	var rowYOffsetPx int32
+	if idx >= 6 {
+		v := 85.0 * float64(scale)
+		rowYOffsetPx = int32(v)
+	}
 	dst := sdl.Rect{
 		X: engine.ScreenWidth/2 - dstW/2,
-		Y: int32(float64(engine.ScreenHeight)/2 - float64(dstH)/2 + bob),
+		Y: int32(float64(engine.ScreenHeight)/2-float64(dstH)/2+bob) - rowYOffsetPx,
 		W: dstW,
 		H: dstH,
 	}

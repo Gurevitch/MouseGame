@@ -2,11 +2,11 @@
   "id": "night_bedtime",
   "steps": [
     {"type": "wait", "seconds": 0.6},
-    {"type": "npc_anim", "scene": "camp_night", "npc": "Director Higgins", "anim": "talk"},
+    {"type": "npc_anim", "scene": "camp_night", "npc": "Director Higgins", "anim": "shout"},
     {"type": "dialog", "dialog": [
       {"speaker": "Director Higgins", "text": "Ahem! It's getting very late, counselor."},
       {"speaker": "Director Higgins", "text": "All campers to their cabins. NOW."},
-      {"speaker": "Director Higgins", "text": "And you — get some rest by the fire. Big day tomorrow."},
+      {"speaker": "Director Higgins", "text": "And you Pink Panther, get some rest by the fire. Big day tomorrow."},
       {"speaker": "Pink Panther", "text": "Goodnight, Director."}
     ]},
     {"type": "npc_anim", "scene": "camp_night", "npc": "Director Higgins", "anim": "idle"},
@@ -24,10 +24,9 @@
     {"type": "npc_hidden", "scene": "marcus_room", "npc": "Marcus", "hide": false},
     {"type": "transition", "scene": "marcus_room"},
     {"type": "dialog", "dialog": [
-      {"speaker": "Marcus", "text": "I can't stop... the lines keep coming..."},
-      {"speaker": "Marcus", "text": "A woman's face... golden frames everywhere..."},
-      {"speaker": "Marcus", "text": "I have to draw it... I HAVE to draw it ALL!"},
-      {"speaker": "Pink Panther", "text": "*whispers* He's not even awake... Higgins needs to know."}
+      {"speaker": "", "text": "I can't stop... the lines keep coming..."},
+      {"speaker": "", "text": "A woman's face... golden frames everywhere..."},
+      {"speaker": "", "text": "I have to draw it... I HAVE to draw it ALL!"}
     ]},
     {"type": "hide_player", "hide": false},
     {"type": "player_sleep", "hide": true},

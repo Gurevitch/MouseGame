@@ -289,6 +289,18 @@ var higginsPostWorriedDialog = []dialogEntry{
 	{speaker: "Director Higgins", text: "Marcus is in the camp grounds. Start there."},
 }
 
+// higginsPostMarcusHealedDialog plays after Marcus has been healed by the
+// Louvre postcard. Points PP at the next sick kid (Lily / Tokyo) so the
+// older "go check on Marcus" line stops looping. User 2026-05-20.
+var higginsPostMarcusHealedDialog = []dialogEntry{
+	{speaker: "Director Higgins", text: "Marcus is finally sleeping. Good work, Panther."},
+	{speaker: "Director Higgins", text: "But now Lily is the one I'm worried about."},
+	{speaker: "Director Higgins", text: "She's arranging petals in strange patterns. Humming songs no one taught her."},
+	{speaker: "Director Higgins", text: "Bells, she keeps saying. Temple bells."},
+	{speaker: "Pink Panther", text: "That sounds like Tokyo."},
+	{speaker: "Director Higgins", text: "Then point the map east. The kids are counting on you."},
+}
+
 func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 	// Bounds sized to 200x265 so the aspect-preserve draw produces
 	// ~225-235 px of actual sprite on camp_entrance — matches the
@@ -330,7 +342,10 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// "sits" with his torso/head visible at this top-left. Foot now
 		// at y=715 (below PP foot max 665); PP walks up to him and
 		// stands in front of the desk.
-		bounds:         sdl.Rect{X: 1106, Y: 480, W: 182, H: 235},
+		// User 2026-05-20: move to (1091, 365) so Higgins is framed lower
+		// in the desk window; PP also needs grounding (camp_office.json
+		// spawnY adjusted) and the back-arrow flipped to "left".
+		bounds:         sdl.Rect{X: 1091, Y: 365, W: 182, H: 235},
 		name:           "Director Higgins",
 		dialog:         higginsWorriedDialog,
 		bobAmount:      0,
@@ -410,7 +425,9 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	n := newMarcus(renderer)
 	// User 2026-05-19: Y 290 → 350 so Marcus's foot drops to y=620
 	// (cabin floor line) instead of mid-room.
-	n.bounds = sdl.Rect{X: 600, Y: 350, W: 187, H: 270}
+	// User 2026-05-20: nudge down another 35px so feet rest on the cabin
+	// floor instead of hovering above it.
+	n.bounds = sdl.Rect{X: 600, Y: 385, W: 187, H: 270}
 	// Hidden until the night freakout cutscene unhides him. Without this,
 	// peeking into Marcus's cabin on Day 1 already shows him there even
 	// though Day-1 Marcus belongs on the camp grounds.
@@ -429,7 +446,7 @@ func newRoomDanny(renderer *sdl.Renderer) *npc {
 // block exploration, but driven directly by the night cutscene so he appears
 // to deliver the "lights out" speech in-place, not at camp grounds.
 func newNightHiggins(renderer *sdl.Renderer) *npc {
-	return &npc{
+	n := &npc{
 		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
 		talkGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
 		bounds:         sdl.Rect{X: 1120, Y: 430, W: 172, H: 220},
@@ -438,6 +455,17 @@ func newNightHiggins(renderer *sdl.Renderer) *npc {
 		talkFrameSpeed: 0.18,
 		silent:         true,
 	}
+	// Register "shout" one-shot so night_bedtime can play the angry-lights-out
+	// frames instead of the default talk cycle. Falls back gracefully when
+	// the PNG is missing (loadNPCGridClean returns empty grid).
+	shoutFrames := loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_shout.png", 8, 1)
+	if len(shoutFrames) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["shout"] = shoutFrames
+	}
+	return n
 }
 
 // --- Tommy (Homesick Kid) ---
@@ -798,6 +826,14 @@ func (n *npc) update(dt float64) {
 	if len(n.idleGrid) > 1 {
 		n.idleFrameTimer += dt
 		idleSpeed := speed * 2.5 // idle cycles slower than talk
+		// User 2026-05-20: when a walk/named-anim is swapped into idleGrid
+		// (via swapIdleForOneShot), cycle at walk-cadence (~0.10s) instead
+		// of the slow idle cadence. Higgins's walk_back was previously
+		// playing at 0.45s/frame which made the 8-frame cycle drag and
+		// look unsmooth during the 1.8s walk_in move.
+		if n.swappedIdleBackup != nil {
+			idleSpeed = 0.10
+		}
 		if n.idleFrameTimer >= idleSpeed {
 			n.idleFrameTimer -= idleSpeed
 			n.idleCurFrame = (n.idleCurFrame + 1) % len(n.idleGrid)
@@ -953,6 +989,19 @@ var bakeryWomanPostDialog = []dialogEntry{
 	{speaker: "Madame Poulain", text: "Enjoy ze baguette, monsieur! Zhere's a photographer near ze museum — he loves fresh bread."},
 }
 
+// bakeryWomanLouvreSouvenirDialog is the next-anchor beat: after Marcus
+// is healed and PP returns to Paris, Madame Poulain asks him to bring
+// her a Louvre postcard for her grandson back in Lyon. The postcard is
+// the same `postcard` item that heals Marcus, so PP brings TWO. User
+// 2026-05-20 story step forward.
+var bakeryWomanLouvreSouvenirDialog = []dialogEntry{
+	{speaker: "Madame Poulain", text: "Ah, ze panther returns! Tell me, did you visit ze Louvre?"},
+	{speaker: "Pink Panther", text: "I did. Quite an experience."},
+	{speaker: "Madame Poulain", text: "Mon petit-fils in Lyon, he collects postcards of ze museum."},
+	{speaker: "Madame Poulain", text: "If you bring me one, I will send it to him. A small kindness, no?"},
+	{speaker: "Pink Panther", text: "I'll see what I can do, madame."},
+}
+
 func newBakeryWoman(renderer *sdl.Renderer) *npc {
 	// Dedicated Bakery Woman sheet (see docs/EXTRA_PROMPTS.md §8). 8×2
 	// canvas: row 0 = idle (mouth closed), row 1 = talk (mouth open).
@@ -960,7 +1009,7 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 	// preferred path; legacy per-row PNG slicing stays as a fallback so
 	// the NPC still spawns if pack_atlas.py hasn't been run.
 	n := &npc{
-		bounds:         sdl.Rect{X: 540, Y: 400, W: 135, H: 230},
+		bounds:         sdl.Rect{X: 540, Y: 490, W: 135, H: 230},
 		name:           "Madame Poulain",
 		dialog:         bakeryWomanLostPinDialog,
 		bobAmount:      0,
@@ -1002,7 +1051,7 @@ func newPressPhotographer(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/press_photographer.(png|json)
 	// is preferred; legacy PNG slicing stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 950, Y: 400, W: 106, H: 230},
+		bounds:         sdl.Rect{X: 950, Y: 490, W: 86, H: 230},
 		name:           "Nicolas",
 		dialog:         pressPhotographerDialog,
 		bobAmount:      0,
@@ -1010,7 +1059,7 @@ func newPressPhotographer(renderer *sdl.Renderer) *npc {
 		flipped:        false, // sheet draws him facing right already
 	}
 	if !applyNPCAtlas(renderer, n, "paris/press_photographer") {
-		const sheet = "assets/images/locations/paris/npc/npc_press_photographer.png"
+		const sheet = "assets/images/locations/paris/npc/outside/npc_press_photographer.png"
 		n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
 		n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
 	}
@@ -1023,15 +1072,15 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 	// Feet land at y≈680 on the paris_street floor line; user reported
 	// the previous Y=350 (feet ~590) had NPCs floating above the ground.
 	n := &npc{
-		bounds:         sdl.Rect{X: 300, Y: 400, W: 135, H: 230},
+		bounds:         sdl.Rect{X: 300, Y: 490, W: 135, H: 230},
 		name:           "Madame Colette",
 		dialog:         frenchGuideDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.12,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/french_guide") {
-		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_french_guide_idle.png", 8, 2)
-		n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_french_guide_talk.png", 8, 1)
+		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png", 8, 2)
+		n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png", 8, 2)
 	}
 	return n
 }
@@ -1099,14 +1148,18 @@ func newPierreArtist(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/pierre_artist.(png|json) is the
 	// preferred path; legacy per-row PNG slicing stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 720, Y: 400, W: 126, H: 230},
+		// Moved back in perspective (Y up, W/H shrunk ~25%) so Pierre stands
+		// further down the Paris street line. PP's existing depthScale (driven
+		// by player.y) shrinks PP automatically as he walks up to talk and
+		// restores when he walks back to the front. User 2026-05-20.
+		bounds:         sdl.Rect{X: 820, Y: 390, W: 95, H: 175},
 		name:           "Pierre",
 		dialog:         pierreArtistDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.12,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/pierre_artist") {
-		const sheet = "assets/images/locations/paris/npc/npc_art_vendor.png"
+		const sheet = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 		n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
 		n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
 	}
@@ -1135,14 +1188,14 @@ func newGendarmeClaude(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/gendarme_claude.(png|json) is
 	// the preferred path; legacy per-row PNG slicing stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 1180, Y: 390, W: 115, H: 240},
+		bounds:         sdl.Rect{X: 1180, Y: 480, W: 115, H: 240},
 		name:           "Claude",
 		dialog:         gendarmeDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.12,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/gendarme_claude") {
-		const sheet = "assets/images/locations/paris/npc/npc_security_guard.png"
+		const sheet = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 		n.idleGrid = loadNPCGridRow(renderer, sheet, 6, 2, 0)
 		n.talkGrid = loadNPCGridRow(renderer, sheet, 6, 2, 1)
 	}

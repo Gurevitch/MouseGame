@@ -15,7 +15,7 @@
     {
       "id": "postcard",
       "name": "Postcard",
-      "texture": "assets/images/items/museum_ticket.png",
+      "texture": "assets/images/items/postcard.png",
       "description": "A postcard of the painting from the Louvre. Marcus might recognize it."
     },
     {

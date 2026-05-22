@@ -21,13 +21,13 @@ import (
 const (
 	mxBgPlaza       = "assets/images/locations/mexico/background/mexico_plaza.png"
 	mxArtMariachi      = "assets/images/locations/mexico/npc/npc_mariachi_idle.png"
-	mxArtMariachiBack  = "assets/images/locations/paris/npc/npc_art_vendor.png"
+	mxArtMariachiBack  = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 	mxArtAbuelaIdle     = "assets/images/locations/mexico/npc/npc_abuela_idle.png"
-	mxArtAbuelaIdleBack = "assets/images/locations/paris/npc/npc_french_guide_idle.png"
+	mxArtAbuelaIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
 	mxArtAbuelaTalk     = "assets/images/locations/mexico/npc/npc_abuela_talk.png"
-	mxArtAbuelaTalkBack = "assets/images/locations/paris/npc/npc_french_guide_talk.png"
+	mxArtAbuelaTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
 	mxArtVendor     = "assets/images/locations/mexico/npc/npc_vendor_idle.png"
-	mxArtVendorBack = "assets/images/locations/paris/npc/npc_security_guard.png"
+	mxArtVendorBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 )
 
 var mxPlazaBase = color.NRGBA{R: 240, G: 170, B: 120, A: 255}

@@ -5,7 +5,7 @@
     {"type": "npc_teleport", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1266, "y": 750},
     {"type": "npc_hidden", "scene": "camp_grounds", "npc": "Director Higgins", "hide": false},
     {"type": "npc_anim", "scene": "camp_grounds", "npc": "Director Higgins", "anim": "walk_back"},
-    {"type": "npc_move", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1058, "y": 580, "seconds": 3.0},
+    {"type": "npc_move", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1058, "y": 580, "seconds": 1.8},
     {"type": "npc_anim", "scene": "camp_grounds", "npc": "Director Higgins", "anim": "idle"}
   ]
 }

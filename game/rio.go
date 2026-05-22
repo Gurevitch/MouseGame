@@ -22,13 +22,13 @@ const (
 
 	// --- Rio locals ---
 	rioArtJorgeIdle     = "assets/images/locations/rio/npc/npc_tio_jorge_idle.png"
-	rioArtJorgeIdleBack = "assets/images/locations/paris/npc/npc_art_vendor.png"
+	rioArtJorgeIdleBack = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 	rioArtMarisaIdle     = "assets/images/locations/rio/npc/npc_marisa_idle.png"
-	rioArtMarisaIdleBack = "assets/images/locations/paris/npc/npc_french_guide_idle.png"
+	rioArtMarisaIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
 	rioArtMarisaTalk     = "assets/images/locations/rio/npc/npc_marisa_talk.png"
-	rioArtMarisaTalkBack = "assets/images/locations/paris/npc/npc_french_guide_talk.png"
+	rioArtMarisaTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
 	rioArtPadreIdle     = "assets/images/locations/rio/npc/npc_padre_idle.png"
-	rioArtPadreIdleBack = "assets/images/locations/paris/npc/npc_security_guard.png"
+	rioArtPadreIdleBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 	rioArtBrunoIdle     = "assets/images/locations/rio/npc/npc_bruno_kid_idle.png"
 	rioArtBrunoIdleBack = "assets/images/locations/camp/npc/kids/tommy/npc_tommy_idle.png"
 	rioArtBrunoTalk     = "assets/images/locations/rio/npc/npc_bruno_kid_talk.png"
@@ -36,15 +36,15 @@ const (
 
 	// --- Buenos Aires locals ---
 	baArtRafaIdle     = "assets/images/locations/ba/npc/npc_don_rafa_idle.png"
-	baArtRafaIdleBack = "assets/images/locations/paris/npc/npc_art_vendor.png"
+	baArtRafaIdleBack = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 	baArtLuciaIdle     = "assets/images/locations/ba/npc/npc_lucia_idle.png"
-	baArtLuciaIdleBack = "assets/images/locations/paris/npc/npc_french_guide_idle.png"
+	baArtLuciaIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
 	baArtLuciaTalk     = "assets/images/locations/ba/npc/npc_lucia_talk.png"
-	baArtLuciaTalkBack = "assets/images/locations/paris/npc/npc_french_guide_talk.png"
+	baArtLuciaTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
 	baArtPacoIdle     = "assets/images/locations/ba/npc/npc_paco_idle.png"
-	baArtPacoIdleBack = "assets/images/locations/paris/npc/npc_security_guard.png"
+	baArtPacoIdleBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 	baArtGaryIdle     = "assets/images/locations/ba/npc/npc_gary_idle.png"
-	baArtGaryIdleBack = "assets/images/locations/paris/npc/npc_security_guard.png"
+	baArtGaryIdleBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 )
 
 var (

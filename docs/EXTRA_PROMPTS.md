@@ -69,7 +69,7 @@ queued but out of scope for this sweep (currently only the two PP sheets).
 | `npc_bakery_woman.png` | DONE | §8 | New sheet + `newBakeryWoman` switched from french_guide fallback to the real sheet (`loadNPCGridRow(..., 8, 2, 0/1)`). |
 | `npc_press_photographer.png` | DONE | §9 | New sheet + `newPressPhotographer` factory + `press_photographer` NPC id added to `paris_street.json`. |
 | `paris/ambient/cafe_patrons.png` | superseded | §7 | First-pass mock-up (8 single-frame poses with baked-in white table edge) replaced by six per-patron sheets (`cafe_patron_<name>.png`) — see §7.1–§7.6. Renderer hookup still deferred. |
-| `paris/ambient/cafe_patron_<yvette\|bernard\|camille\|henri\|lucien\|elise>.png` | TODO | §7.1–§7.6 | Six new chest-up seated patron sheets (8×2 each, 100×170 cell, no baked-in table). Pair with the §NEW Paris Bakery café-corner regen. |
+| `paris/npc/coffee/cafe_patron_<name>_<idle\|talk>.png` (×12 sheets) | TODO | §7.1–§7.6 | User 2026-05-20: replaced the old single-frame patrons with **twelve** sheets — six patrons × two animations each (idle + talk, 8×1 strip per sheet, 100×170 per cell). New folder: `paris/npc/coffee/` (existing single-pose PNGs there will be overwritten by the new `_idle.png` per patron). |
 | `paris/background/paris_bakery.png` | TODO (regen) | §NEW Paris Bakery | Café-corner rework: counter shifts right, three bistro tables + chairs added on the left, rolling-pin floor patch moves to `(740, 720)`. JSON wiring follow-up tracked in FIXME. |
 | `paris/background/paris_clouds.png` | TODO (regen) | §NEW Paris Clouds | Replaces the static transparent-bg cloud row with a full 1400×800 sky background for the airplane flight cutscene. |
 
@@ -295,137 +295,285 @@ tables in `paris_bakery.png` and the BG's table reads behind their hands.
 
 ### 7.1 Madame Yvette — beret + pearls, sipping tea
 
-**Path:** `assets/images/locations/paris/ambient/cafe_patron_yvette.png`
+**Canvas (each):** 800×170. **Grid:** 8×1. **Cell:** 100×170.
+**Paths (TWO files):**
+- `assets/images/locations/paris/npc/coffee/cafe_patron_yvette_idle.png`
+- `assets/images/locations/paris/npc/coffee/cafe_patron_yvette_talk.png`
 
+> [style lock — character identity, paste into BOTH idle and talk
+> prompts]
+>
 > Elderly Parisienne, late 70s, fair skin with soft wrinkles. Short
-> curled silver hair under a **black wool beret** tilted slightly right.
-> Single strand of pearls at the throat. Wears a **mustard-yellow knit
-> cardigan** over a cream blouse with a brown brooch. Warm dignified
-> expression. Holds a small white teacup in both hands at chest height.
+> curled silver hair under a **black wool beret** tilted slightly
+> right. Single strand of pearls at the throat. Wears a
+> **mustard-yellow knit cardigan** over a cream blouse `#F2EFE5` (NOT
+> white) with a brown brooch. Warm dignified expression. Holds a
+> small cream teacup `#E5DDC8` (NOT white) in both hands at chest
+> height. Seated, chest-up framing. Black `#1C1C1C` ink outline ~3 px.
+> **No pure white on the character or teacup.** Pure white `#FFFFFF`
+> background, no scenery. Every cell exactly 100×170, foot/chair
+> baseline locked across all 8 cells.
+
+> **`cafe_patron_yvette_idle.png` — 8-frame idle loop, mouth closed.**
 >
-> **Row 0 (idle, 8 frames, mouth closed):** 1) cup at chest, eyes lowered
-> to it; 2) lifts cup toward mouth; 3) sips (eyes closed contented);
-> 4) lowers cup back to chest height; 5) free finger touches lip;
-> 6) gentle nod; 7) glances right; 8) returns to neutral.
+> 1) cup at chest, eyes lowered to it
+> 2) lifts cup toward mouth
+> 3) sips (eyes closed contented)
+> 4) lowers cup back to chest height
+> 5) free finger touches lip
+> 6) gentle nod, eyes down
+> 7) glances right
+> 8) returns to neutral matching frame 1 silhouette so the loop seams
+
+> **`cafe_patron_yvette_talk.png` — 8-frame talk loop, mouth open.**
 >
-> **Row 1 (talk, 8 frames, mouth open):** Same pose anchor, cup still
-> at chest. 1) mouth open mid-word, both hands on cup; 2) free hand
-> rises in a soft palm-up gesture; 3) wags finger gently; 4) nods while
-> speaking; 5) raises eyebrows; 6) tilts head 4° left; 7) chuckles
-> silently (eyes crinkle); 8) returns to neutral.
+> Same pose anchor as idle, cup still at chest height in left hand.
+>
+> 1) mouth open mid-word, both hands on cup
+> 2) free hand rises in a soft palm-up gesture
+> 3) wags finger gently
+> 4) nods while speaking
+> 5) raises eyebrows
+> 6) tilts head 4° left
+> 7) chuckles silently (eyes crinkle)
+> 8) returns to neutral
 
 ---
 
 ### 7.2 Monsieur Bernard — bearded man reading *Le Figaro*
 
-**Path:** `assets/images/locations/paris/ambient/cafe_patron_bernard.png`
+**Canvas (each):** 800×170. **Grid:** 8×1. **Cell:** 100×170.
+**Paths (TWO files):**
+- `assets/images/locations/paris/npc/coffee/cafe_patron_bernard_idle.png`
+- `assets/images/locations/paris/npc/coffee/cafe_patron_bernard_talk.png`
 
-> Mid-50s man, warm tan skin, **full salt-and-pepper beard**, brown eyes,
-> **brown tweed flat cap**. Wears a **mustard-brown corduroy jacket**
-> over a charcoal shirt. Holds a folded **broadsheet newspaper** open at
-> chest height in both hands ("LE FIGARO" header readable on the top
-> edge).
+> [style lock — character identity, paste into BOTH idle and talk
+> prompts]
 >
-> **Row 0 (idle):** 1) reading paper, eyes scanning; 2) turns a page
-> (paper crinkles wider); 3) eyebrows raise at headline; 4) lowers paper
-> to lap level (paper still in both hands); 5) raises paper back to
-> chest; 6) reads, slight frown; 7) folds paper edge in; 8) neutral
-> read.
+> Mid-50s man, warm tan skin, **full salt-and-pepper beard**, brown
+> eyes, **brown tweed flat cap**. Wears a **mustard-brown corduroy
+> jacket** over a charcoal shirt `#2A2A2A`. Holds a folded broadsheet
+> newspaper open at chest height in both hands — paper body cream
+> `#E5DDC8` (NOT white) with black `#1C1C1C` "LE FIGARO" header
+> readable on the top edge. Seated, chest-up framing. Black `#1C1C1C`
+> ink outline ~3 px. **No pure white on the character or newspaper.**
+> Pure white `#FFFFFF` background, no scenery. Every cell exactly
+> 100×170, chair baseline locked across all 8 cells.
+
+> **`cafe_patron_bernard_idle.png` — 8-frame idle loop, mouth closed.**
 >
-> **Row 1 (talk):** Lowers paper to lap. 1) mouth open, gestures to
-> paper with right hand; 2) taps headline with index finger; 3) shakes
-> head slightly; 4) palms up "can you believe it"; 5) leans forward
-> slightly; 6) shrugs; 7) huffs (mouth in O-shape); 8) returns to
-> neutral, paper at lap.
+> 1) reading paper, eyes scanning
+> 2) turns a page (paper crinkles wider)
+> 3) eyebrows raise at headline
+> 4) lowers paper to lap level (paper still in both hands)
+> 5) raises paper back to chest
+> 6) reads, slight frown
+> 7) folds paper edge in
+> 8) returns to neutral matching frame 1 silhouette
+
+> **`cafe_patron_bernard_talk.png` — 8-frame talk loop, mouth open.**
+>
+> Paper lowered to lap for all 8 frames so the face is visible.
+>
+> 1) mouth open, right hand gestures to paper at lap
+> 2) taps headline with index finger
+> 3) shakes head slightly
+> 4) palms up "can you believe it"
+> 5) leans forward slightly
+> 6) shrugs
+> 7) huffs (mouth in O-shape)
+> 8) returns to neutral, paper at lap
 
 ---
 
 ### 7.3 Mademoiselle Camille — red-beret art student
 
-**Path:** `assets/images/locations/paris/ambient/cafe_patron_camille.png`
+**Canvas (each):** 800×170. **Grid:** 8×1. **Cell:** 100×170.
+**Paths (TWO files):**
+- `assets/images/locations/paris/npc/coffee/cafe_patron_camille_idle.png`
+- `assets/images/locations/paris/npc/coffee/cafe_patron_camille_talk.png`
 
+> [style lock — character identity, paste into BOTH idle and talk
+> prompts]
+>
 > Young woman, early 20s, fair skin with light freckles, dark brown
-> chin-length bob. **Bright scarlet beret** tilted left. **Emerald-green
-> wrap dress** with a small gold collar pin. Cradles a small white
-> cappuccino cup in both hands at chin height — a heart in the foam
-> visible from above.
+> chin-length bob. **Bright scarlet beret `#C4412A`** tilted left.
+> **Emerald-green wrap dress `#2E7D5A`** with a small gold collar
+> pin. Cradles a small cream cappuccino cup `#E5DDC8` (NOT white) in
+> both hands at chin height — a tan-foam heart `#C9A878` visible from
+> above. Seated, chest-up framing. Black `#1C1C1C` ink outline ~3 px.
+> **No pure white on the character or cup.** Pure white `#FFFFFF`
+> background, no scenery. Every cell exactly 100×170, chair baseline
+> locked across all 8 cells.
+
+> **`cafe_patron_camille_idle.png` — 8-frame idle loop, mouth closed.**
 >
-> **Row 0 (idle):** 1) cup at chin, eyes lowered to foam; 2) blows
-> softly on cup; 3) sips; 4) lowers cup to chest; 5) tucks hair behind
-> ear with right hand; 6) raises cup again; 7) glances down; 8) neutral.
+> 1) cup at chin, eyes lowered to foam
+> 2) blows softly on cup (lips pursed, NOT mouth-open)
+> 3) sips (eyes briefly closed)
+> 4) lowers cup to chest
+> 5) tucks hair behind ear with right hand (cup in left at chest)
+> 6) raises cup again
+> 7) glances down
+> 8) returns to neutral matching frame 1 silhouette
+
+> **`cafe_patron_camille_talk.png` — 8-frame talk loop, mouth open.**
 >
-> **Row 1 (talk):** 1) mouth open, cup in left hand only at chest, right
-> hand gestures forward; 2) excited finger-point; 3) both hands raise
-> palms up; 4) laughs (head tips back 5°); 5) eyes wide; 6) shrugs;
-> 7) leans on left elbow; 8) returns to neutral with cup at chin.
+> Cup in left hand at chest height for all 8 frames so the right hand
+> is free to gesture.
+>
+> 1) mouth open, right hand gestures forward
+> 2) excited finger-point
+> 3) both hands raise palms up (cup briefly in left fingertips only)
+> 4) laughs (head tips back 5°)
+> 5) eyes wide
+> 6) shrugs
+> 7) leans on left elbow
+> 8) returns to neutral with cup at chest
 
 ---
 
 ### 7.4 Monsieur Henri — silver-haired gentleman with pastry
 
-**Path:** `assets/images/locations/paris/ambient/cafe_patron_henri.png`
+**Canvas (each):** 800×170. **Grid:** 8×1. **Cell:** 100×170.
+**Paths (TWO files):**
+- `assets/images/locations/paris/npc/coffee/cafe_patron_henri_idle.png`
+- `assets/images/locations/paris/npc/coffee/cafe_patron_henri_talk.png`
 
-> Distinguished older man, late 60s, fair skin, **thick white handlebar
-> mustache**, neatly combed silver hair parted on the side, small round
-> wire-rim glasses. **Navy three-piece suit** with a **burgundy bowtie**
-> and a small white pocket square. Holds a **golden croissant** in his
-> right hand at chest height; left hand rests at chest height as if
-> resting near a cup.
+> [style lock — character identity, paste into BOTH idle and talk
+> prompts]
 >
-> **Row 0 (idle):** 1) breaks off a corner of croissant; 2) brings piece
-> to mouth; 3) chews (mustache twitches); 4) lowers croissant to chest;
-> 5) raises left hand as if lifting a cup (no cup drawn); 6) lowers left
-> hand; 7) brushes mustache with index finger; 8) neutral with croissant
-> in right hand again.
+> Distinguished older man, late 60s, fair skin, **thick silver
+> handlebar mustache** (use silver `#C0C0C0`, NOT white), neatly
+> combed silver hair parted on the side, small round wire-rim
+> glasses. **Navy three-piece suit `#2B3A5C`** with a **burgundy
+> bowtie `#7A2A2A`** and a small cream pocket square `#E5DDC8` (NOT
+> white). Holds a **golden croissant `#B97E3F`** in his right hand at
+> chest height; left hand rests at chest height as if resting near a
+> cup. Seated, chest-up framing. Black `#1C1C1C` ink outline ~3 px.
+> **No pure white on the character or pocket square.** Pure white
+> `#FFFFFF` background, no scenery. Every cell exactly 100×170,
+> chair baseline locked across all 8 cells.
+
+> **`cafe_patron_henri_idle.png` — 8-frame idle loop, mouth closed.**
 >
-> **Row 1 (talk):** 1) mouth open, croissant in left hand at chest,
-> right hand gestures; 2) raises right index finger as a point;
-> 3) pats chest with right hand; 4) taps temple with right finger;
-> 5) gestures wide with right palm; 6) nods firmly; 7) chuckles (eyes
-> squint); 8) neutral.
+> 1) breaks off a corner of croissant
+> 2) brings piece to mouth (lips closed around it, NOT mouth-open)
+> 3) chews (mustache twitches)
+> 4) lowers croissant to chest
+> 5) raises left hand as if lifting a cup (no cup drawn)
+> 6) lowers left hand
+> 7) brushes mustache with right index finger (croissant briefly in
+>    left hand)
+> 8) returns to neutral with croissant in right hand at chest
+
+> **`cafe_patron_henri_talk.png` — 8-frame talk loop, mouth open.**
+>
+> Croissant in left hand at chest height for all 8 frames so the
+> right hand is free to gesture.
+>
+> 1) mouth open, right hand gestures palm-up
+> 2) raises right index finger as a point
+> 3) pats chest with right hand
+> 4) taps temple with right finger
+> 5) gestures wide with right palm
+> 6) nods firmly
+> 7) chuckles (eyes squint, mustache lifts)
+> 8) returns to neutral
 
 ---
 
 ### 7.5 Lucien — young man in gray turtleneck
 
-**Path:** `assets/images/locations/paris/ambient/cafe_patron_lucien.png`
+**Canvas (each):** 800×170. **Grid:** 8×1. **Cell:** 100×170.
+**Paths (TWO files):**
+- `assets/images/locations/paris/npc/coffee/cafe_patron_lucien_idle.png`
+- `assets/images/locations/paris/npc/coffee/cafe_patron_lucien_talk.png`
 
-> Late 20s man, olive skin, dark wavy black hair just past ears, faint
-> stubble, thoughtful brown eyes. Wears a **slate-gray turtleneck
-> sweater** with rolled cuffs at the wrists. Both hands cradle a small
-> white espresso cup at chest height.
+> [style lock — character identity, paste into BOTH idle and talk
+> prompts]
 >
-> **Row 0 (idle):** 1) cup at chest, eyes lowered; 2) raises cup to
-> mouth; 3) sips with eyes closed; 4) lowers cup to chest; 5) drums
-> fingers of right hand once at chest height (cup in left); 6) glances
-> left out of frame; 7) head tilts back as he reflects; 8) neutral.
+> Late 20s man, olive skin, dark wavy black hair just past ears,
+> faint stubble, thoughtful brown eyes. Wears a **slate-gray
+> turtleneck sweater `#5A6473`** with rolled cuffs at the wrists.
+> Both hands cradle a small cream espresso cup `#E5DDC8` (NOT white)
+> at chest height. Seated, chest-up framing. Black `#1C1C1C` ink
+> outline ~3 px. **No pure white on the character or cup.** Pure
+> white `#FFFFFF` background, no scenery. Every cell exactly
+> 100×170, chair baseline locked across all 8 cells.
+
+> **`cafe_patron_lucien_idle.png` — 8-frame idle loop, mouth closed.**
 >
-> **Row 1 (talk):** 1) mouth open, cup in left hand at chest, right hand
-> gestures palm-up; 2) finger-point forward; 3) palm pat at chest height
-> (no table drawn); 4) shrugs; 5) looks aside (sarcastic); 6) leans
-> forward intently; 7) eyebrows raise; 8) returns to neutral with both
-> hands around cup.
+> 1) cup at chest, eyes lowered
+> 2) raises cup to mouth
+> 3) sips with eyes closed
+> 4) lowers cup to chest
+> 5) drums fingers of right hand once at chest height (cup in left)
+> 6) glances left out of frame
+> 7) head tilts back as he reflects
+> 8) returns to neutral matching frame 1 silhouette
+
+> **`cafe_patron_lucien_talk.png` — 8-frame talk loop, mouth open.**
+>
+> Cup in left hand at chest for all 8 frames so right hand is free.
+>
+> 1) mouth open, right hand palm-up
+> 2) finger-point forward
+> 3) palm pat at chest height (no table drawn)
+> 4) shrugs
+> 5) looks aside (sarcastic)
+> 6) leans forward intently
+> 7) eyebrows raise
+> 8) returns to neutral with both hands around cup
 
 ---
 
 ### 7.6 Madame Élise — red-haired woman in autumn scarf
 
-**Path:** `assets/images/locations/paris/ambient/cafe_patron_elise.png`
+**Canvas (each):** 800×170. **Grid:** 8×1. **Cell:** 100×170.
+**Paths (TWO files):**
+- `assets/images/locations/paris/npc/coffee/cafe_patron_elise_idle.png`
+- `assets/images/locations/paris/npc/coffee/cafe_patron_elise_talk.png`
 
-> Mid-40s woman, fair skin, **shoulder-length wavy auburn-red hair**,
-> green eyes, soft smile. Wears a **chunky cream cable-knit sweater**
-> with a **floral autumn-print scarf** (orange, mustard, brick red)
-> wrapped twice around the neck. Holds a small white cup at chin height
-> with both hands.
+> [style lock — character identity, paste into BOTH idle and talk
+> prompts]
 >
-> **Row 0 (idle):** 1) cup at chin, eyes lowered; 2) sips; 3) lowers cup
-> to chest, exhales steam; 4) adjusts scarf with right hand; 5) tucks a
-> curl behind ear; 6) lifts cup again; 7) glances right; 8) neutral.
+> Mid-40s woman, fair skin, **shoulder-length wavy auburn-red hair
+> `#B8542D`**, green eyes, soft smile. Wears a **chunky cream
+> cable-knit sweater `#E5DDC8`** (NOT white) with a **floral
+> autumn-print scarf** (orange `#D9762A`, mustard `#C9A878`, brick
+> red `#9E2A1F`) wrapped twice around the neck. Holds a small cream
+> cup `#E5DDC8` (NOT white) at chin height with both hands. Seated,
+> chest-up framing. Black `#1C1C1C` ink outline ~3 px. **No pure
+> white on the character, sweater, or cup.** Pure white `#FFFFFF`
+> background, no scenery. Every cell exactly 100×170, chair baseline
+> locked across all 8 cells.
+
+> **`cafe_patron_elise_idle.png` — 8-frame idle loop, mouth closed.**
 >
-> **Row 1 (talk):** 1) mouth open, cup in left hand at chest, right hand
-> gestures softly; 2) hand to chest (sincere); 3) palm up; 4) nods, eyes
-> close briefly; 5) leans forward; 6) gestures outward; 7) laughs
-> silently; 8) returns to neutral with both hands on cup.
+> 1) cup at chin, eyes lowered
+> 2) sips
+> 3) lowers cup to chest, gentle exhale (pale grey `#C4C4C4` steam
+>    wisp above the cup)
+> 4) adjusts scarf with right hand (cup in left)
+> 5) tucks a curl behind ear
+> 6) lifts cup again
+> 7) glances right
+> 8) returns to neutral matching frame 1 silhouette
+
+> **`cafe_patron_elise_talk.png` — 8-frame talk loop, mouth open.**
+>
+> Cup in left hand at chest height for all 8 frames so right hand is
+> free.
+>
+> 1) mouth open, right hand gestures softly
+> 2) hand to chest (sincere)
+> 3) palm up
+> 4) nods, eyes close briefly
+> 5) leans forward
+> 6) gestures outward
+> 7) laughs silently (eyes crinkle)
+> 8) returns to neutral with both hands on cup
 
 ---
 
@@ -1261,3 +1409,599 @@ so the kid visibly walks off:
 Both `hidden` flips can be reverted by the Day 2 trigger if we want
 them back in their rooms; track in FIXME for the wire-up PR after the
 PNGs land.
+
+---
+
+## NEW 2026-05-20 — FIXME sweep prompts (sizes, animations, items, story)
+
+A batched set of regenerations and net-new sprites for the 2026-05-20 polish
+pass. Code paths to drop each PNG into are listed inline. Save with the exact
+filenames; the engine picks them up on next launch.
+
+### A. PP talk-front canvas re-lock — regen
+
+**Canvas:** 1600×540. **Grid:** 8×2. **Cell:** 200×270.
+**Path:** `assets/images/player/PP talk front.png`.
+
+Existing sheet has uneven per-frame canvases — PP's body shifts left/right
+between cells and one frame renders taller than the others, producing the
+"two frames at one" and "PP jumps from his place" report. Regen with a
+locked baseline.
+
+> [style lock]
+>
+> Pink Panther standing facing the camera, talking. Long lean cat-like
+> silhouette, classic Pink Panther proportions, curved tail trailing
+> behind him on the floor, yellow gloves, no shoes (bare panther feet),
+> ivory off-white belly patch, pale grey eye sclera with black pupils,
+> small smirk-capable mouth. Pink body fill `#E88BB5` with `#C4548A` cel
+> shadow, black `#1C1C1C` ink outline ~3 px. **No pure white anywhere on
+> the panther.**
+>
+> **Animation:** 16-frame talking loop (8 columns × 2 rows). Mouth open
+> with subtle shape changes between frames, eyes alive. Half-body gestures
+> only — feet stay planted, body shifts at hips only.
+>
+> Row 0 (frames 0–7): 0 neutral mouth open, 1 right paw raised palm-up,
+> 2 shrug both shoulders, 3 right paw points forward, 4 sly grin, 5 both
+> paws up, 6 left paw finger to chin (thinking), 7 confident closed-mouth
+> smile.
+>
+> Row 1 (frames 8–15): same eight gestures repeated with eyes blinked
+> half-closed and mouth half-shape for natural variation as the loop
+> continues.
+>
+> **Critical canvas rules:** Every single cell is exactly 200 px wide ×
+> 270 px tall. PP's center-of-body is on the cell's vertical centerline
+> in every frame. PP's foot pixels rest on row pixel 268 in every frame —
+> no frame is taller or shorter than another. Tail stays inside the cell;
+> raised paws stay inside the cell. No bleed across cell borders. Pure
+> white `#FFFFFF` background, zero scenery.
+
+### B. PP talk-side canvas re-lock — regen
+
+**Canvas:** 1600×540. **Grid:** 8×2. **Cell:** 200×270.
+**Path:** `assets/images/player/PP talk side.png`.
+
+Side-profile companion to §A. Same canvas locking issue, same fix.
+
+> [style lock]
+>
+> Pink Panther in **side profile facing right**, talking. Long cat-like
+> silhouette in three-quarter side view, tail curving behind him along
+> the floor, yellow gloves, pink body `#E88BB5` with `#C4548A` cel
+> shadow, ivory off-white belly, pale grey eye sclera, black `#1C1C1C`
+> ink outline ~3 px. **No pure white on the panther** — use off-white
+> for the belly and pale grey for the eye whites.
+>
+> **Animation:** 16-frame talking loop (8×2). Mouth open with subtle
+> shape changes. Same eight gesture beats as PP-talk-front but performed
+> in profile — gestures use the near-side arm with the far-side arm only
+> partially visible. Body shifts at the hips, feet planted.
+>
+> Row 0 (frames 0–7): 0 neutral mouth open looking forward, 1 near paw
+> raised palm-up, 2 shrug with shoulders up, 3 near paw points forward,
+> 4 sly grin, 5 both paws up, 6 near paw finger to chin, 7 confident
+> closed-mouth smile.
+>
+> Row 1 (frames 8–15): same eight gestures with eyes half-closed / mouth
+> half-shape.
+>
+> **Critical canvas rules:** Every cell is exactly 200×270. PP's
+> standing-foot baseline locked to row pixel 268 in every frame. Tail
+> stays inside the cell. No frame is taller or wider than another. Pure
+> white `#FFFFFF` background.
+
+### C. PP grab-flower regen
+
+**Canvas:** 900×235. **Grid:** 6×1. **Cell:** 150×235.
+**Path:** `assets/images/player/PP grab flower.png`.
+
+Current sheet shows the same uneven-cell problem as the talk sheets
+and the flower itself is barely visible. Regen with the action staged
+clearly.
+
+> [style lock]
+>
+> Pink Panther bending down to pick a daisy from the ground, then
+> standing back up holding it. Side three-quarter view facing slightly
+> right. Long cat-like silhouette, yellow gloves, pink body `#E88BB5`
+> with `#C4548A` cel shadow, ivory off-white belly patch, black
+> `#1C1C1C` ink outline ~3 px. **No pure white on the panther.**
+>
+> **Animation:** 6-frame one-shot (no loop).
+>
+> - Frame 1: standing upright, neutral, arms relaxed at sides, looking
+>   down toward a small daisy on the ground in front of him.
+> - Frame 2: knees bend slightly, body lowers, near arm starts reaching
+>   down. Mouth concentrating (closed).
+> - Frame 3: deep crouch, near hand at ground level, fingertips just
+>   above the daisy.
+> - Frame 4: hand closes around the daisy stem. Daisy clearly visible
+>   between his fingers — small ivory `#F2EFE5` petals (NOT white) with
+>   a bright yellow `#F4C842` center, dark green `#3A5A3A` stem.
+> - Frame 5: rising, knees half-extended, daisy held forward at chest
+>   level. Small smile begins.
+> - Frame 6: fully upright, daisy held close to chest in both hands,
+>   pleased smile, eyes warm.
+>
+> **Critical canvas rules:** Every cell exactly 150×235. PP's foot
+> baseline locked to row pixel 232 across all six frames — he does not
+> change vertical position, only bends and rises in place. Pure white
+> `#FFFFFF` background.
+
+### D. Marcus talk sheet — regen at 7×2 to match idle
+
+**Canvas:** 1372×768. **Grid:** 7×2. **Cell:** 196×384.
+**Path:** `assets/images/locations/camp/npc/kids/marcus/npc_marcus_talk.png`.
+
+Current talk sheet is 8 columns while idle is 7 — different cell width
+makes talk render visibly bigger and shifts the body left/right between
+idle and talk. Regen at 7×2 so cells match idle exactly.
+
+> [style lock]
+>
+> Same Marcus as `npc_marcus_idle.png`. 10-year-old boy: messy
+> light-brown hair `#4A2E1B` with stray strands, fair skin, round
+> wire-rim glasses `#1C1C1C` frames, brown eyes, small white
+> nose-bandage strip `#C4412A` (cartoon "boo-boo" plaster), light tan
+> short-sleeve polo `#D8B47A`, olive-green cargo shorts `#4F7A3A`, white
+> socks, brown lace-up shoes `#5A3A1E`. Always holds a small spiral
+> sketchbook in his left hand. Black `#1C1C1C` ink outline ~3 px. **No
+> pure white on the character** — sketchbook page uses off-white
+> `#F2EFE5`, socks use cream `#E5DDC8`.
+>
+> **Animation:** 14-frame talking loop (7 columns × 2 rows). Mouth open
+> with shape changes between frames, eager expression — Marcus is a
+> know-it-all who loves explaining things.
+>
+> Row 0 (frames 0–6): 0 neutral mouth open looking at camera, 1 right
+> hand raised explaining (one finger up), 2 small shrug, 3 both arms
+> spread outward enthusiastically, 4 points at the sketchbook page,
+> 5 pushes glasses up the bridge of his nose, 6 head-tilt explaining.
+>
+> Row 1 (frames 7–13): 7 small head-shake, 8 thinks (finger to chin),
+> 9 closed-mouth grin between sentences, 10 both palms up "see what I
+> mean?", 11 hand on hip explaining, 12 surprised "ah!" eyebrows-up,
+> 13 returns to neutral matching frame 0 silhouette so the loop seams.
+>
+> **Critical canvas rules:** Every cell exactly 196×384. Marcus's foot
+> baseline locked to row pixel 380 in every frame. Body centerline
+> matches the idle sheet's body centerline. Sketchbook visible in every
+> frame, held at hip height except frame 4. Pure white `#FFFFFF`
+> background.
+
+### E. Tommy walk-left sheet — new
+
+**Canvas:** 1160×175. **Grid:** 8×1. **Cell:** 145×175.
+**Path:** `assets/images/locations/camp/npc/kids/tommy/npc_tommy_walk.png`.
+
+For the post-dialog beat where Tommy walks off the camp grounds to the
+left. Style must match the existing `npc_tommy_idle.png` exactly so the
+swap reads as the same kid.
+
+> [style lock]
+>
+> Same Tommy as `npc_tommy_idle.png`. 9-year-old boy: floppy
+> sandy-blond hair `#D8B47A`, fair skin with light freckles across the
+> nose-bridge `#B06A3A`, pastel-blue short-sleeve t-shirt `#4A7AA8`,
+> brown cargo shorts `#8B5A2B`, cream sneakers `#E5DDC8` (NOT white),
+> small navy backpack `#3A5A7A` over both shoulders. Black `#1C1C1C`
+> ink outline ~3 px. **No pure white on the character.**
+>
+> **Animation:** Side-view 8-frame walk cycle facing LEFT (engine
+> mirrors for right). Standard cartoon gait — contact, down, passing,
+> high — repeated for left and right legs. Natural arm swing,
+> opposite-to-leading-leg. Backpack sways with the shoulders. Mouth
+> closed, neutral expression, eyes forward in the direction of travel.
+>
+> - Frame 1: left-foot contact (heel down), right-arm forward.
+> - Frame 2: left-foot down weight, body lowers ~3 px.
+> - Frame 3: passing pose, right foot lifting past left.
+> - Frame 4: right-leg high (knee up), left-arm forward.
+> - Frame 5: right-foot contact, left-arm forward.
+> - Frame 6: right-foot down weight, body lowers ~3 px.
+> - Frame 7: passing pose, left foot lifting past right.
+> - Frame 8: left-leg high (knee up), right-arm forward. Loops back to 1.
+>
+> **Critical canvas rules:** Every cell exactly 145×175. Tommy's
+> contact-frame foot baseline locked to row pixel 172. Body proportions
+> identical to the idle sheet (same head size, same shirt fit). Pure
+> white `#FFFFFF` background.
+
+### F. Jake walk-left sheet — new (must match Jake idle design)
+
+**Canvas:** 1160×175. **Grid:** 8×1. **Cell:** 145×175.
+**Path:** `assets/images/locations/camp/npc/kids/jake/npc_jake_walk.png`.
+
+For the post-dialog beat where Jake walks back into his cabin. The
+current walk PNG (if any) reads as a different character — regenerate
+so it looks like the same Jake from idle.
+
+> [style lock]
+>
+> **Match Jake's identity from `npc_jake_idle.png` exactly.** 9-year-old
+> tough-kid: red baseball cap `#C4412A` worn backwards (brim points
+> away from his face), dark-brown short hair peeking from the cap edges
+> `#4A2E1B`, fair skin with light freckles `#B06A3A`, navy short-sleeve
+> t-shirt `#2B3A5C`, denim shorts `#4A5A78`, cream sneakers `#E5DDC8`
+> (NOT white). Black `#1C1C1C` ink outline ~3 px. **No pure white on
+> the character.**
+>
+> **Animation:** Side-view 8-frame walk cycle facing LEFT. Standard
+> cartoon gait — contact, down, passing, high — repeated for both legs.
+> Jake walks with a slight forward lean and loose-fist hands (he's the
+> tough kid, not the marching kid). Cap brim stays facing back through
+> the whole cycle. Mouth closed, eyes forward, determined expression.
+>
+> - Frame 1: left-foot contact, right-arm forward in loose fist.
+> - Frame 2: left-foot down weight, shoulders dip ~3 px.
+> - Frame 3: passing, right foot lifting.
+> - Frame 4: right-leg high, left-arm forward.
+> - Frame 5: right-foot contact, left-arm forward.
+> - Frame 6: right-foot down weight, shoulders dip.
+> - Frame 7: passing, left foot lifting.
+> - Frame 8: left-leg high, right-arm forward. Loops back to 1.
+>
+> **Critical canvas rules:** Every cell exactly 145×175. Contact-frame
+> foot baseline locked to row pixel 172. Same proportions and ink
+> weight as the idle sheet — same Jake, just walking. Pure white
+> `#FFFFFF` background.
+
+### G. Madame Colette talk sheet — regen-if-needed
+
+**Canvas:** 1680×936. **Grid:** 8×2. **Cell:** 210×468.
+**Path:** `assets/images/locations/paris/npc/outside/npc_french_guide_talk.png`.
+
+The Go loader has already been corrected to read this sheet as 8×2
+(was reading 8×1, skipping the bottom row, which produced the
+"two frames at one" report). Only regenerate if the visual issue
+persists after the data fix.
+
+> [style lock]
+>
+> Same Madame Colette as `npc_french_guide_idle.png`. Mid-50s Parisian
+> tour guide, warm and chatty. Short brown bob `#7B4A2E`, light olive
+> skin, red lipstick `#C4412A`, navy blazer `#2B3A5C` over an
+> off-white blouse `#F2EFE5` (NOT pure white), beige knee-length skirt
+> `#C9A878`, dark brown low-heel shoes `#5A3A1E`. Holds a small folded
+> Paris map in her left hand. Round tortoiseshell reading glasses
+> `#5A3A1E` perched on top of her head. Black `#1C1C1C` ink outline
+> ~3 px. **No pure white on the character.**
+>
+> **Animation:** 16-frame talking loop (8×2), mouth open with shape
+> changes, warm and animated gestures.
+>
+> Row 0 (frames 0–7): 0 neutral mouth open, 1 right hand gestures
+> outward palm-up, 2 left hand joins right (both palms up), 3 points
+> off to the right (toward the museum), 4 brings folded map up to
+> chest, 5 unfolds one corner showing it to camera, 6 head-tilt charm
+> with closed-mouth smile, 7 returns to neutral.
+>
+> Row 1 (frames 8–15): 8 small shrug, 9 hand on hip, 10 laughs (eyes
+> half-closed), 11 points at her own glasses on head, 12 both hands
+> sweep wide, 13 finger-wag friendly correction, 14 head-tilt the
+> other way, 15 loops back toward frame 0 silhouette.
+>
+> **Critical canvas rules:** Every cell exactly 210×468. Colette's foot
+> baseline locked to row pixel 462 in every frame. Body centerline
+> matches her idle sheet. Pure white `#FFFFFF` background.
+
+### H. PP airplane sheet — regen for fuselage-locked centerline
+
+**Canvas:** 1596×984. **Grid:** 6×2. **Cell:** 266×492.
+**Path:** `assets/images/player/pp_airplane.png`.
+
+The current sheet has the plane drawn at different vertical positions
+in row 0 vs row 1, which made the cutscene bounce vertically. The
+engine compensates with a per-row offset for now; once this regen
+lands the offset can be deleted.
+
+> [style lock]
+>
+> Pink Panther piloting a small yellow-and-blue biplane, viewed from the
+> front three-quarter angle. Cartoon biplane with two stacked wings:
+> bright sky-blue `#3A8AC0` fuselage and tail, sunny-yellow `#F4C842`
+> upper and lower wings, red `#C4412A` trim stripe along the fuselage,
+> mid-grey `#8A8A8A` propeller arc spinning at the nose, dark navy
+> `#1F2D4E` cockpit rim. Pink Panther in the cockpit visible from chest
+> up — pink body `#E88BB5`, aviator goggles with cream `#E5DDC8` straps
+> (NOT white). Black `#1C1C1C` ink outline ~3 px. **No pure white on
+> the plane or the panther.**
+>
+> **Animation:** 12-frame cycle (6 columns × 2 rows).
+>
+> Row 0 (frames 0–5): cruising level — slight wing tilt left, neutral,
+> tilt right, neutral, with propeller arc rotating through 2 prop-blur
+> variants. PP smiles confidently.
+>
+> Row 1 (frames 6–11): same cruising motion repeated for animation
+> variety — slight wing wobble, prop variants, PP gives a thumbs-up on
+> one frame.
+>
+> **Critical canvas rules — this is the whole point of the regen:**
+> The biplane's **fuselage centerline must sit at exactly row pixel 220
+> in every single cell**. Wings tilt up and down at the tips, but the
+> fuselage horizontal axis does not move between frames. The plane's
+> body is centered horizontally in each cell. No vertical drift between
+> row 0 and row 1. Pure white `#FFFFFF` background.
+
+### I. Higgins throw-map sheet — new
+
+**Canvas:** 1092×235. **Grid:** 6×1. **Cell:** 182×235.
+**Path:** `assets/images/locations/camp/npc/higgins/npc_director_higgins_throw_map.png`.
+
+For the new "Higgins throws the map to PP" beat in the office. Higgins
+is seated behind his desk and tosses the rolled map across the room.
+
+> [style lock]
+>
+> Same Higgins as `npc_director_higgins_office_idle.png`. Seated behind
+> a wooden desk, only torso and head visible from desk-edge up. Lanky
+> ranger build, round wire-rim glasses `#1C1C1C`, small brown mustache,
+> short side-parted brown hair `#4A2E1B`, khaki safari shirt `#A47148`
+> with epaulets, brown leather belt visible, cream `#E5DDC8` neckerchief
+> (NOT white). Black `#1C1C1C` ink outline ~3 px. **No pure white on
+> the character.**
+>
+> **Animation:** 6-frame one-shot (no loop), the windup-throw-release
+> beat.
+>
+> - Frame 1: holds a rolled-up parchment map at chest height in his
+>   right hand. Looks at PP off-camera. Mouth open mid-sentence.
+> - Frame 2: pulls the map back over his right shoulder, body rotates
+>   slightly right, eyes track forward toward the throw target.
+> - Frame 3: full wind-back peak — arm bent at the elbow behind the
+>   shoulder, body coiled.
+> - Frame 4: forward throw motion — arm comes through, body uncoils
+>   toward the camera, map still in hand mid-arc.
+> - Frame 5: release — map leaves the hand, arm fully extended forward
+>   pointing toward the catch. The rolled map is visible just beyond
+>   his fingertips heading off-frame to the right.
+> - Frame 6: follow-through — empty hand still pointing forward, body
+>   settled back to the seated posture, satisfied smile.
+>
+> **Critical canvas rules:** Every cell exactly 182×235. Higgins's
+> seated-shoulder-line locked to row pixel 90 in every frame (no
+> vertical drift). The map (cream parchment `#E5DDC8`, brown ribbon
+> `#8B5A2B`, NOT white) is clearly visible in his hand on frames 1–4
+> and just departing in frame 5. Pure white `#FFFFFF` background.
+
+### J. PP catch-map sheet — new
+
+**Canvas:** 1200×270. **Grid:** 6×1. **Cell:** 200×270.
+**Path:** `assets/images/player/pp_catch_map.png`.
+
+PP's half of the throw/catch choreography. Plays right after §I.
+
+> [style lock]
+>
+> Pink Panther standing facing camera, catching a thrown rolled map
+> from the right. Standard PP build, yellow gloves, pink body `#E88BB5`
+> with `#C4548A` cel shadow, ivory off-white belly, pale grey eye
+> sclera, black `#1C1C1C` ink outline ~3 px. **No pure white on the
+> panther.**
+>
+> **Animation:** 6-frame one-shot (no loop).
+>
+> - Frame 1: relaxed neutral stance, arms at sides, looking off to the
+>   right toward incoming map. Curious raised eyebrow.
+> - Frame 2: arms start coming up, body shifts weight onto right foot
+>   in anticipation.
+> - Frame 3: both hands extended forward at chest height, palms open
+>   and angled to receive the catch.
+> - Frame 4: hands clasp around the rolled map — map visible between
+>   his palms (cream parchment `#E5DDC8`, brown ribbon `#8B5A2B`, NOT
+>   white). Body still leaning slightly right.
+> - Frame 5: pulls the map back toward his chest, body returns to
+>   center, looks down at it.
+> - Frame 6: holds the map at chest height in both hands, examining it
+>   with a small pleased smile. Loops/holds.
+>
+> **Critical canvas rules:** Every cell exactly 200×270. PP's foot
+> baseline locked to row pixel 268 in every frame — PP does not bob or
+> drift vertically during the catch, only his arms move. Body
+> centerline same as `PP idle front.png`. Pure white `#FFFFFF`
+> background.
+
+### K. Thrown-map projectile — new
+
+**Canvas:** 80×40. **Grid:** 1×1.
+**Path:** `assets/images/items/inv_travel_map_throw.png`.
+
+The rolled-map sprite that tweens across the screen between §I and §J.
+
+> [style lock]
+>
+> A single rolled-up parchment map / scroll viewed at a slight diagonal
+> tilt, as if frozen mid-throw. Cream parchment body `#E5DDC8` (NOT
+> white) with darker `#B89868` shadow along one edge to give it form,
+> two visible roll-edges showing the scroll layers, a brown ribbon
+> `#8B5A2B` wrapped around the middle with the ends fluttering slightly
+> back from the motion. Black `#1C1C1C` ink outline ~3 px. Pure white
+> `#FFFFFF` background.
+
+### L. Travel-map inventory icon — regen for clarity
+
+**Canvas:** 96×96. **Grid:** 1×1.
+**Path:** `assets/images/items/travel_map_icon.png`.
+
+Current icon reads as abstract — needs to clearly read as a travel map
+in the inventory bar.
+
+> [style lock]
+>
+> A rolled parchment map, partially unrolled to show a fragment of its
+> contents, viewed from a three-quarter angle (top-down-ish). The
+> unrolled flap shows simplified continent outlines in navy `#2B3A5C`
+> with a dotted flight-path line `#C4412A` looping across them and a
+> small biplane silhouette on the path. Cream parchment `#E5DDC8` body
+> (NOT white) with darker `#B89868` shadow under the curl, brown
+> ribbon `#8B5A2B` around the rolled portion. Black `#1C1C1C` ink
+> outline ~3 px. Pure white `#FFFFFF` background.
+
+### M. Unified action cursor — pointing-hand, cursor_grab style  *(DONE — landed 2026-05-21)*
+
+**Canvas:** 1677×938 (landscape, matches `cursor_grab.png` aspect).
+**Grid:** 1×1 (single frame, no animation).
+**Path:** `assets/images/ui/cursors/cursor_point.png`.
+
+One sprite reused for two purposes: hovers above PP to indicate
+"click to open inventory", and shown on travel-map pins to indicate
+"this city is the current quest target". Engine tints it at draw
+time (yellow for travel-relevant, cream for info / inventory open).
+The landed sprite matches the `cursor_grab.png` pixel-art hand family
+exactly. Prompt below preserved for future regen / variants.
+
+> [style lock — pixel-art cursor family]
+>
+> A chunky cartoon hand, viewed from the back of the hand, **index
+> finger extended pointing toward the upper-left of the canvas** (as
+> if the cursor is pointing at something above and to the left of the
+> wrist). The hand reads as a classic adventure-game "look at this"
+> pointer. Match the style of `cursor_grab.png` exactly:
+>
+> - Pixel-art rendering with visibly stepped (staircased) edges, NOT
+>   smooth anti-aliased curves
+> - Bright magenta-pink fill `#ED1A8F` filling the whole hand silhouette
+> - Thick black `#1C1C1C` pixel-art outline, chunky weight (roughly
+>   16–20 source pixels at the 1677×938 canvas so it reads as a clear
+>   ~2–3 px outline once downscaled to cursor size)
+> - Subtle darker `#2A2A2A` drop shadow offset down-right ~14 px,
+>   creating a slight floating feel
+> - No inner shading, no gradients, no skin tone, no fingernails
+> - Solid silhouette only — the hand is a flat magenta shape with a
+>   black outline, nothing more
+>
+> **Pose details (matches the landed file):**
+>
+> - Index finger fully extended, pointing toward the upper-left at
+>   roughly 30–35° above horizontal (fingertip is the highest and
+>   leftmost point of the silhouette)
+> - Middle, ring, and pinky fingers are curled into the palm — their
+>   knuckles read as a stack of small bumps along the lower edge of
+>   the hand
+> - Thumb tucked along the side of the hand (small visible bump on
+>   the upper-right of the palm silhouette)
+> - Back of the hand facing the viewer; wrist visible at the lower-
+>   right of the canvas as a stubby flat cuff
+> - Overall silhouette reads instantly as "hand pointing up and to
+>   the left"
+>
+> **Canvas rules:**
+>
+> - 1677×938 source canvas (landscape, same aspect as
+>   `cursor_grab.png` so the cursor family scales uniformly)
+> - Hand fills roughly 70% of the canvas area, biased toward the
+>   left two-thirds
+> - **Fingertip (the action hotspot) sits at roughly (canvas 15%,
+>   15%)** — upper-left of the canvas — so the natural mouse hotspot
+>   is the tip of the index finger
+> - Pure white `#FFFFFF` background, zero scenery, single hand only
+> - **No pure white anywhere on the hand itself.** The engine
+>   chroma-keys white as transparent, so any white pixels inside the
+>   silhouette will become holes. The hand is solid magenta-pink
+>   `#ED1A8F` with a black `#1C1C1C` outline and a `#2A2A2A` drop
+>   shadow — no highlights, no inner white
+>
+> Reference: open `assets/images/ui/cursors/cursor_grab.png` for the
+> exact pink shade, outline weight, and drop-shadow treatment, and
+> `assets/images/ui/cursors/cursor_point.png` for the exact pointing
+> pose. Same hand identity across the whole cursor family.
+
+### N. Item sprites — 8 new (story anchors + Paris quest props)
+
+**Canvas:** 96×96 each. **Grid:** 1×1.
+**Paths:** in `assets/images/items/` (see each prompt for filename).
+
+Each item is currently declared in `items.json` but renders as a wrong
+placeholder. Eight quick prompts to generate them all.
+
+> [style lock]
+>
+> A single wooden rolling pin lying at a slight diagonal across the
+> frame, as if a baker just set it down. Pale cream wood body
+> `#E5C895` (NOT white) with darker `#B89868` cel shadow along the
+> underside, brown `#8B5A2B` handles at both ends with visible turning
+> rings. A faint dusting of flour particles `#D8C8B0` underneath.
+> Black `#1C1C1C` ink outline ~3 px. Pure white `#FFFFFF` background.
+> Save as `rolling_pin.png`.
+
+> [style lock]
+>
+> A single crusty Parisian baguette lying at a slight diagonal across
+> the frame, still warm and fresh from the oven. Golden-brown crust
+> `#B97E3F` with darker `#8A5828` cel shadow along the underside, four
+> or five diagonal slash marks across the top in slightly lighter
+> `#D9A26A`, one end torn open showing pale `#E5C895` interior crumb.
+> Two tiny steam wisps in pale grey `#C4C4C4` rising from the open end.
+> Black `#1C1C1C` ink outline ~3 px. Pure white `#FFFFFF` background.
+> Save as `baguette.png`.
+
+> [style lock]
+>
+> A laminated photographer's press pass hanging from a red lanyard.
+> Cream `#E5DDC8` card body (NOT white) with a thin black border, a
+> small black-and-white head-shot photo in the top-left, the word
+> "PRESS" hand-lettered in bold dark-red `#9E2A1F` across the middle.
+> Red `#C4412A` woven lanyard looped through a silver-grey `#B0B0B0`
+> clip at the top of the card, lanyard ends visible draping back. Card
+> tilted slightly. Black `#1C1C1C` ink outline ~3 px. Pure white
+> `#FFFFFF` background. Save as `press_pass.png`.
+
+> [style lock]
+>
+> A Louvre postcard viewed from the front. Cream `#E5DDC8` postcard
+> body (NOT white) with a small darker `#B89868` shadow on the
+> back-right corner showing the card has a slight curl. Front face
+> shows a simplified illustration of the Louvre glass pyramid: pale
+> sky-blue `#9FC9E8` upper sky, the pyramid in navy `#2B3A5C` line-
+> work with pale grey `#C4D8E8` glass panels, a hint of the museum
+> building behind it in warm beige `#C9A878`. "PARIS" hand-lettered
+> across the bottom of the postcard in bold dark-red `#9E2A1F`. Black
+> `#1C1C1C` ink outline ~3 px. Pure white `#FFFFFF` background. Save
+> as `postcard.png`.
+
+> [style lock]
+>
+> A folded piece of parchment with a coin-rubbing imprint visible on
+> its surface. Cream `#E5DDC8` paper (NOT white) with a soft darker
+> `#B89868` shadow under the fold-crease, one corner of the paper
+> torn jagged at the top-right. The rubbing itself is a roughly
+> circular graphite-grey `#444444` smudge in the center of the
+> visible face, with faint Hebrew-style markings inside the circle.
+> Black `#1C1C1C` ink outline ~3 px around the paper. Pure white
+> `#FFFFFF` background. Save as `coin_rubbing.png`.
+
+> [style lock]
+>
+> A single pressed cherry-blossom flower flattened between two strips
+> of pale washi paper. Five soft pink petals `#F4B6C2` with darker
+> pink veins `#C97186` radiating from a small yellow `#F4C842` center,
+> a thin dark-green `#3A5A3A` stem trailing off one side. Two cream
+> washi paper strips `#E5DDC8` (NOT white) cross over the blossom
+> diagonally, with rough deckled edges and faint fiber lines visible.
+> Black `#1C1C1C` ink outline ~3 px. Pure white `#FFFFFF` background.
+> Save as `pressed_sakura.png`.
+
+> [style lock]
+>
+> Half of a carnival dance card, torn vertically on its right edge so
+> only the left half is visible. Sunny yellow `#F4C842` card body
+> with a bold red `#C4412A` decorative border, music notes
+> `#1C1C1C` printed across the surface, a single feathered samba
+> plume `#5A8A4A` sprouting from the top-left corner, a small
+> gold-brown `#B98A28` tassel hanging from the bottom-left. The torn
+> right edge has a jagged tear pattern. Black `#1C1C1C` ink outline
+> ~3 px. Pure white `#FFFFFF` background. Save as `dance_card.png`.
+
+> [style lock]
+>
+> A folded piece of cream parchment paper with a Roman-style
+> inscription rubbing visible on its surface. Cream `#E5DDC8` paper
+> (NOT white) with a darker `#B89868` shadow at the fold-crease, one
+> corner curled up. The rubbing shows blocky Roman capitals (S P Q R
+> or similar) in graphite grey `#444444`, with a faint chalk smudge
+> at the bottom edge of the rubbing. Black `#1C1C1C` ink outline ~3 px
+> around the paper. Pure white `#FFFFFF` background. Save as
+> `inscription_rubbing.png`.

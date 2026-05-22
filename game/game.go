@@ -556,7 +556,11 @@ func (g *Game) setupCampCallbacks() {
 							game.giveMapItem()
 						}
 					}
-					officeHiggins.dialog = higginsPostWorriedDialog
+					if game.marcusHealed {
+						officeHiggins.dialog = higginsPostMarcusHealedDialog
+					} else {
+						officeHiggins.dialog = higginsPostWorriedDialog
+					}
 				}
 				break
 			}
@@ -934,9 +938,18 @@ func (g *Game) setupParisCallbacks() {
 				continue
 			}
 			poulain := n
+			souvenirArmed := false
 			poulain.onDialogEnd = func() {
 				// Subsequent clicks while the rolling pin is still missing
 				// just replay the lost-pin beat (no flag flip yet).
+				// User 2026-05-20: once Marcus is healed, Poulain pivots
+				// to the next anchor beat — asking for a Louvre postcard
+				// for her grandson. Wires the next chapter so the bakery
+				// stops looping the trade-complete line forever.
+				if game.marcusHealed && !souvenirArmed {
+					poulain.dialog = bakeryWomanLouvreSouvenirDialog
+					souvenirArmed = true
+				}
 			}
 			poulain.altDialogRequiresItem = "Rolling Pin"
 			poulain.altDialogRequiresHeld = false
@@ -1555,7 +1568,11 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 		g.flight.Draw(renderer)
 	}
 
-	if g.playerSleeping {
+	if g.playerSleeping && g.sceneMgr.currentName == "camp_night" {
+		// User 2026-05-20: gate the sleep overlay to camp_night only.
+		// Without this, the transient frame between the night sequence's
+		// `player_sleep true` step and the camp_night transition rendered
+		// PP sleeping on top of the marcus_room scene.
 		scene.drawActorsNoPlayer(renderer)
 		var frames []npcFrame
 		if g.wakingPhase == 0 {
