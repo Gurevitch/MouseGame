@@ -3,7 +3,7 @@
   "_comment": "User 2026-05-23: previous target Y=200 sent Jake into the sky (above the cabin). Cabin door footprint is at y=396-486; sweet spot for 'walking into the door' is around y=340 — Jake's foot ends just at the door threshold without overshooting. After the move he's hidden so he doesn't pop back when PP re-enters camp_grounds. (No npc-recede support yet; the move + walk_back sprite + cabin BG combine to read as the cabin entry.)",
   "steps": [
     {"type": "npc_anim", "scene": "camp_grounds", "npc": "Jake", "anim": "walk_back"},
-    {"type": "npc_move", "scene": "camp_grounds", "npc": "Jake", "x": 441, "y": 340, "seconds": 1.6},
+    {"type": "npc_move", "scene": "camp_grounds", "npc": "Jake", "x": 360, "y": 340, "seconds": 1.6},
     {"type": "npc_hidden", "scene": "camp_grounds", "npc": "Jake", "hide": true}
   ]
 }

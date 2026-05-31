@@ -350,7 +350,9 @@ func (s *AtlasSheet) npcFrames(animName string) []npcFrame {
 	out := make([]npcFrame, len(a.Frames))
 	for i, f := range a.Frames {
 		r := f
-		out[i] = npcFrame{tex: s.Texture, w: f.W, h: f.H, src: &r, srcPath: s.pngPath}
+		ox, oy, ow, oh := engine.OpaqueBox(s.pngPath, f.X, f.Y, f.W, f.H)
+		out[i] = npcFrame{tex: s.Texture, w: f.W, h: f.H,
+			ox: ox, oy: oy, ow: ow, oh: oh, src: &r, srcPath: s.pngPath}
 	}
 	return out
 }

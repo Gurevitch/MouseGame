@@ -13,6 +13,13 @@ type npcFrame struct {
 	tex *sdl.Texture
 	w   int32
 	h   int32
+	// ox/oy/ow/oh is the opaque content box within the frame (frame-local).
+	// drawScaled scales by this so idle/talk/walk render at one size and the
+	// sprite anchors by feet + horizontal centre. Zero ow/oh = use full w/h.
+	ox int32
+	oy int32
+	ow int32
+	oh int32
 	// src is the source rectangle inside tex. nil means "draw the whole
 	// texture" (legacy per-frame loaders produce one texture per frame so
 	// they leave this nil). Atlas-backed frames share one texture and set
@@ -205,7 +212,8 @@ func framesFromGrid(grid [][]engine.GridFrame, cols, rows int, srcPath string) [
 	for r := 0; r < rows && r < len(grid); r++ {
 		for c := 0; c < cols && c < len(grid[r]); c++ {
 			gf := grid[r][c]
-			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, srcPath: srcPath})
+			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, srcPath: srcPath})
 		}
 	}
 	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
@@ -225,7 +233,8 @@ func loadNPCGridRow(renderer *sdl.Renderer, path string, cols, rows, row int) []
 	if row < len(grid) {
 		for c := 0; c < cols && c < len(grid[row]); c++ {
 			gf := grid[row][c]
-			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, srcPath: path})
+			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, srcPath: path})
 		}
 	}
 	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
@@ -254,7 +263,8 @@ func loadNPCGridRowClean(renderer *sdl.Renderer, path string, cols, rows, row in
 	if row < len(grid) {
 		for c := 0; c < cols && c < len(grid[row]); c++ {
 			gf := grid[row][c]
-			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, srcPath: path})
+			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, srcPath: path})
 		}
 	}
 	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
@@ -399,17 +409,16 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// 0.08 so the cadence is brisker — visible 'two lines together'
 		// across frame swaps is reduced as a side-effect.
 		talkFrameSpeed: 0.08,
-		// User 2026-05-23: flip Higgins so he faces LEFT toward PP, who
-		// approaches from the left side of the office (spawnX=220). The
-		// default sheet faces right; flipping makes him visually engage
-		// PP across the desk instead of looking away.
-		flipped: true,
+		// User 2026-05-31 (#12): flip Higgins 180° to face the other way — the
+		// previous flipped:true had him facing the wrong direction for the
+		// office composition.
+		flipped: false,
 		silent:  true,
 	}
-	// Register the give-map one-shot animation so the higgins_give_map
-	// sequence can call playOneShotAnim("give_map", duration). Sheet is
-	// authored as a clean 8x1 strip per docs/EXTRA_PROMPTS.md §19.
-	giveFrames := loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 8, 1)
+	// Register the give-map one-shot animation. User 2026-05-31 (#14): the
+	// sheet is a 6×2 grid (detect_grid), not 8×1 — cutting it 8×1 made cellH
+	// span BOTH rows so each frame drew Higgins twice, one above the other.
+	giveFrames := loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 6, 2)
 	if len(giveFrames) > 0 {
 		n.oneShotAnims = map[string][]npcFrame{"give_map": giveFrames}
 	}
@@ -521,7 +530,10 @@ func newNightHiggins(renderer *sdl.Renderer) *npc {
 	// frames instead of the default talk cycle. User 2026-05-22: previous
 	// attempts used loadNPCGridClean (tighter inset + tighter chroma-key)
 	// which produced 0 frames — log + fallback to loadNPCGrid (lenient).
-	shoutFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_shout.png", 8, 1)
+	// User 2026-05-31 (#9): shout sheet is 8×2, not 8×1 — loading 8×1 stacked
+	// both rows into each cell so the swap played a garbled double-Higgins and
+	// read as "not shouting". Load 8×2.
+	shoutFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_shout.png", 8, 2)
 	fmt.Printf("[newNightHiggins] shout frames loaded: %d\n", len(shoutFrames))
 	if len(shoutFrames) > 0 {
 		if n.oneShotAnims == nil {
@@ -586,9 +598,13 @@ func newTommy(renderer *sdl.Renderer) *npc {
 	// gives 192×341 cells centered on the middle band, so the kid fills
 	// the cell and renders at ~112px wide instead — much closer to his
 	// idle visual size. Full art regen tracked in EXTRA_PROMPTS §E.
+	// User 2026-05-31 (#7): walk-left is a clean 8×1 full-body strip. The old
+	// 8×3 take_row=1 grabbed only the middle band and CROPPED Tommy's head.
+	// With opaque-box normalization the full 8×1 cell is trimmed to his body,
+	// so he renders whole and at a good size.
 	walkLeftFrames := loadNPCGridRow(renderer,
 		"assets/images/locations/camp/npc/kids/tommy/npc_tommy_walk_left.png",
-		8, 3, 1)
+		8, 1, 0)
 	if len(walkLeftFrames) > 0 {
 		if n.oneShotAnims == nil {
 			n.oneShotAnims = map[string][]npcFrame{}
@@ -771,6 +787,14 @@ func newMarcus(renderer *sdl.Renderer) *npc {
 		strangeTalkFrameSpeed: 0.16,
 	}
 	applyKidAtlasOrFallback(renderer, n, "marcus")
+	// User 2026-05-31 (#4/#10): Marcus's idle sheet is a 7×2 grid (detect_grid),
+	// but the kid fallback cut it 8×2 — slicing through poses, which made the
+	// idle "swish"/jitter between frames. Reload idle at the correct 7×2.
+	if _, err := os.Stat("assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png"); err == nil {
+		if frames := loadNPCGridConnected(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png", 7, 2); len(frames) > 0 {
+			n.idleGrid = frames
+		}
+	}
 	return n
 }
 
@@ -939,7 +963,9 @@ func (n *npc) update(dt float64) {
 
 	if len(n.idleGrid) > 1 {
 		n.idleFrameTimer += dt
-		idleSpeed := speed * 2.5 // idle cycles slower than talk
+		// User 2026-05-31 (#4/#13): ×2.5 (≈0.375s/frame) read as a slow,
+		// visible "swish" between idle frames. ×2.0 (≈0.30s) is smoother.
+		idleSpeed := speed * 2.0 // idle cycles a little slower than talk
 		// User 2026-05-20: when a walk/named-anim is swapped into idleGrid
 		// (via swapIdleForOneShot), cycle at walk-cadence (~0.10s) instead
 		// of the slow idle cadence. Higgins's walk_back was previously
@@ -1005,6 +1031,34 @@ func (n *npc) draw(renderer *sdl.Renderer) {
 // authored dimensions so click targets don't shrink with the scene
 // scale. The visible sprite is anchored at foot-center so shrinking
 // only trims from the head and shoulders.
+// activeFrames returns the frame slice currently playing (one-shot / talk /
+// idle), used to compute the animation's reference height.
+func (n *npc) activeFrames() []npcFrame {
+	if n.activeOneShot != "" {
+		if frames, ok := n.oneShotAnims[n.activeOneShot]; ok && len(frames) > 0 {
+			return frames
+		}
+	}
+	if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
+		return n.talkGrid
+	}
+	return n.idleGrid
+}
+
+// maxOpaqueH is the tallest opaque content height across a frame slice. Scaling
+// every frame so this maps to bounds.H keeps the character one consistent size
+// across the animation (tallest pose fills the box; shorter poses keep planted
+// feet) instead of pulsing.
+func maxOpaqueH(frames []npcFrame) int32 {
+	var m int32
+	for _, f := range frames {
+		if f.oh > m {
+			m = f.oh
+		}
+	}
+	return m
+}
+
 func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	if n.hidden {
 		return
@@ -1013,7 +1067,6 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		charScale = 1.0
 	}
 	bobOffset := int32(math.Sin(n.bobTimer*1.5) * n.bobAmount)
-	breathScale := 1.0
 
 	shadowCX := n.bounds.X + n.bounds.W/2
 	shadowFY := n.bounds.Y + n.bounds.H
@@ -1024,10 +1077,11 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		flip = sdl.FLIP_HORIZONTAL
 	}
 
+	frames := n.activeFrames()
 	var frame npcFrame
 	if n.activeOneShot != "" {
-		if frames, ok := n.oneShotAnims[n.activeOneShot]; ok && len(frames) > 0 {
-			frame = frames[n.oneShotIdx%len(frames)]
+		if fr, ok := n.oneShotAnims[n.activeOneShot]; ok && len(fr) > 0 {
+			frame = fr[n.oneShotIdx%len(fr)]
 		}
 	} else if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
 		frame = n.talkGrid[n.curFrame%len(n.talkGrid)]
@@ -1039,46 +1093,60 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		return
 	}
 
-	targetW := float64(n.bounds.W) * charScale
-	targetH := float64(n.bounds.H) * charScale
-	scaleW := targetW * breathScale / float64(frame.w)
-	scaleH := targetH * breathScale / float64(frame.h)
-	scale := scaleW
-	if scaleH < scale {
-		scale = scaleH
-	}
-	dstW := int32(float64(frame.w) * scale)
-	dstH := int32(float64(frame.h) * scale)
-	dstX := n.bounds.X + (n.bounds.W-dstW)/2
-	dstY := n.bounds.Y + bobOffset + (n.bounds.H - dstH)
+	var dstW, dstH, dstX, dstY int32
+	var src *sdl.Rect
 
-	// User 2026-05-22: srcCropBottomFrac, if set in (0, 1.0), trims the
-	// BOTTOM of the source frame so only the top fraction renders. Used
-	// by café patrons (chair art lives in the BG; we only want the
-	// upper body of the patron sprite). Clip both the source rect and
-	// dst rect proportionally so the head still anchors at the top.
-	src := frame.src
-	if n.srcCropBottomFrac > 0 && n.srcCropBottomFrac < 1.0 {
-		// Anchor stays at the TOP of the frame; trim the bottom.
-		baseSrc := frame.src
-		if baseSrc == nil {
-			baseSrc = &sdl.Rect{X: 0, Y: 0, W: int32(frame.w), H: int32(frame.h)}
+	// Opaque-box normalization (the size/cut fix): scale so the animation's
+	// tallest opaque pose fills bounds.H, then anchor by feet (bottom) +
+	// horizontal centre. Makes idle/talk/walk render at one consistent size
+	// and stops empty-padding cells rendering tiny / head-cropped. Café patrons
+	// (srcCropBottomFrac>0) keep the legacy top-anchored crop path below.
+	if frame.ow > 0 && frame.oh > 0 && n.srcCropBottomFrac == 0 {
+		refH := maxOpaqueH(frames)
+		if refH <= 0 {
+			refH = frame.oh
 		}
-		newH := int32(float64(baseSrc.H) * n.srcCropBottomFrac)
-		src = &sdl.Rect{X: baseSrc.X, Y: baseSrc.Y, W: baseSrc.W, H: newH}
-		dstH = int32(float64(dstH) * n.srcCropBottomFrac)
-		// Re-anchor: keep top of dst at the same Y (head stays in place),
-		// just shorter overall — the chair from the BG fills under it.
+		scale := float64(n.bounds.H) * charScale / float64(refH)
+		base := sdl.Rect{X: 0, Y: 0, W: frame.w, H: frame.h}
+		if frame.src != nil {
+			base = *frame.src
+		}
+		s := sdl.Rect{X: base.X + frame.ox, Y: base.Y + frame.oy, W: frame.ow, H: frame.oh}
+		src = &s
+		dstW = int32(float64(frame.ow) * scale)
+		dstH = int32(float64(frame.oh) * scale)
+		dstX = n.bounds.X + n.bounds.W/2 - dstW/2
+		dstY = n.bounds.Y + n.bounds.H - dstH + bobOffset
+	} else {
+		breathScale := 1.0
+		targetW := float64(n.bounds.W) * charScale
+		targetH := float64(n.bounds.H) * charScale
+		scaleW := targetW * breathScale / float64(frame.w)
+		scaleH := targetH * breathScale / float64(frame.h)
+		scale := scaleW
+		if scaleH < scale {
+			scale = scaleH
+		}
+		dstW = int32(float64(frame.w) * scale)
+		dstH = int32(float64(frame.h) * scale)
+		dstX = n.bounds.X + (n.bounds.W-dstW)/2
+		dstY = n.bounds.Y + bobOffset + (n.bounds.H - dstH)
+		src = frame.src
+		if n.srcCropBottomFrac > 0 && n.srcCropBottomFrac < 1.0 {
+			baseSrc := frame.src
+			if baseSrc == nil {
+				baseSrc = &sdl.Rect{X: 0, Y: 0, W: int32(frame.w), H: int32(frame.h)}
+			}
+			newH := int32(float64(baseSrc.H) * n.srcCropBottomFrac)
+			src = &sdl.Rect{X: baseSrc.X, Y: baseSrc.Y, W: baseSrc.W, H: newH}
+			dstH = int32(float64(dstH) * n.srcCropBottomFrac)
+		}
 	}
 
 	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
 	renderer.CopyEx(frame.tex, src, &dst, 0, nil, flip)
-	// lastDrawRect tracks the actual visible sprite rect — used by the
-	// click probe (F2) for alpha-channel diagnostics. NOT used for the
-	// click hit-test anymore: containsPoint uses the authored bounds
-	// rect directly so the user's hover/click area matches the
-	// design-time NPC rect (post-rebalance bounds are tight enough to
-	// hug the visible character with a small forgiveness margin).
+	// lastDrawRect now hugs the rendered body (opaque-anchored), so the click
+	// hit-test (containsPoint) uses it + a small margin.
 	n.lastDrawRect = dst
 	n.lastDrawnFrame = frame
 	n.lastDrawnFlip = n.flipped
@@ -1217,9 +1285,20 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		flipped:        false, // sheet draws her facing right already
 	}
 	if !applyNPCAtlas(renderer, n, "paris/bakery_woman") {
-		const sheet = "assets/images/locations/paris/npc/npc_bakery_woman.png"
-		n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
-		n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
+		// User 2026-05-31 (#19): use Madame Poulain's dedicated new sheets
+		// (npc_madame_poulain_idle/_talk.png, full 8×2 each, behind-counter
+		// upper-body pose). Fall back to the old combined npc_bakery_woman.png
+		// (row0 idle / row1 talk) if the new sheets aren't present.
+		poulainIdle := "assets/images/locations/paris/npc/npc_madame_poulain_idle.png"
+		poulainTalk := "assets/images/locations/paris/npc/npc_madame_poulain_talk.png"
+		if _, err := os.Stat(poulainIdle); err == nil {
+			n.idleGrid = loadNPCGridConnected(renderer, poulainIdle, 8, 2)
+			n.talkGrid = loadNPCGridConnected(renderer, poulainTalk, 8, 2)
+		} else {
+			const sheet = "assets/images/locations/paris/npc/npc_bakery_woman.png"
+			n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
+			n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
+		}
 	}
 	return n
 }
@@ -1284,8 +1363,19 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 		talkFrameSpeed: 0.08,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/french_guide") {
-		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png", 8, 2)
-		n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png", 8, 2)
+		// User 2026-05-31 (#18): use Colette's dedicated new sheets
+		// (npc_madame_colette_*) instead of the old generic french_guide art,
+		// and load them CONNECTED (only edge-connected background is keyed) so
+		// her light shirt keeps its colour instead of being chroma-keyed out.
+		coletteIdle := "assets/images/locations/paris/npc/npc_madame_colette_idle.png"
+		coletteTalk := "assets/images/locations/paris/npc/npc_madame_colette_talk.png"
+		if _, err := os.Stat(coletteIdle); err == nil {
+			n.idleGrid = loadNPCGridConnected(renderer, coletteIdle, 8, 2)
+			n.talkGrid = loadNPCGridConnected(renderer, coletteTalk, 8, 2)
+		} else {
+			n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png", 8, 2)
+			n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png", 8, 2)
+		}
 	}
 	return n
 }
@@ -1437,37 +1527,33 @@ func newGendarmeClaude(renderer *sdl.Renderer) *npc {
 // at clothing/cup edges chroma-key away. Logs help catch silent load failures.
 func loadCafePatronGrids(renderer *sdl.Renderer, name string) ([]npcFrame, []npcFrame) {
 	base := "assets/images/locations/paris/npc/coffee/cafe_patron_" + name
-	splitIdlePath := base + "_idle.png"
-	splitTalkPath := base + "_talk.png"
-
-	// Try split format first.
-	var idle, talk []npcFrame
-	if _, err := os.Stat(splitIdlePath); err == nil {
-		idle = loadNPCGridClean(renderer, splitIdlePath, 8, 1)
-	}
-	if _, err := os.Stat(splitTalkPath); err == nil {
-		talk = loadNPCGridClean(renderer, splitTalkPath, 8, 1)
-	}
-
-	// If split files weren't found (or were empty), fall back to combined.
-	if len(idle) == 0 || len(talk) == 0 {
-		combined := base + ".png"
-		if _, err := os.Stat(combined); err == nil {
-			if len(idle) == 0 {
-				idle = loadNPCGridRowClean(renderer, combined, 8, 2, 0)
+	// User 2026-05-31 (#20): the 2026-05 art ships one 8×1 sheet per state at
+	// 1536×1024 — idle is "<name>_idle.png" if present else the bare
+	// "<name>.png"; talk is "<name>_talking.png" (new) or "<name>_talk.png"
+	// (legacy). The old loader looked for _idle/_talk only, so it fell into the
+	// "combined 8×2" branch and loaded half-figures (patrons "not imported").
+	// Connected color-key keeps interior whites (cups, collars).
+	firstExisting := func(paths ...string) string {
+		for _, p := range paths {
+			if _, err := os.Stat(p); err == nil {
+				return p
 			}
-			if len(talk) == 0 {
-				talk = loadNPCGridRowClean(renderer, combined, 8, 2, 1)
-			}
-			fmt.Printf("[cafePatron %s] using combined fallback (%s)\n", name, combined)
 		}
+		return ""
 	}
-
-	if len(talk) == 0 && len(idle) > 0 {
-		fmt.Printf("[cafePatron %s] talk frames missing — falling back to idle\n", name)
-		talk = idle
+	var idle, talk []npcFrame
+	if p := firstExisting(base+"_idle.png", base+".png"); p != "" {
+		idle = loadNPCGridConnected(renderer, p, 8, 1)
 	}
-	fmt.Printf("[cafePatron %s] idle=%d talk=%d frames\n", name, len(idle), len(talk))
+	if p := firstExisting(base+"_talking.png", base+"_talk.png"); p != "" {
+		talk = loadNPCGridConnected(renderer, p, 8, 1)
+	}
+	if len(talk) == 0 {
+		talk = idle // fall back to idle so the patron still renders while talking
+	}
+	if len(idle) == 0 {
+		fmt.Printf("[cafePatron %s] WARNING: no idle frames found under %s*\n", name, base)
+	}
 	return idle, talk
 }
 
@@ -1491,7 +1577,6 @@ func newCafePatronYvette(renderer *sdl.Renderer) *npc {
 		dialog:            yvetteDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.10,
-		srcCropBottomFrac: 0.55,
 	}
 }
 
@@ -1511,7 +1596,6 @@ func newCafePatronBernard(renderer *sdl.Renderer) *npc {
 		dialog:            bernardDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.10,
-		srcCropBottomFrac: 0.55,
 	}
 }
 
@@ -1538,7 +1622,6 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 		dialog:            camilleDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.10,
-		srcCropBottomFrac: 0.55,
 	}
 }
 
@@ -1577,7 +1660,6 @@ func newCafePatronHenri(renderer *sdl.Renderer) *npc {
 		dialog:            henriInitialDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.10,
-		srcCropBottomFrac: 0.55,
 	}
 }
 
@@ -1598,7 +1680,6 @@ func newCafePatronLucien(renderer *sdl.Renderer) *npc {
 		dialog:            lucienDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.10,
-		srcCropBottomFrac: 0.55,
 	}
 }
 

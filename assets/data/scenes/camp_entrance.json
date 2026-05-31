@@ -1,10 +1,11 @@
 {
   "name": "camp_entrance",
   "background": "assets/images/locations/camp/background/camp_entrance.png",
+  "_comment": "User 2026-05-31 (#1): PP was standing on air. Walkable foot band ~x8..x1354 at foot y≈672-791 (walk line ~728). minY/maxY clamp PP's top-left so his foot (top+270) stays in that band: minY=672-270=402, maxY=791-270=521. spawnY=458 → foot ~728.",
   "spawnX": 580,
-  "spawnY": 535,
-  "minY": 365,
-  "maxY": 530,
+  "spawnY": 458,
+  "minY": 402,
+  "maxY": 521,
   "musicPath": "assets/audio/music/camp.mp3",
   "npcs": ["director_higgins"],
   "hotspots": [

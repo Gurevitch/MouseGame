@@ -462,10 +462,57 @@ func SpriteFramesFromPNG(renderer *sdl.Renderer, filename string, numCols int) (
 }
 
 // GridFrame holds a single frame extracted from a grid sprite sheet.
+//
+// W/H are the full cell size. OX/OY/OW/OH are the tight non-transparent
+// ("opaque") content box within the cell, in cell-local coordinates. The
+// renderer scales every animation frame by its opaque box so idle/talk/walk
+// render at one consistent on-screen size, anchored by feet + horizontal
+// centre — and so cells with empty padding (e.g. a kid drawn in the middle
+// band of a tall sheet) don't render tiny or head-cropped.
 type GridFrame struct {
 	Tex *sdl.Texture
 	W   int32
 	H   int32
+	OX  int32
+	OY  int32
+	OW  int32
+	OH  int32
+}
+
+// opaqueImgCache memoizes decoded NRGBA images for OpaqueBox so packed atlases
+// (one PNG, many frames) are read off disk once. nil means a prior decode failed.
+var opaqueImgCache = map[string]*image.NRGBA{}
+
+// OpaqueBox returns the tight non-transparent bounding box of the (x,y,w,h)
+// region inside the PNG at filename, relative to that region's top-left, using
+// the PNG's native alpha (for packed atlases, which ship transparent). Falls
+// back to the full region on read error. Decoded images are cached.
+func OpaqueBox(filename string, x, y, w, h int32) (ox, oy, ow, oh int32) {
+	im, ok := opaqueImgCache[filename]
+	if !ok {
+		var err error
+		if im, err = loadPNG(filename); err != nil {
+			im = nil
+		}
+		opaqueImgCache[filename] = im
+	}
+	if im == nil {
+		return 0, 0, w, h
+	}
+	region := image.Rect(int(x), int(y), int(x+w), int(y+h)).Intersect(im.Bounds())
+	if region.Empty() {
+		return 0, 0, w, h
+	}
+	ob := findOpaqueBounds(im, region)
+	return int32(ob.Min.X) - x, int32(ob.Min.Y) - y, int32(ob.Dx()), int32(ob.Dy())
+}
+
+// opaqueLocal returns the non-transparent bounding box of cellRect within img,
+// in cell-local coordinates (relative to cellRect's top-left).
+func opaqueLocal(img *image.NRGBA, cellRect image.Rectangle) (ox, oy, ow, oh int32) {
+	ob := findOpaqueBounds(img, cellRect)
+	return int32(ob.Min.X - cellRect.Min.X), int32(ob.Min.Y - cellRect.Min.Y),
+		int32(ob.Dx()), int32(ob.Dy())
 }
 
 // blankCornerLogo makes pixels in the bottom-right corner region transparent,
@@ -513,7 +560,8 @@ func SpriteGridFromPNGRaw(renderer *sdl.Renderer, filename string, cols, rows in
 				bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
 			)
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+			ox, oy, ow, oh := opaqueLocal(img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
 		}
 	}
 	return grid
@@ -539,7 +587,8 @@ func SpriteGridFromPNG(renderer *sdl.Renderer, filename string, cols, rows int) 
 				bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
 			)
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+			ox, oy, ow, oh := opaqueLocal(img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
 		}
 	}
 
@@ -712,7 +761,8 @@ func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows,
 				)
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+			ox, oy, ow, oh := opaqueLocal(img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
 		}
 	}
 
@@ -751,7 +801,8 @@ func SpriteGridFromPNGCleanConnected(renderer *sdl.Renderer, filename string, co
 				)
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+			ox, oy, ow, oh := opaqueLocal(img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
 		}
 	}
 
@@ -794,7 +845,8 @@ func SpriteGridFromPNGCleanKids(renderer *sdl.Renderer, filename string, cols, r
 				)
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+			ox, oy, ow, oh := opaqueLocal(img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
 		}
 	}
 
@@ -839,7 +891,8 @@ func SpriteGridFromPNGCleanAggressive(renderer *sdl.Renderer, filename string, c
 				)
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h}
+			ox, oy, ow, oh := opaqueLocal(img, cellRect)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
 		}
 	}
 

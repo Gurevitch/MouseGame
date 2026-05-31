@@ -1,10 +1,11 @@
 {
   "name": "paris_street",
   "background": "assets/images/locations/paris/background/paris_street.png",
+  "_comment": "User 2026-05-31 (#17): PP on air. minY/maxY were 0 → engine defaulted to 265-395 (foot 535-665), floating above the cobblestones. walkSegments are at y=510, so clamp PP's top so his foot lands ~720-790: minY=450, maxY=520.",
   "spawnX": 200,
   "spawnY": 510,
-  "minY": 0,
-  "maxY": 0,
+  "minY": 450,
+  "maxY": 520,
   "musicPath": "assets/audio/music/paris.mp3",
   "npcs": ["french_guide", "pierre_artist", "press_photographer", "gendarme_claude"],
   "hotspots": [

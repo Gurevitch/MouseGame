@@ -29,8 +29,8 @@
       {"speaker": "", "text": "I have to draw it... I HAVE to draw it ALL!"}
     ]},
     {"type": "transition", "scene": "camp_night"},
-    {"type": "hide_player", "hide": false},
     {"type": "player_sleep", "hide": true},
+    {"type": "hide_player", "hide": false},
     {"type": "wait", "seconds": 1.0},
     {"type": "player_wake"},
     {"type": "wait", "seconds": 2.0},

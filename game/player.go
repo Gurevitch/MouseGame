@@ -11,6 +11,13 @@ type spriteFrame struct {
 	tex *sdl.Texture
 	w   int32
 	h   int32
+	// ox/oy/ow/oh: opaque content box within the cell (frame-local). drawScaled
+	// samples it and anchors by feet + centre so PP doesn't "jump"/drift and
+	// idle/talk/walk stay the same on-screen size.
+	ox int32
+	oy int32
+	ow int32
+	oh int32
 }
 
 const (
@@ -157,7 +164,8 @@ func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFra
 	for r := 0; r < rows; r++ {
 		for c := 0; c < cols; c++ {
 			gf := grid[r][c]
-			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
 		}
 	}
 	return frames
@@ -169,7 +177,8 @@ func gridFramesRow(renderer *sdl.Renderer, path string, cols, rows, row int) []s
 	if row < len(grid) {
 		for c := 0; c < cols && c < len(grid[row]); c++ {
 			gf := grid[row][c]
-			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
 		}
 	}
 	return frames
@@ -215,7 +224,9 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// flower floor item at the lake is picked up (and re-used when handing
 	// it over to Lily).
 	p.oneShotAnims = map[string][]spriteFrame{}
-	receiveMap := gridFrames(renderer, "assets/images/player/PP receive map.png", 8, 2)
+	// User 2026-05-31 (#15): receive-map sheet is 4×2, not 8×2 — cutting 8×2
+	// split every pose down the middle so PP "blinked" the whole catch.
+	receiveMap := gridFrames(renderer, "assets/images/player/PP receive map.png", 4, 2)
 	if len(receiveMap) > 0 {
 		p.oneShotAnims["receive_map"] = receiveMap
 	}
@@ -1010,12 +1021,27 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		return
 	}
 
+	// Keep the historical scale (full cell → playerDstH) so PP's overall size
+	// is unchanged, but sample only the opaque content box and anchor it by
+	// feet (bottom) + horizontal centre. This removes the per-frame "jump"
+	// (each pose plants its feet on the same line) and the left-of-path drift,
+	// and makes idle/talk/walk read as the same size. Falls back to the full
+	// cell when no opaque data is present.
 	scaledHeight := int32(float64(playerDstH) * p.depthScale() * charScale)
 	frameScale := float64(scaledHeight) / float64(frame.h)
-	dstW := int32(float64(frame.w) * frameScale)
-	dstH := scaledHeight
+	var src *sdl.Rect
+	var dstW, dstH int32
+	if frame.ow > 0 && frame.oh > 0 {
+		s := sdl.Rect{X: frame.ox, Y: frame.oy, W: frame.ow, H: frame.oh}
+		src = &s
+		dstW = int32(float64(frame.ow) * frameScale)
+		dstH = int32(float64(frame.oh) * frameScale)
+	} else {
+		dstW = int32(float64(frame.w) * frameScale)
+		dstH = scaledHeight
+	}
 
-	dstX := int32(p.x) + (playerDstW-dstW)/2
+	dstX := int32(p.x) + playerDstW/2 - dstW/2
 	dstY := p.footY() - dstH
 
 	flip := sdl.FLIP_NONE
@@ -1045,7 +1071,7 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	cx, fy := p.footCenter()
 	drawShadow(renderer, cx, fy, int32(float64(playerDstW-20)*p.depthScale()*charScale))
 
-	renderer.CopyEx(frame.tex, nil,
+	renderer.CopyEx(frame.tex, src,
 		&sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH},
 		0, nil, flip)
 }
