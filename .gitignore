@@ -21,3 +21,5 @@ secrets.yaml
 # Ignore log files
 *.log
 */images/retro_frames/*
+# visual hit-test debug dumps
+hit_debug/

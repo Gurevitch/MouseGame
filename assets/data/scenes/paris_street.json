@@ -2,7 +2,7 @@
   "name": "paris_street",
   "background": "assets/images/locations/paris/background/paris_street.png",
   "spawnX": 200,
-  "spawnY": 365,
+  "spawnY": 510,
   "minY": 0,
   "maxY": 0,
   "musicPath": "assets/audio/music/paris.mp3",
@@ -24,5 +24,8 @@
   "blockers": [
     {"x": 0, "y": 0, "w": 180, "h": 200}
   ],
-  "walkSegments": []
+  "walkSegments": [
+    {"x1": 100,  "y1": 510, "x2": 700,  "y2": 510},
+    {"x1": 700,  "y1": 510, "x2": 1300, "y2": 510}
+  ]
 }

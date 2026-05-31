@@ -1,17 +1,27 @@
 {
-  "name": "higgins_give_map",
+  "id": "higgins_give_map",
+  "_comment": "User 2026-05-21: rewrote the give-map beat so the player can see a visible thrown-map projectile fly across the screen from Higgins (right side, behind desk) to PP (entry-left). Higgins office bounds are (990, 290, 220, 200) → his hand is near (1100, 380). PP spawn (220, 480) → his hands near (320, 520). The travel_map_icon.png is reused as the projectile sprite. If a dedicated throw_map / catch_map sheet lands later, swap the one-shot anim names. Falls back gracefully if the projectile sprite is missing — only the Higgins one-shot + PP receive_map + dialog still play.",
   "steps": [
     {
       "type": "npc_one_shot",
       "scene": "camp_office",
       "npc": "Director Higgins",
       "anim": "give_map",
-      "seconds": 1.4
+      "seconds": 1.0
+    },
+    {
+      "type": "tween_item",
+      "sprite": "assets/images/items/travel_map_icon.png",
+      "fromX": 1100,
+      "fromY": 380,
+      "x": 320,
+      "y": 520,
+      "seconds": 1.5
     },
     {
       "type": "player_anim",
       "anim": "receive_map",
-      "seconds": 1.4
+      "seconds": 0.8
     },
     {
       "type": "give_item",
@@ -20,7 +30,8 @@
     {
       "type": "dialog",
       "dialog": [
-        {"speaker": "Director Higgins", "text": "Here. Use this map. Find what's gone wrong out there."}
+        {"speaker": "Director Higgins", "text": "Catch! Use that map. Find what's gone wrong out there."},
+        {"speaker": "Pink Panther", "text": "On it, Director."}
       ]
     }
   ]

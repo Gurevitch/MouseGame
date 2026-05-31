@@ -129,7 +129,7 @@ mini-quest before the anchor-object reveal.
 | Madame Yvette | paris_bakery (left table) | Flavor — camp gossip about the Marcus drawings |
 | Monsieur Bernard | paris_bakery (left table) | Flavor — newspaper headline about the museum restoration |
 | Mademoiselle Camille | paris_bakery (mid table) | Flavor — Pierre's pink-painting hint |
-| Monsieur Henri | paris_bakery (mid table) | Flavor — rolling-pin location hint ("near ze ovens") |
+| Monsieur Henri | paris_bakery (mid table) | **QUEST** — asks PP for a Café au Lait; trades it for homemade Confiture from his bag |
 | Lucien | paris_bakery (right table) | Flavor — foreshadows Lily / Tokyo arc |
 | Madame Élise | paris_bakery (right table) | Flavor — warm encouragement, no quest info |
 
@@ -156,51 +156,68 @@ Talk to Nicolas (flavor):
   - "Talk to Pierre ze painter and Claude ze gendarme"
     |
     v
+Find the rolling pin OUTSIDE in the **bicycle basket** on paris_street
+  (the black bike parked on the cobblestones — someone borrowed Madame
+  Poulain's pin and dropped it in the wicker basket). Click the basket
+  to grab it.
+    |
+    v
 Try to enter Louvre (right arrow on paris_street)
   -> GATED. Need: Museum Ticket.
     |
     v
 Enter paris_bakery (down/left arrow on paris_street)
-    |
-    v
+
+Café patrons seated around the bakery — most are flavor only (clickable
+in any order, no `|/v` chain). Henri carries a NEW quest beat:
+
+  - Madame Yvette (beret + pearls): "Ze restoration is all anyone talks
+    about. A hidden symbol under ze portrait — imagine!"
+  - Monsieur Bernard (Le Figaro): rustles paper, repeats the Louvre
+    restoration headline as confirmation of the museum rumor
+  - Mademoiselle Camille (red beret, art student): SKETCH BEAT — asks
+    to draw PP on the spot, shows him the finished sketch in-dialog,
+    no inventory exchange (pure character beat)
+  - **Monsieur Henri (silver mustache, croissant + bag):** asks PP to
+    fetch a Café au Lait. Promises something nice from his bag in
+    exchange. THIS IS THE NEW QUEST GATE for Pierre's press pass.
+  - Lucien (gray turtleneck): cryptic Tokyo foreshadow — "a tower
+    covered in flowers, bells ringing far away"
+  - Madame Élise (auburn hair, autumn scarf): warm seasonal flavor
+    line, no quest info
+
 Talk to Madame Poulain (initial):
   - She's lost her rolling pin
   - "Find it and ze first baguette is yours"
-
-Café patrons seated around the bakery — flavor only, optional clicks
-(no `|/v` chain; player can hit any/all/none in any order before the
-rolling pin):
-
-  - Madame Yvette (beret + pearls, tea): camp gossip about Marcus's
-    drawings being seen at the museum
-  - Monsieur Bernard (bearded, *Le Figaro*): "Ze restorer found a
-    hidden symbol under ze portrait, did you read about it?"
-  - Mademoiselle Camille (red beret, art student): admires PP's
-    cartoon-pink coloring, hints Pierre paints the same hue
-  - Monsieur Henri (silver mustache, croissant): rolling-pin hint —
-    "I heard Poulain's pin roll past my shoe. Look near ze ovens."
-  - Lucien (gray turtleneck, espresso): mutters about strange dreams,
-    foreshadows Lily/Tokyo arc
-  - Madame Élise (auburn hair, autumn scarf): warm encouragement,
-    free recipe tip, no quest info
-
-Find rolling pin on bakery floor -> pick up
     |
     v
 Talk to Madame Poulain (alt dialog, holding Rolling Pin):
-  -> Trade Rolling Pin for Baguette
-  -> Inventory: -Rolling Pin, +Baguette
-  -> Poulain post-dialog: "Tell Pierre I send my regards"
+  -> Trade Rolling Pin → Baguette + **Café au Lait**
+  -> Inventory: -Rolling Pin, +Baguette, +Café au Lait
+  -> Poulain: "Take ze coffee to Henri, he's been waiting all morning."
     |
     v
 Back to paris_street -> Talk to Pierre (alt dialog, holding Baguette):
-  -> Trade Baguette for Press Pass
-  -> Inventory: -Baguette, +Press Pass
+  Stage 1 — Pierre: "Bread is good, but it is dry. Bring me a spread."
+  -> Pierre TAKES the Baguette (inventory loses it) but does NOT hand
+     over the press pass yet. Pierre's hintState advances to "waiting
+     for spread".
+    |
+    v
+Return to bakery -> Talk to Henri (alt dialog, holding Café au Lait):
+  -> Henri remembers his promise: "Here, homemade strawberry confiture,
+     made it zis morning."
+  -> Trade Café au Lait → Confiture.
+    |
+    v
+Back to paris_street -> Talk to Pierre (alt dialog, holding Confiture):
+  Stage 2 — Pierre: "Strawberries from ze south — perfect."
+  -> Trade Confiture → Press Pass.
     |
     v
 Talk to Gendarme Claude (alt dialog, holding Press Pass):
-  -> Trade Press Pass for Museum Ticket
-  -> Inventory: -Press Pass, +Museum Ticket
+  -> Trade Press Pass → Museum Ticket
+  -> Press Pass is also consumed (consumed by Claude).
     |
     v
 Right arrow on paris_street -> Enter paris_louvre (now ungated)
@@ -268,8 +285,10 @@ gains a new dialog when PP comes back to Paris:
 
 | Item | Source | Used on | Result |
 |------|--------|---------|--------|
-| Rolling Pin | Bakery floor (pickup) | Madame Poulain | Trade for Baguette |
-| Baguette | Madame Poulain | Pierre | Trade for Press Pass |
+| Rolling Pin | Paris street (bicycle basket on the cobblestones) | Madame Poulain | Trade for Baguette + Café au Lait |
+| Baguette | Madame Poulain | Pierre (stage 1) | Pierre keeps it, asks for a spread |
+| Café au Lait | Madame Poulain | Monsieur Henri | Trade for Confiture |
+| Confiture | Monsieur Henri | Pierre (stage 2) | Trade for Press Pass |
 | Press Pass | Pierre | Gendarme Claude | Trade for Museum Ticket |
 | Museum Ticket | Gendarme Claude | Louvre door (auto-consume) | Unlocks museum |
 | Postcard | Curator Beaumont | Marcus (back at camp) | Heals Marcus |

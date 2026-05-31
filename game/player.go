@@ -748,8 +748,12 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 	dy := p.targetY - p.y
 	dist := math.Sqrt(dx*dx + dy*dy)
 
-	// Determine direction from movement delta
-	if math.Abs(dy) > math.Abs(dx)*1.2 {
+	// Determine direction from movement delta. User 2026-05-22: threshold
+	// dropped 1.2 → 0.8 so vertical motion wins more often. Previously
+	// a click at down-right (dx, dy both positive and roughly equal)
+	// fell into the horizontal branch and PP played his side-walk sprite
+	// even when the user expected a forward (down) approach.
+	if math.Abs(dy) > math.Abs(dx)*0.8 {
 		if dy < 0 {
 			p.dir = dirUp
 		} else {
@@ -863,6 +867,16 @@ func (p *player) startNPCDialog() {
 	if n == nil || ds == nil {
 		return
 	}
+	// User 2026-05-22: NPC may want to fully script the click flow (Pierre's
+	// walk-to-middle → recede → talk choreography). If onClickOverride is
+	// set, hand off control and return — the override owns dialog start +
+	// any post-dialog state.
+	if n.onClickOverride != nil {
+		cb := n.onClickOverride
+		p.interactTarget = nil
+		cb()
+		return
+	}
 	p.state = stateTalking
 	p.talkCycleIdx = 0
 	p.talkTimer = 0
@@ -920,6 +934,21 @@ func (p *player) startNPCDialog() {
 			p.interactTarget = nil
 			return
 		}
+	}
+
+	// Strict gate (user 2026-05-21): if the NPC has a give-item gate but PP
+	// doesn't satisfy it (no held item / not in inventory), AND the NPC has
+	// a strict-missing hint dialog set, play the hint instead of falling
+	// through to the regular n.dialog. Lily is the canonical case — without
+	// this, clicking her after the hint phase replays her flower-thanks
+	// dialog every time, even when PP doesn't have a flower.
+	if n.altDialogFunc != nil &&
+		(n.altDialogRequiresHeld || n.altDialogRequiresItem != "") &&
+		!p.canTriggerAltDialog(n) &&
+		len(n.altDialogStrictMissingHint) > 0 {
+		ds.startDialogWithCallback(n.altDialogStrictMissingHint, wrapCb(nil))
+		p.interactTarget = nil
+		return
 	}
 
 	cb := n.onDialogEnd
@@ -990,7 +1019,14 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	dstY := p.footY() - dstH
 
 	flip := sdl.FLIP_NONE
-	if p.dir == dirLeft {
+	if p.state == stateWalking && (p.dir == dirLeft || p.dir == dirRight) {
+		// User 2026-05-31: the side-walk sheet (PP walk left.png) is drawn
+		// FACING LEFT. So show it as-is when walking left, and MIRROR it when
+		// walking right — the inverse of the right-facing idle/talk sheets.
+		if p.dir == dirRight {
+			flip = sdl.FLIP_HORIZONTAL
+		}
+	} else if p.dir == dirLeft {
 		flip = sdl.FLIP_HORIZONTAL
 	}
 

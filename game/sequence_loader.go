@@ -35,6 +35,11 @@ type stepJSON struct {
 	X       int32           `json:"x,omitempty"`
 	Y       int32           `json:"y,omitempty"`
 	Item    string          `json:"item,omitempty"`
+	// SeqTweenItem extras: source position + sprite path. Target uses the
+	// existing X/Y above.
+	FromX  int32  `json:"fromX,omitempty"`
+	FromY  int32  `json:"fromY,omitempty"`
+	Sprite string `json:"sprite,omitempty"`
 	// Raw kept for debugging unknown step types.
 	_       json.RawMessage `json:"-"`
 }
@@ -147,6 +152,16 @@ func compileStep(j stepJSON, game *Game) (SeqStep, error) {
 		return SeqStep{Action: SeqPlayerAnim, Anim: j.Anim, Duration: j.Seconds}, nil
 	case "npc_one_shot":
 		return SeqStep{Action: SeqNPCOneShotAnim, Scene: j.Scene, NPC: j.NPC, Anim: j.Anim, Duration: j.Seconds}, nil
+	case "tween_item":
+		return SeqStep{
+			Action:   SeqTweenItem,
+			Sprite:   j.Sprite,
+			FromX:    j.FromX,
+			FromY:    j.FromY,
+			TargetX:  j.X,
+			TargetY:  j.Y,
+			Duration: j.Seconds,
+		}, nil
 	}
 	return SeqStep{}, fmt.Errorf("unknown step type %q", j.Type)
 }

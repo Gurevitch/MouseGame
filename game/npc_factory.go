@@ -38,6 +38,14 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"gendarme_claude":         newGendarmeClaude,
 	"bakery_woman":            newBakeryWoman,
 	"press_photographer":      newPressPhotographer,
+	// Café patrons (paris_bakery interior). Henri carries the coffee-jam
+	// quest beat; the other 5 are flavor.
+	"cafe_patron_yvette":      newCafePatronYvette,
+	"cafe_patron_bernard":     newCafePatronBernard,
+	"cafe_patron_camille":     newCafePatronCamille,
+	"cafe_patron_henri":       newCafePatronHenri,
+	"cafe_patron_lucien":      newCafePatronLucien,
+	"cafe_patron_elise":       newCafePatronElise,
 }
 
 // registerNPCFactory lets modules (paris.go / jerusalem.go / ...) add their

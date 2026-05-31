@@ -90,6 +90,22 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt floa
 		n.hovered = false
 		n.itemMatch = false
 	}
+
+	// User 2026-05-22: floor items BEFORE npcs so the grab cursor wins
+	// when a pickable item sits under an NPC's bounds rect (e.g. the
+	// rolling pin on a café table near Nicolas). Previously NPCs were
+	// checked first, so hovering a floor item next to an NPC showed
+	// the talk cursor — wrong action signal for the player.
+	for _, fi := range s.floorItems {
+		if fi.visible {
+			pt := sdl.Point{X: mx, Y: my}
+			if pt.InRect(&fi.bounds) {
+				ui.hoverName = fi.name
+				ui.cursor = cursorGrab
+				return
+			}
+		}
+	}
 	for _, n := range s.npcs {
 		if n.silent || n.hidden {
 			continue
@@ -120,16 +136,6 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt floa
 				}
 			}
 			return
-		}
-	}
-	for _, fi := range s.floorItems {
-		if fi.visible {
-			pt := sdl.Point{X: mx, Y: my}
-			if pt.InRect(&fi.bounds) {
-				ui.hoverName = fi.name
-				ui.cursor = cursorGrab
-				return
-			}
 		}
 	}
 	pt := sdl.Point{X: mx, Y: my}

@@ -50,11 +50,15 @@ func npcHitCases() []npcHitCase {
 		// assets/data/npc/kids.json — JSON is canonical when factory
 		// uses applyKidConfig. Bounds widths sit in the 145–170 band;
 		// heights 195–245.
-		{scene: "camp_grounds", name: "Tommy", bounds: sdl.Rect{X: 120, Y: 385, W: 170, H: 200}},
-		{scene: "camp_grounds", name: "Jake", bounds: sdl.Rect{X: 360, Y: 365, W: 170, H: 215}},
-		{scene: "camp_grounds", name: "Lily", bounds: sdl.Rect{X: 590, Y: 375, W: 160, H: 195}},
-		{scene: "camp_grounds", name: "Marcus", bounds: sdl.Rect{X: 880, Y: 355, W: 170, H: 220}},
-		{scene: "camp_grounds", name: "Danny", bounds: sdl.Rect{X: 1100, Y: 365, W: 170, H: 215}},
+		// User 2026-05-23: kid bounds reverted to 145-wide after the
+		// 100-wide tightening introduced misses. Danny is the outlier
+		// (180-wide) because of the flipped sprite + cabin-hotspot
+		// overlap; needs a generous click rect.
+		{scene: "camp_grounds", name: "Tommy", bounds: sdl.Rect{X: 130, Y: 410, W: 145, H: 175}},
+		{scene: "camp_grounds", name: "Jake", bounds: sdl.Rect{X: 395, Y: 405, W: 145, H: 175}},
+		{scene: "camp_grounds", name: "Lily", bounds: sdl.Rect{X: 600, Y: 400, W: 145, H: 175}},
+		{scene: "camp_grounds", name: "Marcus", bounds: sdl.Rect{X: 890, Y: 400, W: 145, H: 175}},
+		{scene: "camp_grounds", name: "Danny", bounds: sdl.Rect{X: 1090, Y: 405, W: 180, H: 175}},
 
 		// --- Camp entrance: Director Higgins (intro) ---
 		// Bounds copied from newDirectorHiggins (npc.go:307).
@@ -66,8 +70,9 @@ func npcHitCases() []npcHitCase {
 		{scene: "camp_grounds", name: "Director Higgins (grounds)", bounds: sdl.Rect{X: 1060, Y: 560, W: 180, H: 210}, hidden: true},
 
 		// --- Camp office: Higgins behind desk ---
-		// User 2026-05-20: moved bounds to (1091, 365).
-		{scene: "camp_office", name: "Director Higgins (office)", bounds: sdl.Rect{X: 1091, Y: 365, W: 182, H: 235}},
+		// User 2026-05-23: Y nudged 290→300 (a few px down for natural
+		// head clearance above desk). Also flipped:true so he faces PP.
+		{scene: "camp_office", name: "Director Higgins (office)", bounds: sdl.Rect{X: 990, Y: 300, W: 220, H: 200}},
 
 		// --- Night campfire Higgins ---
 		// Silent + driven by cutscene; never clickable directly.
@@ -83,18 +88,32 @@ func npcHitCases() []npcHitCase {
 		{scene: "danny_room", name: "Danny (room)", bounds: sdl.Rect{X: 760, Y: 445, W: 162, H: 245}},
 
 		// --- Paris street (outside NPCs) ---
-		// User 2026-05-20: all Paris street NPCs Y moved to ~490 so
-		// feet land on the street tile.
-		{scene: "paris_street", name: "Madame Colette", bounds: sdl.Rect{X: 300, Y: 490, W: 135, H: 230}},
-		// Pierre shrunk + moved back-of-line for perspective effect.
-		{scene: "paris_street", name: "Pierre", bounds: sdl.Rect{X: 820, Y: 390, W: 95, H: 175}},
-		// Nicolas W shrunk 106 → 86 so click doesn't bleed into the
-		// Louvre-exit hotspot at x≥1300.
-		{scene: "paris_street", name: "Nicolas", bounds: sdl.Rect{X: 950, Y: 490, W: 86, H: 230}},
-		{scene: "paris_street", name: "Gendarme Claude", bounds: sdl.Rect{X: 1180, Y: 480, W: 115, H: 240}},
+		// User 2026-05-22: unified Paris front-line NPCs at 120×235.
+		// Pierre stays smaller (back-of-line perspective).
+		{scene: "paris_street", name: "Madame Colette", bounds: sdl.Rect{X: 300, Y: 490, W: 120, H: 235}},
+		{scene: "paris_street", name: "Pierre", bounds: sdl.Rect{X: 780, Y: 470, W: 95, H: 175}},
+		{scene: "paris_street", name: "Nicolas", bounds: sdl.Rect{X: 950, Y: 490, W: 120, H: 235}},
+		{scene: "paris_street", name: "Gendarme Claude", bounds: sdl.Rect{X: 1180, Y: 480, W: 120, H: 235}},
 
 		// --- Paris bakery (interior) ---
-		{scene: "paris_bakery", name: "Madame Poulain", bounds: sdl.Rect{X: 540, Y: 490, W: 135, H: 230}},
+		// User 2026-05-23: new BG has the counter top at screen y=342;
+		// Poulain Y 250→182 so her foot lands at the new counter top.
+		{scene: "paris_bakery", name: "Madame Poulain", bounds: sdl.Rect{X: 717, Y: 182, W: 135, H: 160}},
+
+		// 6 café patrons. User 2026-05-23: new BG has tablecloth tops
+		// at screen y≈427 — patron Y 555→339 so their foot lands at
+		// the cloth top. srcCropBottomFrac=0.55 still clips the lower
+		// body sprite-side so we see only the upper body resting on
+		// the cloth.
+		{scene: "paris_bakery", name: "Madame Yvette", bounds: sdl.Rect{X: 80, Y: 339, W: 90, H: 160}},
+		{scene: "paris_bakery", name: "Monsieur Bernard", bounds: sdl.Rect{X: 240, Y: 339, W: 90, H: 160}},
+		{scene: "paris_bakery", name: "Mademoiselle Camille", bounds: sdl.Rect{X: 420, Y: 339, W: 90, H: 160}},
+		{scene: "paris_bakery", name: "Monsieur Henri", bounds: sdl.Rect{X: 580, Y: 339, W: 90, H: 160}},
+		{scene: "paris_bakery", name: "Lucien", bounds: sdl.Rect{X: 920, Y: 339, W: 90, H: 160}},
+		// Élise: removed from paris_bakery scene's npcs list 2026-05-22
+		// (no 6th chair in the BG). Keeping the test case as a hidden
+		// NPC so any future re-add of the factory still gets coverage.
+		{scene: "paris_bakery", name: "Madame Élise", bounds: sdl.Rect{X: 660, Y: 339, W: 90, H: 160}, hidden: true},
 
 		// --- Paris Louvre (interior) ---
 		{scene: "paris_louvre", name: "Curator Beaumont", bounds: sdl.Rect{X: 500, Y: 320, W: 125, H: 240}},

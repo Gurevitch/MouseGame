@@ -1,0 +1,9 @@
+{
+  "id": "tommy_exit",
+  "_comment": "User 2026-05-21: after Tommy's Day-1 intro dialog ends, Tommy walks off-left and exits the scene. Plays his walk_left one-shot during the npc_move tween, then hides him so re-entering camp_grounds doesn't re-spawn him on his original spot. Falls back to just hiding him if npc_tommy_walk_left.png isn't on disk yet — the swap silently no-ops on missing frames.",
+  "steps": [
+    {"type": "npc_anim", "scene": "camp_grounds", "npc": "Tommy", "anim": "walk_left"},
+    {"type": "npc_move", "scene": "camp_grounds", "npc": "Tommy", "x": -200, "y": 410, "seconds": 2.5},
+    {"type": "npc_hidden", "scene": "camp_grounds", "npc": "Tommy", "hide": true}
+  ]
+}

@@ -95,6 +95,18 @@
       "name": "Museum Ticket",
       "texture": "assets/images/items/museum_ticket.png",
       "description": "A ticket into the Louvre. Don't lose it."
+    },
+    {
+      "id": "cafe_au_lait",
+      "name": "Café au Lait",
+      "texture": "assets/images/items/cafe_au_lait.png",
+      "description": "A cream porcelain cup of steaming Parisian coffee. Henri is waiting for this."
+    },
+    {
+      "id": "confiture",
+      "name": "Confiture",
+      "texture": "assets/images/items/confiture.png",
+      "description": "Henri's homemade strawberry confiture. Smells incredible — Pierre might like it on his dry baguette."
     }
   ]
 }

@@ -1,24 +1,31 @@
 {
   "name": "paris_bakery",
   "background": "assets/images/locations/paris/background/paris_bakery.png",
-  "spawnX": 700,
-  "spawnY": 565,
+  "spawnX": 900,
+  "spawnY": 499,
   "minY": 0,
   "maxY": 0,
   "musicPath": "assets/audio/music/paris.mp3",
   "characterScale": 1.0,
-  "npcs": ["bakery_woman"],
+  "_comment": "User 2026-05-23: new BG has the open door on the RIGHT edge (screen x≈1209-1351), not the left. Exit hotspot flipped to match — arrow now points RIGHT. PP enters near the door so he can immediately turn back if needed; spawnY=499 puts his foot at y=769 on the floor strip between the tables and the back counter.",
+  "npcs": [
+    "bakery_woman",
+    "cafe_patron_yvette",
+    "cafe_patron_bernard",
+    "cafe_patron_camille",
+    "cafe_patron_henri",
+    "cafe_patron_lucien"
+  ],
   "hotspots": [
     {
-      "bounds": {"x": 0, "y": 200, "w": 100, "h": 500},
+      "bounds": {"x": 1180, "y": 200, "w": 200, "h": 560},
       "targetScene": "paris_street",
       "name": "Back to the street",
-      "arrow": "left"
+      "arrow": "right"
     }
   ],
   "blockers": [
-    {"x": 0, "y": 0, "w": 200, "h": 200},
-    {"x": 1100, "y": 0, "w": 300, "h": 600}
+    {"x": 0, "y": 0, "w": 1400, "h": 280}
   ],
   "walkSegments": []
 }

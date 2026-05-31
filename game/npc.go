@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"math"
 	"os"
 
@@ -61,6 +62,41 @@ type npc struct {
 	// off (false) so existing altDialogFunc attachments keep working.
 	altDialogRequiresHeld bool
 	altDialogRequiresItem string
+	// altDialogStrictMissingHint, when non-empty, replaces the regular
+	// kid.dialog playback when the player clicks the NPC but doesn't yet
+	// hold/own the altDialogRequiresItem. Without this, an NPC like Lily
+	// who has progressed past the hint stage would happily replay her
+	// "thanks for the flower" dialog every click even if PP doesn't have
+	// the flower in hand — the user 2026-05-21 reported this as "the
+	// flower dialog plays without giving her the flower". With this set,
+	// clicking on a gated NPC without the item plays a short hint instead
+	// (e.g. "She won't look up — maybe she needs something special.")
+	// until the trade actually happens.
+	altDialogStrictMissingHint []dialogEntry
+	// onClickOverride, when set, COMPLETELY replaces the normal click→walk-to-
+	// →dialog flow for this NPC. Pierre uses it for the depth-walk choreography
+	// (PP walks to middle of road → playRecede shrink → talk). The handler is
+	// responsible for everything (movement, dialog, scale restore). Set to nil
+	// (default) for standard NPC click flow. User 2026-05-22.
+	onClickOverride func()
+
+	// altIdleGrid is an optional alt-idle frame strip that the engine swaps
+	// idleGrid for periodically while the player isn't interacting with this
+	// NPC. Marcus's `_strange_alt` sheet uses this for ambient "freakout
+	// punctuation" — every altIdleAfterSec the alt frames play one cycle,
+	// then idleGrid restores. User 2026-05-22.
+	altIdleGrid     []npcFrame
+	idleAccumSec    float64 // accumulates while in npcAnimIdle; reset by dialog start
+	altIdleAfterSec float64 // 0 disables; otherwise seconds before swap fires
+	altIdleActive   bool    // engine-private: tracks "currently in alt cycle"
+	altIdleBackup   []npcFrame
+
+	// srcCropBottomFrac, if in (0, 1.0), tells drawScaled to render only the
+	// TOP portion of each frame (e.g. 0.55 = top 55%). Used for café patrons
+	// whose source sheet is full-body but the BG already has chair art under
+	// them — clipping the bottom hides duplicate legs. 0 means draw the full
+	// frame (default). User 2026-05-22.
+	srcCropBottomFrac float64
 	// hintState is a small per-NPC dialog progression counter. Lily uses
 	// 0 = has not been spoken to, 1 = shy dialog played (waiting for
 	// flower), 2 = flower given. Storing this on the NPC instead of a
@@ -345,12 +381,30 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// User 2026-05-20: move to (1091, 365) so Higgins is framed lower
 		// in the desk window; PP also needs grounding (camp_office.json
 		// spawnY adjusted) and the back-arrow flipped to "left".
-		bounds:         sdl.Rect{X: 1091, Y: 365, W: 182, H: 235},
+		// User 2026-05-21: refined to "sitting behind the desk" pose.
+		// Desk surface is at y≈490 in the office BG, chair centered ~1015-1180.
+		// New bounds (990, 290, 220, 200) → top at 290 (head clearly above
+		// desk), foot at 490 (sprite bottom rests on desk surface, lower body
+		// naturally clipped by desk art). Aspect-preserve renders him as
+		// 129×200 centered horizontally in the 220 bounds.
+		// User 2026-05-23: Y nudged 310 → 300 (a few pixels up so the
+		// head sits cleaner above the desk per the playtest report).
+		bounds:         sdl.Rect{X: 990, Y: 300, W: 220, H: 200},
 		name:           "Director Higgins",
 		dialog:         higginsWorriedDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.18,
-		silent:         true,
+		// User 2026-05-23: 0.10 still reads as choppy on the office sheet
+		// (the talk grid has 12 frames at 6×2 with slightly different
+		// frame heights between rows, producing visible jitter). Drop to
+		// 0.08 so the cadence is brisker — visible 'two lines together'
+		// across frame swaps is reduced as a side-effect.
+		talkFrameSpeed: 0.08,
+		// User 2026-05-23: flip Higgins so he faces LEFT toward PP, who
+		// approaches from the left side of the office (spawnX=220). The
+		// default sheet faces right; flipping makes him visually engage
+		// PP across the desk instead of looking away.
+		flipped: true,
+		silent:  true,
 	}
 	// Register the give-map one-shot animation so the higgins_give_map
 	// sequence can call playOneShotAnim("give_map", duration). Sheet is
@@ -432,6 +486,14 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	// peeking into Marcus's cabin on Day 1 already shows him there even
 	// though Day-1 Marcus belongs on the camp grounds.
 	n.hidden = true
+	// User 2026-05-22: load the alt-idle "strange_alt" frames so the
+	// engine swaps Marcus's idle for one cycle every ~5 seconds of
+	// inactivity in the cabin scene. Ambient "freakout punctuation".
+	altFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_alt.png", 7, 2)
+	if len(altFrames) > 0 {
+		n.altIdleGrid = altFrames
+		n.altIdleAfterSec = 5.0
+	}
 	return n
 }
 
@@ -456,9 +518,11 @@ func newNightHiggins(renderer *sdl.Renderer) *npc {
 		silent:         true,
 	}
 	// Register "shout" one-shot so night_bedtime can play the angry-lights-out
-	// frames instead of the default talk cycle. Falls back gracefully when
-	// the PNG is missing (loadNPCGridClean returns empty grid).
-	shoutFrames := loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_shout.png", 8, 1)
+	// frames instead of the default talk cycle. User 2026-05-22: previous
+	// attempts used loadNPCGridClean (tighter inset + tighter chroma-key)
+	// which produced 0 frames — log + fallback to loadNPCGrid (lenient).
+	shoutFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_shout.png", 8, 1)
+	fmt.Printf("[newNightHiggins] shout frames loaded: %d\n", len(shoutFrames))
 	if len(shoutFrames) > 0 {
 		if n.oneShotAnims == nil {
 			n.oneShotAnims = map[string][]npcFrame{}
@@ -499,6 +563,11 @@ var tommyPostStrangeDialog = []dialogEntry{
 }
 
 func newTommy(renderer *sdl.Renderer) *npc {
+	// User 2026-05-23: reverted to 145-wide click rect (X=130). The earlier
+	// W-shrink-to-100 left the rect too narrow — depending on which animation
+	// frame is showing, the kid's body extends past the trimmed bounds and
+	// clicks miss. 145 wide gives a forgiving target while still hugging
+	// the visible character.
 	n := &npc{
 		bounds:         sdl.Rect{X: 130, Y: 410, W: 145, H: 175},
 		name:           "Tommy",
@@ -507,6 +576,25 @@ func newTommy(renderer *sdl.Renderer) *npc {
 		talkFrameSpeed: 0.10,
 	}
 	applyKidAtlasOrFallback(renderer, n, "tommy")
+	// User 2026-05-21: register "walk_left" one-shot so the tommy_exit
+	// sequence can swap idle for the walking sheet during the move.
+	// The PNG ships as 1536×1024 with kid content in the MIDDLE band
+	// (rows 324-678 — about 35% of canvas height); the rest is empty
+	// white padding. Loading as 8×1 would give 192×1024 cells where the
+	// kid takes only ~35% — engine's aspect-preserve renders him at
+	// ~37px wide, "very very small" per user. Loading as 8×3 take_row=1
+	// gives 192×341 cells centered on the middle band, so the kid fills
+	// the cell and renders at ~112px wide instead — much closer to his
+	// idle visual size. Full art regen tracked in EXTRA_PROMPTS §E.
+	walkLeftFrames := loadNPCGridRow(renderer,
+		"assets/images/locations/camp/npc/kids/tommy/npc_tommy_walk_left.png",
+		8, 3, 1)
+	if len(walkLeftFrames) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["walk_left"] = walkLeftFrames
+	}
 	return n
 }
 
@@ -542,6 +630,7 @@ var jakePostStrangeDialog = []dialogEntry{
 }
 
 func newJake(renderer *sdl.Renderer) *npc {
+	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
 		bounds:         sdl.Rect{X: 395, Y: 405, W: 145, H: 175},
 		name:           "Jake",
@@ -550,6 +639,21 @@ func newJake(renderer *sdl.Renderer) *npc {
 		talkFrameSpeed: 0.10,
 	}
 	applyKidAtlasOrFallback(renderer, n, "jake")
+	// User 2026-05-24: kid content is at PNG y=231-660 (1672×941 sheet).
+	// Previous 8×3 take_row=1 (cell y=313-627) chopped the top of his
+	// head (82 px above cell top) and bottom of feet — user reported
+	// "head is cutted". Going back to 8×1 (full-cell 209×941) so the
+	// whole kid fits, even though the render is narrower; the head and
+	// feet are now both visible. Final regen tracked in EXTRA_PROMPTS §F.
+	walkBackFrames := loadNPCGrid(renderer,
+		"assets/images/locations/camp/npc/kids/jake/npc_jake_walk_back.png",
+		8, 1)
+	if len(walkBackFrames) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["walk_back"] = walkBackFrames
+	}
 	return n
 }
 
@@ -597,6 +701,7 @@ var lilyPostStrangeDialog = []dialogEntry{
 }
 
 func newLily(renderer *sdl.Renderer) *npc {
+	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
 		bounds:         sdl.Rect{X: 600, Y: 400, W: 145, H: 175},
 		name:           "Lily",
@@ -654,6 +759,7 @@ var marcusPostStrangeDialog = []dialogEntry{
 }
 
 func newMarcus(renderer *sdl.Renderer) *npc {
+	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
 		bounds:         sdl.Rect{X: 890, Y: 400, W: 145, H: 175},
 		name:           "Marcus",
@@ -701,8 +807,16 @@ var dannyPostStrangeDialog = []dialogEntry{
 }
 
 func newDanny(renderer *sdl.Renderer) *npc {
+	// User 2026-05-23: third iteration on Danny click rect — user still
+	// reports "clicked on him, nothing happen; clicked right, worked".
+	// Going extra-generous: W=180 (vs the kid baseline 145) and X=1090 so
+	// the rect spans 1090-1270 — covers the visible kid no matter which
+	// animation frame is showing AND a forgiveness margin on both sides.
+	// The NPC > hotspot click priority (set in HandleClick) means Danny's
+	// dialog wins over both Lily-cabin (1017-1137) and Danny-cabin
+	// (1183-1303) when click lands in the overlap zone.
 	n := &npc{
-		bounds:         sdl.Rect{X: 1110, Y: 405, W: 145, H: 175},
+		bounds:         sdl.Rect{X: 1090, Y: 405, W: 180, H: 175},
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0,
@@ -840,6 +954,39 @@ func (n *npc) update(dt float64) {
 		}
 	}
 
+	// User 2026-05-22: inactivity alt-idle swap. While the NPC is idling
+	// (not talking, not in a sequence-driven swap, not currently in an alt
+	// cycle), accumulate dt. When threshold passes, swap idleGrid for the
+	// altIdleGrid for ONE full cycle, then restore. Reset accumulator on
+	// talk-start (setAnimState calls reset elsewhere; safety-reset here on
+	// state change too). Marcus uses this for the ambient strange_alt beat.
+	if n.altIdleAfterSec > 0 && len(n.altIdleGrid) > 0 &&
+		n.animState == npcAnimIdle && n.activeOneShot == "" && n.swappedIdleBackup == nil {
+		if n.altIdleActive {
+			// In an alt cycle — check if we've played one full loop already.
+			// idleCurFrame returns to 0 once per cycle; flip back to normal.
+			if n.idleCurFrame == 0 && n.idleFrameTimer < dt*1.5 {
+				// freshly wrapped to frame 0 — restore normal idle
+				if n.altIdleBackup != nil {
+					n.idleGrid = n.altIdleBackup
+					n.altIdleBackup = nil
+				}
+				n.altIdleActive = false
+				n.idleAccumSec = 0
+			}
+		} else {
+			n.idleAccumSec += dt
+			if n.idleAccumSec >= n.altIdleAfterSec {
+				// Trigger the alt cycle now.
+				n.altIdleBackup = n.idleGrid
+				n.idleGrid = n.altIdleGrid
+				n.idleCurFrame = 0
+				n.idleFrameTimer = 0
+				n.altIdleActive = true
+			}
+		}
+	}
+
 	if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
 		n.frameTimer += dt
 		if n.frameTimer >= speed {
@@ -905,8 +1052,27 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	dstX := n.bounds.X + (n.bounds.W-dstW)/2
 	dstY := n.bounds.Y + bobOffset + (n.bounds.H - dstH)
 
+	// User 2026-05-22: srcCropBottomFrac, if set in (0, 1.0), trims the
+	// BOTTOM of the source frame so only the top fraction renders. Used
+	// by café patrons (chair art lives in the BG; we only want the
+	// upper body of the patron sprite). Clip both the source rect and
+	// dst rect proportionally so the head still anchors at the top.
+	src := frame.src
+	if n.srcCropBottomFrac > 0 && n.srcCropBottomFrac < 1.0 {
+		// Anchor stays at the TOP of the frame; trim the bottom.
+		baseSrc := frame.src
+		if baseSrc == nil {
+			baseSrc = &sdl.Rect{X: 0, Y: 0, W: int32(frame.w), H: int32(frame.h)}
+		}
+		newH := int32(float64(baseSrc.H) * n.srcCropBottomFrac)
+		src = &sdl.Rect{X: baseSrc.X, Y: baseSrc.Y, W: baseSrc.W, H: newH}
+		dstH = int32(float64(dstH) * n.srcCropBottomFrac)
+		// Re-anchor: keep top of dst at the same Y (head stays in place),
+		// just shorter overall — the chair from the BG fills under it.
+	}
+
 	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
-	renderer.CopyEx(frame.tex, frame.src, &dst, 0, nil, flip)
+	renderer.CopyEx(frame.tex, src, &dst, 0, nil, flip)
 	// lastDrawRect tracks the actual visible sprite rect — used by the
 	// click probe (F2) for alpha-channel diagnostics. NOT used for the
 	// click hit-test anymore: containsPoint uses the authored bounds
@@ -922,16 +1088,44 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 // actual click detection. Keeping them unified means: wherever the cursor
 // shows "talk", a click always lands.
 //
-// User 2026-05-19: reverted to bounds-based hit-test. The previous
-// lastDrawRect approach narrowed the click area to the post-aspect-preserve
-// visible sprite (e.g. 98×175 inside a 145×175 bounds for kids), making
-// Marcus/Danny feel "edge-only clickable." Post-rebalance bounds are
-// already snug around the visible character with ~30 px of natural
-// forgiveness — using bounds directly gives the cursor + click area the
-// user expects.
+// User 2026-05-24: hybrid hit-test. Past iterations toggled between
+// "use bounds rect" (too wide — click lands in empty rect space, user
+// reported "I had to click to the right of every NPC to talk") and
+// "use lastDrawRect" (too narrow — edge-only clickable). Hybrid:
+// expand lastDrawRect by ±25 px horizontally and ±15 px vertically
+// as forgiveness, intersected with the authored bounds rect so the
+// click region never extends past the design-time max. Falls back
+// to bounds when lastDrawRect isn't set yet (first frame).
 func (n *npc) containsPoint(x, y int32) bool {
 	pt := sdl.Point{X: x, Y: y}
-	return pt.InRect(&n.bounds)
+	if n.lastDrawRect.W <= 0 || n.lastDrawRect.H <= 0 {
+		return pt.InRect(&n.bounds)
+	}
+	// Expand the actual draw rect by forgiveness padding.
+	const padX = int32(25)
+	const padY = int32(15)
+	hit := sdl.Rect{
+		X: n.lastDrawRect.X - padX,
+		Y: n.lastDrawRect.Y - padY,
+		W: n.lastDrawRect.W + 2*padX,
+		H: n.lastDrawRect.H + 2*padY,
+	}
+	// Don't let the expanded rect escape the authored bounds (keeps
+	// click region predictable for NPCs whose bounds are intentionally
+	// shrunk like Pierre back-of-line).
+	if hit.X < n.bounds.X {
+		hit.X = n.bounds.X
+	}
+	if hit.Y < n.bounds.Y {
+		hit.Y = n.bounds.Y
+	}
+	if hit.X+hit.W > n.bounds.X+n.bounds.W {
+		hit.W = n.bounds.X + n.bounds.W - hit.X
+	}
+	if hit.Y+hit.H > n.bounds.Y+n.bounds.H {
+		hit.H = n.bounds.Y + n.bounds.H - hit.Y
+	}
+	return pt.InRect(&hit)
 }
 
 func (n *npc) footY() int32 {
@@ -1009,11 +1203,17 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 	// preferred path; legacy per-row PNG slicing stays as a fallback so
 	// the NPC still spawns if pack_atlas.py hasn't been run.
 	n := &npc{
-		bounds:         sdl.Rect{X: 540, Y: 490, W: 135, H: 230},
+		// User 2026-05-23: new bakery BG has the counter top at screen
+		// y=342 (vs the old BG's y≈410). Re-anchored Y 250→182 so
+		// Poulain's foot lands at Y+H=342 — right at the new counter
+		// top. The BG's tall counter-front panel visually clips
+		// everything below the counter top, leaving her upper body
+		// visible "behind the desk" as the user asked.
+		bounds:         sdl.Rect{X: 717, Y: 182, W: 135, H: 160},
 		name:           "Madame Poulain",
 		dialog:         bakeryWomanLostPinDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.12,
+		talkFrameSpeed: 0.10,
 		flipped:        false, // sheet draws her facing right already
 	}
 	if !applyNPCAtlas(renderer, n, "paris/bakery_woman") {
@@ -1051,11 +1251,13 @@ func newPressPhotographer(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/press_photographer.(png|json)
 	// is preferred; legacy PNG slicing stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 950, Y: 490, W: 86, H: 230},
+		// User 2026-05-22: width 86 was an outlier vs the other Paris
+		// front-line NPCs (Colette 135, Claude 115). Unified at 120×235.
+		bounds:         sdl.Rect{X: 950, Y: 490, W: 120, H: 235},
 		name:           "Nicolas",
 		dialog:         pressPhotographerDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.12,
+		talkFrameSpeed: 0.10,
 		flipped:        false, // sheet draws him facing right already
 	}
 	if !applyNPCAtlas(renderer, n, "paris/press_photographer") {
@@ -1072,11 +1274,14 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 	// Feet land at y≈680 on the paris_street floor line; user reported
 	// the previous Y=350 (feet ~590) had NPCs floating above the ground.
 	n := &npc{
-		bounds:         sdl.Rect{X: 300, Y: 490, W: 135, H: 230},
+		// User 2026-05-22: unified Paris front-line NPCs at 120×235.
+		// User 2026-05-22: talkFrameSpeed 0.10 → 0.08 for smoother
+		// animation cadence (was choppy on Colette specifically).
+		bounds:         sdl.Rect{X: 300, Y: 490, W: 120, H: 235},
 		name:           "Madame Colette",
 		dialog:         frenchGuideDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.12,
+		talkFrameSpeed: 0.08,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/french_guide") {
 		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png", 8, 2)
@@ -1116,7 +1321,7 @@ func newMuseumCurator(renderer *sdl.Renderer) *npc {
 		name:           "Curator Beaumont",
 		dialog:         museumCuratorDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.12,
+		talkFrameSpeed: 0.10,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/museum_curator") {
 		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_idle.png", 8, 1)
@@ -1152,11 +1357,13 @@ func newPierreArtist(renderer *sdl.Renderer) *npc {
 		// further down the Paris street line. PP's existing depthScale (driven
 		// by player.y) shrinks PP automatically as he walks up to talk and
 		// restores when he walks back to the front. User 2026-05-20.
-		bounds:         sdl.Rect{X: 820, Y: 390, W: 95, H: 175},
+		// User 2026-05-21: move left 40 + down 80 so Pierre is visually
+		// grounded in the mid-distance cobblestones instead of floating.
+		bounds:         sdl.Rect{X: 780, Y: 470, W: 95, H: 175},
 		name:           "Pierre",
 		dialog:         pierreArtistDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.12,
+		talkFrameSpeed: 0.10,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/pierre_artist") {
 		const sheet = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
@@ -1188,11 +1395,12 @@ func newGendarmeClaude(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/gendarme_claude.(png|json) is
 	// the preferred path; legacy per-row PNG slicing stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 1180, Y: 480, W: 115, H: 240},
+		// User 2026-05-22: unified Paris front-line NPCs at 120×235.
+		bounds:         sdl.Rect{X: 1180, Y: 480, W: 120, H: 235},
 		name:           "Claude",
 		dialog:         gendarmeDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.12,
+		talkFrameSpeed: 0.10,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/gendarme_claude") {
 		const sheet = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
@@ -1200,4 +1408,216 @@ func newGendarmeClaude(renderer *sdl.Renderer) *npc {
 		n.talkGrid = loadNPCGridRow(renderer, sheet, 6, 2, 1)
 	}
 	return n
+}
+
+// =====================================================================
+// Café patrons (paris_bakery interior) — 6 seated NPCs at 3 tables.
+//
+// One of them (Henri) is on the main quest chain: he asks PP to fetch a
+// coffee on first visit, then trades the coffee for homemade Confiture
+// out of his bag — which PP needs to give to Pierre so Pierre will eat
+// the baguette (otherwise the baguette is too dry and Pierre refuses
+// the press-pass trade). The other 5 are pure flavor.
+//
+// Sheets: assets/images/locations/paris/npc/coffee/cafe_patron_<name>_<idle|talk>.png
+// 8×1 strip per file, 100×170 per cell. Falls back gracefully if the
+// PNG isn't on disk yet — the engine no-ops on missing textures.
+// =====================================================================
+
+// loadCafePatronGrids is a small helper to keep the 6 factories DRY.
+//
+// User 2026-05-22 update: prefer the SPLIT format (two files per patron) —
+// `cafe_patron_<name>_idle.png` (800×170, 8×1) and `cafe_patron_<name>_talk.png`
+// (800×170, 8×1) — because it lets ChatGPT regen idle or talk independently
+// without re-rolling the whole 16-frame sheet. Falls back to the legacy
+// combined `cafe_patron_<name>.png` (1376×768, 8×2 with row 0 idle + row 1
+// talk) if the split files aren't on disk yet.
+//
+// Both paths use the CLEAN loader (tolerance 16) so off-white fringe pixels
+// at clothing/cup edges chroma-key away. Logs help catch silent load failures.
+func loadCafePatronGrids(renderer *sdl.Renderer, name string) ([]npcFrame, []npcFrame) {
+	base := "assets/images/locations/paris/npc/coffee/cafe_patron_" + name
+	splitIdlePath := base + "_idle.png"
+	splitTalkPath := base + "_talk.png"
+
+	// Try split format first.
+	var idle, talk []npcFrame
+	if _, err := os.Stat(splitIdlePath); err == nil {
+		idle = loadNPCGridClean(renderer, splitIdlePath, 8, 1)
+	}
+	if _, err := os.Stat(splitTalkPath); err == nil {
+		talk = loadNPCGridClean(renderer, splitTalkPath, 8, 1)
+	}
+
+	// If split files weren't found (or were empty), fall back to combined.
+	if len(idle) == 0 || len(talk) == 0 {
+		combined := base + ".png"
+		if _, err := os.Stat(combined); err == nil {
+			if len(idle) == 0 {
+				idle = loadNPCGridRowClean(renderer, combined, 8, 2, 0)
+			}
+			if len(talk) == 0 {
+				talk = loadNPCGridRowClean(renderer, combined, 8, 2, 1)
+			}
+			fmt.Printf("[cafePatron %s] using combined fallback (%s)\n", name, combined)
+		}
+	}
+
+	if len(talk) == 0 && len(idle) > 0 {
+		fmt.Printf("[cafePatron %s] talk frames missing — falling back to idle\n", name)
+		talk = idle
+	}
+	fmt.Printf("[cafePatron %s] idle=%d talk=%d frames\n", name, len(idle), len(talk))
+	return idle, talk
+}
+
+// --- Madame Yvette (beret + pearls, sipping tea) — flavor ---
+var yvetteDialog = []dialogEntry{
+	{speaker: "Madame Yvette", text: "Ze museum restoration is all anyone talks about, monsieur."},
+	{speaker: "Madame Yvette", text: "A hidden symbol under ze portrait! Imagine — five hundred years and we still find new things."},
+	{speaker: "Pink Panther", text: "Five hundred years is a long time to keep a secret."},
+}
+
+func newCafePatronYvette(renderer *sdl.Renderer) *npc {
+	idle, talk := loadCafePatronGrids(renderer, "yvette")
+	return &npc{
+		idleGrid:       idle,
+		talkGrid:       talk,
+		// User 2026-05-22: anchored to LEFT chair of left café table.
+		// srcCropBottomFrac clips the lower body so only head+shoulders
+		// render — chair art from the BG fills the lower half.
+		bounds:            sdl.Rect{X: 80, Y: 339, W: 90, H: 160},
+		name:              "Madame Yvette",
+		dialog:            yvetteDialog,
+		bobAmount:         0,
+		talkFrameSpeed:    0.10,
+		srcCropBottomFrac: 0.55,
+	}
+}
+
+// --- Monsieur Bernard (bearded, Le Figaro reader) — flavor ---
+var bernardDialog = []dialogEntry{
+	{speaker: "Monsieur Bernard", text: "(rustles paper) Le Figaro headline today, monsieur — restorer found a symbol under ze famous portrait."},
+	{speaker: "Monsieur Bernard", text: "Marvelous. Five hundred years of cleaning, and ze paint still has secrets."},
+}
+
+func newCafePatronBernard(renderer *sdl.Renderer) *npc {
+	idle, talk := loadCafePatronGrids(renderer, "bernard")
+	return &npc{
+		idleGrid:          idle,
+		talkGrid:          talk,
+		bounds:            sdl.Rect{X: 240, Y: 339, W: 90, H: 160},
+		name:              "Monsieur Bernard",
+		dialog:            bernardDialog,
+		bobAmount:         0,
+		talkFrameSpeed:    0.10,
+		srcCropBottomFrac: 0.55,
+	}
+}
+
+// --- Mademoiselle Camille (red beret, art student) — sketch beat ---
+// Camille gets a tiny in-place mini-interaction: she quick-sketches PP
+// in the dialog and shows him the result, with no inventory exchange.
+// The sketch is a single dialog beat for the first pass (no animated
+// one-shot yet — that's tracked in EXTRA_PROMPTS §T/§U as art-only).
+var camilleDialog = []dialogEntry{
+	{speaker: "Mademoiselle Camille", text: "Mind if I sketch you, monsieur? Ze pink is très magnifique. Hold still..."},
+	{speaker: "Mademoiselle Camille", text: "(charcoal scratches across her sketchpad — quick, confident strokes)"},
+	{speaker: "Mademoiselle Camille", text: "Voilà! What do you think?"},
+	{speaker: "Pink Panther", text: "It's very nice, I like it. You captured ze tail just right."},
+	{speaker: "Mademoiselle Camille", text: "Merci, monsieur. Keep posing for ze world, oui?"},
+}
+
+func newCafePatronCamille(renderer *sdl.Renderer) *npc {
+	idle, talk := loadCafePatronGrids(renderer, "camille")
+	return &npc{
+		idleGrid:          idle,
+		talkGrid:          talk,
+		bounds:            sdl.Rect{X: 420, Y: 339, W: 90, H: 160},
+		name:              "Mademoiselle Camille",
+		dialog:            camilleDialog,
+		bobAmount:         0,
+		talkFrameSpeed:    0.10,
+		srcCropBottomFrac: 0.55,
+	}
+}
+
+// --- Monsieur Henri (silver mustache, croissant + bag) — QUEST NPC ---
+//
+// Henri's flow:
+//   1. First visit: asks PP to fetch a café au lait. Promises something
+//      from his bag in return.
+//   2. PP brings the Café au Lait → altDialog fires: Henri remembers his
+//      promise, hands PP homemade Confiture from his bag.
+//   3. PP can now trade the Confiture to Pierre.
+var henriInitialDialog = []dialogEntry{
+	{speaker: "Monsieur Henri", text: "Ah, mon ami! A pink panther — zere's a sight."},
+	{speaker: "Monsieur Henri", text: "Could you do an old man a favor? Madame Poulain is overworked. Fetch me a coffee?"},
+	{speaker: "Monsieur Henri", text: "If you bring me one, I'll dig something nice from my bag for you. I keep treasures in here."},
+}
+
+var henriCoffeeTradeDialog = []dialogEntry{
+	{speaker: "Monsieur Henri", text: "Ah, mon ami! Café au lait, parfait!"},
+	{speaker: "Monsieur Henri", text: "Remember I said I had something from my bag for you?"},
+	{speaker: "Monsieur Henri", text: "Here — homemade strawberry confiture, made it zis morning. Goes well on a fresh baguette."},
+	{speaker: "Pink Panther", text: "Merci, Henri. Smells incredible."},
+}
+
+var henriPostTradeDialog = []dialogEntry{
+	{speaker: "Monsieur Henri", text: "Enjoy ze confiture, mon ami! And if you see Pierre, tell him to eat properly."},
+}
+
+func newCafePatronHenri(renderer *sdl.Renderer) *npc {
+	idle, talk := loadCafePatronGrids(renderer, "henri")
+	return &npc{
+		idleGrid:          idle,
+		talkGrid:          talk,
+		bounds:            sdl.Rect{X: 580, Y: 339, W: 90, H: 160},
+		name:              "Monsieur Henri",
+		dialog:            henriInitialDialog,
+		bobAmount:         0,
+		talkFrameSpeed:    0.10,
+		srcCropBottomFrac: 0.55,
+	}
+}
+
+// --- Lucien (turtleneck, espresso) — flavor with Tokyo foreshadow ---
+var lucienDialog = []dialogEntry{
+	{speaker: "Lucien", text: "Ze world... it does not feel right zis week, monsieur."},
+	{speaker: "Lucien", text: "I had ze same dream three nights now — a tower covered in flowers, and bells ringing far away."},
+	{speaker: "Lucien", text: "Probably ze coffee. Or someone is calling, somewhere."},
+}
+
+func newCafePatronLucien(renderer *sdl.Renderer) *npc {
+	idle, talk := loadCafePatronGrids(renderer, "lucien")
+	return &npc{
+		idleGrid:          idle,
+		talkGrid:          talk,
+		bounds:            sdl.Rect{X: 920, Y: 339, W: 90, H: 160},
+		name:              "Lucien",
+		dialog:            lucienDialog,
+		bobAmount:         0,
+		talkFrameSpeed:    0.10,
+		srcCropBottomFrac: 0.55,
+	}
+}
+
+// --- Madame Élise (auburn hair, autumn scarf) — flavor warmth ---
+var eliseDialog = []dialogEntry{
+	{speaker: "Madame Élise", text: "Autumn is coming early zis year, monsieur."},
+	{speaker: "Madame Élise", text: "Ze geese are already heading south, and ze wind has teeth."},
+	{speaker: "Madame Élise", text: "Wear your scarf. Even a panther catches cold."},
+}
+
+func newCafePatronElise(renderer *sdl.Renderer) *npc {
+	idle, talk := loadCafePatronGrids(renderer, "elise")
+	return &npc{
+		idleGrid:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 660, Y: 540, W: 90, H: 160},
+		name:           "Madame Élise",
+		dialog:         eliseDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.10,
+	}
 }

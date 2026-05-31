@@ -372,12 +372,21 @@ func (tm *travelMap) drawLandmark(renderer *sdl.Renderer, loc *travelLocation, p
 	loc.landmarkTex.SetAlphaMod(255)
 }
 
-// Hit rectangles center on the landmark sprite with enough padding that
-// adjacent pins in Europe don't overlap. 90x110 covers the ~70px landmark
-// plus a bit of its glow, and deliberately excludes the label sitting 50px
-// above the pin so a click on "Rome" doesn't bleed up into "Paris".
+// Hit rectangles center on the landmark sprite. User 2026-05-21:
+// shrunk from 90×110 to 60×70 so adjacent Asian pins (China 1049 vs
+// Tokyo 1164, 115 px apart) and adjacent European pins can't confuse
+// each other when the user clicks the label area. The label drawn
+// below locked pins at py+30 still falls inside this rect (covers
+// py-35..py+35), and the distance tie-break below catches any edge
+// case where two rects do overlap.
 func (tm *travelMap) pinHitRect(loc *travelLocation) sdl.Rect {
-	return sdl.Rect{X: loc.pinX - 45, Y: loc.pinY - 55, W: 90, H: 110}
+	// User 2026-05-22: the RETURN pin (back-to-camp / back-to-Paris) gets
+	// a smaller hit rect (40×40) so it doesn't feel "huge" on the map UI.
+	// Travel pins keep the 60×70 for easy clicking.
+	if loc.scene == tm.returnScene {
+		return sdl.Rect{X: loc.pinX - 20, Y: loc.pinY - 20, W: 40, H: 40}
+	}
+	return sdl.Rect{X: loc.pinX - 30, Y: loc.pinY - 35, W: 60, H: 70}
 }
 
 // distanceSqFromPin returns the squared distance from (mx, my) to the

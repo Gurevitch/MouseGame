@@ -245,14 +245,24 @@ func (g *Game) startDay2() {
 		}
 	}
 
-	// Make other kids silent on camp_grounds (they're in their rooms now).
-	// Marcus specifically should be HIDDEN on the grounds from Day 2 onward —
-	// he's in his cabin freaking out, not waiting on the path. Without this
-	// hide, ground Marcus is double-rendered alongside room Marcus.
+	// User 2026-05-23: hide all camp_grounds NPCs on Day 2 — they're each
+	// in their cabin (Marcus freaking out, Lily / Danny still inside, etc.)
+	// or at the office (Higgins). The Day-2 story flow runs through their
+	// individual room scenes, not from the grounds. Without this, the user
+	// reported "lily danny and higgins are outside on day 2".
+	//
+	// Tommy + Jake are already `hidden=true` after their Day-1 exit
+	// sequences (tommy_exit / jake_exit) fired, but we set hidden again
+	// here so Day-2 is consistent regardless of whether those sequences
+	// actually ran.
+	//
+	// Restoring `hidden` (not `silent`) — silent leaves the sprite drawn
+	// but un-clickable, which we don't want. hidden=true removes them
+	// from the scene entirely.
 	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
 		for _, n := range grounds.npcs {
-			n.silent = true
-			if n.name == "Marcus" {
+			switch n.name {
+			case "Marcus", "Tommy", "Jake", "Lily", "Danny", "Director Higgins":
 				n.hidden = true
 			}
 		}
@@ -594,12 +604,26 @@ func (g *Game) setupCampCallbacks() {
 				}
 		case "Tommy":
 			tommyMet := false
+			tommyExited := false
 			kid.onDialogEnd = func() {
 				if game.day == 1 && !tommyMet {
 					tommyMet = true
 					game.metKids++
 					kid.dialog = tommyPostDialog
 					game.checkDay1Complete()
+					// User 2026-05-21: after the Day-1 intro, Tommy walks
+					// off-left and exits the camp grounds. Plays the
+					// tommy_exit sequence if available; otherwise just
+					// hides him (so re-entering the scene doesn't re-spawn
+					// him in the same spot).
+					if !tommyExited {
+						tommyExited = true
+						if seq := game.seqStore.Get("tommy_exit"); seq != nil {
+							game.seqPlayer.Play(seq)
+						} else {
+							kid.hidden = true
+						}
+					}
 				} else if game.day >= 2 && !kid.dialogDone {
 					kid.dialogDone = true
 					kid.dialog = tommyPostStrangeDialog
@@ -607,12 +631,23 @@ func (g *Game) setupCampCallbacks() {
 			}
 		case "Jake":
 			jakeMet := false
+			jakeExited := false
 			kid.onDialogEnd = func() {
 				if game.day == 1 && !jakeMet {
 					jakeMet = true
 					game.metKids++
 					kid.dialog = jakePostDialog
 					game.checkDay1Complete()
+					// User 2026-05-21: after the Day-1 intro, Jake walks
+					// back into his cabin and disappears.
+					if !jakeExited {
+						jakeExited = true
+						if seq := game.seqStore.Get("jake_exit"); seq != nil {
+							game.seqPlayer.Play(seq)
+						} else {
+							kid.hidden = true
+						}
+					}
 				} else if game.day >= 2 && !kid.dialogDone {
 					kid.dialogDone = true
 					kid.dialog = jakePostStrangeDialog
@@ -647,8 +682,19 @@ func (g *Game) setupCampCallbacks() {
 			kid.onDialogEnd = func() {
 				if game.day == 1 && kid.hintState == 0 {
 					kid.hintState = 1
-					kid.altDialogRequiresHeld = false
+					// User 2026-05-23: strict HELD gate. The flower beat
+					// only fires when PP has actively pulled the flower
+					// out of inventory (it's heldItem on the cursor) and
+					// clicked Lily. Just having the flower in the bag is
+					// NOT enough — user wants the give-item motion
+					// required. Same pattern will apply to Marcus
+					// postcard, Jake coin, etc.
+					kid.altDialogRequiresHeld = true
 					kid.altDialogRequiresItem = "Flower"
+					kid.altDialogStrictMissingHint = []dialogEntry{
+						{speaker: "Lily", text: "..."},
+						{speaker: "Pink Panther", text: "She won't look up. If I had something for her, I'd need to bring it out and offer it."},
+					}
 					// Higgins walks in from offscreen-right to deliver the
 					// flower hint. The sequence teleports him out of view,
 					// un-hides, lerps to his hint spot, then plays dialog.
@@ -813,31 +859,113 @@ func (g *Game) setupParisCallbacks() {
 					guide.dialog = frenchGuidePostDialog
 				}
 			case "Pierre":
-				// Quest step 2: once PP is carrying the baguette, Pierre
-				// trades his press pass for it. altDialogFunc fires only
-				// when the Baguette is in the bag.
+				// Quest step 2 (user 2026-05-21): rewritten as TWO STAGES so PP
+				// brings the baguette and the spread on two separate trips.
+				// Stage 1 (hintState 0): holds Baguette → Pierre takes it,
+				//   says "it's dry, bring me a spread", swaps dialog. No
+				//   press-pass yet. Inventory loses the baguette.
+				// Stage 2 (hintState 1): holds Confiture → Pierre takes it,
+				//   hands over the Press Pass.
+				// PP cannot present both items at once (one of them is no
+				// longer in the inventory at stage 2).
 				pierre := n
-				pierre.onDialogEnd = func() {
-					pierre.dialog = pierreArtistPostDialog
+				// User 2026-05-22: depth-walk choreography on click —
+				// PP walks to middle of road (x=700, y=700), then plays
+				// playRecede (back-walk + shrink) toward Pierre's position,
+				// then dialog plays. After dialog, PP stays at the shrunken
+				// scale (depthScale + recede tween path leave him there
+				// until next click takes him forward again).
+				pierre.onClickOverride = func() {
+					if game.player == nil || game.dialog == nil {
+						return
+					}
+					game.player.walkToAndDo(700, 700, func() {
+						game.player.playRecede(1.0, 0.65, 50, func() {
+							game.player.state = stateTalking
+							game.player.facingLeft = false
+							game.player.dir = dirUp
+							// User 2026-05-23: release the recede freeze
+							// AFTER dialog ends so PP can walk again. The
+							// recede tween leaves recedeActive=true (so
+							// his rendered scale stays small) which
+							// short-circuits the normal update path —
+							// PP is frozen at the receded position. We
+							// call clearRecede() to free movement;
+							// depthScale (Y-based) keeps him visually
+							// small as long as his Y stays high. The
+							// next click that moves him will gradually
+							// restore his size as he walks toward the
+							// front of the scene.
+							releaseRecede := func() {
+								game.player.state = stateIdle
+								game.player.clearRecede()
+							}
+							if pierre.altDialogFunc != nil {
+								entries, cb := pierre.altDialogFunc()
+								if entries != nil {
+									game.dialog.startDialogWithCallback(entries, func() {
+										if cb != nil {
+											cb()
+										}
+										releaseRecede()
+									})
+									return
+								}
+							}
+							game.dialog.startDialogWithCallback(pierre.dialog, func() {
+								if pierre.hintState == 0 {
+									pierre.dialog = pierreArtistPostDialog
+								}
+								releaseRecede()
+							})
+						})
+					})
 				}
-				pierre.altDialogRequiresItem = "Baguette"
+				pierre.onDialogEnd = func() {
+					// Don't overwrite if we already pivoted to the stage-1
+					// "I need a spread" dialog. Pierre's `dialog` is updated
+					// in-stage below.
+					if pierre.hintState == 0 {
+						pierre.dialog = pierreArtistPostDialog
+					}
+				}
 				pierre.altDialogRequiresHeld = false
+				pierre.altDialogRequiresItem = "Baguette"
 				pierre.altDialogFunc = func() ([]dialogEntry, func()) {
-					if !game.inv.hasItem("Baguette") || game.inv.hasItem("Press Pass") {
-						return nil, nil
+					// Stage 1: PP brings the baguette for the first time.
+					if pierre.hintState == 0 && game.inv.hasItem("Baguette") {
+						return []dialogEntry{
+								{speaker: "Pierre", text: "Mon Dieu! Is zat a fresh baguette from Madame Poulain?"},
+								{speaker: "Pink Panther", text: "It can be yours, Pierre. I need a favor."},
+								{speaker: "Pierre", text: "Bread is good, mon ami, but it is so... dry."},
+								{speaker: "Pierre", text: "Bring me a spread — beurre or confiture — and we can talk press passes."},
+							}, func() {
+								game.inv.giveItemTo("Baguette", "pierre")
+								pierre.hintState = 1
+								pierre.dialog = []dialogEntry{
+									{speaker: "Pierre", text: "Still waiting on zat spread, mon ami. Beurre or confiture, anything."},
+								}
+								pierre.altDialogRequiresItem = "Confiture"
+							}
 					}
-					return []dialogEntry{
-						{speaker: "Pierre", text: "Mon Dieu! Is that a fresh baguette from Madame Poulain?"},
-						{speaker: "Pink Panther", text: "It can be yours, Pierre. I need a favor."},
-						{speaker: "Pierre", text: "Anything for bread, mon ami! Take my press pass — it gets you past ze gendarme."},
-					}, func() {
-						game.inv.giveItemTo("Baguette", "pierre")
-						if item := game.items.createItem("press_pass"); item != nil {
-							game.inv.addItem(item)
-						}
-						pierre.altDialogFunc = nil
-						pierre.altDialogRequiresItem = ""
+					// Stage 2: PP brings the spread.
+					if pierre.hintState == 1 && game.inv.hasItem("Confiture") {
+						return []dialogEntry{
+								{speaker: "Pierre", text: "Magnifique! Strawberries from ze south — perfect with my baguette."},
+								{speaker: "Pierre", text: "Here, ze press pass — Claude owes me a favor anyway."},
+								{speaker: "Pink Panther", text: "Bon appétit, Pierre."},
+							}, func() {
+								game.inv.giveItemTo("Confiture", "pierre")
+								if item := game.items.createItem("press_pass"); item != nil {
+									game.inv.addItem(item)
+								}
+								pierre.hintState = 2
+								pierre.dialog = pierreArtistPostDialog
+								pierre.altDialogFunc = nil
+								pierre.altDialogRequiresItem = ""
+							}
 					}
+					return nil, nil
 				}
 			case "Claude":
 				// Quest step 3: press pass → museum ticket. Claude waves PP
@@ -858,6 +986,12 @@ func (g *Game) setupParisCallbacks() {
 						{speaker: "Claude", text: "Pardon ze queue. Follow ze line around ze pyramid."},
 						{speaker: "Pink Panther", text: "Merci, Claude. Very kind."},
 					}, func() {
+						// User 2026-05-21: consume the press pass on trade so
+						// PP isn't stuck holding two unrelated items. Then add
+						// the museum ticket. Both inv.giveItemTo + inv.addItem
+						// fire so the gate (`hasItem("Museum Ticket")`) sees
+						// the new ticket.
+						game.inv.giveItemTo("Press Pass", "claude")
 						if item := game.items.createItem("museum_ticket"); item != nil {
 							game.inv.addItem(item)
 						}
@@ -957,38 +1091,94 @@ func (g *Game) setupParisCallbacks() {
 				if !game.inv.hasItem("Rolling Pin") || game.inv.hasItem("Baguette") {
 					return nil, nil
 				}
-				return bakeryWomanPinTradeDialog, func() {
-					game.inv.giveItemTo("Rolling Pin", "madame_poulain")
-					if item := game.items.createItem("baguette"); item != nil {
-						game.inv.addItem(item)
+				// User 2026-05-21: Poulain now hands out BOTH a Baguette and
+				// a Café au Lait when PP returns her rolling pin. The coffee
+				// is for Henri (who's been waiting in the café corner), and
+				// the baguette goes to Pierre via the new 2-stage trade.
+				return []dialogEntry{
+						{speaker: "Pink Panther", text: "I think I found what you were looking for, madame."},
+						{speaker: "Madame Poulain", text: "My rolling pin! Bless you, monsieur!"},
+						{speaker: "Madame Poulain", text: "Here — your baguette, fresh and warm."},
+						{speaker: "Madame Poulain", text: "And take zis café au lait too. Henri has been waiting for one all morning — give it to him for me, oui?"},
+					}, func() {
+						game.inv.giveItemTo("Rolling Pin", "madame_poulain")
+						if b := game.items.createItem("baguette"); b != nil {
+							game.inv.addItem(b)
+						}
+						if c := game.items.createItem("cafe_au_lait"); c != nil {
+							game.inv.addItem(c)
+						}
+						poulain.dialog = bakeryWomanPostDialog
+						poulain.altDialogFunc = nil
+						poulain.altDialogRequiresItem = ""
 					}
-					poulain.dialog = bakeryWomanPostDialog
-					poulain.altDialogFunc = nil
-					poulain.altDialogRequiresItem = ""
+			}
+			break
+		}
+
+		// --- Henri (café patron): coffee → confiture trade ---
+		// User 2026-05-21: PP brings the Café au Lait → Henri trades it for
+		// homemade Confiture from his bag. The confiture is then traded to
+		// Pierre (stage 2 of his 2-stage quest) for the press pass.
+		for _, n := range bakery.npcs {
+			if n.name != "Monsieur Henri" {
+				continue
+			}
+			henri := n
+			henri.onDialogEnd = func() {
+				// While PP doesn't have the coffee yet, just replay the
+				// "fetch me a coffee" beat on subsequent clicks.
+			}
+			henri.altDialogRequiresHeld = false
+			henri.altDialogRequiresItem = "Café au Lait"
+			henri.altDialogFunc = func() ([]dialogEntry, func()) {
+				if !game.inv.hasItem("Café au Lait") || game.inv.hasItem("Confiture") {
+					return nil, nil
+				}
+				return henriCoffeeTradeDialog, func() {
+					game.inv.giveItemTo("Café au Lait", "monsieur_henri")
+					if c := game.items.createItem("confiture"); c != nil {
+						game.inv.addItem(c)
+					}
+					henri.dialog = henriPostTradeDialog
+					henri.altDialogFunc = nil
+					henri.altDialogRequiresItem = ""
 				}
 			}
 			break
 		}
 
-		// Floor item: rolling pin lying on the bakery floor. Same mechanism
-		// as the lake's flower (camp_lake floorItems above). Clickable hit
-		// area is intentionally generous so the puzzle reads as findable.
-		pinDef, ok := game.items.getDef("rolling_pin")
-		if ok {
+	}
+
+	// User 2026-05-21: rolling-pin lives OUTSIDE the bakery in the
+	// **bicycle basket** parked on the cobblestone street (visible in
+	// paris_street.png — black bike with brown wicker basket on the
+	// handlebars, centered ~screen x=320-390, y=490-540). PP reaches into
+	// the basket at chest height to grab it. Replaces an earlier café-
+	// table placement that crouched PP to the floor.
+	if parisStreet, ok := g.sceneMgr.scenes["paris_street"]; ok {
+		game := g
+		pinDef, defOk := game.items.getDef("rolling_pin")
+		if defOk {
 			pinTex, pinW, pinH := engine.SafeTextureFromPNGKeyed(g.renderer, pinDef.Texture)
 			pin := &floorItem{
 				tex:     pinTex,
 				srcW:    pinW,
 				srcH:    pinH,
-				bounds:  sdl.Rect{X: 420, Y: 660, W: 90, H: 60},
+				// Anchored to the bike's wicker basket on the cobblestones.
+				// User 2026-05-21: nudged right + down so it sits squarely
+				// on the basket area visible in the paris_street BG (the
+				// bike is centered slightly left of the lamp post, basket
+				// at the handlebars roughly screen x=360-440, y=510-565).
+				bounds:  sdl.Rect{X: 360, Y: 510, W: 80, H: 55},
 				name:    "Rolling Pin",
 				visible: true,
 				onPickup: func() {
 					if item := game.items.createItem("rolling_pin"); item != nil {
 						game.inv.addItem(item)
 					}
-					if b, ok := game.sceneMgr.scenes["paris_bakery"]; ok {
-						for _, fi := range b.floorItems {
+					if ps, ok := game.sceneMgr.scenes["paris_street"]; ok {
+						for _, fi := range ps.floorItems {
 							if fi.name == "Rolling Pin" {
 								fi.visible = false
 								break
@@ -996,11 +1186,12 @@ func (g *Game) setupParisCallbacks() {
 						}
 					}
 					game.dialog.startDialog([]dialogEntry{
-						{speaker: "Pink Panther", text: "A wooden rolling pin. Madame Poulain will be happy."},
+						{speaker: "Pink Panther", text: "A wooden rolling pin... sitting in someone's bike basket."},
+						{speaker: "Pink Panther", text: "Madame Poulain at the bakery might be missing this."},
 					})
 				},
 			}
-			bakery.floorItems = append(bakery.floorItems, pin)
+			parisStreet.floorItems = append(parisStreet.floorItems, pin)
 		}
 	}
 }
@@ -1029,25 +1220,12 @@ func (g *Game) setupTravelHotspots() {
 		}
 	}
 
-	// Camp Entrance: bus stop to open travel map
-	if campEntrance, ok := g.sceneMgr.scenes["camp_entrance"]; ok {
-		campEntrance.hotspots = append(campEntrance.hotspots, hotspot{
-			bounds: sdl.Rect{X: 0, Y: 250, W: 130, H: 350},
-			name:   "Camp Chilly Wa Wa Air",
-			arrow:  arrowLeft,
-			onInteract: func() bool {
-				if !game.inv.hasItem("Travel Map") {
-					game.dialog.startDialog([]dialogEntry{
-						{speaker: "Pink Panther", text: "An old airstrip. 'Camp Chilly Wa Wa Air' — how quaint."},
-						{speaker: "Pink Panther", text: "I don't have a travel map yet. Maybe Higgins can help."},
-					})
-					return true
-				}
-				game.travelMap.Show("camp_entrance")
-				return true
-			},
-		})
-	}
+	// User 2026-05-21: removed the "Camp Chilly Wa Wa Air" left-arrow
+	// hotspot from camp_entrance. Travel is opened by clicking the
+	// Travel Map item in the inventory (see g.inv.onSelectItem above) —
+	// the scene-edge hotspot was a stale leftover from the pre-2026-04-26
+	// design and showed up as a confusing left arrow on first entry to
+	// the game.
 }
 
 func (g *Game) Close() {
@@ -1132,31 +1310,21 @@ func (g *Game) HandleClick(x, y int32) {
 	}
 	scene := g.sceneMgr.current()
 
-	// Click on PP toggles the inventory — but only if nothing actionable
-	// sits under the click. PP's hit rect is the full 170x235 and in cabin
-	// scenes he stands smack in the middle of the exit hotspot, so without
-	// this guard clicking the bottom of the cabin hijacks the exit click
-	// to open inventory instead. Same risk for NPCs / floor items / other
-	// hotspots that overlap PP's rect.
-	if g.player.containsPoint(x, y) {
-		var hotspotUnder *hotspot
-		var npcUnder *npc
-		var floorUnder *floorItem
-		if scene != nil {
-			hotspotUnder = scene.checkHotspotClick(x, y)
-			npcUnder = scene.checkNPCClick(x, y)
-			floorUnder = scene.checkFloorItemClick(x, y)
+	// PP-click handling. Two cases:
+	//   (a) Player is NOT holding an item → click on PP opens inventory.
+	//       Empty-inventory click is silently eaten (no fall-through to
+	//       hotspot behind PP, per user 2026-05-23).
+	//   (b) Player IS holding an item → fall through to the held-item drop
+	//       logic below. User 2026-05-24: previously this block toggled
+	//       inventory for ANY click on PP, which meant trying to deliver a
+	//       flower to Lily standing next to PP would hit PP's rect first
+	//       and re-pocket the item — making the give-item beat
+	//       undeliverable ("can't move item to Lily, game stack").
+	if g.player.containsPoint(x, y) && g.inv.heldItem == nil {
+		if len(g.inv.items) > 0 {
+			g.inv.toggle()
 		}
-		if hotspotUnder == nil && npcUnder == nil && floorUnder == nil {
-			if g.inv.heldItem != nil {
-				g.inv.toggle()
-				return
-			}
-			if len(g.inv.items) > 0 {
-				g.inv.toggle()
-				return
-			}
-		}
+		return
 	}
 
 	if g.inv.heldItem != nil {
@@ -1216,10 +1384,10 @@ func (g *Game) HandleClick(x, y int32) {
 		return
 	}
 
-	if npc := scene.checkNPCClick(x, y); npc != nil {
-		g.player.walkToAndInteract(npc, g.dialog)
-		return
-	}
+	// User 2026-05-22: floor items BEFORE npcs so a pickable item that sits
+	// under an NPC's bounds rect (e.g. the rolling pin near Nicolas) routes
+	// the click to the pickup, not to the NPC dialog. Matches the cursor
+	// priority in ui.go.
 	if fi := scene.checkFloorItemClick(x, y); fi != nil {
 		fiLocal := fi
 		g.player.walkToAndDo(
@@ -1231,6 +1399,10 @@ func (g *Game) HandleClick(x, y int32) {
 				}
 			},
 		)
+		return
+	}
+	if npc := scene.checkNPCClick(x, y); npc != nil {
+		g.player.walkToAndInteract(npc, g.dialog)
 		return
 	}
 	if hs := scene.checkHotspotClick(x, y); hs != nil {
@@ -1363,6 +1535,17 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		return
 	}
 
+	// User 2026-05-22: inventory is modal — freeze the world while it's
+	// open. Only the inventory's own ticks (pulse animation in inv.draw)
+	// keep running. Clicks behind are already blocked at HandleClick:1235.
+	// This stops NPC frames, floor-item visibility, ambient effects, and
+	// scene-trigger checks from advancing while the player browses items.
+	if g.inv.open {
+		g.ui.cursor = cursorNormal
+		g.ui.hoverName = ""
+		return
+	}
+
 	if g.travelMap.Visible() {
 		g.ui.hoverName = ""
 		g.ui.cursor = cursorNormal
@@ -1411,10 +1594,11 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		}
 	}
 
-	if g.day2Started && g.sceneMgr.currentName == "camp_grounds" && !g.sceneMgr.transitioning && !g.dialog.active {
-		g.day2Started = false
-		g.dialog.startDialog(day2Monologue)
-	}
+	// User 2026-05-22: Day-2 monologue removed from here — it was duplicating
+	// the wake-up dialog the night_bedtime.json sequence already plays at
+	// lines 38-42 (the "*yawn* What a night..." beat). Now plays exactly
+	// once, in-context, at the end of the sequence.
+	_ = g.day2Started // keep field for save-state compat; no longer drives dialog
 
 	if !g.parisMonologuePlayed && g.sceneMgr.currentName == "paris_street" && !g.sceneMgr.transitioning {
 		g.parisMonologuePlayed = true
@@ -1603,6 +1787,11 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	} else {
 		scene.drawActors(renderer, g.player)
 	}
+
+	// Sequence-owned projectile sprites (thrown map, etc.) render on top
+	// of the scene actors but below the dialog / HUD. No-op when no
+	// SeqTweenItem step is active. See game/sequence.go:SequencePlayer.Draw.
+	g.seqPlayer.Draw(renderer)
 
 	if !(g.sceneMgr.currentName == "camp_night" && g.playerSleeping) {
 		drawWarmTint(renderer)

@@ -166,8 +166,9 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 
 	cx, cy := invOvalCenter()
 
-	// Dim background
-	renderer.SetDrawColor(0, 0, 0, 140)
+	// Dim background — user 2026-05-22: bumped from 140 to 190 so the modal
+	// freeze reads more clearly visually (matches Update-side gate above).
+	renderer.SetDrawColor(0, 0, 0, 190)
 	renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
 
 	if inv.circleTex != nil {
@@ -210,10 +211,13 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 		pulse := 0.5 + 0.5*math.Sin(inv.pulse*2.4)
 		alpha := uint8(120 + pulse*90)
 		chevSize := int32(28)
-		leftX := cx - invOvalW/2 + 70
-		rightX := cx + invOvalW/2 - 70
-		drawChevron(renderer, leftX, cy, chevSize, true, alpha)
-		drawChevron(renderer, rightX, cy, chevSize, false, alpha)
+		// User 2026-05-21: fix arrow positions to land on the inventory
+		// oval's hand grips at (453, 546) and (929, 547). Previously the
+		// arrows used a screen-center math that drifted off the oval art.
+		leftX, leftY := int32(453), int32(546)
+		rightX, rightY := int32(929), int32(547)
+		drawChevron(renderer, leftX, leftY, chevSize, true, alpha)
+		drawChevron(renderer, rightX, rightY, chevSize, false, alpha)
 	}
 }
 

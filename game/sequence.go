@@ -1,6 +1,12 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+
+	"bitbucket.org/Local/games/PP/engine"
+
+	"github.com/veandco/go-sdl2/sdl"
+)
 
 // SeqActionType defines what kind of action a sequence step performs.
 type SeqActionType int
@@ -24,6 +30,7 @@ const (
 	SeqGiveItem                          // Add an item to inventory by id (silent — no UI pop)
 	SeqPlayerAnim                        // Play a one-shot PP animation (e.g. "receive_map") for Duration seconds
 	SeqNPCOneShotAnim                    // Play a one-shot named anim on an NPC ("give_map") for Duration seconds
+	SeqTweenItem                         // Lerp a sprite from (FromX,FromY) → (TargetX,TargetY) over Duration (e.g. thrown map)
 )
 
 // SeqStep is one step in a sequence. Fields are used by whichever Action
@@ -52,6 +59,16 @@ type SeqStep struct {
 	moveStartX int32
 	moveStartY int32
 	moveElapsed float64
+
+	// SeqTweenItem — visible thrown/flying sprite that lerps across screen.
+	Sprite string // PNG path; loaded lazily on first execute.
+	FromX  int32  // start screen x
+	FromY  int32  // start screen y
+	// Runtime-only: loaded texture + dimensions, set on first execute and
+	// cleared when the step finishes so the Draw hook stops rendering.
+	tweenTex *sdl.Texture
+	tweenW   int32
+	tweenH   int32
 }
 
 // Sequence is an ordered list of steps that play automatically.
@@ -150,8 +167,66 @@ func (sp *SequencePlayer) Update(dt float64) {
 				seq.waiting = false
 				sp.nextStep()
 			}
+
+		case SeqTweenItem:
+			// Lerp the item from (FromX,FromY) → (TargetX,TargetY) over
+			// Duration seconds. We use moveElapsed on the step pointer to
+			// avoid recomputing from the global seq.timer in case other
+			// timers stack. Draw hook reads the same elapsed value to
+			// position the sprite. Done when elapsed >= Duration.
+			stepPtr := &seq.Steps[seq.current]
+			stepPtr.moveElapsed += dt
+			if stepPtr.moveElapsed >= step.Duration {
+				// Clear runtime texture so Draw stops emitting; the texture
+				// itself stays cached on the game-wide tweenItemCache so
+				// repeat plays don't re-load it.
+				stepPtr.tweenTex = nil
+				seq.waiting = false
+				sp.nextStep()
+			}
 		}
 	}
+}
+
+// Draw renders any per-step visuals the sequence player owns. Currently
+// just the SeqTweenItem projectile sprite (thrown map, etc.). Called from
+// Game.draw AFTER scene actors so the projectile renders on top of the
+// world without disturbing NPC rendering. Safe to call when no sequence
+// is active.
+func (sp *SequencePlayer) Draw(renderer *sdl.Renderer) {
+	if sp.current == nil || !sp.current.active || !sp.current.waiting {
+		return
+	}
+	seq := sp.current
+	step := &seq.Steps[seq.current]
+	if step.Action != SeqTweenItem || step.tweenTex == nil {
+		return
+	}
+	dur := step.Duration
+	if dur <= 0 {
+		dur = 0.001
+	}
+	t := step.moveElapsed / dur
+	if t > 1.0 {
+		t = 1.0
+	}
+	dx := float64(step.TargetX - step.FromX)
+	dy := float64(step.TargetY - step.FromY)
+	cx := step.FromX + int32(dx*t)
+	// User 2026-05-22: PARABOLIC arc — the projectile flies HIGH at the
+	// midpoint and lands at the target. arcHeight is the pixels above the
+	// straight-line midpoint the projectile reaches at t=0.5.
+	// Formula: arc(t) = 4*h*t*(1-t) → 0 at t=0/1, max=h at t=0.5.
+	const arcHeight = 200.0
+	arcLift := arcHeight * 4.0 * t * (1.0-t)
+	cy := step.FromY + int32(dy*t) - int32(arcLift)
+	dst := sdl.Rect{
+		X: cx - step.tweenW/2,
+		Y: cy - step.tweenH/2,
+		W: step.tweenW,
+		H: step.tweenH,
+	}
+	renderer.Copy(step.tweenTex, nil, &dst)
 }
 
 func (sp *SequencePlayer) nextStep() {
@@ -199,7 +274,11 @@ func (sp *SequencePlayer) executeStep() {
 		sp.nextStep()
 
 	case SeqNPCAnim:
-		if n := sp.findNPC(step.Scene, step.NPC); n != nil {
+		n := sp.findNPC(step.Scene, step.NPC)
+		if n == nil {
+			fmt.Printf("[SeqNPCAnim] NPC not found: scene=%q npc=%q anim=%q\n",
+				step.Scene, step.NPC, step.Anim)
+		} else {
 			switch step.Anim {
 			case "talk":
 				n.endOneShotAnim()
@@ -211,16 +290,14 @@ func (sp *SequencePlayer) executeStep() {
 				n.setAnimState(npcAnimIdle)
 			default:
 				// User 2026-05-12: looping named animation (e.g. Higgins's
-				// "walk_back" during an npc_move). The old approach used
-				// playOneShotAnim with a 60s duration, which stretched each
-				// frame to 7.5s and froze at frame 0 for the move's 2.5s
-				// (this was the L544 bug). New approach: swap idleGrid for
-				// the named anim's frames so the existing idle-frame cycler
-				// loops it at the natural pace; restore on the next idle/
-				// talk anim step.
-				if _, ok := n.oneShotAnims[step.Anim]; ok {
+				// "walk_back" during an npc_move).
+				if frames, ok := n.oneShotAnims[step.Anim]; ok && len(frames) > 0 {
 					n.swapIdleForOneShot(step.Anim)
+					fmt.Printf("[SeqNPCAnim] swapped idle to %q (%d frames) on %q\n",
+						step.Anim, len(frames), step.NPC)
 				} else {
+					fmt.Printf("[SeqNPCAnim] anim %q not registered on %q (frames=%d) — falling back to idle\n",
+						step.Anim, step.NPC, len(frames))
 					n.setAnimState(npcAnimIdle)
 				}
 			}
@@ -355,6 +432,32 @@ func (sp *SequencePlayer) executeStep() {
 		n := sp.findNPC(step.Scene, step.NPC)
 		if n != nil {
 			n.playOneShotAnim(step.Anim, dur)
+		}
+		seq.waiting = true
+		seq.timer = 0
+
+	case SeqTweenItem:
+		// Load the projectile sprite on first entry. Texture lives on the
+		// step pointer's runtime scratch so Draw can pick it up. If the
+		// PNG is missing, log + skip (don't deadlock the sequence).
+		stepPtr := &seq.Steps[seq.current]
+		if stepPtr.tweenTex == nil && step.Sprite != "" {
+			tex, w, h := engine.SafeTextureFromPNGKeyed(sp.game.renderer, step.Sprite)
+			if tex != nil {
+				tex.SetBlendMode(sdl.BLENDMODE_BLEND)
+				stepPtr.tweenTex = tex
+				stepPtr.tweenW = w
+				stepPtr.tweenH = h
+			} else {
+				fmt.Printf("SeqTweenItem: sprite %q missing — skipping projectile draw\n", step.Sprite)
+			}
+		}
+		stepPtr.moveElapsed = 0
+		// Zero-duration tweens snap immediately to end.
+		if step.Duration <= 0 {
+			stepPtr.tweenTex = nil
+			sp.nextStep()
+			return
 		}
 		seq.waiting = true
 		seq.timer = 0
