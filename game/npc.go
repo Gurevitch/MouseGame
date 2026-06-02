@@ -104,6 +104,10 @@ type npc struct {
 	// them — clipping the bottom hides duplicate legs. 0 means draw the full
 	// frame (default). User 2026-05-22.
 	srcCropBottomFrac float64
+	// extraScale is an extra render-size multiplier lerped by a SeqNPCMove
+	// endScale, so an NPC genuinely shrinks as he walks "into" the scene
+	// (Jake stepping back into his cabin). 0 or 1 = no extra scaling.
+	extraScale float64
 	// hintState is a small per-NPC dialog progression counter. Lily uses
 	// 0 = has not been spoken to, 1 = shy dialog played (waiting for
 	// flower), 2 = flower given. Storing this on the NPC instead of a
@@ -357,8 +361,8 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 	//   idle: 6x1
 	//   talk: 6x1 (clipboard lowered, mouth open)
 	return &npc{
-		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 6, 1),
-		talkGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
+		idleGrid: loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 6, 1),
+		talkGrid: loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
 		// User 2026-05-18: shifted X 660 → 760 so PP's walk-up-to-talk
 		// position lands clear of the left gate post / fence rail. PP
 		// resting spot (post walk-in) also shifted to keep the same gap.
@@ -399,20 +403,18 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// 129×200 centered horizontally in the 220 bounds.
 		// User 2026-05-23: Y nudged 310 → 300 (a few pixels up so the
 		// head sits cleaner above the desk per the playtest report).
-		bounds:         sdl.Rect{X: 990, Y: 300, W: 220, H: 200},
-		name:           "Director Higgins",
-		dialog:         higginsWorriedDialog,
-		bobAmount:      0,
+		bounds:    sdl.Rect{X: 990, Y: 300, W: 220, H: 200},
+		name:      "Director Higgins",
+		dialog:    higginsWorriedDialog,
+		bobAmount: 0,
 		// User 2026-05-23: 0.10 still reads as choppy on the office sheet
 		// (the talk grid has 12 frames at 6×2 with slightly different
 		// frame heights between rows, producing visible jitter). Drop to
 		// 0.08 so the cadence is brisker — visible 'two lines together'
 		// across frame swaps is reduced as a side-effect.
 		talkFrameSpeed: 0.08,
-		// User 2026-05-31 (#12): flip Higgins 180° to face the other way — the
-		// previous flipped:true had him facing the wrong direction for the
-		// office composition.
-		flipped: false,
+		// User 2026-05-31 (#16): flip office Higgins 180°.
+		flipped: true,
 		silent:  true,
 	}
 	// Register the give-map one-shot animation. User 2026-05-31 (#14): the
@@ -498,7 +500,11 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	// User 2026-05-22: load the alt-idle "strange_alt" frames so the
 	// engine swaps Marcus's idle for one cycle every ~5 seconds of
 	// inactivity in the cabin scene. Ambient "freakout punctuation".
-	altFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_alt.png", 7, 2)
+	// User 2026-06-02: this sheet has 8 poses per row, not 7 — loading 7×2
+	// drifted each cell off its pose and sliced two half-Marcuses into one
+	// frame ("two frames at once" during the strange idle). Load 8×2 to match
+	// the regenerated uniform sheet.
+	altFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_alt.png", 8, 2)
 	if len(altFrames) > 0 {
 		n.altIdleGrid = altFrames
 		n.altIdleAfterSec = 5.0
@@ -581,7 +587,7 @@ func newTommy(renderer *sdl.Renderer) *npc {
 	// clicks miss. 145 wide gives a forgiving target while still hugging
 	// the visible character.
 	n := &npc{
-		bounds:         sdl.Rect{X: 130, Y: 410, W: 145, H: 175},
+		bounds:         sdl.Rect{X: 130, Y: 445, W: 145, H: 140}, // #6: kids smaller than PP (feet kept at y=585)
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0,
@@ -648,7 +654,7 @@ var jakePostStrangeDialog = []dialogEntry{
 func newJake(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
-		bounds:         sdl.Rect{X: 395, Y: 405, W: 145, H: 175},
+		bounds:         sdl.Rect{X: 395, Y: 440, W: 145, H: 140}, // #6: kids smaller than PP (feet kept at y=580)
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0,
@@ -719,7 +725,7 @@ var lilyPostStrangeDialog = []dialogEntry{
 func newLily(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
-		bounds:         sdl.Rect{X: 600, Y: 400, W: 145, H: 175},
+		bounds:         sdl.Rect{X: 600, Y: 420, W: 145, H: 140}, // #6: Lily smaller than PP (feet kept at y=560)
 		name:           "Lily",
 		dialog:         lilyShyDialog,
 		bobAmount:      0,
@@ -777,7 +783,7 @@ var marcusPostStrangeDialog = []dialogEntry{
 func newMarcus(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
-		bounds:         sdl.Rect{X: 890, Y: 400, W: 145, H: 175},
+		bounds:         sdl.Rect{X: 890, Y: 435, W: 145, H: 140}, // #6: kids smaller than PP (feet kept at y=575)
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0,
@@ -840,7 +846,7 @@ func newDanny(renderer *sdl.Renderer) *npc {
 	// dialog wins over both Lily-cabin (1017-1137) and Danny-cabin
 	// (1183-1303) when click lands in the overlap zone.
 	n := &npc{
-		bounds:         sdl.Rect{X: 1090, Y: 405, W: 180, H: 175},
+		bounds:         sdl.Rect{X: 1090, Y: 440, W: 180, H: 140}, // #6: kids smaller than PP (feet kept at y=580)
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0,
@@ -966,6 +972,13 @@ func (n *npc) update(dt float64) {
 		// User 2026-05-31 (#4/#13): ×2.5 (≈0.375s/frame) read as a slow,
 		// visible "swish" between idle frames. ×2.0 (≈0.30s) is smoother.
 		idleSpeed := speed * 2.0 // idle cycles a little slower than talk
+		// User 2026-06-02 (#15): the strange/freakout idle read as "way too
+		// fast" — the poses jump hard so even the normal cadence strobes. Slow
+		// the strange idle (and its alt-idle beat) right down so it reads as an
+		// uneasy fidget, not a flicker.
+		if n.isStrange {
+			idleSpeed = speed * 3.5
+		}
 		// User 2026-05-20: when a walk/named-anim is swapped into idleGrid
 		// (via swapIdleForOneShot), cycle at walk-cadence (~0.10s) instead
 		// of the slow idle cadence. Higgins's walk_back was previously
@@ -1065,6 +1078,9 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	}
 	if charScale <= 0 {
 		charScale = 1.0
+	}
+	if n.extraScale > 0 {
+		charScale *= n.extraScale
 	}
 	bobOffset := int32(math.Sin(n.bobTimer*1.5) * n.bobAmount)
 
@@ -1271,13 +1287,12 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 	// preferred path; legacy per-row PNG slicing stays as a fallback so
 	// the NPC still spawns if pack_atlas.py hasn't been run.
 	n := &npc{
-		// User 2026-05-23: new bakery BG has the counter top at screen
-		// y=342 (vs the old BG's y≈410). Re-anchored Y 250→182 so
-		// Poulain's foot lands at Y+H=342 — right at the new counter
-		// top. The BG's tall counter-front panel visually clips
-		// everything below the counter top, leaving her upper body
-		// visible "behind the desk" as the user asked.
-		bounds:         sdl.Rect{X: 717, Y: 182, W: 135, H: 160},
+		// User 2026-05-31: Y=182 placed her up in the shelves/menu area where
+		// she blended into the busy BG ("not in the game"). Moved her DOWN to
+		// stand behind the counter glass: foot/waist-cutoff at y≈430 (counter
+		// top), head at y≈250, centred behind the display case. Fine-tune with
+		// in-game coords if needed.
+		bounds:         sdl.Rect{X: 600, Y: 250, W: 170, H: 180},
 		name:           "Madame Poulain",
 		dialog:         bakeryWomanLostPinDialog,
 		bobAmount:      0,
@@ -1294,6 +1309,10 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		if _, err := os.Stat(poulainIdle); err == nil {
 			n.idleGrid = loadNPCGridConnected(renderer, poulainIdle, 8, 2)
 			n.talkGrid = loadNPCGridConnected(renderer, poulainTalk, 8, 2)
+			if poulainWork := loadNPCGridConnected(renderer, "assets/images/locations/paris/npc/npc_madame_poulain_work.png", 8, 2); len(poulainWork) > 0 {
+				n.altIdleGrid = poulainWork
+				n.altIdleAfterSec = 5.0
+			}
 		} else {
 			const sheet = "assets/images/locations/paris/npc/npc_bakery_woman.png"
 			n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
@@ -1356,11 +1375,13 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 		// User 2026-05-22: unified Paris front-line NPCs at 120×235.
 		// User 2026-05-22: talkFrameSpeed 0.10 → 0.08 for smoother
 		// animation cadence (was choppy on Colette specifically).
-		bounds:         sdl.Rect{X: 300, Y: 490, W: 120, H: 235},
-		name:           "Madame Colette",
-		dialog:         frenchGuideDialog,
-		bobAmount:      0,
-		talkFrameSpeed: 0.08,
+		bounds:    sdl.Rect{X: 300, Y: 490, W: 120, H: 235},
+		name:      "Madame Colette",
+		dialog:    frenchGuideDialog,
+		bobAmount: 0,
+		// User 2026-05-31 (#21): her talk was too fast at 0.08; 0.13 slows the
+		// cadence so it reads smoothly (#20).
+		talkFrameSpeed: 0.13,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/french_guide") {
 		// User 2026-05-31 (#18): use Colette's dedicated new sheets
@@ -1567,16 +1588,16 @@ var yvetteDialog = []dialogEntry{
 func newCafePatronYvette(renderer *sdl.Renderer) *npc {
 	idle, talk := loadCafePatronGrids(renderer, "yvette")
 	return &npc{
-		idleGrid:       idle,
-		talkGrid:       talk,
+		idleGrid: idle,
+		talkGrid: talk,
 		// User 2026-05-22: anchored to LEFT chair of left café table.
 		// srcCropBottomFrac clips the lower body so only head+shoulders
 		// render — chair art from the BG fills the lower half.
-		bounds:            sdl.Rect{X: 80, Y: 339, W: 90, H: 160},
-		name:              "Madame Yvette",
-		dialog:            yvetteDialog,
-		bobAmount:         0,
-		talkFrameSpeed:    0.10,
+		bounds:         sdl.Rect{X: 80, Y: 339, W: 90, H: 160},
+		name:           "Madame Yvette",
+		dialog:         yvetteDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.10,
 	}
 }
 
@@ -1589,13 +1610,13 @@ var bernardDialog = []dialogEntry{
 func newCafePatronBernard(renderer *sdl.Renderer) *npc {
 	idle, talk := loadCafePatronGrids(renderer, "bernard")
 	return &npc{
-		idleGrid:          idle,
-		talkGrid:          talk,
-		bounds:            sdl.Rect{X: 240, Y: 339, W: 90, H: 160},
-		name:              "Monsieur Bernard",
-		dialog:            bernardDialog,
-		bobAmount:         0,
-		talkFrameSpeed:    0.10,
+		idleGrid:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 240, Y: 339, W: 90, H: 160},
+		name:           "Monsieur Bernard",
+		dialog:         bernardDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.10,
 	}
 }
 
@@ -1615,24 +1636,24 @@ var camilleDialog = []dialogEntry{
 func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 	idle, talk := loadCafePatronGrids(renderer, "camille")
 	return &npc{
-		idleGrid:          idle,
-		talkGrid:          talk,
-		bounds:            sdl.Rect{X: 420, Y: 339, W: 90, H: 160},
-		name:              "Mademoiselle Camille",
-		dialog:            camilleDialog,
-		bobAmount:         0,
-		talkFrameSpeed:    0.10,
+		idleGrid:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 420, Y: 339, W: 90, H: 160},
+		name:           "Mademoiselle Camille",
+		dialog:         camilleDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.10,
 	}
 }
 
 // --- Monsieur Henri (silver mustache, croissant + bag) — QUEST NPC ---
 //
 // Henri's flow:
-//   1. First visit: asks PP to fetch a café au lait. Promises something
-//      from his bag in return.
-//   2. PP brings the Café au Lait → altDialog fires: Henri remembers his
-//      promise, hands PP homemade Confiture from his bag.
-//   3. PP can now trade the Confiture to Pierre.
+//  1. First visit: asks PP to fetch a café au lait. Promises something
+//     from his bag in return.
+//  2. PP brings the Café au Lait → altDialog fires: Henri remembers his
+//     promise, hands PP homemade Confiture from his bag.
+//  3. PP can now trade the Confiture to Pierre.
 var henriInitialDialog = []dialogEntry{
 	{speaker: "Monsieur Henri", text: "Ah, mon ami! A pink panther — zere's a sight."},
 	{speaker: "Monsieur Henri", text: "Could you do an old man a favor? Madame Poulain is overworked. Fetch me a coffee?"},
@@ -1653,13 +1674,13 @@ var henriPostTradeDialog = []dialogEntry{
 func newCafePatronHenri(renderer *sdl.Renderer) *npc {
 	idle, talk := loadCafePatronGrids(renderer, "henri")
 	return &npc{
-		idleGrid:          idle,
-		talkGrid:          talk,
-		bounds:            sdl.Rect{X: 580, Y: 339, W: 90, H: 160},
-		name:              "Monsieur Henri",
-		dialog:            henriInitialDialog,
-		bobAmount:         0,
-		talkFrameSpeed:    0.10,
+		idleGrid:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 580, Y: 339, W: 90, H: 160},
+		name:           "Monsieur Henri",
+		dialog:         henriInitialDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.10,
 	}
 }
 
@@ -1673,13 +1694,13 @@ var lucienDialog = []dialogEntry{
 func newCafePatronLucien(renderer *sdl.Renderer) *npc {
 	idle, talk := loadCafePatronGrids(renderer, "lucien")
 	return &npc{
-		idleGrid:          idle,
-		talkGrid:          talk,
-		bounds:            sdl.Rect{X: 920, Y: 339, W: 90, H: 160},
-		name:              "Lucien",
-		dialog:            lucienDialog,
-		bobAmount:         0,
-		talkFrameSpeed:    0.10,
+		idleGrid:       idle,
+		talkGrid:       talk,
+		bounds:         sdl.Rect{X: 920, Y: 339, W: 90, H: 160},
+		name:           "Lucien",
+		dialog:         lucienDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.10,
 	}
 }
 

@@ -12,25 +12,25 @@ import (
 type SeqActionType int
 
 const (
-	SeqDialog       SeqActionType = iota // Show dialog entries
-	SeqWait                              // Wait for duration (seconds)
-	SeqTransition                        // Transition to a scene
-	SeqCallback                          // Run a callback function
-	SeqSetVar                            // Set a variable in VarStore
-	SeqNPCAnim                           // Flip a named NPC's animation state (idle/talk)
-	SeqNPCStrange                        // Flip a named NPC in / out of the strange state
-	SeqSetSceneBG                        // Swap a scene's background for an alternate
-	SeqHidePlayer                        // Suppress PP rendering (hide/show)
-	SeqPlayerSleep                       // Toggle PP's sleeping sprite overlay
-	SeqPlayerWake                        // Kick off PP's waking animation
-	SeqStartDay                          // Advance to the next camp day (resets chapter-scope state)
-	SeqNPCHidden                         // Toggle an NPC's hidden + silent flags (un-hide on un-silent)
-	SeqNPCTeleport                       // Snap an NPC to an absolute (x, y) position
-	SeqNPCMove                           // Linearly interpolate an NPC's position over Duration seconds
-	SeqGiveItem                          // Add an item to inventory by id (silent — no UI pop)
-	SeqPlayerAnim                        // Play a one-shot PP animation (e.g. "receive_map") for Duration seconds
-	SeqNPCOneShotAnim                    // Play a one-shot named anim on an NPC ("give_map") for Duration seconds
-	SeqTweenItem                         // Lerp a sprite from (FromX,FromY) → (TargetX,TargetY) over Duration (e.g. thrown map)
+	SeqDialog         SeqActionType = iota // Show dialog entries
+	SeqWait                                // Wait for duration (seconds)
+	SeqTransition                          // Transition to a scene
+	SeqCallback                            // Run a callback function
+	SeqSetVar                              // Set a variable in VarStore
+	SeqNPCAnim                             // Flip a named NPC's animation state (idle/talk)
+	SeqNPCStrange                          // Flip a named NPC in / out of the strange state
+	SeqSetSceneBG                          // Swap a scene's background for an alternate
+	SeqHidePlayer                          // Suppress PP rendering (hide/show)
+	SeqPlayerSleep                         // Toggle PP's sleeping sprite overlay
+	SeqPlayerWake                          // Kick off PP's waking animation
+	SeqStartDay                            // Advance to the next camp day (resets chapter-scope state)
+	SeqNPCHidden                           // Toggle an NPC's hidden + silent flags (un-hide on un-silent)
+	SeqNPCTeleport                         // Snap an NPC to an absolute (x, y) position
+	SeqNPCMove                             // Linearly interpolate an NPC's position over Duration seconds
+	SeqGiveItem                            // Add an item to inventory by id (silent — no UI pop)
+	SeqPlayerAnim                          // Play a one-shot PP animation (e.g. "receive_map") for Duration seconds
+	SeqNPCOneShotAnim                      // Play a one-shot named anim on an NPC ("give_map") for Duration seconds
+	SeqTweenItem                           // Lerp a sprite from (FromX,FromY) → (TargetX,TargetY) over Duration (e.g. thrown map)
 )
 
 // SeqStep is one step in a sequence. Fields are used by whichever Action
@@ -45,20 +45,25 @@ type SeqStep struct {
 	VarName  string        // for SeqSetVar
 	VarValue int           // for SeqSetVar
 	// NPC / scene-action fields
-	NPC      string // NPC name (matches npc.name) for SeqNPCAnim, SeqNPCStrange, SeqNPCOneShotAnim
-	Anim     string // "idle" | "talk" for SeqNPCAnim; arbitrary anim name for SeqPlayerAnim, SeqNPCOneShotAnim
-	Strange  bool   // for SeqNPCStrange
-	BGKey    string // identifier of the alternate background (e.g. "night")
-	Hide     bool   // for SeqHidePlayer, SeqPlayerSleep, SeqNPCHidden
-	DayNum   int    // for SeqStartDay (1 or 2)
-	ItemID   string // for SeqGiveItem — matches assets/data/items.json id
+	NPC     string // NPC name (matches npc.name) for SeqNPCAnim, SeqNPCStrange, SeqNPCOneShotAnim
+	Anim    string // "idle" | "talk" for SeqNPCAnim; arbitrary anim name for SeqPlayerAnim, SeqNPCOneShotAnim
+	Strange bool   // for SeqNPCStrange
+	BGKey   string // identifier of the alternate background (e.g. "night")
+	Hide    bool   // for SeqHidePlayer, SeqPlayerSleep, SeqNPCHidden
+	DayNum  int    // for SeqStartDay (1 or 2)
+	ItemID  string // for SeqGiveItem — matches assets/data/items.json id
 	// NPC move/teleport targets — absolute pixel coords.
-	TargetX  int32
-	TargetY  int32
+	TargetX int32
+	TargetY int32
+	// EndScale, when > 0, makes a SeqNPCMove also lerp the NPC's render scale
+	// (npc.extraScale) to EndScale over the move — so it shrinks as it walks
+	// "into" the scene (Jake into his cabin).
+	EndScale float64
 	// Runtime-only scratch space for in-progress moves (start pos + elapsed).
-	moveStartX int32
-	moveStartY int32
-	moveElapsed float64
+	moveStartX     int32
+	moveStartY     int32
+	moveStartScale float64
+	moveElapsed    float64
 
 	// SeqTweenItem — visible thrown/flying sprite that lerps across screen.
 	Sprite string // PNG path; loaded lazily on first execute.
@@ -83,8 +88,8 @@ type Sequence struct {
 
 // SequencePlayer manages playing sequences.
 type SequencePlayer struct {
-	current  *Sequence
-	game     *Game
+	current *Sequence
+	game    *Game
 }
 
 func newSequencePlayer(g *Game) *SequencePlayer {
@@ -149,6 +154,9 @@ func (sp *SequencePlayer) Update(dt float64) {
 				dy := float64(step.TargetY - stepPtr.moveStartY)
 				n.bounds.X = stepPtr.moveStartX + int32(dx*t)
 				n.bounds.Y = stepPtr.moveStartY + int32(dy*t)
+				if step.EndScale > 0 {
+					n.extraScale = stepPtr.moveStartScale + (step.EndScale-stepPtr.moveStartScale)*t
+				}
 			}
 			if t >= 1.0 {
 				seq.waiting = false
@@ -218,7 +226,7 @@ func (sp *SequencePlayer) Draw(renderer *sdl.Renderer) {
 	// straight-line midpoint the projectile reaches at t=0.5.
 	// Formula: arc(t) = 4*h*t*(1-t) → 0 at t=0/1, max=h at t=0.5.
 	const arcHeight = 200.0
-	arcLift := arcHeight * 4.0 * t * (1.0-t)
+	arcLift := arcHeight * 4.0 * t * (1.0 - t)
 	cy := step.FromY + int32(dy*t) - int32(arcLift)
 	dst := sdl.Rect{
 		X: cx - step.tweenW/2,
@@ -330,8 +338,9 @@ func (sp *SequencePlayer) executeStep() {
 			// so the normal idle/walk path picks up at the campfire
 			// position instead of wherever the player was before the
 			// sequence started. Foot at y=615 matches the sleep render.
+			// User 2026-06-02 (#14): match the lowered sleep anchor (650).
 			sp.game.player.x = float64(335 - playerDstW/2)
-			sp.game.player.y = float64(615 - playerDstH)
+			sp.game.player.y = float64(650 - playerDstH)
 			sp.game.player.targetX = sp.game.player.x
 			sp.game.player.targetY = sp.game.player.y
 			sp.game.player.moving = false
@@ -378,6 +387,10 @@ func (sp *SequencePlayer) executeStep() {
 			stepPtr := &seq.Steps[seq.current]
 			stepPtr.moveStartX = n.bounds.X
 			stepPtr.moveStartY = n.bounds.Y
+			stepPtr.moveStartScale = n.extraScale
+			if stepPtr.moveStartScale <= 0 {
+				stepPtr.moveStartScale = 1.0
+			}
 			stepPtr.moveElapsed = 0
 			seq.waiting = true
 			seq.timer = 0
@@ -385,6 +398,9 @@ func (sp *SequencePlayer) executeStep() {
 			if step.Duration <= 0 {
 				n.bounds.X = step.TargetX
 				n.bounds.Y = step.TargetY
+				if step.EndScale > 0 {
+					n.extraScale = step.EndScale
+				}
 				seq.waiting = false
 				sp.nextStep()
 			}

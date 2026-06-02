@@ -149,9 +149,12 @@ type scene struct {
 	walkSegments []walkSegment
 	spawnX       float64
 	spawnY       float64
-	musicPath    string
-	minY         float64
-	maxY         float64
+	// entryWalk: PP walks in from off-screen left to the spawn point on
+	// arrival instead of popping into place (#5).
+	entryWalk bool
+	musicPath string
+	minY      float64
+	maxY      float64
 	// characterScale multiplies PP and NPC draw sizes (not hitboxes) so
 	// tight/indoor scenes can render characters smaller without having
 	// to redraw sheets. 1.0 = outdoor default; 0.85-0.9 for rooms. See
@@ -379,6 +382,22 @@ func (sm *sceneManager) update(dt float64) {
 				// rendering at recedeEndScale (e.g. 0.45) after a cabin
 				// or camp-entrance transition completed.
 				sm.transPlayer.clearRecede()
+				// User 2026-06-02 (#5): when the scene opts into entryWalk, PP
+				// arrives by walking in from off-screen left to the spawn point
+				// rather than popping into place. allowOffscreen lets him start
+				// past the left edge; onArrival re-clamps him to the play area.
+				if s.entryWalk {
+					p := sm.transPlayer
+					p.x = playerMinX - float64(playerDstW)
+					p.targetX = engine.Clamp(s.spawnX, playerMinX, playerMaxX)
+					p.targetY = p.y
+					p.moving = true
+					p.allowOffscreen = true
+					p.state = stateWalking
+					p.dir = dirRight
+					p.facingLeft = false
+					p.onArrival = func() { p.allowOffscreen = false }
+				}
 			}
 		}
 	} else {
@@ -801,7 +820,7 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer, showAmbientLife bool) {
 			wingSpread := int32(2 + math.Abs(math.Sin(p.timer*8))*2)
 			renderer.SetDrawColor(p.r, p.g, p.b, p.alpha)
 			renderer.FillRect(&sdl.Rect{X: px, Y: py, W: 2, H: 2})
-			renderer.SetDrawColor(p.r, p.g, p.b, p.alpha / 2)
+			renderer.SetDrawColor(p.r, p.g, p.b, p.alpha/2)
 			renderer.FillRect(&sdl.Rect{X: px - wingSpread, Y: py - 1, W: wingSpread, H: 1})
 			renderer.FillRect(&sdl.Rect{X: px + 2, Y: py - 1, W: wingSpread, H: 1})
 			continue

@@ -429,7 +429,11 @@ func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
 	// and fire startNPCDialog right away.
 	dx := p.targetX - p.x
 	dy := p.targetY - p.y
-	if dx*dx+dy*dy < 80*80 {
+	// User 2026-06-02 (#8): an 80px snap radius teleported PP onto the talk
+	// spot with no walk frames — he "popped" instead of moving (Marcus's room,
+	// Higgins). Shrink to 30px so only a near-zero approach snaps; anything
+	// further plays the short walk so the movement reads.
+	if dx*dx+dy*dy < 30*30 {
 		p.x = p.targetX
 		p.y = p.targetY
 		p.moving = false
@@ -998,7 +1002,54 @@ func (p *player) footY() int32 {
 
 func (p *player) depthScale() float64 {
 	progress := engine.Clamp((p.y-playerMinY)/(playerMaxY-playerMinY), 0, 1)
-	return 0.88 + progress*0.18
+	// User 2026-06-02 (#7): the old 0.88..1.06 range shrank PP noticeably when
+	// he walked up-screen to talk to a kid (Lily). Narrow to 0.95..1.05 so
+	// depth still reads but PP no longer visibly "shrinks" mid-conversation.
+	return 0.95 + progress*0.10
+}
+
+// playerRenderFillFrac: the tallest opaque pose in the active animation is
+// scaled to this fraction of playerDstH. Normalising by opaque height (not the
+// raw cell height) keeps PP one consistent on-screen size across idle/talk/walk
+// in every direction, even though the front sheets use 384px cells and the side
+// sheets 512px cells with different amounts of blank padding (#1/#2/#3).
+const playerRenderFillFrac = 0.78
+
+// maxOpaqueHeightP is the tallest opaque content height across a frame slice —
+// the player-side mirror of npc.maxOpaqueH.
+func maxOpaqueHeightP(frames []spriteFrame) int32 {
+	var m int32
+	for _, f := range frames {
+		if f.oh > m {
+			m = f.oh
+		}
+	}
+	return m
+}
+
+// currentGroup returns the frame slice the active animation is cycling, so the
+// draw path can normalise size by the tallest pose in the set.
+func (p *player) currentGroup() []spriteFrame {
+	if p.activeOneShot != "" {
+		if frames, ok := p.oneShotAnims[p.activeOneShot]; ok && len(frames) > 0 {
+			return frames
+		}
+	}
+	switch p.state {
+	case stateWalking:
+		if f := p.currentWalkFrames(); len(f) > 0 {
+			return f
+		}
+	case stateTalking:
+		if f := p.currentTalkFrames(); len(f) > 0 {
+			return f
+		}
+	case stateGrabbing, stateUsing, stateExamining, stateReacting, stateShowInventory:
+		if f := p.actionFrames(); len(f) > 0 {
+			return f
+		}
+	}
+	return p.currentIdleFrames()
 }
 
 func (p *player) draw(renderer *sdl.Renderer) {
@@ -1027,22 +1078,35 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	// (each pose plants its feet on the same line) and the left-of-path drift,
 	// and makes idle/talk/walk read as the same size. Falls back to the full
 	// cell when no opaque data is present.
-	scaledHeight := int32(float64(playerDstH) * p.depthScale() * charScale)
-	frameScale := float64(scaledHeight) / float64(frame.h)
+	scaledHeight := float64(playerDstH) * p.depthScale() * charScale
 	var src *sdl.Rect
 	var dstW, dstH int32
-	if frame.ow > 0 && frame.oh > 0 {
+	// Normalise by the tallest opaque pose in the active animation so every
+	// sheet (front 384px cells, side 512px cells, old/new art) renders PP at the
+	// same standing height — fixes "not the same size" across walk/talk/idle and
+	// the per-frame size jump that read as "two frames at once" (#1/#2/#3).
+	refH := maxOpaqueHeightP(p.currentGroup())
+	if frame.ow > 0 && frame.oh > 0 && refH > 0 {
+		targetTall := scaledHeight * playerRenderFillFrac
+		frameScale := targetTall / float64(refH)
 		s := sdl.Rect{X: frame.ox, Y: frame.oy, W: frame.ow, H: frame.oh}
 		src = &s
 		dstW = int32(float64(frame.ow) * frameScale)
 		dstH = int32(float64(frame.oh) * frameScale)
 	} else {
+		// No opaque data — fall back to the legacy full-cell scale.
+		frameScale := scaledHeight / float64(frame.h)
 		dstW = int32(float64(frame.w) * frameScale)
-		dstH = scaledHeight
+		dstH = int32(scaledHeight)
 	}
 
 	dstX := int32(p.x) + playerDstW/2 - dstW/2
 	dstY := p.footY() - dstH
+	// User 2026-06-02 (#10): lift the flower-grab pose so PP's reach lines up
+	// with the flower on the ground instead of bending below it.
+	if p.activeOneShot == "grab_flower" {
+		dstY -= 38
+	}
 
 	flip := sdl.FLIP_NONE
 	if p.state == stateWalking && (p.dir == dirLeft || p.dir == dirRight) {
