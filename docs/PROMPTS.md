@@ -153,7 +153,7 @@ expressive eyebrows. Each kid gets **four** sprite sheets:
 
 | Kid     | Visual tag                                   | Palette                                  |
 | ------- | -------------------------------------------- | ---------------------------------------- |
-| Marcus  | curly black hair, sketchbook under arm       | olive shirt, brown shorts                |
+| Marcus  | brown hair, round glasses, notepad under arm  | golden-yellow polo `#EEB421`, brown shorts |
 | Jake    | buzz cut, belt with pouches and coins        | red tee, cargo shorts                    |
 | Lily    | long blond braid, flower behind one ear      | lavender dress, white sneakers           |
 | Tommy   | mullet, drumsticks in back pocket            | black band tee, ripped jeans             |

@@ -77,6 +77,17 @@ verticals between animation frames.
 If you see a faint vertical/horizontal line in the preview, the generator
 drew a separator — regenerate with the rule above emphasised.
 
+## No extras rule (applies to EVERY sheet)
+
+User 2026-06-02: generators keep adding a large "hero" character **portrait**
+beside the frame grid (and sometimes title text / labels). Include in every
+prompt:
+
+> Output ONLY the N×M grid of animation frames — nothing else. NO separate
+> large character portrait or "hero" reference image beside or above the grid,
+> NO title text, NO labels, NO watermark, NO colour swatches. Just the frames
+> on pure #FFFFFF.
+
 ---
 
 ## Open Prompts
@@ -84,237 +95,121 @@ drew a separator — regenerate with the rule above emphasised.
 All prompts below still need a PNG generated. When one lands, move its row
 into the **Done log** at the bottom and delete the body.
 
----
+> **Marcus design lock (applies to all three §M* prompts below).** Prior
+> "strange" regens came back as the WRONG kid — black/spiky hair, navy/olive
+> shirt, no glasses. That is not Marcus. Marcus's canonical look, sampled
+> from the live `npc_marcus_idle.png`, is: tidy **brown hair `#66390D`**,
+> **round eyeglasses** (always on), a **golden-yellow polo shirt `#EEB421`**,
+> **brown shorts `#684C22`**, brown shoes, and a small **cream notepad**.
+> The strange sheets must be the SAME boy, SAME glasses, SAME yellow polo —
+> only his expression/energy changes (freaked-out). NOT black hair, NOT a
+> navy/olive shirt, NOT glasses-less.
 
-### A. PP idle — regen to match talk design
+### §M1 — Marcus strange idle (design-match regen)
 
-**Canvas (front):** 1376×768. **Grid:** 8×2. **Cell:** 172×384.
-**Path:** `assets/images/player/PP idle front.png`.
-
-**Canvas (side):** 1672×941. **Grid:** 8×2. **Cell:** 209×470.
-**Path:** `assets/images/player/PP idle side.png`.
-
-User 2026-05-24: previously we regenerated TALK to match IDLE; the user has
-now reversed the direction — the **talk** sheets are the canonical PP design
-(better silhouette, cleaner paws, tail framing) and the **idle** sheets need
-to be regenerated to look like the talk sheets but with mouth closed and
-breathing-only motion instead of gestures.
-
-Run this prompt twice (once with front canvas, once with side canvas).
-Substitute the canvas/grid/cell numbers above for the run you're doing.
+`assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_idle.png`
+**8×2, 1536×1024, each cell 192×512 (tall rectangle).**
 
 ===PROMPT START===
-> [style lock]
->
-> Pink Panther standing in a relaxed idle pose, mouth closed. **Match
-> the silhouette, paw shape, tail framing, and color palette of
-> `PP talk front.png` / `PP talk side.png` exactly** — same body
-> proportions, same tail curve, same pink fill `#E88BB5` with
-> `#C4548A` cel shadow, same ivory off-white belly patch, same
-> pale-grey eye sclera with black pupils, same `#1C1C1C` ink
-> outline ~3 px. **Plain pink paws — NO gloves of any color.**
-> **No pure white anywhere on the panther.**
->
-> The difference from the talk sheet: mouth stays CLOSED in every
-> idle frame (small relaxed smile is fine), and motion is restricted
-> to subtle breathing, tail flick, eye blink, weight shift — no
-> wide gestures, no raised paws.
->
-> **Animation:** 16-frame idle loop (8 columns × 2 rows).
->
-> Row 0 (frames 0–7): standard breathing loop. 0 neutral standing
-> with mouth closed and small smile, 1 chest expanding slightly
-> (breath in), 2 chest at peak, 3 chest releasing (breath out), 4
-> back to neutral, 5 tail flick to one side, 6 tail returning, 7
-> eye-blink frame (eyelids halfway).
->
-> Row 1 (frames 8–15): same eight-beat breathing loop but with the
-> weight subtly shifted to the other foot — alternates which leg
-> bears weight so the loop has visual variety. Mouth stays closed
-> throughout. One additional eye-blink frame somewhere in this row.
->
-> **Critical canvas rules:** Cell dimensions exactly as specified
-> above. PP's foot baseline locked to the bottom of the cell across
-> all 16 frames — he does not change vertical position. Body
-> centerline locked on every cell. Tail stays inside the cell. No
-> frame is taller or wider than another. **Match `PP talk
-> front.png` (or `PP talk side.png` for the side run) exactly for
-> body proportions and overall PP size in each cell** so idle ↔
-> talk swap is visually seamless.
->
-> [SEPARATOR RULE — see top of file. No drawn lines between cells.
-> Pure `#FFFFFF` between every neighbouring frame.]
+> Hand-drawn 1990s Saturday-morning cartoon (Pink Panther *Hokus Pokus Pink*
+> / *Passport to Peril*), confident ~3px black ink, flat saturated fills, two
+> cel tones max, no gradients. Output ONLY an 8-columns × 2-rows grid of 16
+> animation frames on a pure #FFFFFF background — NO separate hero portrait,
+> NO title text, NO labels, NO colour swatches, NO watermark. The grid has NO
+> visible separators: no drawn borders, no thin grey/black lines, no shadow
+> seams between cells; neighbouring cells meet directly on pure #FFFFFF, so a
+> cropped cell shows only that frame with no edge artefacts. Total canvas
+> 1536×1024, each cell a tall 192×512 rectangle; the boy fills the cell
+> top-to-bottom with a ~4px inset and the SAME foot baseline in every frame,
+> centred horizontally with even side margins and a clear empty gutter so no
+> pose touches a cell edge.
+> Subject every frame: the same young boy — tidy brown hair `#66390D`, round
+> eyeglasses, golden-yellow polo shirt `#EEB421`, brown shorts `#684C22`,
+> brown shoes, clutching a small cream notepad. He is in an anxious
+> "freaked-out" trance: eyes wide and staring behind the glasses, brows up,
+> posture tense, a small shudder/fidget — mouth CLOSED (idle). Across the 16
+> frames vary only subtle nervous beats (clutching the notepad tighter, a
+> flinch, a glance) so it loops without strobing. Keep the glasses and the
+> yellow polo in every single frame. No pure white on the character — the
+> notepad is cream `#EDE5D3`, not white.
 ===PROMPT END===
 
----
+### §M2 — Marcus strange talk (design-match regen, fixes the "not smooth" #9)
 
-### B. Marcus idle — recolor to match the strange-idle palette
-
-**Canvas:** 1376×768. **Grid:** 7×2. **Cell:** 196×384.
-**Path:** `assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png`.
-
-User 2026-05-24: `npc_marcus_strange_idle.png` has a moodier / darker palette
-(the "something-is-wrong" Marcus). The regular `npc_marcus_idle.png` is
-brighter and reads like a different kid when the engine swaps from regular →
-strange after the inactivity timer fires. Regenerate the regular idle so the
-palette MATCHES the strange-idle exactly — same shirt tone, same shorts
-tone, same hair tone, same skin tone. Only the pose/expression should differ
-between the two sheets.
+`assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_talk.png`
+**8×2, 1536×1024, each cell 192×512.** (Current file is 1678×937 with
+irregular pose spacing — that uneven cut is why the talk reads as "not
+smooth". Regen on the locked uniform grid.)
 
 ===PROMPT START===
-> [style lock]
->
-> Marcus the 10-year-old camp kid in regular relaxed idle. **Match
-> the color palette of `npc_marcus_strange_idle.png` exactly** —
-> sample the hair, skin, shirt, shorts, socks, shoes, and
-> sketchbook colors from that sheet and reuse them here. Round
-> wire-rim glasses `#1C1C1C`, small nose-bandage strip, holds his
-> spiral sketchbook in his left hand. Black `#1C1C1C` ink outline
-> ~3 px. **No pure white on the character** — sketchbook page uses
-> bone `#EDE5D3`, socks use cream `#E5DDC8`.
->
-> The difference from `npc_marcus_strange_idle.png`: Marcus is
-> CALM and present — looking at the camera with a small friendly
-> smile, normal posture, sketchbook held casually at his hip.
-> NOT staring blankly, NOT clutching the sketchbook to his chest,
-> NOT slumped — that's the strange-idle's job. This sheet is the
-> "before the wrongness" Marcus.
->
-> **Animation:** 14-frame idle loop (7 columns × 2 rows).
->
-> Row 0 (frames 0–6): 0 neutral standing facing camera, 1 small
-> breath in (chest rises), 2 breath peak, 3 breath out, 4 looks
-> down at sketchbook briefly, 5 looks back up, 6 small adjust of
-> the glasses.
->
-> Row 1 (frames 7–13): 7 weight shift to other foot, 8 breath in,
-> 9 breath peak, 10 breath out, 11 eye blink, 12 small head-turn
-> to one side, 13 returns to neutral matching frame 0 so the loop
-> seams.
->
-> **Critical canvas rules:** Every cell exactly 196×384. Marcus's
-> foot baseline locked to row pixel 380 in every frame. Body
-> centerline matches the strange-idle sheet's centerline so
-> swapping between the two sheets is seamless. Pure `#FFFFFF`
-> background.
->
-> [SEPARATOR RULE — see top of file. No drawn lines between cells.]
+> Hand-drawn 1990s Saturday-morning cartoon (Pink Panther *Hokus Pokus Pink*
+> / *Passport to Peril*), confident ~3px black ink, flat fills, no gradients.
+> Output ONLY an 8-columns × 2-rows grid of 16 frames on pure #FFFFFF — NO
+> hero portrait, NO text, NO labels, NO swatches, NO watermark, NO drawn
+> separators or seams between cells (cells meet directly on #FFFFFF). Total
+> 1536×1024, each cell a tall 192×512 rectangle; boy fills the cell with a
+> ~4px inset, SAME foot baseline every frame, centred with even gutters, no
+> pose touching a cell edge.
+> Subject every frame: the same boy — brown hair `#66390D`, round eyeglasses,
+> golden-yellow polo `#EEB421`, brown shorts `#684C22`, brown shoes, holding
+> a cream notepad. This is the freaked-out TALK cycle: mouth OPEN in every
+> frame cycling through talking shapes, eyes wide, eyebrows working, gestures
+> a touch erratic (jabbing at the notepad, hands up). Keep glasses + yellow
+> polo in every frame. No pure white on the character (notepad cream
+> `#EDE5D3`).
 ===PROMPT END===
 
----
+### §M3 — Marcus strange alt (the "activate from time to time" idle beat, #15)
 
-### C. Higgins office idle + talk — match the entrance Higgins design
-
-**Canvas (each):** 1376×768. **Grid:** 6×2. **Cell:** 229×384.
-**Paths:**
-- `assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png`
-- `assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png`
-
-User 2026-05-24: the office Higgins looks like a different character from
-the entrance Higgins (`npc_director_higgins_idle.png` / `npc_director_higgins_talk.png`).
-Different face shape, different mustache, different shirt color. Regenerate
-BOTH office sheets so the design and color palette match the entrance
-Higgins exactly — same lanky build, same round wire-rim glasses, same brown
-mustache, same khaki safari shirt with epaulets, same brown belt, same cream
-neckerchief. The ONLY difference between entrance and office Higgins is the
-framing (standing full-body outside vs seated behind a desk).
+`assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_alt.png`
+**8×2, 1536×1024, each cell 192×512.** (Loaded as the inactivity alt-idle
+beat in `newRoomMarcus`; current file is 1679×937 irregular — regen on the
+locked grid so the periodic beat doesn't show two half-Marcuses.)
 
 ===PROMPT START===
-> [style lock — paste at the top of both sheet generations]
->
-> Director Higgins seated behind his desk in the camp office.
-> **Match the face, hair, mustache, glasses, shirt, belt, and
-> neckerchief design and colors of `npc_director_higgins_idle.png`
-> (the entrance standing-outside Higgins) exactly.** Lanky ranger
-> build, round wire-rim glasses `#1C1C1C`, brown mustache
-> `#4A2E1B`, short side-parted brown hair, khaki safari shirt
-> `#A47148` with epaulets, brown leather belt, cream `#E5DDC8`
-> neckerchief. Visible from desk-edge up — chair behind, desk edge
-> at the bottom of the cell partially obscures lower torso. Black
-> `#1C1C1C` ink outline ~3 px. **No pure white anywhere.**
-> Pure `#FFFFFF` background.
->
-> The difference from the entrance sheet: Higgins is SEATED behind
-> a wooden desk, with both hands resting near the desktop. The
-> desk top edge runs horizontally across the bottom of every cell
-> at a consistent Y, so the engine can render him behind the
-> office desk BG without head-clearance jumps.
->
-> **Animation:** 6 frames per row (6 columns × 2 rows). Row 0 =
-> idle, Row 1 = talk.
->
-> Idle (row 0): 0 neutral with both hands on desk, 1 small
-> shoulder shrug, 2 hand to mustache, 3 looks down at desk, 4
-> looks up at camera, 5 returns to neutral matching frame 0.
->
-> Talk (row 1): 0 mouth open mid-word both hands on desk, 1 right
-> hand raised palm-up, 2 finger-point forward, 3 head-tilt
-> emphatic, 4 both hands gesturing wide, 5 returns to neutral
-> matching frame 0.
->
-> **Critical canvas rules:** Every cell exactly 229×384. Higgins's
-> chair-line and the desk-top edge locked across ALL 12 frames
-> (idle + talk). Body centerline same in both rows so idle ↔ talk
-> swap is seamless and matches the entrance sheet's centerline.
->
-> [SEPARATOR RULE — see top of file. No drawn lines between cells.
-> No grey or near-white seams between frames; the engine reads
-> those as dark verticals after chroma-key.]
+> Hand-drawn 1990s Saturday-morning cartoon (Pink Panther *Hokus Pokus Pink*
+> / *Passport to Peril*), confident ~3px black ink, flat fills, no gradients.
+> Output ONLY an 8-columns × 2-rows grid of 16 frames on pure #FFFFFF — NO
+> hero portrait, NO text, NO labels, NO swatches, NO watermark, NO drawn
+> separators/seams (cells meet directly on #FFFFFF). Total 1536×1024, each
+> cell a tall 192×512 rectangle; boy fills the cell with a ~4px inset, SAME
+> foot baseline every frame, centred with even gutters, no pose touching a
+> cell edge.
+> Subject every frame: the same boy — brown hair `#66390D`, round eyeglasses,
+> golden-yellow polo `#EEB421`, brown shorts `#684C22`, brown shoes, cream
+> notepad. This is a short ambient "freakout punctuation" loop played while
+> idle: mouth CLOSED, he flinches, shudders, scribbles a frantic burst on the
+> notepad, glances over his shoulder, then settles — a bigger nervous beat
+> than the plain strange idle but still a clean loop back to a neutral stance.
+> Keep glasses + yellow polo in every frame. No pure white on the character
+> (notepad cream `#EDE5D3`).
 ===PROMPT END===
 
----
+### §P1 — PP walk front (redraw to current design, #3)
 
-### D. Café patron sheets — clean separator lines
-
-**Canvas (each):** 1376×768. **Grid:** 8×2. **Cell:** 172×384.
-**Paths:**
-- `assets/images/locations/paris/npc/coffee/cafe_patron_yvette.png`
-- `assets/images/locations/paris/npc/coffee/cafe_patron_bernard.png`
-- `assets/images/locations/paris/npc/coffee/cafe_patron_camille.png`
-- `assets/images/locations/paris/npc/coffee/cafe_patron_henri.png`
-- `assets/images/locations/paris/npc/coffee/cafe_patron_lucien.png`
-
-User 2026-05-24: each café patron sheet has visible thin lines BETWEEN the
-animation frames — faint near-white / pale-grey seams that survive chroma-key
-and render in-game as ugly vertical strips between cells. Regenerate each
-patron with the strict separator rule.
-
-Keep the existing pose set (chest-up upper-body, seated at café table, idle
-row 0 / talk row 1). The only change vs the on-disk PNGs: **delete the
-between-frame seams**.
+`assets/images/player/PP walk front.png`
+**8×2, 1376×768, each cell 172×384 (tall rectangle).** Current sheet reads
+as an older PP design and renders a different size from the side walk; redraw
+to match the slender modern PP in `PP idle front.png` / `PP talk front.png`.
 
 ===PROMPT START===
-> [style lock]
->
-> Paris café patron seated at a bistro table, viewed from
-> chest-up (the table cloth in the BG covers their lower half).
-> Match the existing patron design on disk for hair / clothing /
-> accessories — this is a clean-up regen, NOT a redesign.
-> Black `#1C1C1C` ink outline ~3 px. **No pure white on the
-> character** — any "white" cloth uses cream `#E5DDC8`.
->
-> **Animation:** 16 frames (8 columns × 2 rows). Row 0 = idle
-> breathing + sip + glance loop. Row 1 = talk with mouth open in
-> assorted shapes for dialog.
->
-> **Critical canvas rules:** Every cell exactly 172×384. Patron's
-> shoulder line locked to a consistent Y across all 16 frames so
-> idle ↔ talk swap is seamless. Body centerline locked per cell.
->
-> [SEPARATOR RULE — CRITICAL FOR THIS REGEN]
-> The sheet is a flat grid of frames with **absolutely NO visible
-> separators between cells**. No drawn borders, no thin grey/black
-> lines, no faint near-white seams, no shadow gradients between
-> frames. Cell boundaries are conceptual only — neighbouring cells
-> meet directly with pure `#FFFFFF` background pixels on both
-> sides. The exported PNG must look like ONE continuous canvas;
-> if you cropped any cell out you'd see only that frame on pure
-> white, with zero edge artefacts. The previous version of this
-> sheet had faint vertical lines between frames — DO NOT
-> reproduce them.
+> Hand-drawn 1990s Saturday-morning cartoon Pink Panther (*Hokus Pokus Pink*
+> / *Passport to Peril*), confident ~3px black ink, flat pink fills, no
+> gradients. Output ONLY an 8-columns × 2-rows grid of 16 frames on pure
+> #FFFFFF — NO hero portrait, NO text, NO labels, NO swatches, NO watermark,
+> NO drawn separators/seams (cells meet directly on #FFFFFF). Total 1376×768,
+> each cell a tall 172×384 rectangle; the panther fills the cell top-to-bottom
+> with a ~4px inset, the SAME foot baseline in every frame, centred with even
+> gutters so no pose touches a cell edge.
+> Subject: the slender modern Pink Panther walking TOWARD the camera (front
+> view), matching the proportions and line weight of his idle/talk front
+> sheets exactly. 16 frames forming a smooth two-step gait cycle (contact /
+> down / pass / high for each leg, ×2), long tail trailing and swaying, arms
+> swinging naturally, relaxed confident smile. PP has plain pink paws — NO
+> gloves of any colour. No pure white on the panther: belly ivory `#F2EFE5`,
+> eye sclera pale grey `#C4C4C4`.
 ===PROMPT END===
 
----
 
 ## Done log — landed sprites (FYI only, no action needed)
 
@@ -349,6 +244,12 @@ original prompt is in git history at `docs/EXTRA_PROMPTS.md` pre-2026-05-24.
 | §S | Confiture inventory item | `confiture.png` | 2026-05-23 |
 | §T | Camille quick-sketch one-shot | `npc_camille_sketching.png` | 2026-05-23 |
 | §V | Henri give-jam one-shot | `npc_henri_give_jam.png` | 2026-05-23 |
+| §E | Danny talk clean regen | `npc_danny_talk.png` | 2026-05-31 |
+| §F | Madame Poulain work alt-idle | `npc_madame_poulain_work.png` | 2026-05-31 |
+| §G | Marcus strange idle + talk clean 8×2 | `npc_marcus_strange_*.png` | 2026-05-31 |
+| §E2 | Danny talk idle-match regen | `npc_danny_talk.png` | 2026-06-02 |
+| §G2 | Marcus strange talk idle-match regen | `npc_marcus_strange_talk.png` | 2026-06-02 |
+| §G3 | Marcus strange talk freakout regen | `npc_marcus_strange_talk.png` | 2026-06-02 |
 | Madame Colette | **DO NOT REGENERATE** — user 2026-05-23 prefers the current design | `npc_french_guide_*.png` | — |
 
 **Removed in 2026-05-24 cleanup (low-priority / deferred):** previous PP

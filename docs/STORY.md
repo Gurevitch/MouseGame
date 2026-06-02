@@ -311,6 +311,53 @@ gains a new dialog when PP comes back to Paris:
 
 ---
 
+## Presentation & feel polish (2026-06-02)
+
+Character-scale, camp-arrival and freakout-pacing pass. Code/data landed
+this round; the three art regens are queued in `EXTRA_PROMPTS.md` (§M1–M3,
+§P1).
+
+- **PP one consistent size (#1/#2/#3/#7).** PP's draw scale now normalises
+  by the tallest *opaque* pose in the active animation (the same method the
+  NPCs use) instead of the raw cell height, so front- and side-facing
+  walk/talk/idle all render at the same height. Killed the per-frame size
+  jump that read as "two frames at once" on the front talk.
+- **PP no longer shrinks mid-chat (#7).** `depthScale` range narrowed to
+  0.95–1.05, so walking up-screen to a kid no longer visibly shrinks PP.
+- **Camp arrival reads as an entrance (#4/#5).** New `entryWalk` scene flag:
+  on reaching the camp grounds PP now walks in from off-screen left to his
+  mark instead of popping into place; spawn moved right onto the path
+  (x 80 → 210). This matches the retro "character strolls into the scene"
+  arrival beat.
+- **PP is the tallest again (#6).** The five grounds kids shrank
+  (H 175 → 140, feet kept planted) so PP clearly towers over them, matching
+  the original Camp Chilly Wa Wa wide shot (kids ≈ half PP's height).
+- **Clicks on kids now animate (#8).** The talk-walk snap radius dropped
+  80 → 30 px, so a short approach plays the walk instead of teleporting PP
+  onto the talk spot (the "he doesn't move" pop at Marcus's room / Higgins).
+- **Flower pickup lines up (#10).** PP's grab-flower pose lifts 38 px so his
+  reach meets the flower on the ground.
+- **Campfire sleep sits lower (#14).** Sleeping/waking PP anchored 615 → 650.
+- **Marcus's freakout calmed down (#15).** The strange idle (and its periodic
+  alt-idle "punctuation" beat) now cycle ~3.5× slower so the freakout reads
+  as an uneasy fidget, not a flicker. The alt-idle still auto-fires after a
+  few seconds of no interaction.
+
+Open art (queued, not yet drawn):
+
+- [ ] Marcus strange idle / talk / alt redrawn to his **canonical design** —
+  round glasses + golden-yellow polo `#EEB421` + brown hair (the current
+  strange sheets are the wrong kid: black hair, navy shirt, no glasses).
+- [ ] PP walk-front redrawn to match the modern idle/talk-front PP (current
+  sheet is an older design and a different size).
+
+Still needs a live playtest pass (couldn't reproduce from assets alone):
+action-button activation (#11), Higgins campfire shout firing (#13), Lily
+"two rows" talk render (#7a), and whether giving the flower to Lily should
+accept a plain click while holding it (#12).
+
+---
+
 ## FUTURE CITIES (Not Yet Implemented)
 
 ### Jerusalem (Jake's visions — tunnels, coins, echoes)

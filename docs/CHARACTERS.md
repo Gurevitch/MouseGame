@@ -55,14 +55,19 @@ kids at ~65%.
 
 ### Marcus (know-it-all)
 
-- Draw size: **145 x 175** on `camp_grounds`. Room override: **187 x 270**
-  (matches PP's 270 — Marcus is intentionally the "looming presence" in
-  his Day-2 freakout cabin).
-- Palette: messy brown hair `#4A2E1B`, red bandage strip `#C4412A` on
-  nose, tan shirt `#D8B47A`, green shorts `#4F7A3A`, sketchbook clamped
-  under one arm.
-- Strange state: same outline + palette, but eyes are wide, extra lines
-  on sketchbook pages, loose strands of hair.
+- Draw size: **145 x 140** on `camp_grounds` (2026-06-02: shrunk from 175
+  so the kids read clearly shorter than PP — see retro Camp Chilly Wa Wa
+  reference). Room override: **187 x 270** (matches PP's 270 — Marcus is
+  intentionally the "looming presence" in his Day-2 freakout cabin).
+- Palette (canonical, sampled from the live `npc_marcus_idle.png` —
+  2026-06-02): brown hair `#66390D`, **round eyeglasses**, **golden-yellow
+  polo shirt `#EEB421`**, brown shorts `#684C22`, brown shoes, small cream
+  notepad held/under one arm. (Earlier doc said black/olive/green + nose
+  bandage — that was an old design that the idle/talk sheets have since
+  moved past; this is the look every Marcus sheet must match.)
+- Strange state: SAME design — keep the round glasses and the golden-yellow
+  polo — but freaked-out: eyes wide and staring, hair a little wilder,
+  posture tense, frantically clutching/scribbling the notepad.
 
 ### Jake (tough kid)
 
