@@ -37,9 +37,10 @@ type stepJSON struct {
 	Item    string          `json:"item,omitempty"`
 	// SeqTweenItem extras: source position + sprite path. Target uses the
 	// existing X/Y above.
-	FromX  int32  `json:"fromX,omitempty"`
-	FromY  int32  `json:"fromY,omitempty"`
-	Sprite string `json:"sprite,omitempty"`
+	FromX    int32   `json:"fromX,omitempty"`
+	FromY    int32   `json:"fromY,omitempty"`
+	Sprite   string  `json:"sprite,omitempty"`
+	EndScale float64 `json:"endScale,omitempty"`
 	// Raw kept for debugging unknown step types.
 	_       json.RawMessage `json:"-"`
 }
@@ -145,6 +146,7 @@ func compileStep(j stepJSON, game *Game) (SeqStep, error) {
 			TargetX:  j.X,
 			TargetY:  j.Y,
 			Duration: j.Seconds,
+			EndScale: j.EndScale,
 		}, nil
 	case "give_item":
 		return SeqStep{Action: SeqGiveItem, ItemID: j.Item}, nil
