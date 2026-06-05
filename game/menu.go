@@ -39,8 +39,8 @@ const (
 )
 
 const (
-	menuBtnW = 360
-	menuBtnH = 64
+	menuBtnW   = 360
+	menuBtnH   = 64
 	menuBtnGap = 18
 )
 

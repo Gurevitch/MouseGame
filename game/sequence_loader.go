@@ -19,22 +19,22 @@ type sequenceJSON struct {
 }
 
 type stepJSON struct {
-	Type    string          `json:"type"`
-	Seconds float64         `json:"seconds,omitempty"`
-	Scene   string          `json:"scene,omitempty"`
-	Dialog  []dialogEntry   `json:"dialog,omitempty"`
-	Scope   string          `json:"scope,omitempty"`
-	Name    string          `json:"name,omitempty"`
-	Value   int             `json:"value,omitempty"`
-	NPC     string          `json:"npc,omitempty"`
-	Anim    string          `json:"anim,omitempty"`
-	Strange *bool           `json:"strange,omitempty"`
-	BG      string          `json:"bg,omitempty"`
-	Hide    *bool           `json:"hide,omitempty"`
-	Day     int             `json:"day,omitempty"`
-	X       int32           `json:"x,omitempty"`
-	Y       int32           `json:"y,omitempty"`
-	Item    string          `json:"item,omitempty"`
+	Type    string        `json:"type"`
+	Seconds float64       `json:"seconds,omitempty"`
+	Scene   string        `json:"scene,omitempty"`
+	Dialog  []dialogEntry `json:"dialog,omitempty"`
+	Scope   string        `json:"scope,omitempty"`
+	Name    string        `json:"name,omitempty"`
+	Value   int           `json:"value,omitempty"`
+	NPC     string        `json:"npc,omitempty"`
+	Anim    string        `json:"anim,omitempty"`
+	Strange *bool         `json:"strange,omitempty"`
+	BG      string        `json:"bg,omitempty"`
+	Hide    *bool         `json:"hide,omitempty"`
+	Day     int           `json:"day,omitempty"`
+	X       int32         `json:"x,omitempty"`
+	Y       int32         `json:"y,omitempty"`
+	Item    string        `json:"item,omitempty"`
 	// SeqTweenItem extras: source position + sprite path. Target uses the
 	// existing X/Y above.
 	FromX    int32   `json:"fromX,omitempty"`
@@ -42,7 +42,7 @@ type stepJSON struct {
 	Sprite   string  `json:"sprite,omitempty"`
 	EndScale float64 `json:"endScale,omitempty"`
 	// Raw kept for debugging unknown step types.
-	_       json.RawMessage `json:"-"`
+	_ json.RawMessage `json:"-"`
 }
 
 // sequenceStore caches loaded sequences by ID.

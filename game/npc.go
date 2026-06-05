@@ -50,7 +50,15 @@ type npc struct {
 	hovered        bool
 	itemMatch      bool
 	elevated       bool
-	silent         bool
+	// approachRight forces PP to walk to this NPC's RIGHT side. Used for the
+	// far-right kid (Danny) whose left side overlaps Marcus, so the default
+	// "approach right-half NPCs from the left" rule would stand PP on Marcus (#7).
+	approachRight bool
+	// fixedFacing keeps the NPC's authored `flipped` during dialog instead of
+	// auto-turning to face PP. For seated NPCs (office Higgins) who must hold a
+	// fixed orientation behind a desk (#16).
+	fixedFacing bool
+	silent      bool
 	// hidden skips the draw pass for this NPC. Used for story-timed
 	// arrivals (e.g. Higgins appearing next to Lily only after her shy
 	// dialog) so the NPC can sit in the scene list from load without
@@ -403,19 +411,19 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// 129×200 centered horizontally in the 220 bounds.
 		// User 2026-05-23: Y nudged 310 → 300 (a few pixels up so the
 		// head sits cleaner above the desk per the playtest report).
-		bounds:    sdl.Rect{X: 990, Y: 300, W: 220, H: 200},
-		name:      "Director Higgins",
-		dialog:    higginsWorriedDialog,
-		bobAmount: 0,
-		// User 2026-05-23: 0.10 still reads as choppy on the office sheet
-		// (the talk grid has 12 frames at 6×2 with slightly different
-		// frame heights between rows, producing visible jitter). Drop to
-		// 0.08 so the cadence is brisker — visible 'two lines together'
-		// across frame swaps is reduced as a side-effect.
+		// User 2026-06-02 (#16): nudged up 300 → 280 so the head sits higher in
+		// the desk window.
+		bounds:         sdl.Rect{X: 990, Y: 280, W: 220, H: 200},
+		name:           "Director Higgins",
+		dialog:         higginsWorriedDialog,
+		bobAmount:      0,
 		talkFrameSpeed: 0.08,
-		// User 2026-05-31 (#16): flip office Higgins 180°.
-		flipped: true,
-		silent:  true,
+		// User 2026-06-02 (#16): he must FACE RIGHT and stay that way. The sheet
+		// is drawn facing right, so flipped=false; fixedFacing stops the dialog
+		// from turning him toward PP each time.
+		flipped:     false,
+		fixedFacing: true,
+		silent:      true,
 	}
 	// Register the give-map one-shot animation. User 2026-05-31 (#14): the
 	// sheet is a 6×2 grid (detect_grid), not 8×1 — cutting it 8×1 made cellH
@@ -587,7 +595,7 @@ func newTommy(renderer *sdl.Renderer) *npc {
 	// clicks miss. 145 wide gives a forgiving target while still hugging
 	// the visible character.
 	n := &npc{
-		bounds:         sdl.Rect{X: 130, Y: 445, W: 145, H: 140}, // #6: kids smaller than PP (feet kept at y=585)
+		bounds:         sdl.Rect{X: 130, Y: 465, W: 145, H: 120}, // #5: kids ~55% of PP (feet kept at y=585)
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0,
@@ -654,7 +662,7 @@ var jakePostStrangeDialog = []dialogEntry{
 func newJake(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
-		bounds:         sdl.Rect{X: 395, Y: 440, W: 145, H: 140}, // #6: kids smaller than PP (feet kept at y=580)
+		bounds:         sdl.Rect{X: 395, Y: 460, W: 145, H: 120}, // #5: kids ~55% of PP (feet kept at y=580)
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0,
@@ -725,7 +733,7 @@ var lilyPostStrangeDialog = []dialogEntry{
 func newLily(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
-		bounds:         sdl.Rect{X: 600, Y: 420, W: 145, H: 140}, // #6: Lily smaller than PP (feet kept at y=560)
+		bounds:         sdl.Rect{X: 600, Y: 440, W: 145, H: 120}, // #5: Lily ~55% of PP (feet kept at y=560)
 		name:           "Lily",
 		dialog:         lilyShyDialog,
 		bobAmount:      0,
@@ -783,7 +791,7 @@ var marcusPostStrangeDialog = []dialogEntry{
 func newMarcus(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
-		bounds:         sdl.Rect{X: 890, Y: 435, W: 145, H: 140}, // #6: kids smaller than PP (feet kept at y=575)
+		bounds:         sdl.Rect{X: 890, Y: 455, W: 145, H: 120}, // #5: kids ~55% of PP (feet kept at y=575)
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0,
@@ -846,14 +854,29 @@ func newDanny(renderer *sdl.Renderer) *npc {
 	// dialog wins over both Lily-cabin (1017-1137) and Danny-cabin
 	// (1183-1303) when click lands in the overlap zone.
 	n := &npc{
-		bounds:         sdl.Rect{X: 1090, Y: 440, W: 180, H: 140}, // #6: kids smaller than PP (feet kept at y=580)
+		bounds:         sdl.Rect{X: 1110, Y: 460, W: 160, H: 120}, // #5/#7: smaller; shifted right (1110-1270) to clear Marcus so PP doesn't stand on him
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 		flipped:        true,
+		approachRight:  true, // #7: stand to Danny's right, not on Marcus
 	}
 	applyKidAtlasOrFallback(renderer, n, "danny")
+	// #7: Danny's sheets carry a soft off-white fringe the connected-edge key
+	// leaves behind. Re-key with the wider "kids" tolerance to strip the halo.
+	dannyIdle := "assets/images/locations/camp/npc/kids/danny/npc_danny_idle.png"
+	dannyTalk := "assets/images/locations/camp/npc/kids/danny/npc_danny_talk.png"
+	if _, err := os.Stat(dannyIdle); err == nil {
+		if f := loadNPCGridClean(renderer, dannyIdle, 8, 2); len(f) > 0 {
+			n.idleGrid = f
+		}
+	}
+	if _, err := os.Stat(dannyTalk); err == nil {
+		if f := loadNPCGridClean(renderer, dannyTalk, 8, 2); len(f) > 0 {
+			n.talkGrid = f
+		}
+	}
 	return n
 }
 
@@ -1131,7 +1154,13 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		src = &s
 		dstW = int32(float64(frame.ow) * scale)
 		dstH = int32(float64(frame.oh) * scale)
-		dstX = n.bounds.X + n.bounds.W/2 - dstW/2
+		// Anchor X by the frame's authored position within its cell, not by the
+		// opaque-box centre — otherwise a gesturing arm shoves the body sideways
+		// every frame ("two frames at once / not smooth", #6/#12). Keeping the
+		// cell-relative offset holds the body still while arms move.
+		anchorX := float64(n.bounds.X) + float64(n.bounds.W)/2
+		boxOff := (float64(frame.ox) + float64(frame.ow)/2 - float64(frame.w)/2) * scale
+		dstX = int32(anchorX + boxOff - float64(dstW)/2)
 		dstY = n.bounds.Y + n.bounds.H - dstH + bobOffset
 	} else {
 		breathScale := 1.0
@@ -1292,7 +1321,9 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		// stand behind the counter glass: foot/waist-cutoff at y≈430 (counter
 		// top), head at y≈250, centred behind the display case. Fine-tune with
 		// in-game coords if needed.
-		bounds:         sdl.Rect{X: 600, Y: 250, W: 170, H: 180},
+		// User 2026-06-02 (#20): raise her (Y 250 → 215) so more of her sits
+		// above the counter glass instead of sinking behind it.
+		bounds:         sdl.Rect{X: 600, Y: 215, W: 170, H: 180},
 		name:           "Madame Poulain",
 		dialog:         bakeryWomanLostPinDialog,
 		bobAmount:      0,

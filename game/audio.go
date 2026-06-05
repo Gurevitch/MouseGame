@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	winmm         = syscall.NewLazyDLL("winmm.dll")
+	winmm          = syscall.NewLazyDLL("winmm.dll")
 	mciSendStringW = winmm.NewProc("mciSendStringW")
 )
 

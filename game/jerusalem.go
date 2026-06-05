@@ -47,14 +47,14 @@ const (
 	jerArtMiriamTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
 
 	// Dov, a curious local kid — borrows the camp kid idle sheet (8x2)
-	jerArtDov     = "assets/images/locations/jerusalem/npc/npc_dov_idle.png"
-	jerArtDovBack = "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png"
+	jerArtDov         = "assets/images/locations/jerusalem/npc/npc_dov_idle.png"
+	jerArtDovBack     = "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png"
 	jerArtDovTalk     = "assets/images/locations/jerusalem/npc/npc_dov_talk.png"
 	jerArtDovTalkBack = "assets/images/locations/camp/npc/kids/jake/npc_jake_talk.png"
 
 	// Backgrounds
 	jerBgStreet     = "assets/images/locations/jerusalem/background/jerusalem_street.png"
-	jerBgStreetBack = ""                                                                  // use placeholder
+	jerBgStreetBack = "" // use placeholder
 	jerBgTunnel     = "assets/images/locations/jerusalem/background/jerusalem_tunnel.png"
 	jerBgTunnelBack = ""
 )

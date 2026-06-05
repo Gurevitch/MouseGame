@@ -389,53 +389,80 @@ func (p *player) setTarget(x, y float64) {
 	p.onArrival = nil
 }
 
-func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
-	npcCenter := float64(target.bounds.X + target.bounds.W/2)
+// talkApproachPos returns the world top-left (tx,ty) PP should stand at to talk
+// to target — picking the interior side, avoiding overlap, honoring approachRight,
+// and foot-aligning to the NPC. Shared by walkToAndInteract and the held-item
+// hand-off so both place PP identically.
+func (p *player) talkApproachPos(target *npc) (float64, float64) {
 	npcLeft := float64(target.bounds.X)
 	npcRight := float64(target.bounds.X + target.bounds.W)
-
+	npcCenter := float64(target.bounds.X + target.bounds.W/2)
 	pickSide := func(preferRight bool) float64 {
 		if preferRight {
 			return npcRight + 10
 		}
 		return npcLeft - playerDstW - 10
 	}
-
 	preferred := npcCenter >= engine.ScreenWidth/2
-	tx := pickSide(!preferred)
-	tx = engine.Clamp(tx, playerMinX, playerMaxX)
-
+	tx := engine.Clamp(pickSide(!preferred), playerMinX, playerMaxX)
 	if tx < npcRight && tx+playerDstW > npcLeft {
-		tx = pickSide(preferred)
-		tx = engine.Clamp(tx, playerMinX, playerMaxX)
+		tx = engine.Clamp(pickSide(preferred), playerMinX, playerMaxX)
 	}
+	// #7: far-right kid (Danny) — force the right side so PP doesn't approach
+	// from the left and end up standing on Marcus.
+	if target.approachRight {
+		tx = engine.Clamp(pickSide(true), playerMinX, playerMaxX)
+	}
+	ty := p.y
+	if !target.elevated {
+		ty = float64(target.bounds.Y+target.bounds.H) - playerDstH + 4
+	}
+	return tx, engine.Clamp(ty, p.minY(), p.maxY())
+}
 
-	var ty float64
-	if target.elevated {
-		ty = p.y
-	} else {
-		npcFootY := float64(target.bounds.Y + target.bounds.H)
-		ty = npcFootY - playerDstH + 4
-	}
+// walkToTalkPos walks PP to the approach position and fires onArrive there —
+// even when PP is already adjacent (snaps + fires immediately). Used by the
+// held-item hand-off (interactTarget is NOT set), so the give-item beat works at
+// any distance (#10), not only when PP has to walk in. Does not touch
+// interactTarget, so it won't also trigger the normal NPC dialog.
+func (p *player) walkToTalkPos(target *npc, onArrive func()) {
+	tx, ty := p.talkApproachPos(target)
 	p.targetX = tx
-	p.targetY = engine.Clamp(ty, p.minY(), p.maxY())
+	p.targetY = ty
+	dx := tx - p.x
+	dy := ty - p.y
+	if dx*dx+dy*dy < 30*30 {
+		p.x = tx
+		p.y = ty
+		p.moving = false
+		p.state = stateIdle
+		if onArrive != nil {
+			onArrive()
+		}
+		return
+	}
+	p.moving = true
+	p.allowOffscreen = false
+	p.state = stateWalking
+	p.onArrival = onArrive
+}
+
+func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
+	tx, ty := p.talkApproachPos(target)
+	p.targetX = tx
+	p.targetY = ty
 	p.interactTarget = target
 	p.dialogSys = ds
 	p.onArrival = nil
-	// User 2026-05-10: clicking an NPC must always open the dialog as the
-	// direct result of THE CLICK. If PP is already standing close to the
-	// resolved talk-target, don't run a 1–2s walk first — the user
-	// perceives that as "my click did nothing". Snap to the talk position
-	// and fire startNPCDialog right away.
-	dx := p.targetX - p.x
-	dy := p.targetY - p.y
-	// User 2026-06-02 (#8): an 80px snap radius teleported PP onto the talk
-	// spot with no walk frames — he "popped" instead of moving (Marcus's room,
-	// Higgins). Shrink to 30px so only a near-zero approach snaps; anything
-	// further plays the short walk so the movement reads.
+	// User 2026-05-10: clicking an NPC must open the dialog as the direct result
+	// of THE CLICK. If PP is already adjacent, snap + fire now instead of a 1–2s
+	// walk that reads as "my click did nothing"; otherwise the movement-arrival
+	// handler fires startNPCDialog via interactTarget.
+	dx := tx - p.x
+	dy := ty - p.y
 	if dx*dx+dy*dy < 30*30 {
-		p.x = p.targetX
-		p.y = p.targetY
+		p.x = tx
+		p.y = ty
 		p.moving = false
 		p.state = stateIdle
 		p.startNPCDialog()
@@ -909,7 +936,11 @@ func (p *player) startNPCDialog() {
 	// drawn facing right, so flipped=true means "face left". If PP is
 	// to the left of the NPC's center, the NPC needs to face left.
 	n.preTalkFlipped = n.flipped
-	n.flipped = playerCenter < npcCenter
+	// #16: seated NPCs (office Higgins) hold their authored facing instead of
+	// turning to face PP.
+	if !n.fixedFacing {
+		n.flipped = playerCenter < npcCenter
+	}
 
 	if len(n.talkGrid) > 0 {
 		n.setAnimState(npcAnimTalk)
@@ -1080,12 +1111,13 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	// cell when no opaque data is present.
 	scaledHeight := float64(playerDstH) * p.depthScale() * charScale
 	var src *sdl.Rect
-	var dstW, dstH int32
+	var dstW, dstH, dstX int32
 	// Normalise by the tallest opaque pose in the active animation so every
 	// sheet (front 384px cells, side 512px cells, old/new art) renders PP at the
 	// same standing height — fixes "not the same size" across walk/talk/idle and
 	// the per-frame size jump that read as "two frames at once" (#1/#2/#3).
 	refH := maxOpaqueHeightP(p.currentGroup())
+	anchorX := float64(p.x) + float64(playerDstW)/2
 	if frame.ow > 0 && frame.oh > 0 && refH > 0 {
 		targetTall := scaledHeight * playerRenderFillFrac
 		frameScale := targetTall / float64(refH)
@@ -1093,14 +1125,21 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		src = &s
 		dstW = int32(float64(frame.ow) * frameScale)
 		dstH = int32(float64(frame.oh) * frameScale)
+		// Anchor X by the frame's authored position WITHIN its cell, not by the
+		// opaque-box centre. Otherwise a gesturing arm widens the opaque box on
+		// one side and centring it shoves the body sideways every frame — the
+		// left/right jitter that read as "two frames at once / not smooth"
+		// (#1/#6/#12). Keeping the cell-relative offset holds the body still.
+		boxOff := (float64(frame.ox) + float64(frame.ow)/2 - float64(frame.w)/2) * frameScale
+		dstX = int32(anchorX + boxOff - float64(dstW)/2)
 	} else {
 		// No opaque data — fall back to the legacy full-cell scale.
 		frameScale := scaledHeight / float64(frame.h)
 		dstW = int32(float64(frame.w) * frameScale)
 		dstH = int32(scaledHeight)
+		dstX = int32(anchorX - float64(dstW)/2)
 	}
 
-	dstX := int32(p.x) + playerDstW/2 - dstW/2
 	dstY := p.footY() - dstH
 	// User 2026-06-02 (#10): lift the flower-grab pose so PP's reach lines up
 	// with the flower on the ground instead of bending below it.

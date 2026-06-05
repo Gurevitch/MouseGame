@@ -1067,6 +1067,21 @@ func (g *Game) setupParisCallbacks() {
 	// floor, hand it over, and only then does she trade the baguette.
 	if bakery, ok := g.sceneMgr.scenes["paris_bakery"]; ok {
 		game := g
+		// #25: exit via the door. Arrow is "up"; the hotspot's onInteract path
+		// first walks PP UP to the door (walkToAndDo to the hotspot centre runs
+		// before onInteract), then onInteract walks him OUT to the right into the
+		// street before transitioning.
+		for i := range bakery.hotspots {
+			if bakery.hotspots[i].targetScene == "paris_street" {
+				bakery.hotspots[i].onInteract = func() bool {
+					game.player.walkToExit(arrowRight, func() {
+						game.sceneMgr.transitionTo("paris_street", game.player)
+					})
+					return true
+				}
+				break
+			}
+		}
 		for _, n := range bakery.npcs {
 			if n.name != "Madame Poulain" {
 				continue
@@ -1207,9 +1222,15 @@ func (g *Game) setupTravelHotspots() {
 					// the distance over ~1.6s, then the scene transitions.
 					game.player.playRecede(1.6, 0.35, 80, func() {
 						if grounds, ok := game.sceneMgr.scenes["camp_grounds"]; ok {
-							grounds.spawnX = 30
-							grounds.spawnY = 490
+							// Destination PP walks IN to (on the path), not the
+							// far-left edge — he enters from off-screen left and
+							// strolls onto the path (#2).
+							grounds.spawnX = 210
+							grounds.spawnY = 483
 						}
+						// Flag THIS transition as the camp arrival so PP walks in
+						// from the left; room exits leave it unset (#2/#14).
+						game.sceneMgr.entryWalkPending = true
 						game.sceneMgr.transitionTo("camp_grounds", game.player)
 					})
 					return true
@@ -1336,9 +1357,13 @@ func (g *Game) HandleClick(x, y int32) {
 					g.inv.heldItem = nil
 					ds := g.dialog
 					target := clickedNPC
-					g.player.walkToAndInteract(target, ds)
+					// #10: walk to the talk spot and fire the hand-off there —
+					// walkToTalkPos runs the callback whether PP walks in or is
+					// already adjacent, so giving Lily the flower works standing
+					// next to her (the old walkToAndInteract snapped and opened
+					// her NORMAL dialog when close, skipping this hand-off).
 					g.player.interactTarget = nil
-					g.player.onArrival = func() {
+					g.player.walkToTalkPos(target, func() {
 						g.player.state = stateTalking
 						targetCenter := float64(target.bounds.X + target.bounds.W/2)
 						playerCenter := g.player.x + playerDstW/2
@@ -1368,7 +1393,7 @@ func (g *Game) HandleClick(x, y int32) {
 							}
 						}
 						ds.startDialogWithCallback(entries, wrappedCb)
-					}
+					})
 					return
 				}
 			}
@@ -1704,7 +1729,7 @@ func (g *Game) Update(dt float64, mx, my int32) {
 	g.sceneMgr.update(dt)
 	showAmbient := g.day == 1 && isCampOutdoorScene(g.sceneMgr.currentName)
 	scene.updateAmbient(dt, showAmbient)
-	g.ui.updateHover(scene, mx, my, g.inv, dt)
+	g.ui.updateHover(scene, mx, my, g.inv, g.player, dt)
 	g.inv.update(dt)
 
 	if g.sceneMgr.currentName != g.lastScene {

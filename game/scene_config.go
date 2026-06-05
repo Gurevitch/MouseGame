@@ -23,23 +23,20 @@ type walkSegmentJSON struct {
 }
 
 type sceneDef struct {
-	Name                   string  `json:"name"`
-	Background             string  `json:"background"`
-	BackgroundFrames       int     `json:"backgroundFrames,omitempty"`
-	BackgroundFrameSeconds float64 `json:"backgroundFrameSeconds,omitempty"`
-	SpawnX                 float64 `json:"spawnX"`
-	SpawnY                 float64 `json:"spawnY"`
-	// EntryWalk: when true, PP starts off-screen left and walks in to the
-	// spawn point instead of popping into place (#5, camp arrival).
-	EntryWalk      bool              `json:"entryWalk,omitempty"`
-	MinY           float64           `json:"minY"`
-	MaxY           float64           `json:"maxY"`
-	MusicPath      string            `json:"musicPath"`
-	CharacterScale float64           `json:"characterScale"`
-	NPCs           []string          `json:"npcs"`
-	Hotspots       []hotspotJSON     `json:"hotspots"`
-	Blockers       []boundsJSON      `json:"blockers"`
-	WalkSegments   []walkSegmentJSON `json:"walkSegments"`
+	Name                   string            `json:"name"`
+	Background             string            `json:"background"`
+	BackgroundFrames       int               `json:"backgroundFrames,omitempty"`
+	BackgroundFrameSeconds float64           `json:"backgroundFrameSeconds,omitempty"`
+	SpawnX                 float64           `json:"spawnX"`
+	SpawnY                 float64           `json:"spawnY"`
+	MinY                   float64           `json:"minY"`
+	MaxY                   float64           `json:"maxY"`
+	MusicPath              string            `json:"musicPath"`
+	CharacterScale         float64           `json:"characterScale"`
+	NPCs                   []string          `json:"npcs"`
+	Hotspots               []hotspotJSON     `json:"hotspots"`
+	Blockers               []boundsJSON      `json:"blockers"`
+	WalkSegments           []walkSegmentJSON `json:"walkSegments"`
 }
 
 type sceneConfigStore struct {

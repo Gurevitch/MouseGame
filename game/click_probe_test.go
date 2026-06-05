@@ -78,9 +78,9 @@ func TestMapScreenToFramePixel_AtlasFrameOffsetsIntoSheet(t *testing.T) {
 
 func TestMapScreenToFramePixel_ZeroSizeReturnsFalse(t *testing.T) {
 	cases := []struct {
-		name    string
-		frame   npcFrame
-		dst     sdl.Rect
+		name  string
+		frame npcFrame
+		dst   sdl.Rect
 	}{
 		{"zero frame width", npcFrame{w: 0, h: 200}, sdl.Rect{W: 100, H: 200}},
 		{"zero frame height", npcFrame{w: 100, h: 0}, sdl.Rect{W: 100, H: 200}},

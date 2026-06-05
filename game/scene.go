@@ -149,12 +149,9 @@ type scene struct {
 	walkSegments []walkSegment
 	spawnX       float64
 	spawnY       float64
-	// entryWalk: PP walks in from off-screen left to the spawn point on
-	// arrival instead of popping into place (#5).
-	entryWalk bool
-	musicPath string
-	minY      float64
-	maxY      float64
+	musicPath    string
+	minY         float64
+	maxY         float64
 	// characterScale multiplies PP and NPC draw sizes (not hitboxes) so
 	// tight/indoor scenes can render characters smaller without having
 	// to redraw sheets. 1.0 = outdoor default; 0.85-0.9 for rooms. See
@@ -214,6 +211,11 @@ type sceneManager struct {
 	fadeIn        bool
 	nextScene     string
 	transPlayer   *player
+	// entryWalkPending: set true by the "Enter Camp" hotspot right before the
+	// transition into camp_grounds so PP walks in from off-screen left on
+	// arrival. Consumed (and cleared) once on the next completed transition, so
+	// returning from a cabin pops PP in normally instead of walking him in (#2/#14).
+	entryWalkPending bool
 }
 
 func newSceneManager(renderer *sdl.Renderer) *sceneManager {
@@ -382,11 +384,13 @@ func (sm *sceneManager) update(dt float64) {
 				// rendering at recedeEndScale (e.g. 0.45) after a cabin
 				// or camp-entrance transition completed.
 				sm.transPlayer.clearRecede()
-				// User 2026-06-02 (#5): when the scene opts into entryWalk, PP
-				// arrives by walking in from off-screen left to the spawn point
-				// rather than popping into place. allowOffscreen lets him start
+				// User 2026-06-02 (#2/#14): walk PP in from off-screen left to the
+				// spawn point ONLY when this transition was flagged (the camp
+				// entrance arrival). Returning from a cabin leaves the flag false,
+				// so PP just appears at the spawn. allowOffscreen lets him start
 				// past the left edge; onArrival re-clamps him to the play area.
-				if s.entryWalk {
+				if sm.entryWalkPending {
+					sm.entryWalkPending = false
 					p := sm.transPlayer
 					p.x = playerMinX - float64(playerDstW)
 					p.targetX = engine.Clamp(s.spawnX, playerMinX, playerMaxX)

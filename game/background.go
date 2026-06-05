@@ -75,7 +75,7 @@ func newPlaceholderBackground(renderer *sdl.Renderer, base color.NRGBA) *backgro
 		r := uint8(float64(base.R)*(1.0-0.4*t) + 20*t)
 		g := uint8(float64(base.G)*(1.0-0.4*t) + 20*t)
 		b := uint8(float64(base.B)*(1.0-0.4*t) + 20*t)
-		base := y*img.Stride
+		base := y * img.Stride
 		for x := 0; x < w; x++ {
 			img.Pix[base+x*4+0] = r
 			img.Pix[base+x*4+1] = g

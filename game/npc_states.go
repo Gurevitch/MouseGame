@@ -10,9 +10,9 @@ type npcState struct {
 
 // npcStateMachine manages NPC dialog states declaratively.
 type npcStateMachine struct {
-	states   map[string]*npcState
-	current  string
-	onEnter  map[string]func() // callbacks when entering a state
+	states  map[string]*npcState
+	current string
+	onEnter map[string]func() // callbacks when entering a state
 }
 
 func newNPCStateMachine() *npcStateMachine {

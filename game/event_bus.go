@@ -16,14 +16,14 @@ package game
 type EventType string
 
 const (
-	EvtDialogEnded  EventType = "dialog_ended"   // payload: NPCID
-	EvtItemGiven    EventType = "item_given"     // payload: Item, To
-	EvtCityUnlocked EventType = "city_unlocked"  // payload: City
-	EvtKidHealed    EventType = "kid_healed"     // payload: Kid
-	EvtSceneEntered EventType = "scene_entered"  // payload: Scene
-	EvtSceneExited  EventType = "scene_exited"   // payload: Scene
-	EvtChapterStart EventType = "chapter_start"  // payload: Chapter
-	EvtChapterEnd   EventType = "chapter_end"    // payload: Chapter
+	EvtDialogEnded  EventType = "dialog_ended"  // payload: NPCID
+	EvtItemGiven    EventType = "item_given"    // payload: Item, To
+	EvtCityUnlocked EventType = "city_unlocked" // payload: City
+	EvtKidHealed    EventType = "kid_healed"    // payload: Kid
+	EvtSceneEntered EventType = "scene_entered" // payload: Scene
+	EvtSceneExited  EventType = "scene_exited"  // payload: Scene
+	EvtChapterStart EventType = "chapter_start" // payload: Chapter
+	EvtChapterEnd   EventType = "chapter_end"   // payload: Chapter
 )
 
 // Event carries a type and a string-keyed payload. Keeping the payload as a

@@ -13,32 +13,32 @@ import (
 // evalRules walks a rule list for a given trigger and fires the first one
 // whose condition evaluates true.
 type InteractionRule struct {
-	On     string       `json:"on"`     // trigger: "click" | "item_drop" | "dialog_end" | "state_enter"
-	When   string       `json:"when"`   // condition expression; empty = always
-	Do     []RuleAction `json:"do"`     // actions to run on match
-	Once   bool         `json:"once"`   // fire at most once per NPC-lifetime
-	fired  bool         // runtime: whether Once-gated rules already fired
+	On    string       `json:"on"`   // trigger: "click" | "item_drop" | "dialog_end" | "state_enter"
+	When  string       `json:"when"` // condition expression; empty = always
+	Do    []RuleAction `json:"do"`   // actions to run on match
+	Once  bool         `json:"once"` // fire at most once per NPC-lifetime
+	fired bool         // runtime: whether Once-gated rules already fired
 }
 
 // RuleAction is one action in a rule's "do" list. Only the fields relevant
 // to the action's Type are populated; the dispatcher ignores the rest.
 type RuleAction struct {
-	Type   string        `json:"type"`            // dispatch key (see actionDispatch)
-	Dialog []dialogEntry `json:"dialog,omitempty"`
-	DialogID string      `json:"dialog_id,omitempty"`
-	Item   string        `json:"item,omitempty"`
-	To     string        `json:"to,omitempty"`
-	Scope  string        `json:"scope,omitempty"`
-	Key    string        `json:"key,omitempty"`
-	Value  int           `json:"value,omitempty"`
-	City   string        `json:"city,omitempty"`
-	State  string        `json:"state,omitempty"`
-	Scene  string        `json:"scene,omitempty"`
-	NPC    string        `json:"npc,omitempty"`
-	Bool   *bool         `json:"bool,omitempty"`
-	Kid    string        `json:"kid,omitempty"`
-	Event  string        `json:"event,omitempty"`
-	KV     []string      `json:"kv,omitempty"`
+	Type     string        `json:"type"` // dispatch key (see actionDispatch)
+	Dialog   []dialogEntry `json:"dialog,omitempty"`
+	DialogID string        `json:"dialog_id,omitempty"`
+	Item     string        `json:"item,omitempty"`
+	To       string        `json:"to,omitempty"`
+	Scope    string        `json:"scope,omitempty"`
+	Key      string        `json:"key,omitempty"`
+	Value    int           `json:"value,omitempty"`
+	City     string        `json:"city,omitempty"`
+	State    string        `json:"state,omitempty"`
+	Scene    string        `json:"scene,omitempty"`
+	NPC      string        `json:"npc,omitempty"`
+	Bool     *bool         `json:"bool,omitempty"`
+	Kid      string        `json:"kid,omitempty"`
+	Event    string        `json:"event,omitempty"`
+	KV       []string      `json:"kv,omitempty"`
 }
 
 // ruleContext packages the pieces a condition expression needs to evaluate.

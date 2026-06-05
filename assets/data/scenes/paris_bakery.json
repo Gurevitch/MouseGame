@@ -18,10 +18,11 @@
   ],
   "hotspots": [
     {
-      "bounds": {"x": 1180, "y": 200, "w": 200, "h": 560},
+      "_comment": "#25: door on the right (bg door x≈1209-1351). Arrow is UP; the onInteract in setupParisCallbacks first walks PP up to this door line, then walks him out to the right into the street.",
+      "bounds": {"x": 1209, "y": 300, "w": 145, "h": 460},
       "targetScene": "paris_street",
-      "name": "Back to the street",
-      "arrow": "right"
+      "name": "Out the door",
+      "arrow": "up"
     }
   ],
   "blockers": [

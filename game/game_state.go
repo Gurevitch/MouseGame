@@ -4,9 +4,9 @@ package game
 // under the key VarChapter. They also map 1:1 to the old `day` concept for
 // Camp Sylvania, but allow future cities to have their own numbered arcs.
 const (
-	ChapterCampDay1 = 1 // Arrival, everything normal
-	ChapterCampDay2 = 2 // Weirdness begins at Camp Sylvania
-	ChapterParis    = 3 // Marcus's memory arc in Paris
+	ChapterCampDay1  = 1 // Arrival, everything normal
+	ChapterCampDay2  = 2 // Weirdness begins at Camp Sylvania
+	ChapterParis     = 3 // Marcus's memory arc in Paris
 	ChapterJerusalem = 4 // Jake's courage arc
 	ChapterTokyo     = 5 // Lily's voice arc
 	ChapterRioBA     = 6 // Tommy's family arc (Rio + Buenos Aires)
@@ -18,25 +18,25 @@ const (
 // handlers/sequences/save files.
 const (
 	// "game" scope: persists for the entire playthrough
-	VarChapter            = "chapter"              // current chapter number (see above)
-	VarDay                = "day"                  // legacy camp day counter (1 or 2)
-	VarParisUnlocked      = "paris_unlocked"       // travel pin unlocked
-	VarJerusalemUnlocked  = "jerusalem_unlocked"   // travel pin unlocked
-	VarTokyoUnlocked      = "tokyo_unlocked"
-	VarRioUnlocked        = "rio_unlocked"
-	VarRomeUnlocked       = "rome_unlocked"
-	VarMexicoUnlocked     = "mexico_unlocked"
-	VarMarcusHealed       = "marcus_healed"
-	VarJakeHealed         = "jake_healed"
-	VarLilyHealed         = "lily_healed"
-	VarTommyHealed        = "tommy_healed"
-	VarDannyHealed        = "danny_healed"
-	VarNightSceneDone     = "night_scene_done"
-	VarMonologueIntro     = "monologue_intro_played"
-	VarMonologueParis     = "monologue_paris_played"
+	VarChapter           = "chapter"            // current chapter number (see above)
+	VarDay               = "day"                // legacy camp day counter (1 or 2)
+	VarParisUnlocked     = "paris_unlocked"     // travel pin unlocked
+	VarJerusalemUnlocked = "jerusalem_unlocked" // travel pin unlocked
+	VarTokyoUnlocked     = "tokyo_unlocked"
+	VarRioUnlocked       = "rio_unlocked"
+	VarRomeUnlocked      = "rome_unlocked"
+	VarMexicoUnlocked    = "mexico_unlocked"
+	VarMarcusHealed      = "marcus_healed"
+	VarJakeHealed        = "jake_healed"
+	VarLilyHealed        = "lily_healed"
+	VarTommyHealed       = "tommy_healed"
+	VarDannyHealed       = "danny_healed"
+	VarNightSceneDone    = "night_scene_done"
+	VarMonologueIntro    = "monologue_intro_played"
+	VarMonologueParis    = "monologue_paris_played"
 
 	// "chapter" scope: resets when a chapter ends (via ResetChapter)
-	VarMetKids        = "met_kids"        // How many kids PP has talked to on Day 1
+	VarMetKids        = "met_kids" // How many kids PP has talked to on Day 1
 	VarTalkedToMarcus = "talked_to_marcus"
 	VarDay2Started    = "day2_started"
 )

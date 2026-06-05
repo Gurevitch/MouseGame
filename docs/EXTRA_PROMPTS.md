@@ -97,6 +97,13 @@ into the **Done log** at the bottom and delete the body.
 
 No open prompts.
 
+> **Also flagged for in-game audit before regen (don't generate yet):** the
+> bakery café-patron sheets under `.../paris/npc/coffee/` (#24 — check each for
+> a baked background box / separator lines / wrong frame count; Henri verified
+> clean at 8×1), Danny idle/talk halo (#7 — now re-keyed wider in code; regen
+> only if the fringe persists), and `pp_sleeping.png`/`pp_waking.png` (#13 —
+> regen only if they don't match the current PP design).
+
 
 ## Done log — landed sprites (FYI only, no action needed)
 
@@ -141,6 +148,9 @@ original prompt is in git history at `docs/EXTRA_PROMPTS.md` pre-2026-05-24.
 | §M2 | Marcus strange talk design-match regen | `npc_marcus_strange_talk.png` | 2026-06-02 |
 | §M3 | Marcus strange alt idle beat regen | `npc_marcus_strange_alt.png` | 2026-06-02 |
 | §P1 | PP walk front current-design redraw | `PP walk front.png` | 2026-06-02 |
+| §C1 | Madame Colette idle beret/stripes design-lock regen | `npc_madame_colette_idle.png` | 2026-06-02 |
+| §C2 | Madame Colette talk beret/stripes design-lock regen | `npc_madame_colette_talk.png` | 2026-06-02 |
+| §C3 | Director Higgins green-shirt shout design-lock regen | `npc_director_higgins_shout.png` | 2026-06-02 |
 | Madame Colette | **DO NOT REGENERATE** — user 2026-05-23 prefers the current design | `npc_french_guide_*.png` | — |
 
 **Removed in 2026-05-24 cleanup (low-priority / deferred):** previous PP

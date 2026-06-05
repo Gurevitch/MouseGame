@@ -54,11 +54,13 @@ func npcHitCases() []npcHitCase {
 		// 100-wide tightening introduced misses. Danny is the outlier
 		// (180-wide) because of the flipped sprite + cabin-hotspot
 		// overlap; needs a generous click rect.
-		{scene: "camp_grounds", name: "Tommy", bounds: sdl.Rect{X: 130, Y: 410, W: 145, H: 175}},
-		{scene: "camp_grounds", name: "Jake", bounds: sdl.Rect{X: 395, Y: 405, W: 145, H: 175}},
-		{scene: "camp_grounds", name: "Lily", bounds: sdl.Rect{X: 600, Y: 400, W: 145, H: 175}},
-		{scene: "camp_grounds", name: "Marcus", bounds: sdl.Rect{X: 890, Y: 400, W: 145, H: 175}},
-		{scene: "camp_grounds", name: "Danny", bounds: sdl.Rect{X: 1090, Y: 405, W: 180, H: 175}},
+		// User 2026-06-02 (#5/#7): kids shrunk to ~55% of PP (H120, feet kept);
+		// Danny shifted right to clear Marcus.
+		{scene: "camp_grounds", name: "Tommy", bounds: sdl.Rect{X: 130, Y: 465, W: 145, H: 120}},
+		{scene: "camp_grounds", name: "Jake", bounds: sdl.Rect{X: 395, Y: 460, W: 145, H: 120}},
+		{scene: "camp_grounds", name: "Lily", bounds: sdl.Rect{X: 600, Y: 440, W: 145, H: 120}},
+		{scene: "camp_grounds", name: "Marcus", bounds: sdl.Rect{X: 890, Y: 455, W: 145, H: 120}},
+		{scene: "camp_grounds", name: "Danny", bounds: sdl.Rect{X: 1110, Y: 460, W: 160, H: 120}},
 
 		// --- Camp entrance: Director Higgins (intro) ---
 		// Bounds copied from newDirectorHiggins (npc.go:307).
@@ -72,7 +74,7 @@ func npcHitCases() []npcHitCase {
 		// --- Camp office: Higgins behind desk ---
 		// User 2026-05-23: Y nudged 290→300 (a few px down for natural
 		// head clearance above desk). Also flipped:true so he faces PP.
-		{scene: "camp_office", name: "Director Higgins (office)", bounds: sdl.Rect{X: 990, Y: 300, W: 220, H: 200}},
+		{scene: "camp_office", name: "Director Higgins (office)", bounds: sdl.Rect{X: 990, Y: 280, W: 220, H: 200}},
 
 		// --- Night campfire Higgins ---
 		// Silent + driven by cutscene; never clickable directly.
@@ -98,7 +100,7 @@ func npcHitCases() []npcHitCase {
 		// --- Paris bakery (interior) ---
 		// User 2026-05-23: new BG has the counter top at screen y=342;
 		// Poulain Y 250→182 so her foot lands at the new counter top.
-		{scene: "paris_bakery", name: "Madame Poulain", bounds: sdl.Rect{X: 717, Y: 182, W: 135, H: 160}},
+		{scene: "paris_bakery", name: "Madame Poulain", bounds: sdl.Rect{X: 600, Y: 215, W: 170, H: 180}},
 
 		// 6 café patrons. User 2026-05-23: new BG has tablecloth tops
 		// at screen y≈427 — patron Y 555→339 so their foot lands at
@@ -147,8 +149,8 @@ func TestNPCClickHitBoxes(t *testing.T) {
 			// filtered before containsPoint is even called.
 			if tc.hidden {
 				for _, p := range []struct {
-					label  string
-					x, y   int32
+					label string
+					x, y  int32
 				}{
 					{"leftOf", leftX, leftY},
 					{"rightOf", rightX, rightY},

@@ -24,9 +24,10 @@ import (
 // drop a green or red marker at the click point and print a one-line report.
 //
 // Marker colors:
-//   GREEN — clicked an opaque pixel of an NPC's drawn frame (good cut)
-//   RED   — bbox-hit an NPC but the source pixel is transparent (bad cut)
-//   GREY  — no NPC under the click (background only)
+//
+//	GREEN — clicked an opaque pixel of an NPC's drawn frame (good cut)
+//	RED   — bbox-hit an NPC but the source pixel is transparent (bad cut)
+//	GREY  — no NPC under the click (background only)
 type clickProbe struct {
 	active  bool
 	markers []probeMarker

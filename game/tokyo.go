@@ -24,8 +24,8 @@ import (
 
 const (
 	// Background art
-	tokBgStreet     = "assets/images/locations/tokyo/background/tokyo_street.png"
-	tokBgTemple     = "assets/images/locations/tokyo/background/tokyo_temple.png"
+	tokBgStreet = "assets/images/locations/tokyo/background/tokyo_street.png"
+	tokBgTemple = "assets/images/locations/tokyo/background/tokyo_temple.png"
 
 	// NPC art: each Tokyo local has a preferred path and a fallback that
 	// reuses an existing sheet with matching cols/rows.

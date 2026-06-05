@@ -19,6 +19,11 @@ const (
 	cursorArrowUp
 	cursorArrowDown
 	cursorArrowDownRight
+	// cursorPoint is the pink "action" pointing-hand. Its PNG is a 2-frame
+	// strip (idle finger | pressed finger); drawCursor shows the left frame
+	// normally and the right frame during a click, so it never renders "two
+	// hands at once."
+	cursorPoint
 	cursorCount
 )
 
@@ -59,6 +64,10 @@ func (ui *uiManager) initCursors(renderer *sdl.Renderer) {
 	ui.cursorTex[cursorArrowUp], ui.cursorW[cursorArrowUp], ui.cursorH[cursorArrowUp] = load("assets/images/ui/cursors/cursor_arrow_up.png")
 	ui.cursorTex[cursorArrowDown], ui.cursorW[cursorArrowDown], ui.cursorH[cursorArrowDown] = load("assets/images/ui/cursors/cursor_arrow_down.png")
 	ui.cursorTex[cursorArrowDownRight], ui.cursorW[cursorArrowDownRight], ui.cursorH[cursorArrowDownRight] = load("assets/images/ui/cursors/cursor_arrow_down_right.png")
+	// cursor_point.png is a 2-frame strip (idle | pressed). Store the FRAME
+	// width (half the sheet) so the scaler sizes one finger, not both.
+	ui.cursorTex[cursorPoint], ui.cursorW[cursorPoint], ui.cursorH[cursorPoint] = load("assets/images/ui/cursors/cursor_point.png")
+	ui.cursorW[cursorPoint] /= 2
 }
 
 func (ui *uiManager) triggerClick() {
@@ -66,7 +75,7 @@ func (ui *uiManager) triggerClick() {
 	ui.cursorClickTimer = 0.15
 }
 
-func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt float64) {
+func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *player, dt float64) {
 	ui.hoverName = ""
 	// Default to the grab cursor whenever the player is carrying
 	// something so the pointer itself reflects "you are holding an
@@ -89,6 +98,19 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt floa
 	for _, n := range s.npcs {
 		n.hovered = false
 		n.itemMatch = false
+	}
+
+	// #9: hovering PP (when not carrying an item) means "open the bag" — the
+	// same priority HandleClick uses (PP is checked first). Without this the
+	// cursor over PP showed the entrance arrow of an overlapping cabin hotspot,
+	// so the player thought a click would enter the cabin instead of opening
+	// the inventory. Show the bag/grab cursor so the action reads correctly.
+	if plr != nil && inv != nil && inv.heldItem == nil && plr.containsPoint(mx, my) {
+		if len(inv.items) > 0 {
+			ui.hoverName = "Open Bag"
+			ui.cursor = cursorPoint // the pink "action" pointing hand
+		}
+		return
 	}
 
 	// User 2026-05-22: floor items BEFORE npcs so the grab cursor wins
@@ -142,18 +164,18 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, dt floa
 	for _, hs := range s.hotspots {
 		if pt.InRect(&hs.bounds) {
 			ui.hoverName = hs.name
-		switch hs.arrow {
-		case arrowLeft:
-			ui.cursor = cursorArrowLeft
-		case arrowRight:
-			ui.cursor = cursorArrowRight
-		case arrowUp:
-			ui.cursor = cursorArrowUp
-		case arrowDown:
-			ui.cursor = cursorArrowDown
-		case arrowDownRight:
-			ui.cursor = cursorArrowDownRight
-		}
+			switch hs.arrow {
+			case arrowLeft:
+				ui.cursor = cursorArrowLeft
+			case arrowRight:
+				ui.cursor = cursorArrowRight
+			case arrowUp:
+				ui.cursor = cursorArrowUp
+			case arrowDown:
+				ui.cursor = cursorArrowDown
+			case arrowDownRight:
+				ui.cursor = cursorArrowDownRight
+			}
 			return
 		}
 	}
@@ -207,6 +229,15 @@ func (ui *uiManager) drawCursor(renderer *sdl.Renderer, mx, my int32) {
 	// strip). Click feedback now comes from the bob/pulse animation only,
 	// so we render the full texture for every cursor state.
 	var src *sdl.Rect
+	// cursorPoint is a 2-frame strip: show the left (idle) frame, or the right
+	// (pressed) frame while clicking, so only ONE finger ever renders (#9).
+	if c == cursorPoint {
+		frame := int32(0)
+		if ui.cursorClicking {
+			frame = 1
+		}
+		src = &sdl.Rect{X: frame * srcW, Y: 0, W: srcW, H: srcH}
+	}
 
 	targetW := int32(40)
 	scale := float64(targetW) / float64(srcW)
@@ -253,6 +284,10 @@ func (ui *uiManager) drawCursor(renderer *sdl.Renderer, mx, my int32) {
 	case cursorGrab:
 		dx = -w / 2
 		dy = -h / 2
+	case cursorPoint:
+		// Fingertip points up; anchor it near the click point.
+		dx = -w / 3
+		dy = 0
 	default:
 		dx = 0
 		dy = 0

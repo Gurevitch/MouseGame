@@ -48,8 +48,8 @@ func newDevMenu() *devMenu {
 	return dm
 }
 
-func (dm *devMenu) toggle()        { dm.visible = !dm.visible }
-func (dm *devMenu) Visible() bool  { return dm.visible }
+func (dm *devMenu) toggle()       { dm.visible = !dm.visible }
+func (dm *devMenu) Visible() bool { return dm.visible }
 
 // handleClick returns true if the click was inside the panel (consumed).
 func (dm *devMenu) handleClick(x, y int32, g *Game) bool {

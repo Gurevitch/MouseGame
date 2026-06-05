@@ -19,15 +19,15 @@ import (
 // flag set. No item puzzle — the story has already been paid for.
 
 const (
-	mxBgPlaza       = "assets/images/locations/mexico/background/mexico_plaza.png"
-	mxArtMariachi      = "assets/images/locations/mexico/npc/npc_mariachi_idle.png"
-	mxArtMariachiBack  = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
+	mxBgPlaza           = "assets/images/locations/mexico/background/mexico_plaza.png"
+	mxArtMariachi       = "assets/images/locations/mexico/npc/npc_mariachi_idle.png"
+	mxArtMariachiBack   = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 	mxArtAbuelaIdle     = "assets/images/locations/mexico/npc/npc_abuela_idle.png"
 	mxArtAbuelaIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
 	mxArtAbuelaTalk     = "assets/images/locations/mexico/npc/npc_abuela_talk.png"
 	mxArtAbuelaTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
-	mxArtVendor     = "assets/images/locations/mexico/npc/npc_vendor_idle.png"
-	mxArtVendorBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
+	mxArtVendor         = "assets/images/locations/mexico/npc/npc_vendor_idle.png"
+	mxArtVendorBack     = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 )
 
 var mxPlazaBase = color.NRGBA{R: 240, G: 170, B: 120, A: 255}
@@ -117,11 +117,11 @@ func newMexicanVendor(renderer *sdl.Renderer) *npc {
 
 func addMexicoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 	plaza := &scene{
-		name:   "mexico_street",
-		bg:     newPNGBackgroundOr(renderer, mxBgPlaza, mxPlazaBase),
-		npcs:   []*npc{newMariachi(renderer), newAbuela(renderer), newMexicanVendor(renderer)},
-		spawnX: 200,
-		spawnY: 450,
+		name:     "mexico_street",
+		bg:       newPNGBackgroundOr(renderer, mxBgPlaza, mxPlazaBase),
+		npcs:     []*npc{newMariachi(renderer), newAbuela(renderer), newMexicanVendor(renderer)},
+		spawnX:   200,
+		spawnY:   450,
 		blockers: []sdl.Rect{{X: 0, Y: 0, W: 150, H: 500}},
 		minY:     380, maxY: 640,
 	}

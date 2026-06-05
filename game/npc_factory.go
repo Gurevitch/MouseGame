@@ -8,44 +8,44 @@ import "github.com/veandco/go-sdl2/sdl"
 // import every npc constructor directly.
 //
 // To add a new NPC:
-//   1. Write a `newFoo(renderer) *npc` constructor.
-//   2. Register it here with the id you will reference in scene JSON.
+//  1. Write a `newFoo(renderer) *npc` constructor.
+//  2. Register it here with the id you will reference in scene JSON.
 //
 // Missing ids are silently skipped at scene-build time with a warning; the
 // loader logs, the scene still spawns, and the player can continue playing
 // while you fix the typo.
 var npcFactories = map[string]func(*sdl.Renderer) *npc{
-	"director_higgins":        newDirectorHiggins,
-	"office_higgins":          newOfficeHiggins,
-	"night_higgins":           newNightHiggins,
-	"grounds_higgins_hidden":  newGroundsHiggins,
-	"marcus":                  newMarcus,
-	"jake":                    newJake,
-	"lily":                    newLily,
-	"tommy":                   newTommy,
-	"danny":                   newDanny,
+	"director_higgins":       newDirectorHiggins,
+	"office_higgins":         newOfficeHiggins,
+	"night_higgins":          newNightHiggins,
+	"grounds_higgins_hidden": newGroundsHiggins,
+	"marcus":                 newMarcus,
+	"jake":                   newJake,
+	"lily":                   newLily,
+	"tommy":                  newTommy,
+	"danny":                  newDanny,
 	// Cabin-bound variants: kid at their bed position, silent by default
 	// (Day 2 callbacks flip silent off). Marcus is not silent and is larger.
-	"room_marcus":             newRoomMarcus,
-	"room_jake":               newRoomJake,
-	"room_lily":               newRoomLily,
-	"room_tommy":              newRoomTommy,
-	"room_danny":              newRoomDanny,
+	"room_marcus": newRoomMarcus,
+	"room_jake":   newRoomJake,
+	"room_lily":   newRoomLily,
+	"room_tommy":  newRoomTommy,
+	"room_danny":  newRoomDanny,
 	// Paris NPCs
-	"french_guide":            newFrenchGuide,
-	"museum_curator":          newMuseumCurator,
-	"pierre_artist":           newPierreArtist,
-	"gendarme_claude":         newGendarmeClaude,
-	"bakery_woman":            newBakeryWoman,
-	"press_photographer":      newPressPhotographer,
+	"french_guide":       newFrenchGuide,
+	"museum_curator":     newMuseumCurator,
+	"pierre_artist":      newPierreArtist,
+	"gendarme_claude":    newGendarmeClaude,
+	"bakery_woman":       newBakeryWoman,
+	"press_photographer": newPressPhotographer,
 	// Café patrons (paris_bakery interior). Henri carries the coffee-jam
 	// quest beat; the other 5 are flavor.
-	"cafe_patron_yvette":      newCafePatronYvette,
-	"cafe_patron_bernard":     newCafePatronBernard,
-	"cafe_patron_camille":     newCafePatronCamille,
-	"cafe_patron_henri":       newCafePatronHenri,
-	"cafe_patron_lucien":      newCafePatronLucien,
-	"cafe_patron_elise":       newCafePatronElise,
+	"cafe_patron_yvette":  newCafePatronYvette,
+	"cafe_patron_bernard": newCafePatronBernard,
+	"cafe_patron_camille": newCafePatronCamille,
+	"cafe_patron_henri":   newCafePatronHenri,
+	"cafe_patron_lucien":  newCafePatronLucien,
+	"cafe_patron_elise":   newCafePatronElise,
 }
 
 // registerNPCFactory lets modules (paris.go / jerusalem.go / ...) add their

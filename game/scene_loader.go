@@ -25,7 +25,6 @@ func buildSceneFromDef(renderer *sdl.Renderer, def sceneDef) *scene {
 		npcs:           spawnNPCs(renderer, def.NPCs),
 		spawnX:         def.SpawnX,
 		spawnY:         def.SpawnY,
-		entryWalk:      def.EntryWalk,
 		minY:           def.MinY,
 		maxY:           def.MaxY,
 		musicPath:      def.MusicPath,
