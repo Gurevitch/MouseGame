@@ -18,6 +18,10 @@ type spriteFrame struct {
 	oy int32
 	ow int32
 	oh int32
+	// footCX: cell-local X of the feet (bottom-band centre of mass). drawScaled
+	// plants this at the same screen X every frame so PP stands/walks/talks in
+	// one place even when the art drifts the body or an arm/leg extends out.
+	footCX int32
 }
 
 const (
@@ -123,6 +127,16 @@ type player struct {
 	recedeScale    float64
 	recedeOnDone   func()
 
+	// Smooth recede release (#16). When a dialog that used playRecede ends,
+	// snapping recedeScale back to 1.0 made PP visibly "pop" to full size.
+	// releaseRecedeSmooth instead un-freezes movement and lerps recedeScale
+	// from its current (shrunk) value back to 1.0 over recedeReleaseDur, so
+	// PP grows back smoothly as the conversation ends.
+	recedeReleasing      bool
+	recedeReleaseFrom    float64
+	recedeReleaseElapsed float64
+	recedeReleaseDur     float64
+
 	// Walk-in tween (opening-cutscene PP entering from off-screen-left).
 	// Drives p.x directly each frame via lerp, bypassing the moving /
 	// allowOffscreen / clamp machinery so the engine can't shove PP back
@@ -165,7 +179,7 @@ func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFra
 		for c := 0; c < cols; c++ {
 			gf := grid[r][c]
 			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX})
 		}
 	}
 	return frames
@@ -178,7 +192,7 @@ func gridFramesRow(renderer *sdl.Renderer, path string, cols, rows, row int) []s
 		for c := 0; c < cols && c < len(grid[row]); c++ {
 			gf := grid[row][c]
 			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX})
 		}
 	}
 	return frames
@@ -190,7 +204,10 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		y: float64(engine.ScreenHeight) - playerDstH - 100,
 	}
 
-	p.walkSideFrames = gridFramesRow(renderer, "assets/images/player/PP walk left.png", 8, 2, 0)
+	// User playtest 2026-06-05: walk-left is now a SINGLE ROW of 8 frames (the
+	// whole walk cycle). The old 8×2 read only row 0, so a cycle split across
+	// two rows showed as half a stride ("not a full circle"). Load 8×1.
+	p.walkSideFrames = gridFrames(renderer, "assets/images/player/PP walk left.png", 8, 1)
 	p.walkDownFrames = gridFramesRow(renderer, "assets/images/player/PP walk front.png", 8, 2, 0)
 	p.walkUpFrames = gridFrames(renderer, "assets/images/player/PP walk back.png", 8, 2)
 
@@ -235,6 +252,14 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	grabFlower := gridFrames(renderer, "assets/images/player/PP grab flower.png", 6, 1)
 	if len(grabFlower) > 0 {
 		p.oneShotAnims["grab_flower"] = grabFlower
+	}
+	// User playtest #14: dedicated rolling-pin grab strip (PP reaches into the
+	// bike basket and lifts the pin overhead). 8 frames in one line per the
+	// project sheet convention. Plays when the hidden pin in the basket is
+	// picked up.
+	grabRollingPin := gridFrames(renderer, "assets/images/player/PP grab rolling pin.png", 8, 1)
+	if len(grabRollingPin) > 0 {
+		p.oneShotAnims["grab_rolling_pin"] = grabRollingPin
 	}
 
 	p.dir = dirDown
@@ -498,9 +523,32 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 // recedeEndScale after the cabin/camp-entrance transition completes.
 func (p *player) clearRecede() {
 	p.recedeActive = false
+	p.recedeReleasing = false
 	p.recedeScale = 1.0
 	p.recedeElapsed = 0
 	p.recedeOnDone = nil
+	if p.state == stateWalking && !p.moving {
+		p.state = stateIdle
+	}
+}
+
+// releaseRecedeSmooth ends a recede freeze the gentle way (#16): movement is
+// re-enabled immediately, but PP's rendered scale eases from its current
+// shrunk value back to full size over dur seconds instead of snapping. Use
+// this when a recede-framed dialog ends and PP should walk away without a
+// jarring size pop.
+func (p *player) releaseRecedeSmooth(dur float64) {
+	if !p.recedeActive && !p.recedeReleasing {
+		return
+	}
+	if dur <= 0 {
+		dur = 0.6
+	}
+	p.recedeReleaseFrom = p.recedeScale
+	p.recedeReleaseElapsed = 0
+	p.recedeReleaseDur = dur
+	p.recedeReleasing = true
+	p.recedeActive = false // un-freeze movement; the release tween owns scale
 	if p.state == stateWalking && !p.moving {
 		p.state = stateIdle
 	}
@@ -689,6 +737,19 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 			}
 		}
 		return
+	}
+
+	// Smooth recede release (#16): eases recedeScale back to 1.0 without
+	// freezing movement, so PP grows back to full size gradually after a
+	// recede-framed dialog (e.g. Pierre) instead of popping instantly.
+	if p.recedeReleasing {
+		p.recedeReleaseElapsed += dt
+		t := p.recedeReleaseElapsed / p.recedeReleaseDur
+		if t >= 1 {
+			t = 1
+			p.recedeReleasing = false
+		}
+		p.recedeScale = p.recedeReleaseFrom + (1.0-p.recedeReleaseFrom)*t
 	}
 
 	// Walk-in tween (opening cutscene). Drives p.x directly via lerp +
@@ -1014,9 +1075,22 @@ func (p *player) playAction(s playerState, cb func()) {
 	p.actionCallback = cb
 }
 
+// containsPoint is the "click is on PP" test used to open the inventory bag.
+// User playtest #22: the full 200×270 dst rect was too wide — the bag opened
+// when clicking well to the side of PP's slim body, so it felt like a big
+// invisible radius. Tightened to a 100-px-wide band centered on his body and
+// dropped 24px from the very top (his head is narrow), so the bag only opens
+// when the click is actually on PP. Clicks just outside now fall through to
+// hotspots / NPCs behind him.
 func (p *player) containsPoint(x, y int32) bool {
 	pt := sdl.Point{X: x, Y: y}
-	r := sdl.Rect{X: int32(p.x), Y: int32(p.y), W: playerDstW, H: playerDstH}
+	const bodyW = 100
+	r := sdl.Rect{
+		X: int32(p.x) + (playerDstW-bodyW)/2,
+		Y: int32(p.y) + 24,
+		W: bodyW,
+		H: playerDstH - 24,
+	}
 	return pt.InRect(&r)
 }
 
@@ -1094,8 +1168,10 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	if charScale <= 0 {
 		charScale = 1.0
 	}
-	// Recede tween multiplies into the same render scale path.
-	if p.recedeActive && p.recedeScale > 0 {
+	// Recede tween multiplies into the same render scale path. The smooth
+	// release (#16) keeps applying the (easing-back) scale after the freeze
+	// ends so PP doesn't pop to full size.
+	if (p.recedeActive || p.recedeReleasing) && p.recedeScale > 0 {
 		charScale *= p.recedeScale
 	}
 	frame := p.currentSprite()
@@ -1118,6 +1194,20 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	// the per-frame size jump that read as "two frames at once" (#1/#2/#3).
 	refH := maxOpaqueHeightP(p.currentGroup())
 	anchorX := float64(p.x) + float64(playerDstW)/2
+
+	// Decide the horizontal flip up-front so the foot-anchor below can account
+	// for it (CopyEx mirrors within the dst rect).
+	flip := sdl.FLIP_NONE
+	if p.state == stateWalking && (p.dir == dirLeft || p.dir == dirRight) {
+		// The side-walk sheet (PP walk left.png) is drawn FACING LEFT: show it
+		// as-is when walking left, mirror it when walking right.
+		if p.dir == dirRight {
+			flip = sdl.FLIP_HORIZONTAL
+		}
+	} else if p.dir == dirLeft {
+		flip = sdl.FLIP_HORIZONTAL
+	}
+
 	if frame.ow > 0 && frame.oh > 0 && refH > 0 {
 		targetTall := scaledHeight * playerRenderFillFrac
 		frameScale := targetTall / float64(refH)
@@ -1125,13 +1215,18 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		src = &s
 		dstW = int32(float64(frame.ow) * frameScale)
 		dstH = int32(float64(frame.oh) * frameScale)
-		// Anchor X by the frame's authored position WITHIN its cell, not by the
-		// opaque-box centre. Otherwise a gesturing arm widens the opaque box on
-		// one side and centring it shoves the body sideways every frame — the
-		// left/right jitter that read as "two frames at once / not smooth"
-		// (#1/#6/#12). Keeping the cell-relative offset holds the body still.
-		boxOff := (float64(frame.ox) + float64(frame.ow)/2 - float64(frame.w)/2) * frameScale
-		dstX = int32(anchorX + boxOff - float64(dstW)/2)
+		// Anchor X by the FEET (footCX), not the box. The feet plant at anchorX
+		// every frame, so PP stands/walks/talks in one place even when the art
+		// drifts the body within its cell or an arm/leg extends to one side. The
+		// old box-relative anchor faithfully reproduced that drift as left/right
+		// jitter — which is exactly "not standing in one place / not cutting
+		// well" (#1/#6/#12).
+		footFromLeft := (float64(frame.footCX) - float64(frame.ox)) * frameScale
+		if flip == sdl.FLIP_HORIZONTAL {
+			dstX = int32(anchorX - (float64(dstW) - footFromLeft))
+		} else {
+			dstX = int32(anchorX - footFromLeft)
+		}
 	} else {
 		// No opaque data — fall back to the legacy full-cell scale.
 		frameScale := scaledHeight / float64(frame.h)
@@ -1145,18 +1240,6 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	// with the flower on the ground instead of bending below it.
 	if p.activeOneShot == "grab_flower" {
 		dstY -= 38
-	}
-
-	flip := sdl.FLIP_NONE
-	if p.state == stateWalking && (p.dir == dirLeft || p.dir == dirRight) {
-		// User 2026-05-31: the side-walk sheet (PP walk left.png) is drawn
-		// FACING LEFT. So show it as-is when walking left, and MIRROR it when
-		// walking right — the inverse of the right-facing idle/talk sheets.
-		if p.dir == dirRight {
-			flip = sdl.FLIP_HORIZONTAL
-		}
-	} else if p.dir == dirLeft {
-		flip = sdl.FLIP_HORIZONTAL
 	}
 
 	switch p.state {

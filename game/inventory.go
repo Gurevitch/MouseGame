@@ -102,8 +102,12 @@ func (inv *inventory) update(dt float64) {
 }
 
 const (
-	invOvalW = 720
-	invOvalH = 600
+	// User playtest #18: bag felt too small on a 1400×800 screen. Bumped from
+	// 720×600 to 816×680 (kept the inv_circle.png 1.2:1 aspect so the art does
+	// not stretch). Centered, it spans x≈276..1124 / y≈4..716 — fills more of
+	// the screen without clipping the top edge.
+	invOvalW = 816
+	invOvalH = 680
 )
 
 func invOvalCenter() (int32, int32) {
@@ -124,12 +128,11 @@ func (inv *inventory) handleClick(x, y int32) bool {
 	}
 
 	if len(inv.items) > 1 {
-		// User 2026-05-17: cuts tightened 0.20 → 0.10. With center at 700
-		// and oval 720 wide, the prev region is now x < 628 (was 556) and
-		// next is x > 772 (was 844). Wider prev/next bands, narrower
-		// "pick the current item" center band — easier to flip through.
-		leftCut := int32(float64(invOvalW) * 0.10)
-		rightCut := int32(float64(invOvalW) * 0.10)
+		// Left/right click bands page through items (the inv_circle hand grips
+		// sit on these bands). ~10% of the oval width on each side; the wide
+		// center band picks the current item. (#18 oval grew to 816 wide.)
+		leftCut := int32(invOvalW / 10)
+		rightCut := int32(invOvalW / 10)
 		if x < cx-leftCut {
 			inv.selectedIdx--
 			if inv.selectedIdx < 0 {
@@ -184,8 +187,10 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 
 	item := inv.items[inv.selectedIdx]
 	if item.tex != nil {
-		maxW := int32(360)
-		maxH := int32(320)
+		// Scaled up with the larger oval (#18) so the item art keeps filling
+		// the bag rather than looking lost in the middle.
+		maxW := int32(440)
+		maxH := int32(400)
 		scale := float64(maxW) / float64(item.srcW)
 		if sh := float64(maxH) / float64(item.srcH); sh < scale {
 			scale = sh
@@ -208,37 +213,10 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 		inv.font.DrawText(renderer, countTxt, cx-cw/2, cy+invOvalH/2-40, 3,
 			sdl.Color{R: 220, G: 220, B: 220, A: 220})
 
-		pulse := 0.5 + 0.5*math.Sin(inv.pulse*2.4)
-		alpha := uint8(120 + pulse*90)
-		chevSize := int32(28)
-		// User 2026-05-21: fix arrow positions to land on the inventory
-		// oval's hand grips at (453, 546) and (929, 547). Previously the
-		// arrows used a screen-center math that drifted off the oval art.
-		leftX, leftY := int32(453), int32(546)
-		rightX, rightY := int32(929), int32(547)
-		drawChevron(renderer, leftX, leftY, chevSize, true, alpha)
-		drawChevron(renderer, rightX, rightY, chevSize, false, alpha)
-	}
-}
-
-// drawChevron renders a simple two-stroke ">" or "<" pointer inside the
-// inventory oval to hint at click-to-cycle zones. No fill, just thick lines
-// so it feels clean instead of arrow-button heavy.
-func drawChevron(renderer *sdl.Renderer, cx, cy, size int32, leftFacing bool, alpha uint8) {
-	renderer.SetDrawColor(255, 230, 160, alpha)
-	thickness := int32(4)
-	for t := -thickness; t <= thickness; t++ {
-		if leftFacing {
-			for i := int32(0); i < size; i++ {
-				renderer.DrawPoint(cx+i+t, cy-size+i)
-				renderer.DrawPoint(cx+i+t, cy+size-i)
-			}
-		} else {
-			for i := int32(0); i < size; i++ {
-				renderer.DrawPoint(cx-i+t, cy-size+i)
-				renderer.DrawPoint(cx-i+t, cy+size-i)
-			}
-		}
+		// User playtest #17: the drawn chevron "logos" are removed. The
+		// inv_circle.png art already shows hand grips on the left/right, and
+		// the left/right click bands (handleClick) still page through items —
+		// the extra drawn arrows were redundant clutter.
 	}
 }
 

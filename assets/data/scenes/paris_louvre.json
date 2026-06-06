@@ -1,12 +1,13 @@
 {
   "name": "paris_louvre",
   "background": "assets/images/locations/paris/background/paris_museum.png",
-  "spawnX": 200,
-  "spawnY": 365,
-  "minY": 0,
-  "maxY": 0,
+  "_comment": "User playtest #30: PP arrives through the tunnel on the LEFT (spawn 381,481) and walks in; characterScale 0.7 shrinks PP + Curator Beaumont so they read as 'far down the gallery'. First-arrival walk-in + monologue fire from game.go (VarMonologueLouvre).",
+  "spawnX": 381,
+  "spawnY": 481,
+  "minY": 440,
+  "maxY": 540,
   "musicPath": "assets/audio/music/paris.mp3",
-  "characterScale": 1.0,
+  "characterScale": 0.7,
   "npcs": ["museum_curator"],
   "hotspots": [
     {
@@ -19,5 +20,7 @@
   "blockers": [
     {"x": 400, "y": 0, "w": 500, "h": 340}
   ],
-  "walkSegments": []
+  "walkSegments": [
+    {"x1": 300, "y1": 481, "x2": 1000, "y2": 481}
+  ]
 }

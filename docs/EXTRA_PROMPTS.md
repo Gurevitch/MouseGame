@@ -95,14 +95,61 @@ prompt:
 All prompts below still need a PNG generated. When one lands, move its row
 into the **Done log** at the bottom and delete the body.
 
-No open prompts.
+### Playtest pass — museum (2026-06-05, focused)
 
-> **Also flagged for in-game audit before regen (don't generate yet):** the
-> bakery café-patron sheets under `.../paris/npc/coffee/` (#24 — check each for
-> a baked background box / separator lines / wrong frame count; Henri verified
-> clean at 8×1), Danny idle/talk halo (#7 — now re-keyed wider in code; regen
-> only if the fringe persists), and `pp_sleeping.png`/`pp_waking.png` (#13 —
-> regen only if they don't match the current PP design).
+Most of this pass's sprites were regenerated and their loaders updated to match
+(see the Done log below). Only the two prompts below are still coming out wrong
+and need another regen. The other prompts were cleared per request; the
+still-imperfect, parked ones — Higgins shout (right half blank, §SH), Marcus
+idle/talk unify (§MM), Colette talk (right-side gap, §CO) — can be recovered
+from this file's git history if you pick them back up.
+
+#### §AB — PP walk side: complete looping stride — #1
+
+**Path:** `assets/images/player/PP walk left.png` · **Canvas:** `1536×384` · **Grid:** `8×1` (SINGLE row of 8 frames — the engine now plays all 8)
+
+===PROMPT START===
+> A complete, seamless 8-frame side-view WALK CYCLE of the Pink Panther facing
+> LEFT, laid out as a SINGLE horizontal ROW of 8 frames on pure #FFFFFF
+> (≈1536×384, one row only — NOT two rows). This must be a TRUE walk cycle that
+> LOOPS: frame 8 flows straight back into frame 1 (a "full circle"). Use the
+> classic 8-key cycle so the legs alternate correctly:
+>   1. LEFT-leg contact — left foot forward (heel down), right foot back (toe off)
+>   2. recoil / down — weight drops onto the left leg, body at its lowest
+>   3. passing — right leg swings under the body, body rising
+>   4. high-point — push off, body at its highest
+>   5. RIGHT-leg contact — right foot forward (mirror of frame 1)
+>   6. recoil / down
+>   7. passing
+>   8. high-point → loops back into frame 1
+> Arms swing in OPPOSITE phase to the legs; the long tail trails and sways. He
+> walks IN PLACE — body centered the same in every cell, feet on one ground
+> line — so it reads as continuous walking, not a sliding character or 2-3
+> repeated poses. Slim pink panther, true side profile throughout, no gloves.
+===PROMPT END===
+
+#### §AC — PP talk front: natural speech — #2
+
+**Path:** `assets/images/player/PP talk front.png` · **Canvas:** `1536×1024` · **Grid:** `8×2` (16 frames, cell 192×512 — the engine plays all 16)
+
+===PROMPT START===
+> A 16-frame front-facing TALK loop of the Pink Panther, 8 columns × 2 rows on
+> pure #FFFFFF at 1536×1024 (192×512 cells), same body size / feet line /
+> X-centering as `PP idle front.png`. The goal is NATURAL SPEAKING — the current
+> one looks fake/robotic. Rules:
+> - The MOUTH follows a believable speech rhythm through real mouth shapes:
+>   closed → slightly open → wide "ah" → mid → narrow "oo" → closed, repeating
+>   at a natural conversational cadence — NOT the jaw snapping fully open then
+>   fully shut every frame.
+> - Frames must be CONSECUTIVE and SMOOTH: each frame is a small increment from
+>   the previous one, so playing 1→16 in order reads as fluid talking with no
+>   jerky jumps or popping between two extremes.
+> - Layer in subtle natural life: small head nods/tilts, an eyebrow raise, an
+>   occasional blink, a calm paw gesture or two, a soft tail sway — all gentle,
+>   in service of "a panther having a relaxed conversation," not flailing.
+> - Eyes open and consistent; feet planted on one line; body centered every
+>   frame. Slim pink panther, no gloves, belly off-white #F2EFE5 (not pure white).
+===PROMPT END===
 
 
 ## Done log — landed sprites (FYI only, no action needed)
@@ -113,6 +160,14 @@ original prompt is in git history at `docs/EXTRA_PROMPTS.md` pre-2026-05-24.
 
 | § | Sprite | Path | Landed |
 |---|--------|------|--------|
+| §AA | PP idle front — alive, eyes open, 8×2 | `PP idle front.png` | 2026-06-05 |
+| §AD | PP sleeping + waking — single-row 8×1 | `pp_sleeping.png`, `pp_waking.png` | 2026-06-05 |
+| §LL | Lily idle / talk / receive-flower / talk-with-flower | `kids/lily/npc_lily_*.png` | 2026-06-05 |
+| §BE | Curator talk (clean 8×1) + moved to `museum/` | `museum/npc_museum_curator_*.png` | 2026-06-05 |
+| §OF | Higgins office idle + talk — clean 6×2 | `npc_director_higgins_office_*.png` | 2026-06-05 |
+| §AP | Airplane — both wings, locked centerline 6×2 | `pp_airplane.png` | 2026-06-05 |
+| §CF | Café patrons idle + talk — clean 8×1 (Bernard fixed) | `coffee/cafe_patron_*` | 2026-06-05 |
+| — | Colette + Poulain sheets relocated to `outside/` (loader paths updated) | `outside/npc_madame_*` | 2026-06-05 |
 | §1 | Higgins entrance idle | `npc_director_higgins_idle.png` | 2026-04 |
 | §2 | Higgins walk back | `npc_director_higgins_walk_back.png` | 2026-04 |
 | §4 | Marcus strange_alt | `npc_marcus_strange_alt.png` | 2026-04 |

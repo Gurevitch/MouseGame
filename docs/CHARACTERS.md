@@ -160,7 +160,9 @@ the BACKGROUND, not the characters.
 - `tommy_room`, `jake_room`, `lily_room`, `marcus_room`,
   `danny_room`: **1.0** (was 0.85 pre-rebalance).
 - `airplane_flight`: **1.0**
-- Paris `paris_street`, `paris_louvre`, `paris_bakery`: **1.0**
+- Paris `paris_street`, `paris_bakery`: **1.0**
+- Paris `paris_louvre`: **0.7** (user playtest #30 — PP enters from the far
+  tunnel and Beaumont stands down the gallery, so both render small/distant)
 - Jerusalem / Tokyo / Rio / BA / Rome / Mexico `*`: **1.0**
 
 ---
@@ -172,9 +174,9 @@ for source frames). PP is the size baseline, and adults / kids are sized
 relative to him.
 
 1. **PP is the tallest character on screen.** PP draws at **270 px**
-   tall. No NPC may exceed **0.85× PP's draw height** (= 230 px). The
-   one exception is the oversize "freakout Marcus" in his Day-2 room,
-   which matches PP at 270 — and that's intentional.
+   tall. No NPC may exceed **0.85× PP's draw height** (= 230 px). (The
+   old "freakout Marcus matches PP at 270" exception was removed per user
+   playtest #10 — room Marcus is now ~205 and reads as a kid.)
 2. **Adult NPCs draw in the 220–240 band.** Adult cell aspect is
    portrait (height ≈ 1.7–1.9 × width).
 3. **Kids draw in the 175–245 band.** Grounds kids ~175, room kids
@@ -230,8 +232,10 @@ the entry below so coders + artists stay in sync. Cross-link to
 - **Instances:**
   - **Grounds Marcus** — `newMarcus` factory (camp_grounds NPC).
     bounds `(890, 395) 150×180`.
-  - **Room Marcus** — `newRoomMarcus` (game/npc.go:311). bounds
-    `(600, 260) 200×300`. Scene `marcus_room` uses `characterScale: 0.85`.
+  - **Room Marcus** — `newRoomMarcus`. bounds `(615, 450) 150×205` (user
+    playtest #10 — shrunk from 187×270 so he reads clearly shorter than PP;
+    the old "looming giant at PP's height" intent is dropped). Scene
+    `marcus_room` `characterScale: 1.0`.
 - **Sprite paths:** `assets/images/locations/camp/npc/kids/marcus/`
   - `npc_marcus_idle.png`, `npc_marcus_talk.png`,
     `npc_marcus_strange_idle.png`, `npc_marcus_strange_talk.png`,
@@ -363,8 +367,9 @@ the entry below so coders + artists stay in sync. Cross-link to
 - **Sprite paths:** `npc_museum_curator_idle.png` 8×1,
   `npc_museum_curator_talk.png` 4×2.
 - **Atlas yaml:** `tools/characters/paris/museum_curator.yaml`.
-- **Factory:** `newMuseumCurator` (game/npc.go:838). bounds
-  `(500, 320) 130×250`. Scene: `paris_louvre` (interior, scale 0.9).
+- **Factory:** `newMuseumCurator`. bounds `(546, 359) 125×240`, **flipped**
+  (faces left toward PP). Scene: `paris_louvre` (interior, scale **0.7**).
+  User playtest #29/#30. Talk-sheet regen queued — EXTRA_PROMPTS §BE.
 - **Dialog handles:** `museumCuratorDialog` / `museumCuratorPostDialog`.
 - **Regen prompt:** `EXTRA_PROMPTS.md` §15.
 

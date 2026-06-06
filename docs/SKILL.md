@@ -165,6 +165,30 @@ Foreground sprites (e.g., the biplane in `airplane_flight`) animate on their *ow
 - **Don't write trailing summaries** at the end of a response. Diff is visible; describe only what's next or blocked.
 - **Don't generate placeholder pixel art in code.** Always prompt the user instead.
 
+## 8a. Quest-item handoff rule (gameplay)
+
+**An NPC must never give the next quest item until the player has *physically
+handed over* the prerequisite item.** Having the item sitting in the bag is
+NOT enough — the player has to pull it from the inventory (it rides on the
+cursor as `heldItem`) and drop it on the NPC. This keeps the fetch-quest loop
+legible: pick up → carry → deliver → receive. User-mandated 2026-06-05 ("we
+must bring the item to the person to keep the game moving").
+
+How to wire it:
+
+- For NPCs that use the normal click path (`startNPCDialog` → `canTriggerAltDialog`),
+  set **`altDialogRequiresHeld = true`** (plus `altDialogRequiresItem = "<Item>"`).
+  Clicking the NPC *without* holding the item falls through to their normal
+  dialog (which should hint at what's needed); the trade fires only via the
+  held-item drop path in `Game.HandleClick`.
+- For NPCs with an `onClickOverride` (e.g. Pierre's walk-up choreography), the
+  override bypasses `canTriggerAltDialog`, so gate the trade *inside* the
+  `altDialogFunc` on `inv.heldItem` (not `inv.hasItem`).
+- Canonical examples: Poulain (rolling pin), Henri (café au lait), Pierre
+  (baguette → confiture), Claude (press pass) — all in `setupParisCallbacks`.
+
+Same rule applies to camp (Lily's flower already uses `altDialogRequiresHeld`).
+
 ## 9. Doc legend (quick reference)
 
 | Doc | Purpose | When to update |

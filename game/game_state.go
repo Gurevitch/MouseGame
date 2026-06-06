@@ -34,6 +34,8 @@ const (
 	VarNightSceneDone    = "night_scene_done"
 	VarMonologueIntro    = "monologue_intro_played"
 	VarMonologueParis    = "monologue_paris_played"
+	VarMonologueLouvre   = "monologue_louvre_played" // museum first-arrival beat (#28)
+	VarParisDone         = "paris_done"              // postcard obtained → camp return unlocked (#32)
 
 	// "chapter" scope: resets when a chapter ends (via ResetChapter)
 	VarMetKids        = "met_kids" // How many kids PP has talked to on Day 1

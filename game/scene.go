@@ -130,6 +130,11 @@ type floorItem struct {
 	bounds   sdl.Rect
 	name     string
 	visible  bool
+	// hidden (#14): the item is interactable (hover shows the grab cursor and
+	// clicking picks it up) but its sprite is NOT drawn — e.g. a rolling pin
+	// tucked inside a bike basket. The player only knows it's there because the
+	// cursor changes. On pickup, clear both visible and hidden.
+	hidden   bool
 	onPickup func()
 }
 
@@ -451,7 +456,9 @@ func (s *scene) rightmostInGroup(groupID string) *npc {
 func (s *scene) checkFloorItemClick(x, y int32) *floorItem {
 	pt := sdl.Point{X: x, Y: y}
 	for _, fi := range s.floorItems {
-		if fi.visible && pt.InRect(&fi.bounds) {
+		// #14: hidden items are clickable too (sprite not drawn, but the cursor
+		// changed on hover so the player knows something is there).
+		if (fi.visible || fi.hidden) && pt.InRect(&fi.bounds) {
 			return fi
 		}
 	}

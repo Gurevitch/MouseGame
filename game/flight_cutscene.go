@@ -98,22 +98,12 @@ func (f *flightCutscene) Draw(renderer *sdl.Renderer) {
 	bob := math.Sin(f.timer*2.0) * 8
 	dstW := int32(float64(frame.w) * scale)
 	dstH := int32(float64(frame.h) * scale)
-	// User 2026-05-21: measured the actual PNG per-cell plane positions:
-	// row 0 frames have the plane at cell-Y 212-413 (~mid-cell), row 1
-	// frames have the plane at cell-Y 68-268 (~near top of cell). So row 1
-	// already draws the plane HIGHER in its cell. To align, row 1 frames
-	// must be PUSHED DOWN by (212-68)*scale = 144*1.5 ≈ 216 px on screen.
-	// Previous pass had the sign flipped (was subtracting 128), which made
-	// the bounce worse. Final art regen (locking fuselage centerline per
-	// EXTRA_PROMPTS §H) will let us drop this offset to zero.
-	var rowYOffsetPx int32
-	if idx >= 6 {
-		v := 144.0 * float64(scale) // push DOWN
-		rowYOffsetPx = int32(v)
-	}
+	// User playtest 2026-06-05: the regenerated sheet locks the fuselage
+	// centerline to the same Y in every cell, so the old per-row Y-offset
+	// compensation is gone — every frame draws centered with just the bob.
 	dst := sdl.Rect{
 		X: engine.ScreenWidth/2 - dstW/2,
-		Y: int32(float64(engine.ScreenHeight)/2-float64(dstH)/2+bob) + rowYOffsetPx,
+		Y: int32(float64(engine.ScreenHeight)/2 - float64(dstH)/2 + bob),
 		W: dstW,
 		H: dstH,
 	}

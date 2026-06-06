@@ -84,7 +84,11 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 	// feedback was the ghost icon drawn beside the cursor, which was
 	// easy to miss in busy scenes like camp_grounds.
 	if inv != nil && inv.heldItem != nil {
-		ui.cursor = cursorGrab
+		// User playtest #6: while carrying a picked item, show the pink
+		// "action" pointing hand (not the grab claw) so the cursor reads as
+		// "ready to use this on something." NPC/use branches below still
+		// override with talk feedback when hovering a valid target.
+		ui.cursor = cursorPoint
 	} else {
 		ui.cursor = cursorNormal
 	}
@@ -119,7 +123,10 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 	// checked first, so hovering a floor item next to an NPC showed
 	// the talk cursor — wrong action signal for the player.
 	for _, fi := range s.floorItems {
-		if fi.visible {
+		// #14: also light up the grab cursor for hidden-but-interactable items
+		// (e.g. the rolling pin tucked in the bike basket) so the player learns
+		// there's something to grab even though the sprite isn't drawn.
+		if fi.visible || fi.hidden {
 			pt := sdl.Point{X: mx, Y: my}
 			if pt.InRect(&fi.bounds) {
 				ui.hoverName = fi.name

@@ -14,6 +14,51 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### Reported (2026-06-05 — playtest pass, museum + Paris flow, 32 items)
+
+Engine/JSON fixes landed this pass; art-bound items are queued in
+`EXTRA_PROMPTS.md` under "Playtest pass — museum".
+
+- [~] `1.` PP walk-side not a full sprite + idle-front jitter. **Art** — regen
+  EXTRA_PROMPTS §AA (idle front, eyes open + feet locked) and §AB (full walk-side).
+- [~] `2.` PP talk-front not cut normally. **Art** — §AC (match idle dims 1536×1024).
+- [x] `3.` PP walks into camp at (755,533) on arrival.
+- [~] `4.` New Lily idle/talk/get-flower/post-flower. **Art** — §LL (keep design).
+- [~] `5.` Marcus talk not smooth. **Art** — §MM (unify idle+talk to clean 8×2).
+- [x] `6.` Active pointing cursor while carrying an item + on the relevant travel pin.
+- [~] `7.` Higgins shout sprite. **Wiring verified** (camp_night→night_higgins); the
+  sheet's right half is blank → **art** regen §SH.
+- [x] `8.` Marcus room frames swiping — engine: room idle/talk already load at the
+  correct grid; remaining slide is the strange/talk cell-count mismatch → §MM art.
+- [~] `9.` PP sleeping/waking + first idle frame open eyes. **Art** — §AD + §AA.
+  (Wake dialog already plays from night_bedtime.json.)
+- [x] `10.` Room Marcus shrunk (150×205) so he reads shorter than PP.
+- [x] `11.` Higgins-office arrow moved to ~(1186,692).
+- [~] `12.` Higgins office frames swiping → **art** §OF; **flip done** (office Higgins
+  now faces PP); throw-map uses the give_map sheet (loads 6×2 correctly).
+- [~] `13.` Airplane not cut well. **Art** — §AP.
+- [x] `14.` Rolling pin hidden in bike basket (~539,644): cursor reveals it, grab
+  one-shot plays on pickup.
+- [~] `15.` Colette talk not smooth / right-side gap / last frame blank. **Art** — §CO.
+- [x] `16.` Pierre: talks to the side; eases back to size after dialog (no pop).
+- [x] `17.` Multi-item inventory left/right chevron logos removed.
+- [x] `18.` Inventory bag oval enlarged (816×680).
+- [x] `19.` Claude talk cadence slowed (0.10 → 0.16).
+- [~] `20.` Poulain repositioned (~605,318); talk frame spacing → **art** §PO.
+- [~] `21.` Lucien/Henri/Yvette bg + talk spacing. **Art** — §CF.
+- [x] `22.` Inventory only opens when clicking on PP (tightened hit test).
+- [x] `23.` Camille nudged right (legs tuck behind table).
+- [~] `24.` Bernard talking tiny. Root cause: talk sheet framing ≠ idle → **art** §CF.
+- [x] `25.` Item trades require handing the item over (held), not bag-only. Rule
+  documented in `SKILL.md` §8a.
+- [x] `26.` Bakery exit: PP walks to the door (~1261,422) then walks back through it.
+- [x] `27./28.` Museum first arrival: one-time arrival monologue.
+- [x] `29.` Beaumont flipped + repositioned (~546,599); **new talk sprite** → §BE art.
+- [x] `30.` PP walks in from the left tunnel (381,481); scene scale 0.7 shrinks both.
+- [x] `31.` Removed the bottom-right travel-map button in the museum.
+- [x] `32.` Travel-map "fly back to Camp" pin unlocks after the postcard
+  (relevantWhen `paris_done==1 && marcus_healed==0`).
+
 ### Reported (2026-05-24 — playtest pass 6, 7 items)
 
 - [~] `[P1]` 1. PP talk-front cut wrong + not matching idle + two rows of frames visible. **Art-only** — EXTRA_PROMPTS §A (talk-front to 1376×768, 8×2 matching idle) and §B (talk-side to 1672×941, 8×2 matching idle-side) still queued. Current PNGs are wrong dims, hence the two-row strip showing.

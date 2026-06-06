@@ -3,6 +3,21 @@
 
   "locations": [
     {
+      "id": "camp",
+      "name": "Camp Chilly Wa Wa",
+      "scene": "camp_entrance",
+      "pinX": 250, "pinY": 250,
+      "unlocked": false,
+      "facts": [
+        "Home base — the summer camp where it all started.",
+        "The kids are counting on you. Bring back what you found.",
+        "Director Higgins will want an update."
+      ],
+      "landmark": "",
+      "audio": "",
+      "relevantWhen": "vars.game.paris_done == 1 && vars.game.marcus_healed == 0"
+    },
+    {
       "id": "paris",
       "name": "Paris",
       "scene": "paris_street",

@@ -477,6 +477,12 @@ type GridFrame struct {
 	OY  int32
 	OW  int32
 	OH  int32
+	// FCX is the cell-local X of the horizontal centre of the opaque pixels in
+	// the bottom band of the frame — i.e. where the character's FEET are.
+	// Anchoring an animation by FCX keeps a standing/walking character planted
+	// even when the art drifts the body within the cell or an arm/leg extends
+	// to one side (which would skew the full-box centre). 0 when no opaque data.
+	FCX int32
 }
 
 // opaqueImgCache memoizes decoded NRGBA images for OpaqueBox so packed atlases
@@ -513,6 +519,38 @@ func opaqueLocal(img *image.NRGBA, cellRect image.Rectangle) (ox, oy, ow, oh int
 	ob := findOpaqueBounds(img, cellRect)
 	return int32(ob.Min.X - cellRect.Min.X), int32(ob.Min.Y - cellRect.Min.Y),
 		int32(ob.Dx()), int32(ob.Dy())
+}
+
+// footCenterLocal returns the cell-local X of the horizontal centre-of-mass of
+// the opaque pixels in the bottom band (~bottom 12%) of the opaque box — the
+// character's feet. ox/oy/ow/oh are the cell-local opaque bounds. Falls back to
+// the box centre when there is no opaque data. Mass-weighted (not bbox centre)
+// so a thin trailing tail only nudges it slightly.
+func footCenterLocal(img *image.NRGBA, cellRect image.Rectangle, ox, oy, ow, oh int32) int32 {
+	if ow <= 0 || oh <= 0 {
+		return ox + ow/2
+	}
+	bandH := oh * 12 / 100
+	if bandH < 2 {
+		bandH = 2
+	}
+	bottom := cellRect.Min.Y + int(oy+oh) // image-space bottom of opaque box (exclusive)
+	top := bottom - int(bandH)
+	x0 := cellRect.Min.X + int(ox)
+	x1 := x0 + int(ow)
+	var sumX, count int
+	for y := top; y < bottom; y++ {
+		for x := x0; x < x1; x++ {
+			if img.NRGBAAt(x, y).A > 10 {
+				sumX += x
+				count++
+			}
+		}
+	}
+	if count == 0 {
+		return ox + ow/2
+	}
+	return int32(sumX/count) - int32(cellRect.Min.X)
 }
 
 // blankCornerLogo makes pixels in the bottom-right corner region transparent,
@@ -762,7 +800,8 @@ func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows,
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
 			ox, oy, ow, oh := opaqueLocal(img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
+			fcx := footCenterLocal(img, cellRect, ox, oy, ow, oh)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx}
 		}
 	}
 

@@ -3,6 +3,34 @@
 Short per-session log. One section per working pass. Most recent on top.
 See `FIXME.md` for open issues and `STATUS.md` for feature-level progress.
 
+## 2026-06-05 — Playtest pass (museum + Paris flow)
+
+Engine/JSON side of a 32-item playtest list. Art-bound items (sprite re-cuts /
+regens) are queued in `EXTRA_PROMPTS.md` under "Playtest pass — museum".
+
+- **Inventory + cursor** — inventory bag oval enlarged (816×680); redundant
+  left/right chevron logos removed (the inv_circle art already has hand grips);
+  open-bag hit test tightened to PP's body so it no longer opens from a wide
+  radius; the active "pointing" cursor now shows while carrying an item and
+  over the relevant travel-map pin (other pins keep the talk icon).
+- **Camp** — PP walks into camp centre (755,533) on arrival; Higgins-office
+  arrow moved to ~1186,692; room Marcus shrunk (150×205) so he reads shorter
+  than PP; office Higgins flipped to face PP.
+- **Paris flow** — item trades now require *handing the item over* (held), not
+  just carrying it (Poulain/Henri/Pierre/Claude); Pierre talks to the side and
+  eases back to full size after dialog instead of popping; Claude talk cadence
+  slowed; bakery exit walks PP to the door and back through it (not off-right);
+  Poulain/Camille repositioned.
+- **Rolling pin** — now hidden inside the bike basket (~539,644): no sprite,
+  but the grab cursor reveals it; pickup plays the dedicated grab-rolling-pin
+  one-shot. New `floorItem.hidden` mode.
+- **Museum** — first arrival walks PP in from the left tunnel (381,481) with a
+  one-time monologue; scene `characterScale` 0.7 shrinks PP + Beaumont;
+  Beaumont flipped and repositioned (~546,599); bottom-right travel button
+  removed; getting the postcard unlocks a "fly back to Camp" travel pin.
+- **Verified** — night shout sprite is correctly wired (`camp_night` →
+  `night_higgins`); its broken playback is an art issue (queued §SH).
+
 ## 2026-04-17 — Polish pass 5 (FIXME batch)
 
 - **Strict NPC click bounds** — `npc.containsPoint` no longer expands

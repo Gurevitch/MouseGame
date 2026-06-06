@@ -133,7 +133,11 @@ type npc struct {
 
 	idleGrid       []npcFrame
 	talkGrid       []npcFrame
-	talkFrameSpeed float64
+	// postGiveTalkGrid, if set, replaces talkGrid after this NPC receives the
+	// quest item it was waiting for — e.g. Lily holding the daisy while she
+	// talks once PP has handed it over (#4). Swapped in by the give callback.
+	postGiveTalkGrid []npcFrame
+	talkFrameSpeed   float64
 	curFrame       int
 	frameTimer     float64
 	idleCurFrame   int
@@ -418,10 +422,10 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		dialog:         higginsWorriedDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.08,
-		// User 2026-06-02 (#16): he must FACE RIGHT and stay that way. The sheet
-		// is drawn facing right, so flipped=false; fixedFacing stops the dialog
-		// from turning him toward PP each time.
-		flipped:     false,
+		// User playtest #12: flip office Higgins 180° (he now faces LEFT toward
+		// PP / the desk). fixedFacing keeps him from turning back toward PP each
+		// time a dialog starts, so he holds the flipped orientation.
+		flipped:     true,
 		fixedFacing: true,
 		silent:      true,
 	}
@@ -500,7 +504,11 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	// (cabin floor line) instead of mid-room.
 	// User 2026-05-20: nudge down another 35px so feet rest on the cabin
 	// floor instead of hovering above it.
-	n.bounds = sdl.Rect{X: 600, Y: 385, W: 187, H: 270}
+	// User playtest #10: room Marcus read as "way bigger than PP". The old
+	// 187×270 matched PP's height (the "looming freakout giant" intent), but the
+	// user wants him clearly shorter than PP. Shrunk to 150×205 with the foot
+	// kept on the cabin floor line (Y+H ≈ 655), so he now reads as a kid.
+	n.bounds = sdl.Rect{X: 615, Y: 450, W: 150, H: 205}
 	// Hidden until the night freakout cutscene unhides him. Without this,
 	// peeking into Marcus's cabin on Day 1 already shows him there even
 	// though Day-1 Marcus belongs on the camp grounds.
@@ -750,6 +758,13 @@ func newLily(renderer *sdl.Renderer) *npc {
 			n.oneShotAnims = map[string][]npcFrame{}
 		}
 		n.oneShotAnims["receive_flower"] = receiveFlower
+	}
+	// #4: "talking after getting the flower" — Lily holds the daisy while she
+	// talks once PP has handed it over. Loaded here, swapped into talkGrid by
+	// the flower handoff callback in setupCampCallbacks. 8×2 like her other sheets.
+	if withFlower := loadNPCGridConnected(renderer,
+		"assets/images/locations/camp/npc/kids/lily/npc_lily_talk_with_flower.png", 8, 2); len(withFlower) > 0 {
+		n.postGiveTalkGrid = withFlower
 	}
 	return n
 }
@@ -1323,7 +1338,9 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		// in-game coords if needed.
 		// User 2026-06-02 (#20): raise her (Y 250 → 215) so more of her sits
 		// above the counter glass instead of sinking behind it.
-		bounds:         sdl.Rect{X: 600, Y: 215, W: 170, H: 180},
+		// User playtest #20 (next pass): reposition to ~(605, 318) so she sits
+		// further back, properly behind the counter/desk.
+		bounds:         sdl.Rect{X: 605, Y: 318, W: 170, H: 180},
 		name:           "Madame Poulain",
 		dialog:         bakeryWomanLostPinDialog,
 		bobAmount:      0,
@@ -1335,8 +1352,9 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		// (npc_madame_poulain_idle/_talk.png, full 8×2 each, behind-counter
 		// upper-body pose). Fall back to the old combined npc_bakery_woman.png
 		// (row0 idle / row1 talk) if the new sheets aren't present.
-		poulainIdle := "assets/images/locations/paris/npc/npc_madame_poulain_idle.png"
-		poulainTalk := "assets/images/locations/paris/npc/npc_madame_poulain_talk.png"
+		// User playtest 2026-06-05: Poulain's idle/talk sheets moved to outside/.
+		poulainIdle := "assets/images/locations/paris/npc/outside/npc_madame_poulain_idle.png"
+		poulainTalk := "assets/images/locations/paris/npc/outside/npc_madame_poulain_talk.png"
 		if _, err := os.Stat(poulainIdle); err == nil {
 			n.idleGrid = loadNPCGridConnected(renderer, poulainIdle, 8, 2)
 			n.talkGrid = loadNPCGridConnected(renderer, poulainTalk, 8, 2)
@@ -1419,8 +1437,9 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 		// (npc_madame_colette_*) instead of the old generic french_guide art,
 		// and load them CONNECTED (only edge-connected background is keyed) so
 		// her light shirt keeps its colour instead of being chroma-keyed out.
-		coletteIdle := "assets/images/locations/paris/npc/npc_madame_colette_idle.png"
-		coletteTalk := "assets/images/locations/paris/npc/npc_madame_colette_talk.png"
+		// User playtest 2026-06-05: Colette's sheets moved to the outside/ folder.
+		coletteIdle := "assets/images/locations/paris/npc/outside/npc_madame_colette_idle.png"
+		coletteTalk := "assets/images/locations/paris/npc/outside/npc_madame_colette_talk.png"
 		if _, err := os.Stat(coletteIdle); err == nil {
 			n.idleGrid = loadNPCGridConnected(renderer, coletteIdle, 8, 2)
 			n.talkGrid = loadNPCGridConnected(renderer, coletteTalk, 8, 2)
@@ -1459,15 +1478,22 @@ func newMuseumCurator(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/museum_curator.(png|json) is the
 	// preferred path; legacy per-sheet PNG loading stays as a fallback.
 	n := &npc{
-		bounds:         sdl.Rect{X: 500, Y: 320, W: 125, H: 240},
+		// User playtest #29: flip Beaumont 180° (face left toward PP entering
+		// from the tunnel) and stand him at ~(546, 599) — bounds bottom (foot)
+		// lands at Y+H=599. Scene characterScale 0.7 shrinks him so he reads as
+		// "far down the gallery".
+		bounds:         sdl.Rect{X: 546, Y: 359, W: 125, H: 240},
 		name:           "Curator Beaumont",
 		dialog:         museumCuratorDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
+		flipped:        true,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/museum_curator") {
-		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_idle.png", 8, 1)
-		n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/npc_museum_curator_talk.png", 4, 2)
+		// User playtest 2026-06-05: curator sheets moved to museum/; the new
+		// talk sheet is a clean 8×1 strip (was an uneven 4×2).
+		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/museum/npc_museum_curator_idle.png", 8, 1)
+		n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/museum/npc_museum_curator_talk.png", 8, 1)
 	}
 	return n
 }
@@ -1542,7 +1568,9 @@ func newGendarmeClaude(renderer *sdl.Renderer) *npc {
 		name:           "Claude",
 		dialog:         gendarmeDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.10,
+		// User playtest #19: Claude's talk cycle flickered too fast. Slowed
+		// from 0.10 to 0.16 s/frame so the mouth animation reads smoothly.
+		talkFrameSpeed: 0.16,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/gendarme_claude") {
 		const sheet = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
@@ -1669,7 +1697,9 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 	return &npc{
 		idleGrid:       idle,
 		talkGrid:       talk,
-		bounds:         sdl.Rect{X: 420, Y: 339, W: 90, H: 160},
+		// User playtest #23: nudged right (420 → 500) so her legs tuck behind
+		// the café table in the BG instead of showing below it.
+		bounds:         sdl.Rect{X: 500, Y: 339, W: 90, H: 160},
 		name:           "Mademoiselle Camille",
 		dialog:         camilleDialog,
 		bobAmount:      0,
