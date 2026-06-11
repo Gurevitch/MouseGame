@@ -189,6 +189,35 @@ How to wire it:
 
 Same rule applies to camp (Lily's flower already uses `altDialogRequiresHeld`).
 
+## 8b. Item-acquisition animation rule (gameplay + art)
+
+**Every item the player collects must be visibly acquired — never just appear
+in the bag.** User-mandated 2026-06-10. Two sides to wire for EVERY new item:
+
+1. **PP side:** PP plays a pickup/receive one-shot when the item lands in his
+   inventory — and per the standing design rule, the final frames POCKET the
+   item into his invisible hip pocket (PP ends empty-handed).
+   - Floor pickups: a dedicated one-shot (`grab_rolling_pin`, `grab_flower`)
+     or the generic grab action (`player.playAction(stateGrabbing, cb)`,
+     used by the charcoal pencil).
+   - NPC hand-overs: a dedicated receive one-shot (`get_baguette`, `get_jam`,
+     `receive_map`).
+2. **NPC side:** if a PERSON hands the item over, that NPC needs a *give*
+   one-shot too (`poulain.playOneShotAnim("give", 1.0)`,
+   `henri.playOneShotAnim("give_jam", 1.0)`) played in the same trade
+   callback as PP's receive — the two run in parallel, like the
+   Poulain-baguette and Henri-confiture trades in `setupParisCallbacks`.
+
+**This means a new quest item is not "done" at wiring time — it has an art
+bill:** 1 item icon + 1 PP receive/grab sheet (or a reusable generic) + 1 NPC
+give sheet per giving NPC. Add the missing sheets to `EXTRA_PROMPTS.md` in
+the SAME pass that wires the quest, and wire the closest existing one-shot as
+a placeholder so the beat isn't silent while the art is pending.
+
+Canonical full examples: rolling pin → Poulain trade (PP `get_baguette` +
+Poulain `give`), Henri confiture (PP `get_jam` + Henri `give_jam`), Higgins
+map throw (tween + PP `receive_map`).
+
 ## 9. Doc legend (quick reference)
 
 | Doc | Purpose | When to update |

@@ -128,7 +128,7 @@ mini-quest before the anchor-object reveal.
 | Curator Beaumont | paris_louvre (interior) | Curator; identifies Marcus's painting, hands over the postcard |
 | Madame Yvette | paris_bakery (left table) | Flavor — camp gossip about the Marcus drawings |
 | Monsieur Bernard | paris_bakery (left table) | Flavor — newspaper headline about the museum restoration |
-| Mademoiselle Camille | paris_bakery (mid table) | Flavor — Pierre's pink-painting hint |
+| Mademoiselle Camille | paris_bakery (mid table) | **MAIN QUEST** — "Camille and the Sold-Out Postcard": sketches the Room 7 replica Beaumont needs, once PP recovers her lucky pencil |
 | Monsieur Henri | paris_bakery (mid table) | **QUEST** — asks PP for a Café au Lait; trades it for homemade Confiture from his bag |
 | Lucien | paris_bakery (right table) | Flavor — foreshadows Lily / Tokyo arc |
 | Madame Élise | paris_bakery (right table) | Flavor — warm encouragement, no quest info |
@@ -229,7 +229,48 @@ Talk to Curator Beaumont:
   - PP describes Marcus's drawings (woman's face, golden frames,
     "something missing")
   - Curator: "Zat sounds like ze portrait in Room 7"
-  - Gives postcard of the restored painting (ANCHOR OBJECT)
+  - BUT the gift-shop postcards are SOLD OUT (the restoration news —
+    ties into Yvette/Bernard's café gossip). Beaumont keeps the LAST
+    one in the archive and will trade it for a replica sketch of the
+    portrait for the archive wall: "Mademoiselle Camille at ze café —
+    ze fastest charcoal in Paris."
+    |
+    v
+Back OUTSIDE -> into the BAKERY -> Talk to Camille:
+  - Thrilled Beaumont asked for HER — but she lost her lucky charcoal
+    pencil sketching the museum at sunrise.
+  - "Ask Nicolas, ze photographer by ze steps. Nothing happens on zat
+    street without his lens seeing it."
+    |
+    v
+Back OUTSIDE -> Talk to Nicolas (street):
+  - "It rolled off ze curb — straight into ze flower pot by ze Louvre
+    steps. Ze pigeons have been guarding it."
+    |
+    v
+Try the flower pot -> BLOCKED: the pigeons defend it.
+  PP: "Pierre speaks fluent pigeon... and after that baguette and
+  confiture, he owes me a favor."
+    |
+    v
+Talk to Pierre (altDialog favor beat — he owes PP after the 2-item
+trade): he whistles + scatters crumbs by his easel, pigeons abandon
+the pot. "Zey do ANYTHING for crumbs... except land on my canvas.
+Critics!" (seeds the Pigeon Critic side quest gag)
+    |
+    v
+Pick up the Charcoal Pencil (hidden floor item in the flower pot near
+the Louvre entrance — cursor reveals it, PP grab animation plays)
+    |
+    v
+Back INSIDE the bakery -> Hand the pencil to Camille:
+  - Sketching one-shot plays (npc_camille_sketching.png, ends revealing
+    the page) -> PP gets "Camille's Sketch" (Room 7 replica)
+    |
+    v
+Back to the MUSEUM -> Hand the sketch to Beaumont:
+  - "Straight to ze archive wall!" -> trades the last Postcard of the
+    restored painting (ANCHOR OBJECT) + hints a commission for Camille
     |
     v
 Use Travel Map -> Return to Camp Chilly Wa Wa
@@ -259,16 +300,66 @@ Give Postcard to Marcus (use item on NPC):
 Lily begins showing strange behavior (next chapter, see Tokyo)
 ```
 
-### Return-to-Paris beat (post-Marcus-healed)
+### "Camille and the Sold-Out Postcard" (main-chain gate, 2026-06-10)
 
-User 2026-05-20: keep the city alive after PP heals Marcus. The bakery
-gains a new dialog when PP comes back to Paris:
+Reworked same day per user feedback — the original draft (pencil under a
+sleeping Lucien) read too dark, and the user wanted the quest to ping-pong
+between outside, inside and the museum on the way to the postcard. The
+full flow is in the main chain diagram above: museum (sold out, Beaumont
+asks) → bakery (Camille lost her pencil) → street (Nicolas saw it roll)
+→ flower-pot pickup by the Louvre steps → bakery (sketch one-shot) →
+museum (sketch → Postcard trade). Lucien reverted to his awake
+Tokyo-foreshadow flavor dialog; Yvette now gossips that the postcards
+sold out in a day, foreshadowing the gate.
 
-- Madame Poulain (`bakeryWomanLouvreSouvenirDialog`): asks PP to bring
-  her another Louvre postcard for her grandson in Lyon as a thank-you
-- Doesn't gate further quests — pure flavor / world-warmth beat
-- Triggered automatically when `marcusHealed == true` on next bakery
-  visit (see `setupParisCallbacks` in `game/game.go`)
+Extras (user 2026-06-10): Pierre repays the baguette + confiture debt —
+the pigeons guarding the flower pot only move when he whistles them off
+(favor beat that also seeds the Pigeon Critic gag). And Camille plays
+her sketching one-shot at the end of her FIRST chat, so the existing
+npc_camille_sketching.png animation is visible from the start.
+
+### Paris side quest: "The Pigeon Critic" (optional)
+
+Retro pattern (encounter → block → hint → collect → use → reward); does
+not gate the main chain. After the rolling-pin trade, Madame Poulain
+runs "counter service": refills the Café au Lait while Henri's trade is
+pending, donates the Baguette Heel, and accepts the Signed Postcard.
+
+**"The Pigeon Critic" (paris_street, post-press-pass):**
+
+```
+After the Confiture → Press Pass trade, the next chat with Pierre
+  becomes the ask: his masterpiece is done but no pigeon critic
+  will land to approve it. "Crumbs, monsieur — Madame Poulain
+  always has a stale heel for ze birds."
+    |
+    v
+Ask Madame Poulain -> she donates the day-old Baguette Heel
+  ("ze ends are for ze birds anyway").
+    |
+    v
+Hand the Baguette Heel to Pierre -> crumbs scattered, a pigeon
+  lands on the canvas, the painting is APPROVED. Pierre teaches
+  the "plein air" / Monet beat and gives PP the "Mini Portrait"
+  (keepsake; the pigeon posed for the background).
+```
+
+### Return-to-Paris souvenir loop (post-Marcus-healed, completed 2026-06-10)
+
+Keeps the city alive after PP heals Marcus, and now closes end-to-end:
+
+```
+Return to the bakery (marcusHealed) -> Madame Poulain asks PP to
+  bring a Louvre postcard for her grandson in Lyon
+    |
+    v
+Back to the Louvre -> Curator Beaumont (altDialog) signs a SECOND
+  postcard ("every collection needs a rare piece") -> "Signed Postcard"
+    |
+    v
+Hand the Signed Postcard to Poulain -> she names the pink éclair in
+  her window "Le Panthère Rose". Pure world-warmth; gates nothing.
+```
 
 ### Paris perspective polish (2026-05-20)
 
@@ -291,7 +382,12 @@ gains a new dialog when PP comes back to Paris:
 | Confiture | Monsieur Henri | Pierre (stage 2) | Trade for Press Pass |
 | Press Pass | Pierre | Gendarme Claude | Trade for Museum Ticket |
 | Museum Ticket | Gendarme Claude | Louvre door (auto-consume) | Unlocks museum |
-| Postcard | Curator Beaumont | Marcus (back at camp) | Heals Marcus |
+| Postcard | Curator Beaumont (trade for Camille's Sketch) | Marcus (back at camp) | Heals Marcus |
+| Charcoal Pencil | Flower pot by the Louvre steps (hidden, Nicolas hints) | Mademoiselle Camille | Sketch one-shot → Camille's Sketch |
+| Camille's Sketch | Mademoiselle Camille | Curator Beaumont | Trade for the Postcard (main chain) |
+| Baguette Heel | Madame Poulain (counter service) | Pierre (post-press-pass) | Pigeon lands → Mini Portrait |
+| Mini Portrait | Pierre | — (keepsake) | Side-quest reward |
+| Signed Postcard | Curator Beaumont (post-heal, after Poulain asks) | Madame Poulain | Closes the grandson souvenir loop |
 
 ### Checklist (current status)
 
@@ -310,6 +406,121 @@ gains a new dialog when PP comes back to Paris:
 - [ ] Lily begins showing strange behavior (next chapter trigger)
 
 ---
+
+## JERUSALEM — Jake's Anchor (Western Wall Coin Rubbing)
+
+Jake's arc is **courage**. His nightmare is the face in the tunnels — a Roman
+coin's portrait staring out of the Western Wall. Jerusalem is a multi-step retro
+daisy-chain (like the Paris press-pass chain) of *tangential, slightly absurd*
+errands — an alley cat, a tourist's sardines, a lost guidebook — that only pay
+off in the anchor object (the Coin Rubbing) at the END. The note-in-the-wall
+ritual is the FINAL task, and placing it is what unlocks the flight home.
+
+**Status:** scenes + NPCs + dialog are built and wired; the trivial version
+(Miriam hands the rubbing on first talk) is live. The full task chain below is
+DESIGNED but not yet wired — see `docs/JERUSALEM_TASKS.md` for the build plan.
+
+### Scenes & cast
+
+Three scenes, entrance plaza is the hub:
+- **jerusalem_entrance** (`wall_enterence.png`) — plaza where PP lands; LEFT arch
+  → market, RIGHT → wall. Distant worshippers ambient.
+- **jerusalem_wall** (`wall_close.png`) — up at the Western Wall; worshippers
+  sway overlay; the coin/crack lives here.
+- **jerusalem_market** (`market.png`) — the covered Old City souk.
+
+| NPC | Scene | Role |
+|-----|-------|------|
+| Miriam | wall | **QUEST anchor** — archeologist; makes the Coin Rubbing once she has her charcoal; teaches the note custom |
+| Dov | wall | **QUEST** — trades the charcoal stick for his glow-bug jar; scared kid, courage mirror of Jake |
+| Eli (spice seller) | market | **QUEST** — alley-cat-at-the-stall errand; hands PP the Paper |
+| Gary (tourist) | market | **QUEST** — trades the Sardine Tin (+ Pencil) for his lost Guidebook; comic relief |
+| Worshippers | wall | ambient sway overlay (no quest) |
+| Alley cat | market | obstacle/prop — guards the jar, lured off by sardines |
+
+### Quest flow (designed)
+
+```
+Arrive jerusalem_entrance -> LEFT arch = market, RIGHT = wall
+    |
+    v
+WALL — Miriam: "A rubbing of the Hadrian coin, for a frightened boy? I can — but
+  my charcoal stick is gone; little Dov ran off with it. Get it back."
+    |
+    v
+WALL — Dov: "Charcoal? I dropped my glow-bug jar and the alley cat batted it
+  under the spice table. I'm not going near that cat. Bring my jar, get the charcoal."
+    |
+    v
+MARKET — Eli (spice seller): "Jar's under my saffron table; the cat guards it.
+  Only fish moves that cat — ask the tourist." (Presses a sheet of PAPER on PP.)
+    -> PICKUP Paper  (PP: "...dunno what for, but oh well.")
+    |
+    v
+MARKET — Gary (tourist): "Sardines? Take the tin — but find my Guidebook first."
+  (Done sketching, also hands PP his PENCIL.)
+    -> find Guidebook (floor item) -> trade -> Sardine Tin + PICKUP Pencil
+       (PP: "...still no idea what for.")
+    |
+    v
+MARKET — use Sardine Tin on the cat -> cat leaves -> grab Glow-bug Jar
+    |
+    v
+WALL — Dov: return Glow-bug Jar -> get Charcoal Stick (Dov starts to lose his fear)
+    |
+    v
+WALL — Miriam: give Charcoal Stick -> she makes the COIN RUBBING (Jake's key).
+  Custom: "You never take from the Wall without leaving something. Write a note,
+  tuck it in the stones, then go home."
+    |
+    v
+WRITE the note (PP one-shot sprite) -> PUT it in the wall (PP one-shot sprite).
+  Dov, brave now, places his own.
+    |
+    v
+Note placed -> travel map UNLOCKS the flight to camp -> fly home
+```
+
+### Healing Jake (back at camp)
+
+```
+Camp grounds (darkened, post-France)
+    |
+    v
+Jake's cabin -> Jake in strange state
+    |
+    v
+Give Coin Rubbing to Jake (use item on NPC):
+  - "That's HIM. That's the face in my head. You put him on PAPER!"
+  - setStrange OFF, jake_healed = true
+  - Unlocks Tokyo; Lily begins showing strange behavior (next chapter)
+```
+
+### Items used in this chapter
+
+| Item | Source | Used on | Result |
+|------|--------|---------|--------|
+| Guidebook | Market floor item (Gary dropped it) | Gary | Trade for Sardine Tin (+ Pencil) |
+| Sardine Tin | Gary | Alley cat | Lures the cat off the jar |
+| Glow-bug Jar | Under Eli's stall (after cat leaves) | Dov | Trade for Charcoal Stick |
+| Charcoal Stick | Dov (was Miriam's) | Miriam | She makes the Coin Rubbing |
+| Paper | Eli (offhand) | written into the Note | — |
+| Pencil | Gary (offhand) | writes the Note | — |
+| Note (written) | PP (paper + pencil) | the wall crack | Placed → unlocks return flight |
+| Coin Rubbing | Miriam | Jake (camp) | Heals Jake |
+
+### Checklist (current status)
+
+- [x] Three Jerusalem scenes (entrance / wall / market) rendering
+- [x] NPCs wired: Miriam, Dov, Eli (spice seller), Gary the tourist
+- [x] Worshippers ambient overlay at the wall
+- [x] Trivial version live (Miriam hands the Coin Rubbing on first talk)
+- [x] Coin Rubbing → Jake heal wiring (camp)
+- [x] Camp-return pin relevant for the Jake leg
+- [ ] Daisy-chain wired (guidebook → sardines → cat → jar → charcoal → rubbing)
+- [ ] Note ritual (paper + pencil → write → put in wall) + two PP one-shot sprites
+- [ ] Return flight gated on `jer_note_placed`
+- [ ] New item art (guidebook, sardines, jar, charcoal, paper, pencil, note) + alley cat sprite
 
 ## Presentation & feel polish (2026-06-02)
 
@@ -360,14 +571,11 @@ accept a plain click while holding it (#12).
 
 ## FUTURE CITIES (Not Yet Implemented)
 
-### Jerusalem (Jake's visions — tunnels, coins, echoes)
-- [ ] Jake goes strange: rubbing surfaces, hearing echoes, "tunnels under old city"
-- [ ] Travel to Jerusalem
-- [ ] Visit Western Wall area
-- [ ] Explore ancient tunnels
-- [ ] Learn about Old City, Western Wall history
-- [ ] Find anchor object: coin rubbing or tunnel map
-- [ ] Return to camp, give to Jake
+### Jerusalem (Jake's visions — tunnels, coins, echoes) — PROMOTED
+
+Moved up to its own chapter section above (**JERUSALEM — Jake's Anchor**). Scenes,
+NPCs and the trivial heal path are built; the full retro task chain is designed in
+`docs/JERUSALEM_TASKS.md`, not yet wired.
 
 ### Tokyo (Lily's visions — glowing garden, temple bells)
 - [ ] Lily goes strange: arranging petals in symbols, hearing bells
@@ -437,7 +645,7 @@ Each kid follows the same pattern:
 |------|-----|--------|
 | Camp Chilly Wa Wa | — | Always unlocked |
 | Paris | Marcus | Unlocked after Day 2 Marcus dialog |
-| Jerusalem | Jake | Not yet implemented |
+| Jerusalem | Jake | Scenes + NPCs built; trivial heal live; full task chain designed (`docs/JERUSALEM_TASKS.md`), not yet wired |
 | Tokyo | Lily | Not yet implemented |
 | Rome | Danny | Not yet implemented |
 | Rio de Janeiro | Tommy | Not yet implemented |

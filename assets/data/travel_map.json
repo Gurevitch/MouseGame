@@ -15,7 +15,8 @@
       ],
       "landmark": "",
       "audio": "",
-      "relevantWhen": "vars.game.paris_done == 1 && vars.game.marcus_healed == 0"
+      "_relevantNote": "Relevant for BOTH camp returns: postcard back to heal Marcus, AND Coin Rubbing back from Jerusalem to heal Jake.",
+      "relevantWhen": "vars.game.paris_done == 1 && vars.game.marcus_healed == 0 || vars.game.jerusalem_unlocked == 1 && vars.game.jake_healed == 0"
     },
     {
       "id": "paris",
@@ -35,7 +36,7 @@
     {
       "id": "jerusalem",
       "name": "Jerusalem",
-      "scene": "jerusalem_street",
+      "scene": "jerusalem_entrance",
       "pinX": 782, "pinY": 349,
       "unlocked": false,
       "facts": [

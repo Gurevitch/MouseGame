@@ -1,6 +1,6 @@
 {
   "id": "higgins_give_map",
-  "_comment": "User 2026-05-21: rewrote the give-map beat so the player can see a visible thrown-map projectile fly across the screen from Higgins (right side, behind desk) to PP (entry-left). Higgins office bounds are (990, 290, 220, 200) → his hand is near (1100, 380). PP spawn (220, 480) → his hands near (320, 520). The travel_map_icon.png is reused as the projectile sprite. If a dedicated throw_map / catch_map sheet lands later, swap the one-shot anim names. Falls back gracefully if the projectile sprite is missing — only the Higgins one-shot + PP receive_map + dialog still play.",
+  "_comment": "User 2026-05-21: rewrote the give-map beat so the player can see a visible thrown-map projectile fly across the screen from Higgins (right side, behind desk) to PP (entry-left). Higgins office bounds are (990, 290, 220, 200) → his hand is near (1100, 380). User 2026-06-10: the old end point (320, 520) was past PP's front edge — the map flew THROUGH his head and landed behind his face. PP spawn (220, 480), body spans ~220-465 facing RIGHT, so the catch point now sits IN FRONT of him at (440, 540) — between PP and Higgins, at his outstretched paws. The travel_map_icon.png is reused as the projectile sprite. If a dedicated throw_map / catch_map sheet lands later, swap the one-shot anim names. Falls back gracefully if the projectile sprite is missing — only the Higgins one-shot + PP receive_map + dialog still play.",
   "steps": [
     {
       "type": "npc_one_shot",
@@ -14,8 +14,8 @@
       "sprite": "assets/images/items/travel_map_icon.png",
       "fromX": 1100,
       "fromY": 380,
-      "x": 320,
-      "y": 520,
+      "x": 440,
+      "y": 540,
       "seconds": 1.5
     },
     {

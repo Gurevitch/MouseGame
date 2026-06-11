@@ -117,13 +117,19 @@ func (g *Game) LoadGame(path string) error {
 		g.travelMap.setUnlocked("paris_street", true)
 	}
 	if g.marcusHealed {
-		g.travelMap.setUnlocked("jerusalem_street", true)
+		g.travelMap.setUnlocked("jerusalem_entrance", true)
 		if mRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok {
 			if day, ok := g.sceneAltBGs["marcus_room/day"]; ok {
 				mRoom.bg = day
 			}
 		}
 	}
+	// #34: restore the camp-return pin and the darkened-grounds mood for saves
+	// taken after the France trip.
+	if g.vars != nil && g.vars.GetBool(ScopeGame, VarParisDone) {
+		g.travelMap.setUnlocked("camp_entrance", true)
+	}
+	g.applyCampMood()
 
 	fmt.Printf("Game loaded from %s\n", path)
 	return nil

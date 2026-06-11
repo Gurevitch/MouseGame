@@ -52,7 +52,9 @@
       "Bash(python tools/measure_grid.py \"assets/images/locations/camp/npc/kids/lily/npc_lily_talk.png\" \"assets/images/locations/camp/npc/kids/lily/npc_lily_idle.png\")",
       "Bash(python tools/preview_cut.py \"assets/images/player/PP talk front.png\" 8 2 /tmp/talkfront.png)",
       "Bash(python tools/preview_cut.py \"assets/images/player/PP talk side.png\" 8 2 /tmp/talkside.png)",
-      "WebFetch(domain:www.espn.com)"
+      "WebFetch(domain:www.espn.com)",
+      "Bash(grep -v \"//\")",
+      "PowerShell(go run ./tools/sheet_clean .)"
     ]
   }
 }

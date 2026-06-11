@@ -10,7 +10,10 @@ import (
 const (
 	dialogPanelHeight = 150
 	dialogPadding     = 20
-	typingSpeed       = 30.0
+	// User playtest #2: slowed the reveal (was 30) so lines read at a calmer
+	// "speaking" pace and the talk-sprite mouths (gated on isRevealing below)
+	// move at conversation speed instead of buzzing.
+	typingSpeed = 20.0
 )
 
 type dialogEntry struct {
@@ -70,6 +73,17 @@ func (ds *dialogSystem) currentSpeaker() string {
 		return ""
 	}
 	return ds.queue[ds.currentIndex].speaker
+}
+
+// isRevealing reports whether the current line is still typing out (more
+// characters to show). The talk-sprite animation is gated on this (#2) so a
+// character's mouth moves only while their words are appearing, then settles
+// closed once the line is fully shown.
+func (ds *dialogSystem) isRevealing() bool {
+	if !ds.active || ds.currentIndex >= len(ds.queue) {
+		return false
+	}
+	return ds.displayedLen < len(ds.queue[ds.currentIndex].text)
 }
 
 func (ds *dialogSystem) startDialog(entries []dialogEntry) {

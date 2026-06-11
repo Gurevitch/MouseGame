@@ -124,6 +124,27 @@ func (g *Game) syncFlagsToVars() {
 	}
 }
 
+// applyCampMood swaps the camp grounds background to the darkened "affliction"
+// art once PP has come back from France (paris_done), and back to the normal
+// daytime art otherwise (#34). The user tied the mood to the France return, so
+// once the adventure proper begins the camp reads as "wrong" until the story
+// resolves. Safe to call repeatedly — it just reassigns scene.bg, the same
+// mechanism the Marcus-room day/night swap uses.
+func (g *Game) applyCampMood() {
+	if g == nil || g.sceneMgr == nil {
+		return
+	}
+	grounds, ok := g.sceneMgr.scenes["camp_grounds"]
+	if !ok || grounds == nil {
+		return
+	}
+	path := "assets/images/locations/camp/background/camp_grounds.png"
+	if g.vars != nil && g.vars.GetBool(ScopeGame, VarParisDone) {
+		path = "assets/images/locations/camp/background/camp_dark.png"
+	}
+	grounds.bg = newPNGBackground(g.renderer, path)
+}
+
 // syncVarsToFlags pulls values back from the VarStore into the flat runtime
 // flags. Call this after loading a save file or after mutating VarStore via
 // a scripted sequence to make sure the engine loop sees the change.

@@ -1,10 +1,10 @@
 {
   "name": "jake_room",
   "background": "assets/images/locations/camp/background/jake_room.png",
-  "spawnX": 1100,
-  "spawnY": 465,
-  "minY": 0,
-  "maxY": 0,
+  "spawnX": 900,
+  "spawnY": 360,
+  "minY": 320,
+  "maxY": 400,
   "musicPath": "assets/audio/music/camp_cabin.mp3",
   "characterScale": 1.0,
   "npcs": ["room_jake"],
@@ -15,5 +15,7 @@
     {"x": 0, "y": 0, "w": 450, "h": 420},
     {"x": 500, "y": 0, "w": 500, "h": 350}
   ],
-  "walkSegments": []
+  "walkSegments": [
+    {"x1": 250, "y1": 360, "x2": 1050, "y2": 360}
+  ]
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sort"
 
 	"bitbucket.org/Local/games/PP/engine"
 	"github.com/veandco/go-sdl2/sdl"
@@ -20,6 +21,14 @@ type npcFrame struct {
 	oy int32
 	ow int32
 	oh int32
+	// fcx/fry: per-frame FEET anchors from the engine (foot-band centre X +
+	// feet-line Y, both cell-local; thin tail strands excluded). drawScaled
+	// anchors by these — deadband-snapped to the sheet median by
+	// stabilizeNPCAnchors — so each frame's feet land on the same screen
+	// spot even when the art drifts inside the cells. 0 = unset → fall back
+	// to the opaque-box centre/bottom.
+	fcx int32
+	fry int32
 	// src is the source rectangle inside tex. nil means "draw the whole
 	// texture" (legacy per-frame loaders produce one texture per frame so
 	// they leave this nil). Atlas-backed frames share one texture and set
@@ -34,7 +43,12 @@ type npcFrame struct {
 }
 
 type npc struct {
-	bounds    sdl.Rect
+	bounds sdl.Rect
+	// drawFootY, when > 0, overrides the foot-Y used for back-to-front draw
+	// sorting (scene.drawActors). Lets a seated NPC drawn high on screen (small
+	// bounds.Y) still sort to the FRONT — e.g. café patrons at the front tables
+	// should render in front of PP even though their bounds are near the top (#27).
+	drawFootY int32
 	dialog    []dialogEntry
 	name      string
 	bobTimer  float64
@@ -131,18 +145,18 @@ type npc struct {
 	// empty for those and fireTrigger is a no-op.
 	game *Game
 
-	idleGrid       []npcFrame
-	talkGrid       []npcFrame
+	idleGrid []npcFrame
+	talkGrid []npcFrame
 	// postGiveTalkGrid, if set, replaces talkGrid after this NPC receives the
 	// quest item it was waiting for — e.g. Lily holding the daisy while she
 	// talks once PP has handed it over (#4). Swapped in by the give callback.
 	postGiveTalkGrid []npcFrame
 	talkFrameSpeed   float64
-	curFrame       int
-	frameTimer     float64
-	idleCurFrame   int
-	idleFrameTimer float64
-	animState      int
+	curFrame         int
+	frameTimer       float64
+	idleCurFrame     int
+	idleFrameTimer   float64
+	animState        int
 
 	strangeIdle []npcFrame
 	strangeTalk []npcFrame
@@ -229,11 +243,19 @@ func framesFromGrid(grid [][]engine.GridFrame, cols, rows int, srcPath string) [
 		for c := 0; c < cols && c < len(grid[r]); c++ {
 			gf := grid[r][c]
 			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, srcPath: srcPath})
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH,
+				fcx: gf.FCX, fry: gf.FRY, srcPath: srcPath})
 		}
 	}
+	stabilizeNPCAnchors(frames)
 	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
 		frames = frames[:len(frames)-1]
+	}
+	// A missing sheet now yields a shaped-but-empty grid (engine.emptyGrid)
+	// instead of a panic — collapse it to nil so `len(frames) > 0` guards
+	// don't register invisible animations.
+	if len(frames) == 1 && frames[0].tex == nil {
+		return nil
 	}
 	return frames
 }
@@ -250,12 +272,14 @@ func loadNPCGridRow(renderer *sdl.Renderer, path string, cols, rows, row int) []
 		for c := 0; c < cols && c < len(grid[row]); c++ {
 			gf := grid[row][c]
 			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, srcPath: path})
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH,
+				fcx: gf.FCX, fry: gf.FRY, srcPath: path})
 		}
 	}
 	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
 		frames = frames[:len(frames)-1]
 	}
+	stabilizeNPCAnchors(frames)
 	return frames
 }
 
@@ -280,12 +304,14 @@ func loadNPCGridRowClean(renderer *sdl.Renderer, path string, cols, rows, row in
 		for c := 0; c < cols && c < len(grid[row]); c++ {
 			gf := grid[row][c]
 			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, srcPath: path})
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH,
+				fcx: gf.FCX, fry: gf.FRY, srcPath: path})
 		}
 	}
 	for len(frames) > 1 && frames[len(frames)-1].tex == nil {
 		frames = frames[:len(frames)-1]
 	}
+	stabilizeNPCAnchors(frames)
 	return frames
 }
 
@@ -352,15 +378,20 @@ var higginsPostWorriedDialog = []dialogEntry{
 }
 
 // higginsPostMarcusHealedDialog plays after Marcus has been healed by the
-// Louvre postcard. Points PP at the next sick kid (Lily / Tokyo) so the
-// older "go check on Marcus" line stops looping. User 2026-05-20.
+// Louvre postcard. It is the narrative BRIDGE into Jake's chapter (Jerusalem):
+// Marcus's heal wakes Jake into the strange state and lights up Jerusalem on
+// the map, so Higgins must point PP at Jake next — NOT Lily (that's a later
+// chapter). User playtest 2026-06-05 (#39): "we need to start talking about
+// Jake... fill it with more lines."
 var higginsPostMarcusHealedDialog = []dialogEntry{
-	{speaker: "Director Higgins", text: "Marcus is finally sleeping. Good work, Panther."},
-	{speaker: "Director Higgins", text: "But now Lily is the one I'm worried about."},
-	{speaker: "Director Higgins", text: "She's arranging petals in strange patterns. Humming songs no one taught her."},
-	{speaker: "Director Higgins", text: "Bells, she keeps saying. Temple bells."},
-	{speaker: "Pink Panther", text: "That sounds like Tokyo."},
-	{speaker: "Director Higgins", text: "Then point the map east. The kids are counting on you."},
+	{speaker: "Director Higgins", text: "Marcus is finally sleeping soundly. Whatever you brought back from Paris, it worked. Good work, Panther."},
+	{speaker: "Director Higgins", text: "But I'm afraid it's not over. The moment Marcus settled... Jake started up."},
+	{speaker: "Pink Panther", text: "Jake? The tough kid who never says much?"},
+	{speaker: "Director Higgins", text: "That's the one. Now he won't stop. Muttering about ancient tunnels, a great stone wall, coins buried under the city."},
+	{speaker: "Director Higgins", text: "He keeps scratching the same symbol into the dirt. I've never seen anything like it. I don't understand any of this, Panther."},
+	{speaker: "Pink Panther", text: "A wall, old coins, tunnels under a city... that sounds like Jerusalem."},
+	{speaker: "Director Higgins", text: "Then that's where you're headed. The travel map lit up Jerusalem on its own — same as it did Paris for Marcus."},
+	{speaker: "Director Higgins", text: "Go talk to Jake first, in his cabin — see what he's fixated on. Then take the map and find whatever he's missing. The kids are counting on us."},
 }
 
 func newDirectorHiggins(renderer *sdl.Renderer) *npc {
@@ -540,7 +571,9 @@ func newRoomDanny(renderer *sdl.Renderer) *npc {
 // to deliver the "lights out" speech in-place, not at camp grounds.
 func newNightHiggins(renderer *sdl.Renderer) *npc {
 	n := &npc{
-		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 7, 1),
+		// Idle sheet is 2304px wide = 6 frames of 384 (2304/7 is not whole);
+		// loading 7×1 sliced mid-character and slid Higgins sideways.
+		idleGrid:       loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 6, 1),
 		talkGrid:       loadNPCGridRowClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_talk.png", 8, 2, 0),
 		bounds:         sdl.Rect{X: 1120, Y: 430, W: 172, H: 220},
 		name:           "Director Higgins",
@@ -562,6 +595,13 @@ func newNightHiggins(renderer *sdl.Renderer) *npc {
 			n.oneShotAnims = map[string][]npcFrame{}
 		}
 		n.oneShotAnims["shout"] = shoutFrames
+		// User playtest #7: the shout still "wasn't activating" because the
+		// night sequence's dialog step put Higgins into his normal TALK anim,
+		// overriding the one-shot idle-swap. The night Higgins exists ONLY to
+		// bellow "lights out", so just make his idle AND talk the shout frames —
+		// now he's shouting whether the sequence has him idle or talking.
+		n.idleGrid = shoutFrames
+		n.talkGrid = shoutFrames
 	}
 	return n
 }
@@ -816,13 +856,14 @@ func newMarcus(renderer *sdl.Renderer) *npc {
 		strangeTalkFrameSpeed: 0.16,
 	}
 	applyKidAtlasOrFallback(renderer, n, "marcus")
-	// User 2026-05-31 (#4/#10): Marcus's idle sheet is a 7×2 grid (detect_grid),
-	// but the kid fallback cut it 8×2 — slicing through poses, which made the
-	// idle "swish"/jitter between frames. Reload idle at the correct 7×2.
-	if _, err := os.Stat("assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png"); err == nil {
-		if frames := loadNPCGridConnected(renderer, "assets/images/locations/camp/npc/kids/marcus/npc_marcus_idle.png", 7, 2); len(frames) > 0 {
-			n.idleGrid = frames
-		}
+	// JIT regen (2026-06-10) restored these to clean 8x2 sheets; keep the
+	// explicit reload so packed-atlas fallbacks cannot reuse the old 7-column cut.
+	marcusDir := "assets/images/locations/camp/npc/kids/marcus/"
+	if frames := loadNPCGridConnected(renderer, marcusDir+"npc_marcus_idle.png", 8, 2); len(frames) > 0 {
+		n.idleGrid = frames
+	}
+	if frames := loadNPCGridConnected(renderer, marcusDir+"npc_marcus_talk.png", 8, 2); len(frames) > 0 {
+		n.talkGrid = frames
 	}
 	return n
 }
@@ -878,17 +919,19 @@ func newDanny(renderer *sdl.Renderer) *npc {
 		approachRight:  true, // #7: stand to Danny's right, not on Marcus
 	}
 	applyKidAtlasOrFallback(renderer, n, "danny")
-	// #7: Danny's sheets carry a soft off-white fringe the connected-edge key
-	// leaves behind. Re-key with the wider "kids" tolerance to strip the halo.
+	// User playtest #8: the wider "kids"/clean key was stripping Danny's WHITE
+	// EYES along with the background. Use the connected-edge key (only removes
+	// background pixels touching the cell edge) so his interior whites — eyes,
+	// teeth — survive. (If a soft halo returns, fix it in the art with off-white.)
 	dannyIdle := "assets/images/locations/camp/npc/kids/danny/npc_danny_idle.png"
 	dannyTalk := "assets/images/locations/camp/npc/kids/danny/npc_danny_talk.png"
 	if _, err := os.Stat(dannyIdle); err == nil {
-		if f := loadNPCGridClean(renderer, dannyIdle, 8, 2); len(f) > 0 {
+		if f := loadNPCGridConnected(renderer, dannyIdle, 8, 2); len(f) > 0 {
 			n.idleGrid = f
 		}
 	}
 	if _, err := os.Stat(dannyTalk); err == nil {
-		if f := loadNPCGridClean(renderer, dannyTalk, 8, 2); len(f) > 0 {
+		if f := loadNPCGridConnected(renderer, dannyTalk, 8, 2); len(f) > 0 {
 			n.talkGrid = f
 		}
 	}
@@ -1065,10 +1108,25 @@ func (n *npc) update(dt float64) {
 	}
 
 	if n.animState == npcAnimTalk && len(n.talkGrid) > 0 {
-		n.frameTimer += dt
-		if n.frameTimer >= speed {
-			n.frameTimer -= speed
-			n.curFrame = (n.curFrame + 1) % len(n.talkGrid)
+		// #2: while a dialog is active, this NPC's mouth animates only on ITS
+		// lines (speaker != Pink Panther) and only while the line is still
+		// revealing — so the mouth tracks the words and holds closed (frame 0)
+		// during PP's lines or once the text is fully shown. If no dialog is
+		// active (e.g. a sequence-driven talk pose), keep the old free-run.
+		speaking := true
+		if n.game != nil && n.game.dialog != nil && n.game.dialog.active {
+			ds := n.game.dialog
+			speaking = ds.isRevealing() && ds.currentSpeaker() != "Pink Panther"
+		}
+		if speaking {
+			n.frameTimer += dt
+			if n.frameTimer >= speed {
+				n.frameTimer -= speed
+				n.curFrame = (n.curFrame + 1) % len(n.talkGrid)
+			}
+		} else {
+			n.frameTimer = 0
+			n.curFrame = 0
 		}
 	}
 }
@@ -1108,6 +1166,49 @@ func maxOpaqueH(frames []npcFrame) int32 {
 		}
 	}
 	return m
+}
+
+// stabilizeNPCAnchors applies a DEADBAND to every frame's feet anchors (fcx +
+// fry): values within ±6px of the animation median snap to the median —
+// killing foot-detection noise so well-aligned frames are rock-stable — while
+// larger deviations keep the frame's OWN feet position, compensating art that
+// genuinely drifts inside the cells (user 2026-06-10: "the frames place in
+// the same spot"; a constant median anchor made drifting sheets jump).
+func stabilizeNPCAnchors(frames []npcFrame) {
+	const deadband = 6
+	cxs := make([]int, 0, len(frames))
+	frys := make([]int, 0, len(frames))
+	for i := range frames {
+		if frames[i].ow <= 0 || frames[i].oh <= 0 {
+			continue
+		}
+		if frames[i].fcx <= 0 {
+			frames[i].fcx = frames[i].ox + frames[i].ow/2
+		}
+		if frames[i].fry <= frames[i].oy {
+			frames[i].fry = frames[i].oy + frames[i].oh
+		}
+		cxs = append(cxs, int(frames[i].fcx))
+		frys = append(frys, int(frames[i].fry))
+	}
+	if len(cxs) == 0 {
+		return
+	}
+	sort.Ints(cxs)
+	sort.Ints(frys)
+	medCX := int32(cxs[len(cxs)/2])
+	medFRY := int32(frys[len(frys)/2])
+	for i := range frames {
+		if frames[i].ow <= 0 || frames[i].oh <= 0 {
+			continue
+		}
+		if d := frames[i].fcx - medCX; d >= -deadband && d <= deadband {
+			frames[i].fcx = medCX
+		}
+		if d := frames[i].fry - medFRY; d >= -deadband && d <= deadband {
+			frames[i].fry = medFRY
+		}
+	}
 }
 
 func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
@@ -1169,14 +1270,30 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		src = &s
 		dstW = int32(float64(frame.ow) * scale)
 		dstH = int32(float64(frame.oh) * scale)
-		// Anchor X by the frame's authored position within its cell, not by the
-		// opaque-box centre — otherwise a gesturing arm shoves the body sideways
-		// every frame ("two frames at once / not smooth", #6/#12). Keeping the
-		// cell-relative offset holds the body still while arms move.
+		// Anchor by the frame's FEET (per-frame fcx/fry, deadband-snapped to
+		// the animation median by stabilizeNPCAnchors). Every frame plants
+		// its feet on the same screen spot: art drift inside the cells is
+		// compensated per frame, while a gesturing arm or a tail dipping
+		// below the feet extends naturally past the anchor (user 2026-06-10:
+		// "the frames place in the same spot").
+		fcx := frame.fcx
+		if fcx <= 0 {
+			fcx = frame.ox + frame.ow/2
+		}
+		fry := frame.fry
+		if fry <= frame.oy {
+			fry = frame.oy + frame.oh
+		}
 		anchorX := float64(n.bounds.X) + float64(n.bounds.W)/2
-		boxOff := (float64(frame.ox) + float64(frame.ow)/2 - float64(frame.w)/2) * scale
-		dstX = int32(anchorX + boxOff - float64(dstW)/2)
-		dstY = n.bounds.Y + n.bounds.H - dstH + bobOffset
+		colFromLeft := (float64(fcx) - float64(frame.ox)) * scale
+		if n.flipped {
+			// CopyEx mirrors within the dst rect — mirror the anchor too.
+			dstX = int32(anchorX - (float64(dstW) - colFromLeft))
+		} else {
+			dstX = int32(anchorX - colFromLeft)
+		}
+		footLine := n.bounds.Y + n.bounds.H + bobOffset
+		dstY = footLine - int32((float64(fry)-float64(frame.oy))*scale)
 	} else {
 		breathScale := 1.0
 		targetW := float64(n.bounds.W) * charScale
@@ -1324,6 +1441,36 @@ var bakeryWomanLouvreSouvenirDialog = []dialogEntry{
 	{speaker: "Pink Panther", text: "I'll see what I can do, madame."},
 }
 
+// bakeryWomanCoffeeRefillDialog — Poulain pours another café au lait when a
+// quest needs one (Henri's trade still pending, or Lucien asleep on
+// Camille's pencil) and PP isn't already carrying a cup.
+var bakeryWomanCoffeeRefillDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Madame, could I trouble you for another café au lait?"},
+	{speaker: "Madame Poulain", text: "For ze panther who found my rolling pin? Bien sûr!"},
+	{speaker: "Madame Poulain", text: "Zere — hot and fresh. Don't let zis one get cold, hm?"},
+}
+
+// bakeryWomanHeelDialog — Pierre needs crumbs for the pigeon critics; Poulain
+// donates the day-old baguette heel.
+var bakeryWomanHeelDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Madame, Pierre needs crumbs. Pigeon business. It's a long story."},
+	{speaker: "Madame Poulain", text: "Pierre and his pigeon critics! (laughs) Here — yesterday's baguette heel."},
+	{speaker: "Madame Poulain", text: "Ze ends are for ze birds anyway. Tell him ze bakery expects a good review."},
+}
+
+// bakeryWomanSouvenirThanksDialog fires when PP hands over the signed
+// postcard for her grandson (closes the post-Marcus souvenir loop).
+var bakeryWomanSouvenirThanksDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "One Louvre postcard, madame — signed by ze curator himself."},
+	{speaker: "Madame Poulain", text: "Signed?! Oh, mon petit-fils will not sleep for a week!"},
+	{speaker: "Madame Poulain", text: "You have ze biggest heart in Paris, monsieur. From today, ze pink éclair in my window is called 'Le Panthère Rose'."},
+	{speaker: "Pink Panther", text: "Fame at last. And it smells better than a press pass."},
+}
+
+var bakeryWomanSouvenirDoneDialog = []dialogEntry{
+	{speaker: "Madame Poulain", text: "Ze postcard is already in ze mail to Lyon, monsieur. Merci, from both of us."},
+}
+
 func newBakeryWoman(renderer *sdl.Renderer) *npc {
 	// Dedicated Bakery Woman sheet (see docs/EXTRA_PROMPTS.md §8). 8×2
 	// canvas: row 0 = idle (mouth closed), row 1 = talk (mouth open).
@@ -1338,9 +1485,9 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		// in-game coords if needed.
 		// User 2026-06-02 (#20): raise her (Y 250 → 215) so more of her sits
 		// above the counter glass instead of sinking behind it.
-		// User playtest #20 (next pass): reposition to ~(605, 318) so she sits
-		// further back, properly behind the counter/desk.
-		bounds:         sdl.Rect{X: 605, Y: 318, W: 170, H: 180},
+		// User playtest #20/#21: reposition so she sits on the counter line at
+		// y≈308 (behind the desk).
+		bounds:         sdl.Rect{X: 605, Y: 308, W: 170, H: 180},
 		name:           "Madame Poulain",
 		dialog:         bakeryWomanLostPinDialog,
 		bobAmount:      0,
@@ -1352,21 +1499,39 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		// (npc_madame_poulain_idle/_talk.png, full 8×2 each, behind-counter
 		// upper-body pose). Fall back to the old combined npc_bakery_woman.png
 		// (row0 idle / row1 talk) if the new sheets aren't present.
-		// User playtest 2026-06-05: Poulain's idle/talk sheets moved to outside/.
-		poulainIdle := "assets/images/locations/paris/npc/outside/npc_madame_poulain_idle.png"
-		poulainTalk := "assets/images/locations/paris/npc/outside/npc_madame_poulain_talk.png"
+		// User playtest 2026-06-05: Poulain's sheets now live in the coffee/
+		// folder (with the café patrons). Load idle/talk/work from there.
+		poulainIdle := "assets/images/locations/paris/npc/coffee/npc_madame_poulain_idle.png"
+		poulainTalk := "assets/images/locations/paris/npc/coffee/npc_madame_poulain_talk.png"
 		if _, err := os.Stat(poulainIdle); err == nil {
 			n.idleGrid = loadNPCGridConnected(renderer, poulainIdle, 8, 2)
 			n.talkGrid = loadNPCGridConnected(renderer, poulainTalk, 8, 2)
-			if poulainWork := loadNPCGridConnected(renderer, "assets/images/locations/paris/npc/npc_madame_poulain_work.png", 8, 2); len(poulainWork) > 0 {
-				n.altIdleGrid = poulainWork
-				n.altIdleAfterSec = 5.0
+			// User playtest #21: the work alt-idle wasn't showing. Trigger it
+			// sooner (every ~3s idle) so she visibly kneads/works between chats.
+			poulainWork := "assets/images/locations/paris/npc/coffee/npc_madame_poulain_work.png"
+			if _, werr := os.Stat(poulainWork); werr == nil {
+				if frames := loadNPCGridConnected(renderer, poulainWork, 8, 2); len(frames) > 0 {
+					n.altIdleGrid = frames
+					n.altIdleAfterSec = 3.0
+				}
 			}
-		} else {
+		} else if _, err := os.Stat("assets/images/locations/paris/npc/npc_bakery_woman.png"); err == nil {
+			// Legacy fallback only if the old combined sheet still exists —
+			// guarded so a moved/deleted file can't panic the grid loader.
 			const sheet = "assets/images/locations/paris/npc/npc_bakery_woman.png"
 			n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
 			n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
 		}
+	}
+	// #25: Poulain handing the baguette over the counter — 8-frame give one-shot.
+	// User playtest 2026-06-05: the give sheet moved to coffee/ with the rest of
+	// Poulain's art; the old outside/ path loaded 0 frames so the hand-over
+	// animation silently stopped playing.
+	if f := loadNPCGridConnected(renderer, "assets/images/locations/paris/npc/coffee/npc_madame_poulain_give.png", 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["give"] = f
 	}
 	return n
 }
@@ -1383,6 +1548,14 @@ var pressPhotographerDialog = []dialogEntry{
 	{speaker: "Nicolas", text: "I have been here twenty years. I have seen ze Louvre in every weather."},
 	{speaker: "Pink Panther", text: "Any advice for a curious traveler?"},
 	{speaker: "Nicolas", text: "Talk to Pierre ze painter and Claude ze gendarme. Zey know ze street better zhan ze guidebooks."},
+}
+
+// nicolasPencilHintDialog — Nicolas saw where Camille's pencil rolled
+// ("Camille and the Sold-Out Postcard" street hop).
+var nicolasPencilHintDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Nicolas — Camille lost her charcoal pencil here at sunrise. Did your lens catch it?"},
+	{speaker: "Nicolas", text: "Ze lens catches everything, monsieur. It rolled off ze curb — straight into ze flower pot by ze Louvre steps."},
+	{speaker: "Nicolas", text: "Ze pigeons have been guarding it like ze crown jewels. Good luck."},
 }
 
 var pressPhotographerPostDialog = []dialogEntry{
@@ -1442,6 +1615,7 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 		coletteTalk := "assets/images/locations/paris/npc/outside/npc_madame_colette_talk.png"
 		if _, err := os.Stat(coletteIdle); err == nil {
 			n.idleGrid = loadNPCGridConnected(renderer, coletteIdle, 8, 2)
+			// JIT regen restored Colette's talk sheet to a clean 8x2 grid.
 			n.talkGrid = loadNPCGridConnected(renderer, coletteTalk, 8, 2)
 		} else {
 			n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png", 8, 2)
@@ -1465,13 +1639,40 @@ var museumCuratorDialog = []dialogEntry{
 	{speaker: "Pink Panther", text: "A woman's face. Ornate golden frames. He says something is 'missing' from it."},
 	{speaker: "Curator Beaumont", text: "Mon Dieu... zat sounds like ze portrait in Room 7."},
 	{speaker: "Curator Beaumont", text: "A painting zat was recently restored. Ze restorer found a hidden symbol underneath."},
-	{speaker: "Curator Beaumont", text: "Perhaps your boy senses what was hidden. Take zis postcard of ze painting."},
+	{speaker: "Curator Beaumont", text: "Perhaps your boy senses what was hidden. Ze gift shop sells a postcard of ze restored painting..."},
+	{speaker: "Pink Panther", text: "Perfect. I'll take one."},
+	{speaker: "Curator Beaumont", text: "...sold out, monsieur. Ze whole city wants one since ze news. New prints arrive in two weeks."},
+	{speaker: "Curator Beaumont", text: "But! I keep ze last one in ze archive. Bring me a replica sketch of ze portrait for ze archive wall, and it is yours."},
+	{speaker: "Curator Beaumont", text: "Mademoiselle Camille at ze café — ze fastest charcoal in Paris. Tell her Beaumont asks."},
+}
+
+// curatorWaitingDialog loops while PP owes Beaumont the replica sketch.
+var curatorWaitingDialog = []dialogEntry{
+	{speaker: "Curator Beaumont", text: "Ze archive wall waits for Camille's sketch, monsieur — and your postcard waits with it."},
+}
+
+// curatorSketchTradeDialog fires when PP hands over Camille's Sketch (altDialog).
+var curatorSketchTradeDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "One Room 7 portrait — by ze fastest charcoal in Paris."},
+	{speaker: "Curator Beaumont", text: "Magnifique... look at ze linework! Zis goes straight to ze archive wall."},
+	{speaker: "Curator Beaumont", text: "Camille drew zis? Tell her ze Louvre may have a commission for her."},
+	{speaker: "Curator Beaumont", text: "And as promised — ze last postcard of ze restored painting. For your young friend."},
 	{speaker: "Curator Beaumont", text: "If he sees ze complete image, perhaps his mind will settle."},
 }
 
 var museumCuratorPostDialog = []dialogEntry{
 	{speaker: "Curator Beaumont", text: "Ze postcard should help your young friend."},
 	{speaker: "Curator Beaumont", text: "Ze mysteries of art connect us in ways we do not understand."},
+}
+
+// curatorSouvenirDialog fires after Madame Poulain asks for a postcard for
+// her grandson (post-Marcus-heal souvenir loop). Beaumont signs a second one.
+var curatorSouvenirDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Madame Poulain at ze bakery — her grandson in Lyon collects postcards of ze museum."},
+	{speaker: "Curator Beaumont", text: "Madame Poulain! Her croissants kept zis museum running through ze '89 restoration."},
+	{speaker: "Curator Beaumont", text: "And good timing — ze new prints arrived zis morning. For her grandson... zere. Signed by ze curator."},
+	{speaker: "Curator Beaumont", text: "Every collection needs a rare piece."},
+	{speaker: "Pink Panther", text: "You just made a small boy in Lyon very famous at school."},
 }
 
 func newMuseumCurator(renderer *sdl.Renderer) *npc {
@@ -1495,6 +1696,9 @@ func newMuseumCurator(renderer *sdl.Renderer) *npc {
 		n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/museum/npc_museum_curator_idle.png", 8, 1)
 		n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/museum/npc_museum_curator_talk.png", 8, 1)
 	}
+	if f := loadNPCGrid(renderer, "assets/images/locations/paris/npc/museum/npc_beaumont_give.png", 8, 1); len(f) > 0 {
+		n.oneShotAnims = map[string][]npcFrame{"give": f}
+	}
 	return n
 }
 
@@ -1517,6 +1721,46 @@ var pierreArtistPostDialog = []dialogEntry{
 	{speaker: "Pierre", text: "Don't forget — ze pigeons approve of your pink, monsieur!"},
 }
 
+// pierrePencilFavorDialog — after the baguette + confiture trades Pierre
+// owes PP one (user 2026-06-10). The favor: the pigeons guarding Camille's
+// pencil in the flower pot obey crumbs — and Pierre speaks fluent pigeon.
+// Also seeds the Pigeon Critic gag ("anything for crumbs, except ze canvas").
+var pierrePencilFavorDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Pierre — Camille's lucky pencil is in ze flower pot by ze steps, and ze pigeons won't let me near it. You owe me one, remember?"},
+	{speaker: "Pierre", text: "A baguette AND confiture — oui, Pierre pays his debts. Watch zis, mon ami."},
+	{speaker: "Pierre", text: "(he whistles and scatters a pinch of crumbs by his easel — ze pigeons abandon ze flower pot at once)"},
+	{speaker: "Pierre", text: "Zey will do ANYTHING for crumbs... except land on my canvas. Critics! Ze pot is yours, monsieur."},
+}
+
+// --- "The Pigeon Critic" side quest (2026-06-10) ---
+// After the press-pass trade, Pierre's running gag about pigeon critics
+// becomes playable: his masterpiece is done but no pigeon will land to
+// approve it. PP fetches the day-old Baguette Heel from Poulain, crumbs
+// bring the critic, and Pierre rewards PP with a mini portrait.
+var pierrePigeonAskDialog = []dialogEntry{
+	{speaker: "Pierre", text: "Ze masterpiece is finished, mon ami... but look. Ze canvas, it is EMPTY of pigeons."},
+	{speaker: "Pierre", text: "No critic will land! Twenty years on zis sidewalk and ze birds choose TODAY to boycott."},
+	{speaker: "Pierre", text: "Crumbs, monsieur. Find me crumbs — Madame Poulain always has a stale heel for ze birds."},
+}
+
+var pierrePigeonWaitDialog = []dialogEntry{
+	{speaker: "Pierre", text: "Ze critics circle, monsieur, but zey do not land. Crumbs! Ask Madame Poulain."},
+}
+
+// pierrePigeonLandDialog fires when PP hands over the Baguette Heel (altDialog).
+var pierrePigeonLandDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "One day-old baguette heel. The bakery expects a good review."},
+	{speaker: "Pierre", text: "Parfait! Now, crumble it... gently... by ze easel..."},
+	{speaker: "Pierre", text: "(a plump pigeon flutters down, struts across ze cobblestones, and settles on ze corner of ze canvas)"},
+	{speaker: "Pierre", text: "IT LANDED. Ze painting is approved! Monet himself never had a finer critic."},
+	{speaker: "Pierre", text: "Monet painted outside like zis too — 'plein air', we call it. Ze light changes every minute, so you must paint fast."},
+	{speaker: "Pierre", text: "Here — a little portrait of you, mon ami. Ze pigeon posed for ze background."},
+}
+
+var pierrePigeonDoneDialog = []dialogEntry{
+	{speaker: "Pierre", text: "Ze critic returns every morning now. I pay him in crumbs — cheaper zhan ze newspapers."},
+}
+
 func newPierreArtist(renderer *sdl.Renderer) *npc {
 	// Packed atlas at assets/sprites/paris/pierre_artist.(png|json) is the
 	// preferred path; legacy per-row PNG slicing stays as a fallback.
@@ -1527,7 +1771,8 @@ func newPierreArtist(renderer *sdl.Renderer) *npc {
 		// restores when he walks back to the front. User 2026-05-20.
 		// User 2026-05-21: move left 40 + down 80 so Pierre is visually
 		// grounded in the mid-distance cobblestones instead of floating.
-		bounds:         sdl.Rect{X: 780, Y: 470, W: 95, H: 175},
+		// User playtest #29: shrunk a little (95×175 → 84×156, foot kept at y=645).
+		bounds:         sdl.Rect{X: 780, Y: 489, W: 84, H: 156},
 		name:           "Pierre",
 		dialog:         pierreArtistDialog,
 		bobAmount:      0,
@@ -1537,6 +1782,18 @@ func newPierreArtist(renderer *sdl.Renderer) *npc {
 		const sheet = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 		n.idleGrid = loadNPCGridRow(renderer, sheet, 8, 2, 0)
 		n.talkGrid = loadNPCGridRow(renderer, sheet, 8, 2, 1)
+	}
+	if f := loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_pierre_pigeon_lands.png", 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["pigeon"] = f
+	}
+	if f := loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_pierre_give.png", 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["give"] = f
 	}
 	return n
 }
@@ -1564,10 +1821,11 @@ func newGendarmeClaude(renderer *sdl.Renderer) *npc {
 	// the preferred path; legacy per-row PNG slicing stays as a fallback.
 	n := &npc{
 		// User 2026-05-22: unified Paris front-line NPCs at 120×235.
-		bounds:         sdl.Rect{X: 1180, Y: 480, W: 120, H: 235},
-		name:           "Claude",
-		dialog:         gendarmeDialog,
-		bobAmount:      0,
+		// User playtest #31: nudged down a little (Y 480 → 510).
+		bounds:    sdl.Rect{X: 1180, Y: 510, W: 120, H: 235},
+		name:      "Claude",
+		dialog:    gendarmeDialog,
+		bobAmount: 0,
 		// User playtest #19: Claude's talk cycle flickered too fast. Slowed
 		// from 0.10 to 0.16 s/frame so the mouth animation reads smoothly.
 		talkFrameSpeed: 0.16,
@@ -1637,11 +1895,12 @@ func loadCafePatronGrids(renderer *sdl.Renderer, name string) ([]npcFrame, []npc
 	return idle, talk
 }
 
-// --- Madame Yvette (beret + pearls, sipping tea) — flavor ---
+// --- Madame Yvette (beret + pearls, sipping tea) — flavor + foreshadow ---
 var yvetteDialog = []dialogEntry{
 	{speaker: "Madame Yvette", text: "Ze museum restoration is all anyone talks about, monsieur."},
 	{speaker: "Madame Yvette", text: "A hidden symbol under ze portrait! Imagine — five hundred years and we still find new things."},
 	{speaker: "Pink Panther", text: "Five hundred years is a long time to keep a secret."},
+	{speaker: "Madame Yvette", text: "Ze gift shop sold out of ze restoration postcards in ONE day. Ze whole city wants one."},
 }
 
 func newCafePatronYvette(renderer *sdl.Renderer) *npc {
@@ -1669,9 +1928,10 @@ var bernardDialog = []dialogEntry{
 func newCafePatronBernard(renderer *sdl.Renderer) *npc {
 	idle, talk := loadCafePatronGrids(renderer, "bernard")
 	return &npc{
-		idleGrid:       idle,
-		talkGrid:       talk,
-		bounds:         sdl.Rect{X: 240, Y: 339, W: 90, H: 160},
+		idleGrid: idle,
+		talkGrid: talk,
+		// User playtest #23: moved left + a little down.
+		bounds:         sdl.Rect{X: 195, Y: 355, W: 90, H: 160},
 		name:           "Monsieur Bernard",
 		dialog:         bernardDialog,
 		bobAmount:      0,
@@ -1679,32 +1939,69 @@ func newCafePatronBernard(renderer *sdl.Renderer) *npc {
 	}
 }
 
-// --- Mademoiselle Camille (red beret, art student) — sketch beat ---
-// Camille gets a tiny in-place mini-interaction: she quick-sketches PP
-// in the dialog and shows him the result, with no inventory exchange.
-// The sketch is a single dialog beat for the first pass (no animated
-// one-shot yet — that's tracked in EXTRA_PROMPTS §T/§U as art-only).
-var camilleDialog = []dialogEntry{
-	{speaker: "Mademoiselle Camille", text: "Mind if I sketch you, monsieur? Ze pink is très magnifique. Hold still..."},
-	{speaker: "Mademoiselle Camille", text: "(charcoal scratches across her sketchpad — quick, confident strokes)"},
-	{speaker: "Mademoiselle Camille", text: "Voilà! What do you think?"},
-	{speaker: "Pink Panther", text: "It's very nice, I like it. You captured ze tail just right."},
-	{speaker: "Mademoiselle Camille", text: "Merci, monsieur. Keep posing for ze world, oui?"},
+// --- Mademoiselle Camille (red beret, art student) — QUEST NPC ---
+//
+// "Camille and the Sold-Out Postcard" (2026-06-10, reworked same day —
+// user wanted a lighter tone and back-and-forth between street, bakery
+// and museum, woven into the MAIN postcard chain):
+//  1. Beaumont's restoration postcards are SOLD OUT (ties into Yvette /
+//     Bernard's gossip). He asks for a replica sketch by Camille for the
+//     archive wall — in trade for his own archive postcard.
+//  2. Camille is thrilled, but she lost her lucky charcoal pencil
+//     sketching the Louvre at sunrise. Nicolas the photographer saw
+//     where it rolled (street hop).
+//  3. PP fishes the pencil out of the flower pot by the Louvre steps,
+//     returns it → Camille sketches the Room 7 portrait (one-shot from
+//     npc_camille_sketching.png) → "Camille's Sketch".
+//  4. Beaumont trades the sketch for the Postcard (main chain resumes).
+var camilleFlavorDialog = []dialogEntry{
+	{speaker: "Mademoiselle Camille", text: "Ze light in zis café is perfect for sketching, monsieur. I drew ze Louvre at sunrise today — magnifique!"},
+	{speaker: "Mademoiselle Camille", text: "One day my sketches will hang INSIDE ze museum, not just outside of it."},
+}
+
+// camilleSketchAskDialog plays once Beaumont has asked for her sketch.
+var camilleSketchAskDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Mademoiselle — Curator Beaumont needs a sketch of ze Room 7 portrait. He says you have ze fastest charcoal in Paris."},
+	{speaker: "Mademoiselle Camille", text: "Beaumont said ZAT? About ME?! Monsieur, I would sketch ze whole Louvre for him!"},
+	{speaker: "Mademoiselle Camille", text: "But — oh non. My lucky charcoal pencil. I lost it zis morning, sketching ze museum at sunrise."},
+	{speaker: "Mademoiselle Camille", text: "Ask Nicolas, ze photographer by ze steps. Nothing happens on zat street without his lens seeing it."},
+}
+
+var camillePencilReminderDialog = []dialogEntry{
+	{speaker: "Mademoiselle Camille", text: "No pencil, no masterpiece, monsieur. Nicolas sees everything — ask him where it rolled!"},
+}
+
+// camilleSketchTradeDialog fires when PP hands her the pencil (altDialog).
+var camilleSketchTradeDialog = []dialogEntry{
+	{speaker: "Mademoiselle Camille", text: "My lucky pencil! You are a hero of ze arts, monsieur."},
+	{speaker: "Mademoiselle Camille", text: "Now watch — ze Room 7 portrait. I know every brushstroke by heart..."},
+	{speaker: "Mademoiselle Camille", text: "(charcoal flies across ze sketchpad — quick, confident strokes)"},
+	{speaker: "Mademoiselle Camille", text: "Voilà! Tell Beaumont zis one comes with interest — and zat Camille is ready for a commission."},
+}
+
+var camillePostSketchDialog = []dialogEntry{
+	{speaker: "Mademoiselle Camille", text: "Imagine — MY sketch, on ze Louvre archive wall. Keep posing for ze world, monsieur!"},
 }
 
 func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 	idle, talk := loadCafePatronGrids(renderer, "camille")
-	return &npc{
-		idleGrid:       idle,
-		talkGrid:       talk,
+	n := &npc{
+		idleGrid: idle,
+		talkGrid: talk,
 		// User playtest #23: nudged right (420 → 500) so her legs tuck behind
 		// the café table in the BG instead of showing below it.
 		bounds:         sdl.Rect{X: 500, Y: 339, W: 90, H: 160},
 		name:           "Mademoiselle Camille",
-		dialog:         camilleDialog,
+		dialog:         camilleFlavorDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 	}
+	// Sketching one-shot (EXTRA_PROMPTS §T): ends with Camille turning the
+	// sketchpad toward the camera, revealing the drawing of PP.
+	if f := loadNPCGrid(renderer, "assets/images/locations/paris/npc/coffee/npc_camille_sketching.png", 8, 1); len(f) > 0 {
+		n.oneShotAnims = map[string][]npcFrame{"sketch": f}
+	}
+	return n
 }
 
 // --- Monsieur Henri (silver mustache, croissant + bag) — QUEST NPC ---
@@ -1734,7 +2031,7 @@ var henriPostTradeDialog = []dialogEntry{
 
 func newCafePatronHenri(renderer *sdl.Renderer) *npc {
 	idle, talk := loadCafePatronGrids(renderer, "henri")
-	return &npc{
+	n := &npc{
 		idleGrid:       idle,
 		talkGrid:       talk,
 		bounds:         sdl.Rect{X: 580, Y: 339, W: 90, H: 160},
@@ -1743,6 +2040,11 @@ func newCafePatronHenri(renderer *sdl.Renderer) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 	}
+	// #25: Henri hands PP the jam — 6-frame give-jam one-shot.
+	if f := loadNPCGrid(renderer, "assets/images/locations/paris/npc/coffee/npc_henri_give_jam.png", 6, 1); len(f) > 0 {
+		n.oneShotAnims = map[string][]npcFrame{"give_jam": f}
+	}
+	return n
 }
 
 // --- Lucien (turtleneck, espresso) — flavor with Tokyo foreshadow ---

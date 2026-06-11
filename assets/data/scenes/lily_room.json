@@ -2,9 +2,9 @@
   "name": "lily_room",
   "background": "assets/images/locations/camp/background/lily_room.png",
   "spawnX": 700,
-  "spawnY": 515,
-  "minY": 0,
-  "maxY": 0,
+  "spawnY": 360,
+  "minY": 320,
+  "maxY": 400,
   "musicPath": "assets/audio/music/camp_cabin.mp3",
   "characterScale": 1.0,
   "npcs": ["room_lily"],
@@ -16,5 +16,7 @@
     {"x": 400, "y": 0, "w": 600, "h": 350},
     {"x": 1000, "y": 0, "w": 400, "h": 500}
   ],
-  "walkSegments": []
+  "walkSegments": [
+    {"x1": 320, "y1": 360, "x2": 980, "y2": 360}
+  ]
 }

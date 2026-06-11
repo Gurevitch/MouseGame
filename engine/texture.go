@@ -483,6 +483,13 @@ type GridFrame struct {
 	// even when the art drifts the body within the cell or an arm/leg extends
 	// to one side (which would skew the full-box centre). 0 when no opaque data.
 	FCX int32
+	// FRY is the cell-local Y of the FEET LINE (exclusive bottom): the lowest
+	// row of the opaque box wide enough to read as the solid feet/legs block.
+	// A thin tail strand dipping below the feet is skipped, so anchoring by
+	// FRY plants the feet on the ground line per frame — cancelling vertical
+	// art drift WITHOUT letting the tail lift the body (user 2026-06-10:
+	// "the frames place in the same spot"). 0 when no opaque data.
+	FRY int32
 }
 
 // opaqueImgCache memoizes decoded NRGBA images for OpaqueBox so packed atlases
@@ -521,11 +528,12 @@ func opaqueLocal(img *image.NRGBA, cellRect image.Rectangle) (ox, oy, ow, oh int
 		int32(ob.Dx()), int32(ob.Dy())
 }
 
-// footCenterLocal returns the cell-local X of the horizontal centre-of-mass of
-// the opaque pixels in the bottom band (~bottom 12%) of the opaque box — the
-// character's feet. ox/oy/ow/oh are the cell-local opaque bounds. Falls back to
-// the box centre when there is no opaque data. Mass-weighted (not bbox centre)
-// so a thin trailing tail only nudges it slightly.
+// footCenterLocal returns the cell-local X of the character's FEET in the bottom
+// band (~bottom 12%) of the opaque box. It averages only the DENSE columns (the
+// solid feet/legs block), ignoring thin strands like PP's trailing tail that dip
+// into the band — those are sparse and would otherwise drag the anchor sideways
+// (the "PP drifts left while talking" bug). ox/oy/ow/oh are cell-local opaque
+// bounds; falls back to the box centre when there's no opaque data.
 func footCenterLocal(img *image.NRGBA, cellRect image.Rectangle, ox, oy, ow, oh int32) int32 {
 	if ow <= 0 || oh <= 0 {
 		return ox + ow/2
@@ -538,19 +546,40 @@ func footCenterLocal(img *image.NRGBA, cellRect image.Rectangle, ox, oy, ow, oh 
 	top := bottom - int(bandH)
 	x0 := cellRect.Min.X + int(ox)
 	x1 := x0 + int(ow)
-	var sumX, count int
+	// Per-column opaque counts in the band, and the peak (densest column).
+	cols := make([]int, x1-x0)
+	maxc := 0
 	for y := top; y < bottom; y++ {
 		for x := x0; x < x1; x++ {
 			if img.NRGBAAt(x, y).A > 10 {
-				sumX += x
-				count++
+				cols[x-x0]++
+				if cols[x-x0] > maxc {
+					maxc = cols[x-x0]
+				}
 			}
 		}
 	}
-	if count == 0 {
+	if maxc == 0 {
 		return ox + ow/2
 	}
-	return int32(sumX/count) - int32(cellRect.Min.X)
+	// Average only columns that are at least 45% as tall as the peak — the feet
+	// and legs. The tail (a thin diagonal strand, 1-3 px per column) falls below
+	// this and is excluded, so the anchor stays planted on the feet.
+	thresh := maxc * 45 / 100
+	if thresh < 1 {
+		thresh = 1
+	}
+	sum, n := 0, 0
+	for i, c := range cols {
+		if c >= thresh {
+			sum += x0 + i
+			n++
+		}
+	}
+	if n == 0 {
+		return ox + ow/2
+	}
+	return int32(sum/n) - int32(cellRect.Min.X)
 }
 
 // blankCornerLogo makes pixels in the bottom-right corner region transparent,
@@ -573,6 +602,251 @@ func blankCornerLogo(img *image.NRGBA, w, h int) {
 	}
 }
 
+// PNGSize returns a PNG's pixel dimensions without decoding the pixel data.
+// Used by loaders that pick a grid layout from the sheet on disk (e.g. PP's
+// side-walk strip shipped as 10×1 and its regen spec is 8×1 — the caller
+// chooses the column count by width so either sheet just works).
+func PNGSize(filename string) (int, int, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer f.Close()
+	cfg, _, err := image.DecodeConfig(f)
+	if err != nil {
+		return 0, 0, err
+	}
+	return cfg.Width, cfg.Height, nil
+}
+
+// footRowLocal returns the cell-local Y (exclusive bottom) of the character's
+// FEET line: scanning the bottom ~35% of the opaque box from the bottom up,
+// the first row whose opaque pixel count reads as a solid feet/legs block
+// (≥ max(6, 12% of box width)) wins. Thin strands — PP's tail dipping below
+// the feet — are 1-4 px per row and get skipped. Falls back to the box bottom
+// when nothing qualifies (seated/cropped poses).
+func footRowLocal(img *image.NRGBA, cellRect image.Rectangle, ox, oy, ow, oh int32) int32 {
+	if ow <= 0 || oh <= 0 {
+		return oy + oh
+	}
+	minWide := int(ow) * 12 / 100
+	if minWide < 6 {
+		minWide = 6
+	}
+	x0 := cellRect.Min.X + int(ox)
+	x1 := x0 + int(ow)
+	bottom := cellRect.Min.Y + int(oy+oh) // exclusive
+	limit := bottom - int(oh)*35/100
+	for y := bottom - 1; y >= limit; y-- {
+		cnt := 0
+		for x := x0; x < x1; x++ {
+			if img.NRGBAAt(x, y).A > 10 {
+				cnt++
+			}
+		}
+		if cnt >= minWide {
+			return int32(y+1) - int32(cellRect.Min.Y)
+		}
+	}
+	return oy + oh
+}
+
+// emptyGrid returns a rows×cols grid of empty frames (Tex nil). The grid
+// loaders return it when a sheet is missing or unreadable, so the game
+// degrades to an invisible animation + console warning instead of panicking
+// on boot (user 2026-06-10: a one-shot wired before its sheet was generated
+// — "PP receive.png" — crashed the game at startup).
+func emptyGrid(cols, rows int) [][]GridFrame {
+	grid := make([][]GridFrame, rows)
+	for r := 0; r < rows; r++ {
+		grid[r] = make([]GridFrame, cols)
+	}
+	return grid
+}
+
+// splitRuns finds runs of non-empty histogram entries and — when exactly
+// `want` substantial runs can be resolved — returns `want` spans whose
+// boundaries sit at the MIDPOINTS of the empty gaps between runs (the first
+// span starts at 0, the last ends at len(hist)).
+//
+// Two repairs are attempted before giving up:
+//   - too MANY runs: drop ghost specks (runs with tiny opaque mass).
+//   - too FEW runs: two figures are BRIDGED by a thin connection (a tail tip
+//     or fingertip touching the neighbour — the cause of cut limbs, user
+//     2026-06-10). The widest run is split at its thinnest interior WAIST,
+//     cutting only the bridge pixel column instead of a body.
+//
+// Returns nil when the count still doesn't match (genuinely missing frames),
+// so the caller can fall back to proportional slicing.
+func splitRuns(hist []int, want int) [][2]int {
+	const noise = 2 // ≤2 opaque px in a line ≈ chroma residue, counts as empty
+	type run struct{ s, e, mass, peak int }
+	mkRun := func(s, e int) run {
+		r := run{s: s, e: e}
+		for i := s; i < e; i++ {
+			r.mass += hist[i]
+			if hist[i] > r.peak {
+				r.peak = hist[i]
+			}
+		}
+		return r
+	}
+	var runs []run
+	in, s := false, 0
+	for i, v := range hist {
+		if v > noise {
+			if !in {
+				in, s = true, i
+			}
+		} else if in {
+			runs = append(runs, mkRun(s, i))
+			in = false
+		}
+	}
+	if in {
+		runs = append(runs, mkRun(s, len(hist)))
+	}
+	// Drop speck runs (≤2 px wide) — dust between real figures.
+	kept := runs[:0]
+	for _, r := range runs {
+		if r.e-r.s > 2 {
+			kept = append(kept, r)
+		}
+	}
+	runs = kept
+	if len(runs) == 0 {
+		return nil
+	}
+	// Too many runs: drop ghost specks — runs whose opaque mass is tiny
+	// compared to a real figure's share.
+	for len(runs) > want {
+		avg := 0
+		for _, r := range runs {
+			avg += r.mass
+		}
+		avg /= len(runs)
+		min := 0
+		for i := 1; i < len(runs); i++ {
+			if runs[i].mass < runs[min].mass {
+				min = i
+			}
+		}
+		if runs[min].mass >= avg/8 {
+			return nil // smallest run is substantial — genuinely extra content
+		}
+		runs = append(runs[:min], runs[min+1:]...)
+	}
+	// Too few runs: split bridged figures at the thinnest interior waist.
+	for len(runs) < want {
+		wi := 0
+		for i := 1; i < len(runs); i++ {
+			if runs[i].e-runs[i].s > runs[wi].e-runs[wi].s {
+				wi = i
+			}
+		}
+		r := runs[wi]
+		w := r.e - r.s
+		if w < 8 {
+			return nil
+		}
+		// search the central 20–80% for the minimum histogram column
+		cut, cutVal := -1, 1<<30
+		for i := r.s + w/5; i < r.e-w/5; i++ {
+			if hist[i] < cutVal {
+				cut, cutVal = i, hist[i]
+			}
+		}
+		// only cut a genuine thin BRIDGE — a waist well below the run's bulk.
+		// A legitimately wide figure has no such waist and we refuse to cut it.
+		if cut < 0 || cutVal > r.peak*35/100 {
+			return nil
+		}
+		left, right := mkRun(r.s, cut), mkRun(cut, r.e)
+		runs = append(runs[:wi], append([]run{left, right}, runs[wi+1:]...)...)
+	}
+	spans := make([][2]int, want)
+	for i, r := range runs {
+		s0 := 0
+		if i > 0 {
+			s0 = (runs[i-1].e + r.s) / 2
+		}
+		e0 := len(hist)
+		if i < want-1 {
+			e0 = (r.e + runs[i+1].s) / 2
+		}
+		spans[i] = [2]int{s0, e0}
+	}
+	return spans
+}
+
+// contentGridRects slices a (color-keyed, transparent-background) sheet into
+// cols×rows cells by CONTENT instead of fixed grid lines: it finds the empty
+// gaps between figures and places every cell boundary at a gap midpoint, so
+// a figure drawn slightly across the mathematical grid line is NEVER cut
+// (user 2026-06-10: "can't we not cut frames?"). Requires exactly the
+// expected number of figures per axis — anything else (touching figures,
+// blank cells, ghost specks merging runs) returns nil and the caller falls
+// back to proportional slicing, which is never worse than before.
+func contentGridRects(img *image.NRGBA, cols, rows int) [][]image.Rectangle {
+	b := img.Bounds()
+	// 1) split rows by empty pixel rows
+	rowHist := make([]int, b.Dy())
+	for y := 0; y < b.Dy(); y++ {
+		for x := 0; x < b.Dx(); x++ {
+			if img.NRGBAAt(b.Min.X+x, b.Min.Y+y).A > 10 {
+				rowHist[y]++
+			}
+		}
+	}
+	bands := splitRuns(rowHist, rows)
+	if bands == nil {
+		return nil
+	}
+	// 2) split each band's columns by empty pixel columns
+	out := make([][]image.Rectangle, rows)
+	for ri, band := range bands {
+		y0, y1 := b.Min.Y+band[0], b.Min.Y+band[1]
+		colHist := make([]int, b.Dx())
+		for x := 0; x < b.Dx(); x++ {
+			for y := y0; y < y1; y++ {
+				if img.NRGBAAt(b.Min.X+x, y).A > 10 {
+					colHist[x]++
+				}
+			}
+		}
+		spans := splitRuns(colHist, cols)
+		if spans == nil {
+			return nil
+		}
+		out[ri] = make([]image.Rectangle, cols)
+		for ci, sp := range spans {
+			out[ri][ci] = image.Rect(b.Min.X+sp[0], y0, b.Min.X+sp[1], y1)
+		}
+	}
+	return out
+}
+
+// gridCellRect returns the rect of cell (c, r) using PROPORTIONAL boundaries:
+// boundary i sits at floor(i*W/cols), so a sheet whose dimensions don't divide
+// exactly by the grid (e.g. a 1535px-wide 8-column export) distributes the
+// remainder across cells instead of truncating a strip off every frame.
+// User 2026-06-10: "read the sprite properly" — no padding hacks, no frame
+// splitting; the loader adapts to the sheet.
+func gridCellRect(bounds image.Rectangle, cols, rows, c, r, inset int) image.Rectangle {
+	x0 := bounds.Min.X + c*bounds.Dx()/cols + inset
+	y0 := bounds.Min.Y + r*bounds.Dy()/rows + inset
+	x1 := bounds.Min.X + (c+1)*bounds.Dx()/cols - inset
+	y1 := bounds.Min.Y + (r+1)*bounds.Dy()/rows - inset
+	if x1 <= x0 || y1 <= y0 {
+		// inset would collapse the cell — fall back to the raw boundaries.
+		x0 = bounds.Min.X + c*bounds.Dx()/cols
+		y0 = bounds.Min.Y + r*bounds.Dy()/rows
+		x1 = bounds.Min.X + (c+1)*bounds.Dx()/cols
+		y1 = bounds.Min.Y + (r+1)*bounds.Dy()/rows
+	}
+	return image.Rect(x0, y0, x1, y1)
+}
+
 // SpriteGridFromPNG loads a PNG sprite sheet arranged in a grid of cols x rows,
 // removes the background via color-keying and any bottom-right watermark, and
 // returns frames indexed [row][col]. Each cell uses its full grid dimensions
@@ -582,24 +856,27 @@ func blankCornerLogo(img *image.NRGBA, w, h int) {
 func SpriteGridFromPNGRaw(renderer *sdl.Renderer, filename string, cols, rows int) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {
-		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
 	}
 
 	bounds := img.Bounds()
-	cellW := bounds.Dx() / cols
-	cellH := bounds.Dy() / rows
 
+	contentRects := contentGridRects(img, cols, rows)
 	grid := make([][]GridFrame, rows)
 	for r := 0; r < rows; r++ {
 		grid[r] = make([]GridFrame, cols)
 		for c := 0; c < cols; c++ {
-			cellRect := image.Rect(
-				bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
-				bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
-			)
+			cellRect := gridCellRect(bounds, cols, rows, c, r, 0)
+			if contentRects != nil {
+				// Gap-detected cell — the whole figure is inside, nothing cut.
+				cellRect = contentRects[r][c]
+			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
 			ox, oy, ow, oh := opaqueLocal(img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
+			fcx := footCenterLocal(img, cellRect, ox, oy, ow, oh)
+			fry := footRowLocal(img, cellRect, ox, oy, ow, oh)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx, FRY: fry}
 		}
 	}
 	return grid
@@ -608,25 +885,28 @@ func SpriteGridFromPNGRaw(renderer *sdl.Renderer, filename string, cols, rows in
 func SpriteGridFromPNG(renderer *sdl.Renderer, filename string, cols, rows int) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {
-		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
 	}
 	applyColorKey(img)
 
 	bounds := img.Bounds()
-	cellW := bounds.Dx() / cols
-	cellH := bounds.Dy() / rows
 
+	contentRects := contentGridRects(img, cols, rows)
 	grid := make([][]GridFrame, rows)
 	for r := 0; r < rows; r++ {
 		grid[r] = make([]GridFrame, cols)
 		for c := 0; c < cols; c++ {
-			cellRect := image.Rect(
-				bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
-				bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
-			)
+			cellRect := gridCellRect(bounds, cols, rows, c, r, 0)
+			if contentRects != nil {
+				// Gap-detected cell — the whole figure is inside, nothing cut.
+				cellRect = contentRects[r][c]
+			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
 			ox, oy, ow, oh := opaqueLocal(img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
+			fcx := footCenterLocal(img, cellRect, ox, oy, ow, oh)
+			fry := footRowLocal(img, cellRect, ox, oy, ow, oh)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx, FRY: fry}
 		}
 	}
 
@@ -655,8 +935,6 @@ func eraseGridLines(img *image.NRGBA, cols, rows int) {
 	b := img.Bounds()
 	w := b.Dx()
 	h := b.Dy()
-	cellW := w / cols
-	cellH := h / rows
 
 	isDark := func(c color.NRGBA) bool {
 		if c.A < 40 {
@@ -669,7 +947,7 @@ func eraseGridLines(img *image.NRGBA, cols, rows int) {
 	transparent := color.NRGBA{0, 0, 0, 0}
 
 	for c := 1; c < cols; c++ {
-		centerX := b.Min.X + c*cellW
+		centerX := b.Min.X + c*w/cols
 		for dx := -scanThickness; dx <= scanThickness; dx++ {
 			x := centerX + dx
 			if x < b.Min.X || x >= b.Max.X {
@@ -692,7 +970,7 @@ func eraseGridLines(img *image.NRGBA, cols, rows int) {
 	}
 
 	for r := 1; r < rows; r++ {
-		centerY := b.Min.Y + r*cellH
+		centerY := b.Min.Y + r*h/rows
 		for dy := -scanThickness; dy <= scanThickness; dy++ {
 			y := centerY + dy
 			if y < b.Min.Y || y >= b.Max.Y {
@@ -773,35 +1051,29 @@ func eraseGridLines(img *image.NRGBA, cols, rows int) {
 func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {
-		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
 	}
 	applyColorKey(img)
 	eraseGridLines(img, cols, rows)
 
 	bounds := img.Bounds()
-	cellW := bounds.Dx() / cols
-	cellH := bounds.Dy() / rows
 
+	contentRects := contentGridRects(img, cols, rows)
 	grid := make([][]GridFrame, rows)
 	for r := 0; r < rows; r++ {
 		grid[r] = make([]GridFrame, cols)
 		for c := 0; c < cols; c++ {
-			cellRect := image.Rect(
-				bounds.Min.X+c*cellW+inset,
-				bounds.Min.Y+r*cellH+inset,
-				bounds.Min.X+(c+1)*cellW-inset,
-				bounds.Min.Y+(r+1)*cellH-inset,
-			)
-			if cellRect.Max.X <= cellRect.Min.X || cellRect.Max.Y <= cellRect.Min.Y {
-				cellRect = image.Rect(
-					bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
-					bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
-				)
+			cellRect := gridCellRect(bounds, cols, rows, c, r, inset)
+			if contentRects != nil {
+				// Gap-detected cell — the whole figure is inside, nothing cut.
+				cellRect = contentRects[r][c]
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
 			ox, oy, ow, oh := opaqueLocal(img, cellRect)
 			fcx := footCenterLocal(img, cellRect, ox, oy, ow, oh)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx}
+			fry := footRowLocal(img, cellRect, ox, oy, ow, oh)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx, FRY: fry}
 		}
 	}
 
@@ -814,34 +1086,29 @@ func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows,
 func SpriteGridFromPNGCleanConnected(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {
-		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
 	}
 	applyColorKeyConnectedTol(img, 8)
 	eraseGridLines(img, cols, rows)
 
 	bounds := img.Bounds()
-	cellW := bounds.Dx() / cols
-	cellH := bounds.Dy() / rows
 
+	contentRects := contentGridRects(img, cols, rows)
 	grid := make([][]GridFrame, rows)
 	for r := 0; r < rows; r++ {
 		grid[r] = make([]GridFrame, cols)
 		for c := 0; c < cols; c++ {
-			cellRect := image.Rect(
-				bounds.Min.X+c*cellW+inset,
-				bounds.Min.Y+r*cellH+inset,
-				bounds.Min.X+(c+1)*cellW-inset,
-				bounds.Min.Y+(r+1)*cellH-inset,
-			)
-			if cellRect.Max.X <= cellRect.Min.X || cellRect.Max.Y <= cellRect.Min.Y {
-				cellRect = image.Rect(
-					bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
-					bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
-				)
+			cellRect := gridCellRect(bounds, cols, rows, c, r, inset)
+			if contentRects != nil {
+				// Gap-detected cell — the whole figure is inside, nothing cut.
+				cellRect = contentRects[r][c]
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
 			ox, oy, ow, oh := opaqueLocal(img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
+			fcx := footCenterLocal(img, cellRect, ox, oy, ow, oh)
+			fry := footRowLocal(img, cellRect, ox, oy, ow, oh)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx, FRY: fry}
 		}
 	}
 
@@ -858,34 +1125,29 @@ func SpriteGridFromPNGCleanConnected(renderer *sdl.Renderer, filename string, co
 func SpriteGridFromPNGCleanKids(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {
-		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
 	}
 	applyColorKeyTol(img, 16)
 	eraseGridLines(img, cols, rows)
 
 	bounds := img.Bounds()
-	cellW := bounds.Dx() / cols
-	cellH := bounds.Dy() / rows
 
+	contentRects := contentGridRects(img, cols, rows)
 	grid := make([][]GridFrame, rows)
 	for r := 0; r < rows; r++ {
 		grid[r] = make([]GridFrame, cols)
 		for c := 0; c < cols; c++ {
-			cellRect := image.Rect(
-				bounds.Min.X+c*cellW+inset,
-				bounds.Min.Y+r*cellH+inset,
-				bounds.Min.X+(c+1)*cellW-inset,
-				bounds.Min.Y+(r+1)*cellH-inset,
-			)
-			if cellRect.Max.X <= cellRect.Min.X || cellRect.Max.Y <= cellRect.Min.Y {
-				cellRect = image.Rect(
-					bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
-					bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
-				)
+			cellRect := gridCellRect(bounds, cols, rows, c, r, inset)
+			if contentRects != nil {
+				// Gap-detected cell — the whole figure is inside, nothing cut.
+				cellRect = contentRects[r][c]
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
 			ox, oy, ow, oh := opaqueLocal(img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
+			fcx := footCenterLocal(img, cellRect, ox, oy, ow, oh)
+			fry := footRowLocal(img, cellRect, ox, oy, ow, oh)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx, FRY: fry}
 		}
 	}
 
@@ -904,34 +1166,29 @@ func SpriteGridFromPNGCleanKids(renderer *sdl.Renderer, filename string, cols, r
 func SpriteGridFromPNGCleanAggressive(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {
-		panic(fmt.Errorf("loading PNG grid %s: %v", filename, err))
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
 	}
 	applyColorKeyTol(img, 32)
 	eraseGridLines(img, cols, rows)
 
 	bounds := img.Bounds()
-	cellW := bounds.Dx() / cols
-	cellH := bounds.Dy() / rows
 
+	contentRects := contentGridRects(img, cols, rows)
 	grid := make([][]GridFrame, rows)
 	for r := 0; r < rows; r++ {
 		grid[r] = make([]GridFrame, cols)
 		for c := 0; c < cols; c++ {
-			cellRect := image.Rect(
-				bounds.Min.X+c*cellW+inset,
-				bounds.Min.Y+r*cellH+inset,
-				bounds.Min.X+(c+1)*cellW-inset,
-				bounds.Min.Y+(r+1)*cellH-inset,
-			)
-			if cellRect.Max.X <= cellRect.Min.X || cellRect.Max.Y <= cellRect.Min.Y {
-				cellRect = image.Rect(
-					bounds.Min.X+c*cellW, bounds.Min.Y+r*cellH,
-					bounds.Min.X+(c+1)*cellW, bounds.Min.Y+(r+1)*cellH,
-				)
+			cellRect := gridCellRect(bounds, cols, rows, c, r, inset)
+			if contentRects != nil {
+				// Gap-detected cell — the whole figure is inside, nothing cut.
+				cellRect = contentRects[r][c]
 			}
 			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
 			ox, oy, ow, oh := opaqueLocal(img, cellRect)
-			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh}
+			fcx := footCenterLocal(img, cellRect, ox, oy, ow, oh)
+			fry := footRowLocal(img, cellRect, ox, oy, ow, oh)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx, FRY: fry}
 		}
 	}
 

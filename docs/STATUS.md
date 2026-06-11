@@ -64,7 +64,13 @@
 | Paris: Get postcard | DONE | paris_louvre |
 | Give postcard to Marcus | TODO | marcus_room |
 | Marcus returns to normal | TODO | marcus_room |
-| Next kid goes strange | TODO | camp_grounds |
+| Next kid goes strange (Jake) | DONE | jake_room |
+| Jerusalem: arrive + 3 scenes | DONE | jerusalem_entrance/wall/market |
+| Jerusalem: trivial Coin Rubbing handoff | DONE | jerusalem_wall |
+| Jerusalem: full task chain (cat→sardines→jar→charcoal→rubbing) | DESIGN | see JERUSALEM_TASKS.md |
+| Jerusalem: note-in-wall ritual + return gate | DESIGN | jerusalem_wall |
+| Heal Jake with Coin Rubbing | DONE | jake_room |
+| Return-from-France: land at airstrip + dark camp | DONE | camp_landing → camp_grounds |
 
 ### Scenes
 
@@ -83,6 +89,10 @@
 | airplane_flight | DONE | — | (auto-transition) |
 | paris_street | DONE | Madame Colette | To Louvre, Travel Map |
 | paris_louvre | DONE | Curator Beaumont | Back to Street, Travel Map |
+| camp_landing | DONE | — | To the Camp (return-from-city airstrip) |
+| jerusalem_entrance | DONE | (worshippers ambient) | To Market, To Wall, Travel Map |
+| jerusalem_wall | DONE | Miriam, Dov | Back to Plaza |
+| jerusalem_market | DONE | Eli (spice seller), Gary (tourist) | Back to Plaza |
 
 ### Cities
 
@@ -90,7 +100,7 @@
 |------|----------|------------|----------|
 | Camp Chilly Wa Wa | Red pin (no landmark) | Always unlocked | DONE |
 | Paris | Eiffel Tower | Unlocks after Marcus dialog | DONE |
-| Jerusalem | Western Wall | Locked | TODO |
+| Jerusalem | Western Wall | Unlocks after Jake goes strange | Scenes+NPCs built, trivial heal live; full chain DESIGN (JERUSALEM_TASKS.md) |
 | Tokyo | Torii Gate | Locked | TODO |
 | Rome | Colosseum | Locked | TODO |
 | Rio de Janeiro | Christ Redeemer | Locked | TODO |

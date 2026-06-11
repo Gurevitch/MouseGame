@@ -130,7 +130,10 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 			pt := sdl.Point{X: mx, Y: my}
 			if pt.InRect(&fi.bounds) {
 				ui.hoverName = fi.name
-				ui.cursor = cursorGrab
+				// User playtest #11: show the pink "action/point" cursor over a
+				// pickable item (was the grab claw), so hovering an item reads as
+				// "click to act on this."
+				ui.cursor = cursorPoint
 				return
 			}
 		}

@@ -14,13 +14,165 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### Reported (2026-06-10 — automated sprite jitter audit, camp + Paris)
+
+Ran `go run ./tools/jitter_audit` (new tool: measures per-frame content
+bounding boxes inside each sheet cell; FOOT drift = character bottom moves
+between frames → vertical jumping, CENTER-X drift = horizontal sliding).
+
+**Code fixes landed this pass:**
+
+- [x] `[P1]` Poulain "give baguette" one-shot loaded 0 frames — `npc.go`
+  still pointed at `outside/npc_madame_poulain_give.png` after the sheet
+  moved to `coffee/`. FIXED: path updated; the hand-over animation plays
+  again on the rolling-pin trade.
+- [x] `[P1]` Night Higgins idle loaded as 7×1 but the sheet is 6 frames
+  (2304 = 6×384; 2304/7 isn't whole) → sliced mid-character, horizontal
+  sliding. FIXED: `newNightHiggins` loads 6×1 (matches entrance Higgins).
+- [x] `[P2]` `assets/data/npc/{kids,higgins,paris}.json` grids/paths were
+  stale (pre-regen art): Tommy talk 4×2, Jake 5×2, Marcus idle 7×2,
+  Higgins idle 7×1, curator old path + 8×2/5×2, Colette old french_guide
+  sheets. SYNCED to what the engine actually loads, so a future
+  JSON-driven loader won't regress.
+- [x] `[P1]` Curator Beaumont minted a DUPLICATE postcard (and replayed the
+  "head back to camp" monologue) on every repeat conversation — onDialogEnd
+  fires after every chat and had no guard. FIXED: one-shot `gaveCard` guard.
+
+**Paris quests wired this pass (see STORY.md):**
+
+- [x] `[P1]` "Camille and the Sold-Out Postcard" — MAIN-CHAIN gate (user
+  rework same day: the first draft put the pencil under a sleeping Lucien
+  → too dark; user wanted outside/inside/museum back-and-forth on the way
+  to the postcard). New flow: Beaumont's postcards SOLD OUT → asks for
+  Camille's replica sketch → Camille lost her pencil at sunrise → Nicolas
+  saw it roll into the flower pot by the Louvre steps (hidden floor item,
+  generic grab anim) → pencil to Camille → sketch one-shot → sketch to
+  Beaumont → Postcard + paris_done flags. Lucien reverted to awake flavor;
+  Yvette foreshadows the sell-out. User additions same day: (a) the
+  pigeons BLOCK the flower pot until Pierre repays his baguette+confiture
+  debt — favor beat where he whistles them off (seeds the Pigeon Critic
+  gag); (b) Camille plays her sketching one-shot at the end of her first
+  regular chat (npc_camille_sketching.png already on disk).
+- [x] `[P1]` "The Pigeon Critic" (optional) — post-press-pass Pierre asks
+  for crumbs → Poulain donates the Baguette Heel → pigeon lands (dialog
+  beat) → "Mini Portrait" keepsake + plein-air/Monet fact.
+- [x] `[P1]` Grandson souvenir loop CLOSED — Poulain asks (existing beat) →
+  Beaumont signs a second postcard from the new print run (altDialog) →
+  hand-in at the bakery → "Le Panthère Rose" éclair reward.
+- [x] `[P1]` Poulain "counter service": after the rolling-pin trade she
+  refills the Café au Lait while Henri's trade is pending, hands out the
+  heel, and accepts the Signed Postcard — the chain can't soft-lock.
+- [ ] `[P2]` Art for the new items: 4 icons queued at EXTRA_PROMPTS §PI1
+  (charcoal_pencil, camille_sketch, baguette_heel, mini_portrait — items
+  work now but show blank icons until the PNGs land). Optional pigeon
+  one-shot at §PA1. Signed Postcard reuses postcard.png (no art needed).
+- [ ] `[P2]` Pencil flower-pot pickup coords (1085, 615, 70, 50) on
+  paris_street are a starting guess — tune against the BG in a playtest.
+- [ ] `[P1]` The paris_street BG has NO flower pot near the Louvre exit —
+  the pencil spot is invisible (cursor-only). Two-state prop prompt landed
+  at EXTRA_PROMPTS §PA2 (pigeon perched → pencil revealed); wire the prop
+  swap after the PNGs land.
+- [x] `[P1]` NEW STANDING RULE (user 2026-06-10, documented SKILL.md §8b +
+  memory): every collected item must be visibly acquired — PP plays a
+  pickup/receive one-shot AND the giving NPC plays a give one-shot. Applied
+  to all six new Paris beats: heel (Poulain give + PP get_baguette), coffee
+  refill (Poulain give + generic grab), Camille sketch (her sketch one-shot
+  + generic grab), mini portrait / postcard trade / signed postcard (generic
+  grab; postcard monologue now plays AFTER the grab completes).
+- [x] `[P1]` §PR2 (Pierre give) + §PR3 (Beaumont give) GENERATED + WIRED
+  2026-06-10; pigeon one-shot sequenced before Pierre's give (back-to-back
+  playOneShotAnim calls cancel each other). Flower-pot prop wired with the
+  pigeon→pencil texture swap on Pierre's favor.
+- [x] `[P1]` §PR1 `PP receive.png` GENERATED + WIRED 2026-06-10: registered
+  as player one-shot `receive_item` (8×1); all five call-sites in game.go
+  swapped from generic grab (Pierre portrait, Beaumont postcard ×2, Poulain
+  coffee refill, Camille sketch).
+- [ ] `[P1]` Jerusalem give one-shots queued at EXTRA_PROMPTS §JG1 (Gary,
+  Eli, Dov, Miriam) — required by SKILL.md §8b before the daisy-chain is
+  wired.
+
+**Art regens still needed — ranked by measured drift (worst first).**
+All are art-only; the fix is the same for every sheet: keep the
+character's feet and horizontal center locked in the SAME pixel position
+in every cell:
+
+Regen batch #1 generated + wired 2026-06-10 (user). Audit re-run results:
+
+**FIXED (audit-clean, prompts retired to the Done log):** PP talk front,
+PP talk side, PP grab, PP receive map, Marcus idle, Higgins shout, Higgins
+give-map (seated 6×2), Poulain work, Colette talk grid (clean 8×2, loader
+switched).
+
+**Ghost-limb sweep (user 2026-06-10 — floating hand visible in-game on PP
+talk front):** the audit gained two detectors — GHOST PIECES (detached limb
+painted inside a cell) and CONTENT CROSSES (figure straddling a cell border).
+New `tools/sheet_clean` erases ghosts on prop-free sheets (keeps only the
+largest connected piece per cell; NEVER run it on sheets with legit separate
+objects — thrown map, handed items, pigeon). Cleaned + visually verified:
+PP talk front (the reported bug — FIXED), PP idle side, PP celebrate,
+Colette talk, Higgins office idle + talk. Marcus talk/strange sheets turned
+out to have figures STRADDLING borders (regen unusable) → reverted to the
+pre-regen art from HEAD; re-roll queued.
+
+**ENGINE STABILIZATION (user 2026-06-10: "read the sprite properly + the
+object stays in the same spot" — no padding/splitting hacks):**
+
+- [x] `[P0]` Proportional cell slicing (`engine.gridCellRect`): cell boundary
+  i sits at floor(i*W/cols), so sheets whose dims don't divide by the grid
+  (1535-wide talk front, 1672/1685-wide Paris sheets) load correctly with the
+  remainder distributed — no more truncated strip on every frame. Applied to
+  all six grid loaders + eraseGridLines; jitter_audit mirrors it (and no
+  longer flags non-divisible dims).
+- [x] `[P0]` Median anchor stabilization: the renderer pins every character
+  to ONE spot regardless of art drift inside the cells.
+  - Player: `stabilizeFootCX` also computes the sheet-median foot ROW;
+    drawScaled anchors Y by it (a dipped tail extends past the line instead
+    of lifting the body). X was already median-anchored.
+  - NPCs: new `stableAnchors` (median box-center column + bottom row per
+    animation); drawScaled anchors X/Y by the medians instead of the frame's
+    own cell position/bottom, with proper flip mirroring.
+  - CONSEQUENCE: the audit's FOOT/CENTER-X drift numbers now measure ART
+    quality only — the renderer cancels them on screen. Re-rolls below are
+    still worthwhile (cleaner limb framing) but no longer urgent.
+- [x] `[P1]` sheet_clean v2: only erases pieces OUTSIDE the body's bbox
+  (v1 erased interior belly details → see-through holes, user-reported).
+  New tools/sheet_repair refills enclosed pure-white holes on global-key
+  player sheets with the surrounding color. Re-cleaned + visually verified:
+  PP talk front (ghost hand gone, colors intact), the restored Marcus sheets
+  (neighbor-spill erased — the old art now reads clean), Colette talk.
+
+**Still drifting / ghosted — live re-roll prompts in EXTRA_PROMPTS §JIT
+(now ART-QUALITY only; the renderer cancels positional drift):**
+
+- [ ] `[P1]` Marcus talk + strange idle/talk/alt: regen #1 straddled cell
+  borders; reverted to old art (old drift numbers back) (§JIT-MARCUS).
+- [ ] `[P1]` Poulain idle/talk: regen #1 made it WORSE (142/167px FOOT) (§JIT-POULAIN).
+- [ ] `[P1]` PP walk back: regen #1 made it WORSE (60→97px FOOT) (§JIT-PP2).
+- [ ] `[P1]` Jake strange talk: improved 115→87px, still bad (§JIT-JAKE).
+- [ ] `[P2]` Lily idle/talk: barely moved, 53/65px (§JIT-LILY).
+- [ ] `[P2]` PP grab flower: improved, still 70px X + 23% pump (§JIT-FLOWER).
+- [ ] `[P2]` PP idle front: foot fixed, 31px X remains — borderline (§JIT-PP1).
+- [ ] `[P2]` Colette talk: 37px foot / 36px X remain after ghost-clean — borderline (§JIT-COLETTE).
+- [ ] `[P1]` Higgins office talk: FOOT 121px remains after ghost-clean (the
+  sheet now LOOKS good — verify in-game before re-rolling) (§OD).
+- [ ] `[P2]` Ghosted but NOT auto-cleanable (legit props in frame — re-roll
+  or hand-edit): PP get baguette / get jam / grab rolling pin / receive map
+  (incoming map), Lily receive flower, Poulain give + bring baguette, pigeon
+  lands, curator idle/talk, café patrons (Bernard/Camille/Henri/Lucien
+  talking), Higgins give-map (thrown map = legit piece).
+
+Measured CLEAN (no regen needed): PP walk side/front, PP idle back,
+Higgins entrance idle + talk + walk back, Tommy idle, Jake idle,
+Danny idle/talk, Claude both rows, Curator both 8×1 strips.
+
 ### Reported (2026-06-05 — playtest pass, museum + Paris flow, 32 items)
 
 Engine/JSON fixes landed this pass; art-bound items are queued in
 `EXTRA_PROMPTS.md` under "Playtest pass — museum".
 
 - [~] `1.` PP walk-side not a full sprite + idle-front jitter. **Art** — regen
-  EXTRA_PROMPTS §AA (idle front, eyes open + feet locked) and §AB (full walk-side).
+  EXTRA_PROMPTS §AA (idle front, eyes open + feet locked). §AB walk-side DONE
+  2026-06-10 (8×1 regular cycle, anchor-clean).
 - [~] `2.` PP talk-front not cut normally. **Art** — §AC (match idle dims 1536×1024).
 - [x] `3.` PP walks into camp at (755,533) on arrival.
 - [~] `4.` New Lily idle/talk/get-flower/post-flower. **Art** — §LL (keep design).

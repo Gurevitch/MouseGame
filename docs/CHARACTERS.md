@@ -125,7 +125,7 @@ per-character palette & silhouette tags are already in `PROMPTS.md` so
 they are not duplicated here; what matters is the draw size is
 consistent.
 
-- Jerusalem: Eli **215**, Miriam **215**, Dov **220**, Gary (tourist) **215**.
+- Jerusalem: Eli (spice seller) **215**, Miriam (archeologist) **215**, Dov (scared kid) **220**, Gary (tourist) **215**.
 - Tokyo: Hiro **210**, Kenji **215**, Oba-chan **200**, Gary **215**.
 - Rio: Tio Jorge **220**, Marisa **215**, Padre Antonio **225**,
   Bruno **215**.

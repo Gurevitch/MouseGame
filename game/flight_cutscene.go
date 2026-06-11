@@ -35,7 +35,10 @@ const flightFrameIntervalSeconds = 0.12
 // the plane rendered mis-aligned. Do not apply spriteInset here: this sheet
 // has no cell grid lines, and trimming each edge clips the propeller/tail.
 func loadAirplaneFrames(renderer *sdl.Renderer) []npcFrame {
-	grid := engine.SpriteGridFromPNGClean(renderer, "assets/images/player/pp_airplane.png", 6, 2, 0)
+	// User playtest #18: the sheet is a 5×2 grid (counted from the art), not
+	// 6×2. Loading 6 cols sliced the 307px frames at 256px, so the plane slid
+	// and "jumped between rows". Load 5×2.
+	grid := engine.SpriteGridFromPNGClean(renderer, "assets/images/player/pp_airplane.png", 5, 2, 0)
 	var frames []npcFrame
 	for r := 0; r < len(grid); r++ {
 		for c := 0; c < len(grid[r]); c++ {

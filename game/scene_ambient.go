@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"bitbucket.org/Local/games/PP/engine"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 // Ambient decorators. Once scenes load from JSON, the static parts
@@ -55,6 +56,20 @@ func decorateParisStreet(s *scene) {
 	s.glows = append(s.glows,
 		glowEffect{x: 300, y: 0, w: 600, h: 400, r: 255, g: 245, b: 210, alpha: 10, pulse: 0.25},
 		glowEffect{x: 50, y: 300, w: 200, h: 150, r: 255, g: 220, b: 160, alpha: 8, pulse: 0.3},
+	)
+}
+
+// decorateParisStreetSprites adds the ambient cyclist drifting across a back
+// lane near the Eiffel (item 9 / §AMB2). Split from decorateParisStreet
+// because sprite movers need the renderer; the particle decorators don't.
+func decorateParisStreetSprites(s *scene, renderer *sdl.Renderer) {
+	if s == nil {
+		return
+	}
+	// Small + high on screen so it reads as background depth; drawn before
+	// the actors so it always sits behind PP.
+	s.ambientSprites = append(s.ambientSprites,
+		newAmbientBiker(renderer, -200, 430, 80, 0.5),
 	)
 }
 
@@ -190,6 +205,44 @@ func decorateDannyRoom(s *scene) {
 	s.glows = append(s.glows, glowEffect{
 		x: 400, y: 50, w: 300, h: 300, r: 255, g: 245, b: 210, alpha: 7, pulse: 0.2,
 	})
+}
+
+// decorateCampLanding adds the airstrip arrival mood (#34): a crow that flaps
+// in, lands on the CAMP sign, sits a beat, then flaps off again (art pending —
+// no-ops until assets/images/ambient/crow.png lands), plus drifting dust and a
+// couple of slow clouds. Takes the renderer because the crow is a sprite mover.
+func decorateCampLanding(s *scene, renderer *sdl.Renderer) {
+	if s == nil {
+		return
+	}
+	// Dust hanging over the dirt strip (ungated — generic motes always run).
+	for i := 0; i < 8; i++ {
+		s.particles = append(s.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     350 + rand.Float64()*250,
+			vx:    (rand.Float64() - 0.5) * 4,
+			vy:    -rand.Float64()*0.6 - 0.1,
+			alpha: uint8(rand.Intn(10) + 4),
+			size:  int32(rand.Intn(2) + 1),
+		})
+	}
+	for i := 0; i < 2; i++ {
+		s.particles = append(s.particles, particle{
+			x:     rand.Float64() * float64(engine.ScreenWidth),
+			y:     30 + rand.Float64()*70,
+			vx:    3 + rand.Float64()*3,
+			alpha: uint8(rand.Intn(6) + 4),
+			size:  int32(50 + rand.Intn(40)),
+			cloud: true,
+		})
+	}
+	s.glows = append(s.glows, glowEffect{
+		x: 200, y: 0, w: 900, h: 320, r: 255, g: 245, b: 205, alpha: 10, pulse: 0.22,
+	})
+	// Crow perches on top of the "CAMP CHILLY WA WA AIR" sign (center-ish).
+	s.ambientSprites = append(s.ambientSprites,
+		newAmbientCrow(renderer, 650, 300),
+	)
 }
 
 // decorateCampOffice adds the lamp-lit indoor mood: a warm central glow from

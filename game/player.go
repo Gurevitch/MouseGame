@@ -2,6 +2,7 @@ package game
 
 import (
 	"math"
+	"sort"
 
 	"bitbucket.org/Local/games/PP/engine"
 	"github.com/veandco/go-sdl2/sdl"
@@ -22,6 +23,12 @@ type spriteFrame struct {
 	// plants this at the same screen X every frame so PP stands/walks/talks in
 	// one place even when the art drifts the body or an arm/leg extends out.
 	footCX int32
+	// footRow: cell-local Y of the foot LINE, stabilized to the sheet median
+	// (stabilizeFrames). drawScaled plants this row on the screen foot Y, so a
+	// dipped tail or a frame whose art sits higher in the cell can no longer
+	// lift/drop the whole body (user 2026-06-10: "the object stays in the
+	// same spot"). Zero = unset → fall back to the frame's own content bottom.
+	footRow int32
 }
 
 const (
@@ -137,6 +144,13 @@ type player struct {
 	recedeReleaseElapsed float64
 	recedeReleaseDur     float64
 
+	// recedeHeld (#28): PP keeps rendering at the receded (shrunk) scale after a
+	// recede-framed dialog ends, with movement re-enabled. He grows back to full
+	// size (releaseRecedeSmooth) on the next setTarget — i.e. the next click that
+	// moves him elsewhere. Used for Pierre: PP stays small at Pierre's depth
+	// until the player walks him away.
+	recedeHeld bool
+
 	// Walk-in tween (opening-cutscene PP entering from off-screen-left).
 	// Drives p.x directly each frame via lerp, bypassing the moving /
 	// allowOffscreen / clamp machinery so the engine can't shove PP back
@@ -175,13 +189,19 @@ const spriteInset = 3
 func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFrame {
 	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, spriteInset)
 	var frames []spriteFrame
-	for r := 0; r < rows; r++ {
-		for c := 0; c < cols; c++ {
+	for r := 0; r < rows && r < len(grid); r++ {
+		for c := 0; c < cols && c < len(grid[r]); c++ {
 			gf := grid[r][c]
+			if gf.Tex == nil {
+				// Missing sheet → engine.emptyGrid; skip so `len(frames) > 0`
+				// guards don't register invisible animations.
+				continue
+			}
 			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX})
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX, footRow: gf.FRY})
 		}
 	}
+	stabilizeFootCX(frames)
 	return frames
 }
 
@@ -191,11 +211,52 @@ func gridFramesRow(renderer *sdl.Renderer, path string, cols, rows, row int) []s
 	if row < len(grid) {
 		for c := 0; c < cols && c < len(grid[row]); c++ {
 			gf := grid[row][c]
+			if gf.Tex == nil {
+				continue
+			}
 			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX})
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX, footRow: gf.FRY})
 		}
 	}
+	stabilizeFootCX(frames)
 	return frames
+}
+
+// stabilizeFootCX applies a DEADBAND to every frame's foot anchors (foot
+// centre X + foot row Y): values within ±6px of the sheet median snap to the
+// median — killing detection noise so well-aligned frames are rock-stable —
+// while larger deviations keep the frame's OWN feet position, so art that
+// genuinely drifts inside the cell (e.g. row 0 drawn higher than row 1) is
+// compensated per frame instead of rendering as a jump (user 2026-06-10:
+// a constant median row made PP "jump between two rows" on the idle sheet).
+func stabilizeFootCX(frames []spriteFrame) {
+	const deadband = 6
+	vals := make([]int, 0, len(frames))
+	rowVals := make([]int, 0, len(frames))
+	for _, f := range frames {
+		if f.ow > 0 {
+			vals = append(vals, int(f.footCX))
+			rowVals = append(rowVals, int(f.footRow))
+		}
+	}
+	if len(vals) == 0 {
+		return
+	}
+	sort.Ints(vals)
+	sort.Ints(rowVals)
+	med := int32(vals[len(vals)/2])
+	medRow := int32(rowVals[len(rowVals)/2])
+	for i := range frames {
+		if frames[i].ow <= 0 {
+			continue
+		}
+		if d := frames[i].footCX - med; d >= -deadband && d <= deadband {
+			frames[i].footCX = med
+		}
+		if d := frames[i].footRow - medRow; d >= -deadband && d <= deadband {
+			frames[i].footRow = medRow
+		}
+	}
 }
 
 func newPlayer(renderer *sdl.Renderer) *player {
@@ -207,7 +268,15 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// User playtest 2026-06-05: walk-left is now a SINGLE ROW of 8 frames (the
 	// whole walk cycle). The old 8×2 read only row 0, so a cycle split across
 	// two rows showed as half a stride ("not a full circle"). Load 8×1.
-	p.walkSideFrames = gridFrames(renderer, "assets/images/player/PP walk left.png", 8, 1)
+	// §AB (2026-06-10): the side-walk strip exists in two generations — the
+	// current 10×1 (2400px wide) and the regen spec 8×1 (1536px wide). Pick
+	// the column count from the sheet on disk so dropping the new art in
+	// just works ("read the sprite properly" — no code change needed).
+	walkSideCols := 10
+	if w, _, err := engine.PNGSize("assets/images/player/PP walk left.png"); err == nil && w <= 1600 {
+		walkSideCols = 8
+	}
+	p.walkSideFrames = gridFrames(renderer, "assets/images/player/PP walk left.png", walkSideCols, 1)
 	p.walkDownFrames = gridFramesRow(renderer, "assets/images/player/PP walk front.png", 8, 2, 0)
 	p.walkUpFrames = gridFrames(renderer, "assets/images/player/PP walk back.png", 8, 2)
 
@@ -253,13 +322,31 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if len(grabFlower) > 0 {
 		p.oneShotAnims["grab_flower"] = grabFlower
 	}
-	// User playtest #14: dedicated rolling-pin grab strip (PP reaches into the
-	// bike basket and lifts the pin overhead). 8 frames in one line per the
-	// project sheet convention. Plays when the hidden pin in the basket is
-	// picked up.
-	grabRollingPin := gridFrames(renderer, "assets/images/player/PP grab rolling pin.png", 8, 1)
+	// User playtest #14/#19: dedicated rolling-pin grab strip (PP reaches into
+	// the bike basket and lifts the pin overhead). The sheet is 6 frames in one
+	// row (counted from the art); loading it as 8 cols sliced the 362px frames
+	// at 271px and made it "blink" across the whole sprite. Load 6×1.
+	grabRollingPin := gridFrames(renderer, "assets/images/player/PP grab rolling pin.png", 6, 1)
 	if len(grabRollingPin) > 0 {
 		p.oneShotAnims["grab_rolling_pin"] = grabRollingPin
+	}
+	// #25: PP receiving the baguette / the jam from the bakery NPCs. 8 frames
+	// in one row each (counted from the art). Played by the trade callbacks.
+	if f := gridFrames(renderer, "assets/images/player/PP get bagguette.png", 8, 1); len(f) > 0 {
+		p.oneShotAnims["get_baguette"] = f
+	}
+	if f := gridFrames(renderer, "assets/images/player/PP get jam.png", 8, 1); len(f) > 0 {
+		p.oneShotAnims["get_jam"] = f
+	}
+	// §PR1: generic receive for small flat hand-overs (postcard, sketch,
+	// coffee cup, mini portrait) when no item-specific sheet exists. The
+	// sheet isn't generated yet — until it lands, fall back to the generic
+	// grab frames so PP still visibly takes the item (and the game no longer
+	// crashes on the missing PNG; the loader warns + degrades instead).
+	if f := gridFrames(renderer, "assets/images/player/PP receive.png", 8, 1); len(f) > 0 {
+		p.oneShotAnims["receive_item"] = f
+	} else if len(p.grabFrames) > 0 {
+		p.oneShotAnims["receive_item"] = p.grabFrames
 	}
 
 	p.dir = dirDown
@@ -403,6 +490,11 @@ func (p *player) maxY() float64 {
 }
 
 func (p *player) setTarget(x, y float64) {
+	// #28: a move-elsewhere click grows PP back to full size if he was holding
+	// the shrunk Pierre-depth pose after a dialog.
+	if p.recedeHeld {
+		p.releaseRecedeSmooth(0.5)
+	}
 	tx := engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
 	ty := engine.Clamp(y-playerDstH/2, p.minY(), p.maxY())
 	p.targetX = tx
@@ -524,9 +616,23 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 func (p *player) clearRecede() {
 	p.recedeActive = false
 	p.recedeReleasing = false
+	p.recedeHeld = false
 	p.recedeScale = 1.0
 	p.recedeElapsed = 0
 	p.recedeOnDone = nil
+	if p.state == stateWalking && !p.moving {
+		p.state = stateIdle
+	}
+}
+
+// holdRecede (#28) freezes PP at the current receded scale but RE-ENABLES
+// movement. He renders shrunk until the next setTarget grows him back. Use it
+// when a recede-framed dialog ends and PP should stay small (Pierre) rather
+// than ease back immediately.
+func (p *player) holdRecede() {
+	p.recedeActive = false
+	p.recedeReleasing = false
+	p.recedeHeld = true
 	if p.state == stateWalking && !p.moving {
 		p.state = stateIdle
 	}
@@ -538,7 +644,7 @@ func (p *player) clearRecede() {
 // this when a recede-framed dialog ends and PP should walk away without a
 // jarring size pop.
 func (p *player) releaseRecedeSmooth(dur float64) {
-	if !p.recedeActive && !p.recedeReleasing {
+	if !p.recedeActive && !p.recedeReleasing && !p.recedeHeld {
 		return
 	}
 	if dur <= 0 {
@@ -549,6 +655,7 @@ func (p *player) releaseRecedeSmooth(dur float64) {
 	p.recedeReleaseDur = dur
 	p.recedeReleasing = true
 	p.recedeActive = false // un-freeze movement; the release tween owns scale
+	p.recedeHeld = false
 	if p.state == stateWalking && !p.moving {
 		p.state = stateIdle
 	}
@@ -569,6 +676,8 @@ func (p *player) playRecede(dur, endScale, dyUp float64, onDone func()) {
 	p.recedeDuration = dur
 	p.recedeElapsed = 0
 	p.recedeScale = 1.0
+	p.recedeReleasing = false
+	p.recedeHeld = false
 	p.recedeOnDone = onDone
 	p.dir = dirUp
 	p.facingLeft = false
@@ -801,13 +910,24 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 	}
 
 	if p.state == stateTalking {
-		p.talkTimer += dt
-		if p.talkTimer >= talkFrameTime {
-			p.talkTimer -= talkFrameTime
-			frames := p.currentTalkFrames()
-			if len(frames) > 0 {
-				p.talkCycleIdx = (p.talkCycleIdx + 1) % len(frames)
+		// #2: PP's mouth animates only while HE is the speaker and the line is
+		// still revealing; otherwise it holds frame 0 (mouth closed). So the
+		// mouth tracks the text and stops when it's the NPC's turn or the line
+		// has finished appearing.
+		ppSpeaking := p.dialogSys != nil && p.dialogSys.isRevealing() &&
+			p.dialogSys.currentSpeaker() == "Pink Panther"
+		if ppSpeaking {
+			p.talkTimer += dt
+			if p.talkTimer >= talkFrameTime {
+				p.talkTimer -= talkFrameTime
+				frames := p.currentTalkFrames()
+				if len(frames) > 0 {
+					p.talkCycleIdx = (p.talkCycleIdx + 1) % len(frames)
+				}
 			}
+		} else {
+			p.talkTimer = 0
+			p.talkCycleIdx = 0
 		}
 	} else {
 		p.talkTimer = 0
@@ -1169,9 +1289,10 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		charScale = 1.0
 	}
 	// Recede tween multiplies into the same render scale path. The smooth
-	// release (#16) keeps applying the (easing-back) scale after the freeze
-	// ends so PP doesn't pop to full size.
-	if (p.recedeActive || p.recedeReleasing) && p.recedeScale > 0 {
+	// release (#16) keeps applying the easing-back scale after the freeze ends,
+	// and the held state (#28) keeps PP shrunk after a Pierre dialog until he
+	// moves, so he doesn't pop to full size in either case.
+	if (p.recedeActive || p.recedeReleasing || p.recedeHeld) && p.recedeScale > 0 {
 		charScale *= p.recedeScale
 	}
 	frame := p.currentSprite()
@@ -1194,6 +1315,7 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	// the per-frame size jump that read as "two frames at once" (#1/#2/#3).
 	refH := maxOpaqueHeightP(p.currentGroup())
 	anchorX := float64(p.x) + float64(playerDstW)/2
+	var footOffset float64
 
 	// Decide the horizontal flip up-front so the foot-anchor below can account
 	// for it (CopyEx mirrors within the dst rect).
@@ -1215,27 +1337,36 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		src = &s
 		dstW = int32(float64(frame.ow) * frameScale)
 		dstH = int32(float64(frame.oh) * frameScale)
-		// Anchor X by the FEET (footCX), not the box. The feet plant at anchorX
-		// every frame, so PP stands/walks/talks in one place even when the art
-		// drifts the body within its cell or an arm/leg extends to one side. The
-		// old box-relative anchor faithfully reproduced that drift as left/right
-		// jitter — which is exactly "not standing in one place / not cutting
-		// well" (#1/#6/#12).
+		// Anchor by the animation's CONSTANT foot-centre. footCX is the SAME for
+		// every frame of a sheet (stabilizeFootCX sets it to the median), and the
+		// math cancels the per-frame box offset, so a fixed footCX pins the body at
+		// one screen X while only the limbs/tail move. This kills the jitter from a
+		// per-frame foot-centre swinging with the swishing tail. Idle/talk AND walk.
 		footFromLeft := (float64(frame.footCX) - float64(frame.ox)) * frameScale
 		if flip == sdl.FLIP_HORIZONTAL {
 			dstX = int32(anchorX - (float64(dstW) - footFromLeft))
 		} else {
 			dstX = int32(anchorX - footFromLeft)
 		}
+		// Anchor Y by the animation's CONSTANT foot ROW (sheet median, set by
+		// stabilizeFootCX) instead of each frame's own content bottom — a
+		// dipped tail or a higher-sitting pose extends past the line instead
+		// of lifting the whole body (user 2026-06-10: stay in the same spot).
+		footRow := frame.footRow
+		if footRow <= frame.oy {
+			footRow = frame.oy + frame.oh
+		}
+		footOffset = (float64(footRow) - float64(frame.oy)) * frameScale
 	} else {
-		// No opaque data — fall back to the legacy full-cell scale.
+		// No opaque data -- fall back to the legacy full-cell scale.
 		frameScale := scaledHeight / float64(frame.h)
 		dstW = int32(float64(frame.w) * frameScale)
 		dstH = int32(scaledHeight)
 		dstX = int32(anchorX - float64(dstW)/2)
+		footOffset = float64(dstH)
 	}
 
-	dstY := p.footY() - dstH
+	dstY := p.footY() - int32(footOffset)
 	// User 2026-06-02 (#10): lift the flower-grab pose so PP's reach lines up
 	// with the flower on the ground instead of bending below it.
 	if p.activeOneShot == "grab_flower" {

@@ -3,9 +3,10 @@
   "background": "assets/images/locations/camp/background/camp_lake.png",
   "spawnX": 200,
   "spawnY": 365,
-  "minY": 0,
-  "maxY": 0,
+  "minY": 300,
+  "maxY": 560,
   "musicPath": "assets/audio/music/camp.mp3",
+  "_comment": "#10: PP can walk out along the deck (walkSegments). Big blocker removed so the deck is reachable; the walk path keeps him on the planks. A 'Lake' look-hotspot (wired in game.go) gives the 'not in the mood to swim' line. Tune the deck Y in-game.",
   "npcs": [],
   "hotspots": [
     {
@@ -15,8 +16,9 @@
       "arrow": "left"
     }
   ],
-  "blockers": [
-    {"x": 500, "y": 0, "w": 900, "h": 800}
-  ],
-  "walkSegments": []
+  "blockers": [],
+  "walkSegments": [
+    {"x1": 375, "y1": 546, "x2": 613, "y2": 513},
+    {"x1": 613, "y1": 513, "x2": 844, "y2": 473}
+  ]
 }

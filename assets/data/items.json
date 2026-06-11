@@ -107,6 +107,36 @@
       "name": "Confiture",
       "texture": "assets/images/items/confiture.png",
       "description": "Henri's homemade strawberry confiture. Smells incredible — Pierre might like it on his dry baguette."
+    },
+    {
+      "id": "charcoal_pencil",
+      "name": "Charcoal Pencil",
+      "texture": "assets/images/items/charcoal_pencil.png",
+      "description": "Camille's lucky charcoal pencil, fished out of the flower pot by the Louvre steps. Worn flat on one side from years of sketching."
+    },
+    {
+      "id": "camille_sketch",
+      "name": "Camille's Sketch",
+      "texture": "assets/images/items/camille_sketch.png",
+      "description": "Camille's charcoal replica of the Room 7 portrait, signed. Curator Beaumont wants it for the archive wall."
+    },
+    {
+      "id": "baguette_heel",
+      "name": "Baguette Heel",
+      "texture": "assets/images/items/baguette_heel.png",
+      "description": "Yesterday's baguette heel from Madame Poulain. The ends are for the birds anyway."
+    },
+    {
+      "id": "mini_portrait",
+      "name": "Mini Portrait",
+      "texture": "assets/images/items/mini_portrait.png",
+      "description": "A tiny oil portrait of PP by Pierre, approved by the toughest critic in Paris — a pigeon."
+    },
+    {
+      "id": "postcard_grandson",
+      "name": "Signed Postcard",
+      "texture": "assets/images/items/postcard.png",
+      "description": "A second Louvre postcard, signed by Curator Beaumont. Madame Poulain's grandson in Lyon collects these."
     }
   ]
 }

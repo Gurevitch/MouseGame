@@ -124,12 +124,12 @@ type glowEffect struct {
 }
 
 type floorItem struct {
-	tex      *sdl.Texture
-	srcW     int32
-	srcH     int32
-	bounds   sdl.Rect
-	name     string
-	visible  bool
+	tex     *sdl.Texture
+	srcW    int32
+	srcH    int32
+	bounds  sdl.Rect
+	name    string
+	visible bool
 	// hidden (#14): the item is interactable (hover shows the grab cursor and
 	// clicking picks it up) but its sprite is NOT drawn — e.g. a rolling pin
 	// tucked inside a bike basket. The player only knows it's there because the
@@ -143,20 +143,25 @@ type walkSegment struct {
 }
 
 type scene struct {
-	name         string
-	bg           *background
-	npcs         []*npc
-	hotspots     []hotspot
-	floorItems   []*floorItem
-	particles    []particle
-	glows        []glowEffect
-	blockers     []sdl.Rect
-	walkSegments []walkSegment
-	spawnX       float64
-	spawnY       float64
-	musicPath    string
-	minY         float64
-	maxY         float64
+	name       string
+	bg         *background
+	npcs       []*npc
+	hotspots   []hotspot
+	floorItems []*floorItem
+	particles  []particle
+	glows      []glowEffect
+	// ambientSprites are sheet-backed background movers (Paris biker,
+	// Jerusalem worshippers, camp crow). They run ungated — unlike the
+	// camp wildlife particles, they're authored per scene, so the scene
+	// decorator decides which scenes get them. See ambient_sprite.go.
+	ambientSprites []*ambientSprite
+	blockers       []sdl.Rect
+	walkSegments   []walkSegment
+	spawnX         float64
+	spawnY         float64
+	musicPath      string
+	minY           float64
+	maxY           float64
 	// characterScale multiplies PP and NPC draw sizes (not hitboxes) so
 	// tight/indoor scenes can render characters smaller without having
 	// to redraw sheets. 1.0 = outdoor default; 0.85-0.9 for rooms. See
@@ -248,6 +253,12 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		sm.scenes["camp_grounds"] = s
 	}
 
+	// ===== Camp Chilly Wa Wa: Landing airstrip (#34, return-from-city) =====
+	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "camp_landing"); s != nil {
+		decorateCampLanding(s, renderer)
+		sm.scenes["camp_landing"] = s
+	}
+
 	// ===== Camp Chilly Wa Wa: Higgins' Office (JSON-driven) =====
 	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "camp_office"); s != nil {
 		decorateCampOffice(s)
@@ -271,6 +282,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	// ===== Paris: Street + Louvre + Bakery (JSON-driven) =====
 	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "paris_street"); s != nil {
 		decorateParisStreet(s)
+		decorateParisStreetSprites(s, renderer)
 		sm.scenes["paris_street"] = s
 	}
 	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "paris_louvre"); s != nil {
@@ -584,8 +596,14 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 		if n.silent {
 			continue
 		}
+		// #27: drawFootY override lets seated front-of-room NPCs (café patrons)
+		// sort in front of PP even though their bounds sit high on screen.
+		fy := n.footY()
+		if n.drawFootY > 0 {
+			fy = n.drawFootY
+		}
 		actors = append(actors, actorDraw{
-			footY: n.footY(),
+			footY: fy,
 			order: base + i,
 			draw: func() {
 				n.drawScaled(renderer, scale)
@@ -753,6 +771,13 @@ func (s *scene) updateAmbient(dt float64, showAmbientLife bool) {
 	for _, n := range s.npcs {
 		n.update(dt)
 	}
+
+	// Sheet-backed ambient movers run every frame regardless of the
+	// camp-wildlife gate — they're authored per scene (biker, worshippers,
+	// crow), not the Day-1 camp flyover set.
+	for _, a := range s.ambientSprites {
+		a.update(dt)
+	}
 }
 
 // drawAmbient draws glows and particles. Like updateAmbient, when
@@ -916,5 +941,12 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer, showAmbientLife bool) {
 		} else {
 			renderer.FillRect(&sdl.Rect{X: int32(p.x), Y: int32(p.y), W: p.size, H: p.size})
 		}
+	}
+
+	// Ambient sprite movers draw on top of the particle dust but still
+	// before the actors (drawAmbient runs ahead of drawActors), so they
+	// read as background depth.
+	for _, a := range s.ambientSprites {
+		a.draw(renderer)
 	}
 }
