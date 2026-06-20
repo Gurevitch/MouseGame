@@ -31,7 +31,7 @@ type dialogEntry struct {
 // though the struct fields are unexported. Without this, `json.Unmarshal`
 // would silently skip every `"speaker"` / `"text"` JSON key (Go's reflect
 // can't write unexported fields), producing dialog steps with empty
-// strings — the root cause of "Marcus freakout dialog not showing" and
+// strings - the root cause of "Marcus freakout dialog not showing" and
 // the Higgins post-Lily-shy dialog disappearing.
 func (d *dialogEntry) UnmarshalJSON(data []byte) error {
 	var raw struct {
@@ -59,7 +59,7 @@ type dialogSystem struct {
 	continueTimer float64
 	onComplete    func()
 	// audio fires per-line voice clips. Set once at construction (see
-	// newDialogSystem in game/dialog.go); nil-safe — when nil, dialog
+	// newDialogSystem in game/dialog.go); nil-safe - when nil, dialog
 	// entries' `audio` fields are ignored.
 	audio *audioManager
 }

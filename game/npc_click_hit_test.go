@@ -10,11 +10,11 @@ import (
 // NPC in the game. For each NPC's design-time `bounds` rect we fire FIVE
 // synthetic clicks:
 //
-//   - top    (center-X, 10 px below the top edge)      — MUST hit
-//   - mid    (center-X, center-Y)                      — MUST hit
-//   - bottom (center-X, 10 px above the bottom edge)   — MUST hit
-//   - leftOf  (10 px left of the left edge,   mid-Y)   — MUST miss
-//   - rightOf (10 px right of the right edge, mid-Y)   — MUST miss
+//   - top    (center-X, 10 px below the top edge)      - MUST hit
+//   - mid    (center-X, center-Y)                      - MUST hit
+//   - bottom (center-X, 10 px above the bottom edge)   - MUST hit
+//   - leftOf  (10 px left of the left edge,   mid-Y)   - MUST miss
+//   - rightOf (10 px right of the right edge, mid-Y)   - MUST miss
 //
 // `npc.containsPoint` is the same call the game uses for both cursor hover
 // (the "talk" icon) and the click handler, so this test directly mirrors
@@ -26,7 +26,7 @@ import (
 // To add a new NPC: drop a row into the table below with its bounds copied
 // from the matching factory in npc.go (or scene_loader.go). To intentionally
 // shrink a hit-box, narrow the bounds rather than adding special-case
-// logic — `containsPoint` is rect-only on purpose so the cursor + click
+// logic - `containsPoint` is rect-only on purpose so the cursor + click
 // areas stay unified.
 //
 // To exclude an NPC from hit-testing (e.g. a hidden cutscene-only NPC),
@@ -47,9 +47,9 @@ func npcHitCases() []npcHitCase {
 	return []npcHitCase{
 		// --- Camp grounds (Day 1 + Day 2) ---
 		// Kids on the camp grounds line. Bounds copied from
-		// assets/data/npc/kids.json — JSON is canonical when factory
-		// uses applyKidConfig. Bounds widths sit in the 145–170 band;
-		// heights 195–245.
+		// assets/data/npc/kids.json - JSON is canonical when factory
+		// uses applyKidConfig. Bounds widths sit in the 145-170 band;
+		// heights 195-245.
 		// User 2026-05-23: kid bounds reverted to 145-wide after the
 		// 100-wide tightening introduced misses. Danny is the outlier
 		// (180-wide) because of the flipped sprite + cabin-hotspot
@@ -90,35 +90,37 @@ func npcHitCases() []npcHitCase {
 		{scene: "danny_room", name: "Danny (room)", bounds: sdl.Rect{X: 760, Y: 445, W: 162, H: 245}},
 
 		// --- Paris street (outside NPCs) ---
-		// User 2026-05-22: unified Paris front-line NPCs at 120×235.
+		// 2026-06-12 sprite-check: front-line adults re-unified at 120×205
+		// (feet kept) so PP (~211px rendered) isn't shorter than them.
 		// Pierre stays smaller (back-of-line perspective).
-		{scene: "paris_street", name: "Madame Colette", bounds: sdl.Rect{X: 300, Y: 490, W: 120, H: 235}},
+		{scene: "paris_street", name: "Madame Colette", bounds: sdl.Rect{X: 335, Y: 520, W: 120, H: 205}},
+		{scene: "paris_street", name: "Madame Margaux", bounds: sdl.Rect{X: 230, Y: 500, W: 78, H: 145}},
 		{scene: "paris_street", name: "Pierre", bounds: sdl.Rect{X: 780, Y: 470, W: 95, H: 175}},
-		{scene: "paris_street", name: "Nicolas", bounds: sdl.Rect{X: 950, Y: 490, W: 120, H: 235}},
-		{scene: "paris_street", name: "Gendarme Claude", bounds: sdl.Rect{X: 1180, Y: 480, W: 120, H: 235}},
+		{scene: "paris_street", name: "Nicolas", bounds: sdl.Rect{X: 950, Y: 520, W: 120, H: 205}},
+		{scene: "paris_street", name: "Gendarme Claude", bounds: sdl.Rect{X: 1180, Y: 540, W: 120, H: 205}},
 
 		// --- Paris bakery (interior) ---
-		// User 2026-05-23: new BG has the counter top at screen y=342;
-		// Poulain Y 250→182 so her foot lands at the new counter top.
-		{scene: "paris_bakery", name: "Madame Poulain", bounds: sdl.Rect{X: 600, Y: 215, W: 170, H: 180}},
+		// 2026-06-12 sprite-check: Poulain's sheets are a waist-up bust;
+		// 145px bust ≈ standing-NPC head scale. User playtest same day:
+		// bottom-center dot (726,318) → bounds.Y+H=318, so Y=173, X=641.
+		{scene: "paris_bakery", name: "Madame Poulain", bounds: sdl.Rect{X: 641, Y: 173, W: 170, H: 145}},
 
-		// 6 café patrons. User 2026-05-23: new BG has tablecloth tops
-		// at screen y≈427 — patron Y 555→339 so their foot lands at
-		// the cloth top. srcCropBottomFrac=0.55 still clips the lower
-		// body sprite-side so we see only the upper body resting on
-		// the cloth.
-		{scene: "paris_bakery", name: "Madame Yvette", bounds: sdl.Rect{X: 80, Y: 339, W: 90, H: 160}},
-		{scene: "paris_bakery", name: "Monsieur Bernard", bounds: sdl.Rect{X: 240, Y: 339, W: 90, H: 160}},
-		{scene: "paris_bakery", name: "Mademoiselle Camille", bounds: sdl.Rect{X: 420, Y: 339, W: 90, H: 160}},
-		{scene: "paris_bakery", name: "Monsieur Henri", bounds: sdl.Rect{X: 580, Y: 339, W: 90, H: 160}},
-		{scene: "paris_bakery", name: "Lucien", bounds: sdl.Rect{X: 920, Y: 339, W: 90, H: 160}},
-		// Élise: removed from paris_bakery scene's npcs list 2026-05-22
+		// 6 cafe patrons. 2026-06-12 sprite-check: the patron art is a
+		// waist-up bust (no legs), so the srcCropBottomFrac=0.55 clip was
+		// dropped and the whole 135px bust renders, waist cut anchored at
+		// each table's cloth-top edge.
+		{scene: "paris_bakery", name: "Madame Yvette", bounds: sdl.Rect{X: 80, Y: 355, W: 110, H: 135}},
+		{scene: "paris_bakery", name: "Monsieur Bernard", bounds: sdl.Rect{X: 195, Y: 355, W: 110, H: 135}},
+		{scene: "paris_bakery", name: "Mademoiselle Camille", bounds: sdl.Rect{X: 470, Y: 384, W: 110, H: 135}},
+		{scene: "paris_bakery", name: "Monsieur Henri", bounds: sdl.Rect{X: 580, Y: 370, W: 110, H: 135}},
+		{scene: "paris_bakery", name: "Lucien", bounds: sdl.Rect{X: 920, Y: 365, W: 110, H: 135}},
+		// Elise: removed from paris_bakery scene's npcs list 2026-05-22
 		// (no 6th chair in the BG). Keeping the test case as a hidden
 		// NPC so any future re-add of the factory still gets coverage.
-		{scene: "paris_bakery", name: "Madame Élise", bounds: sdl.Rect{X: 660, Y: 339, W: 90, H: 160}, hidden: true},
+		{scene: "paris_bakery", name: "Madame Elise", bounds: sdl.Rect{X: 660, Y: 540, W: 90, H: 160}, hidden: true},
 
 		// --- Paris Louvre (interior) ---
-		{scene: "paris_louvre", name: "Curator Beaumont", bounds: sdl.Rect{X: 500, Y: 320, W: 125, H: 240}},
+		{scene: "paris_louvre", name: "Curator Beaumont", bounds: sdl.Rect{X: 520, Y: 490, W: 165, H: 315}},
 	}
 }
 
@@ -143,7 +145,7 @@ func TestNPCClickHitBoxes(t *testing.T) {
 			leftX, leftY := tc.bounds.X-10, cy
 			rightX, rightY := tc.bounds.X+tc.bounds.W+10, cy
 
-			// Hidden NPCs are not click targets at any point — only the
+			// Hidden NPCs are not click targets at any point - only the
 			// miss-assertions run, but we still log the (would-be) hits
 			// so the test reports geometry. Engine-side, hidden NPCs are
 			// filtered before containsPoint is even called.
@@ -156,7 +158,7 @@ func TestNPCClickHitBoxes(t *testing.T) {
 					{"rightOf", rightX, rightY},
 				} {
 					if n.containsPoint(p.x, p.y) {
-						t.Errorf("[hidden NPC] %s probe (%d,%d) reports HIT — should never hit a rect outside-edge", p.label, p.x, p.y)
+						t.Errorf("[hidden NPC] %s probe (%d,%d) reports HIT - should never hit a rect outside-edge", p.label, p.x, p.y)
 					}
 				}
 				return
@@ -173,7 +175,7 @@ func TestNPCClickHitBoxes(t *testing.T) {
 			}
 			for _, p := range hits {
 				if !n.containsPoint(p.x, p.y) {
-					t.Errorf("MISS on body click — %s at (%d,%d) should hit bounds %+v", p.label, p.x, p.y, tc.bounds)
+					t.Errorf("MISS on body click - %s at (%d,%d) should hit bounds %+v", p.label, p.x, p.y, tc.bounds)
 				}
 			}
 
@@ -187,7 +189,7 @@ func TestNPCClickHitBoxes(t *testing.T) {
 			}
 			for _, p := range misses {
 				if n.containsPoint(p.x, p.y) {
-					t.Errorf("FALSE HIT around object — %s at (%d,%d) should NOT hit bounds %+v", p.label, p.x, p.y, tc.bounds)
+					t.Errorf("FALSE HIT around object - %s at (%d,%d) should NOT hit bounds %+v", p.label, p.x, p.y, tc.bounds)
 				}
 			}
 		})
@@ -204,10 +206,10 @@ func TestNPCClickHitBoxes_BoundsAreSane(t *testing.T) {
 			t.Errorf("%s/%s has non-positive bounds %+v", tc.scene, tc.name, tc.bounds)
 		}
 		if tc.bounds.W < 40 || tc.bounds.H < 80 {
-			t.Errorf("%s/%s bounds %+v look too small to be clickable in 1400×800 — verify against npc.go factory", tc.scene, tc.name, tc.bounds)
+			t.Errorf("%s/%s bounds %+v look too small to be clickable in 1400×800 - verify against npc.go factory", tc.scene, tc.name, tc.bounds)
 		}
 		if tc.bounds.W > 400 || tc.bounds.H > 400 {
-			t.Errorf("%s/%s bounds %+v look oversized — verify against npc.go factory", tc.scene, tc.name, tc.bounds)
+			t.Errorf("%s/%s bounds %+v look oversized - verify against npc.go factory", tc.scene, tc.name, tc.bounds)
 		}
 	}
 }

@@ -1,6 +1,8 @@
 package game
 
 import (
+	"image"
+	"image/color"
 	"math"
 	"math/rand"
 	"os"
@@ -53,7 +55,7 @@ type particle struct {
 }
 
 // Ambient sprite sheets, loaded once per sceneManager construction.
-// They're optional — if the PNGs aren't on disk yet the particle
+// They're optional - if the PNGs aren't on disk yet the particle
 // renderer falls back to the original filled-rect drawing. That lets
 // us ship the code change ahead of the art landing.
 var (
@@ -75,7 +77,7 @@ func ambientSpriteExists(path string) bool {
 
 // loadAmbientSprites pre-loads the three shared sprites for camp Day 1
 // flyovers. Safe to call multiple times; only the first call does real
-// work. Missing files are ignored — the engine falls back to dot-style
+// work. Missing files are ignored - the engine falls back to dot-style
 // drawing.
 func loadAmbientSprites(renderer *sdl.Renderer) {
 	if ambientLoaded {
@@ -131,11 +133,16 @@ type floorItem struct {
 	name    string
 	visible bool
 	// hidden (#14): the item is interactable (hover shows the grab cursor and
-	// clicking picks it up) but its sprite is NOT drawn — e.g. a rolling pin
+	// clicking picks it up) but its sprite is NOT drawn - e.g. a rolling pin
 	// tucked inside a bike basket. The player only knows it's there because the
 	// cursor changes. On pickup, clear both visible and hidden.
 	hidden   bool
 	onPickup func()
+	// standRight (2026-06-12 #15, SKILL.md §8c): PP stands to the item's
+	// RIGHT when picking it up (default is left). Set it when the grab
+	// anim's reach hand points the other way - e.g. the rolling pin, whose
+	// reach-into-basket hand is on PP's left side.
+	standRight bool
 }
 
 type walkSegment struct {
@@ -151,7 +158,7 @@ type scene struct {
 	particles  []particle
 	glows      []glowEffect
 	// ambientSprites are sheet-backed background movers (Paris biker,
-	// Jerusalem worshippers, camp crow). They run ungated — unlike the
+	// Jerusalem worshippers, camp crow). They run ungated - unlike the
 	// camp wildlife particles, they're authored per scene, so the scene
 	// decorator decides which scenes get them. See ambient_sprite.go.
 	ambientSprites []*ambientSprite
@@ -221,6 +228,12 @@ type sceneManager struct {
 	fadeIn        bool
 	nextScene     string
 	transPlayer   *player
+	// irisTex is the retro iris-wipe mask (retro plan #4, 2026-06-12):
+	// opaque black with a soft-edged transparent circle in the centre.
+	// drawTransition scales it so the hole shrinks onto PP (out) and
+	// reopens from him in the new scene (in). nil falls back to the old
+	// plain alpha fade.
+	irisTex *sdl.Texture
 	// entryWalkPending: set true by the "Enter Camp" hotspot right before the
 	// transition into camp_grounds so PP walks in from off-screen left on
 	// arrival. Consumed (and cleared) once on the next completed transition, so
@@ -228,10 +241,43 @@ type sceneManager struct {
 	entryWalkPending bool
 }
 
+// newIrisMask builds the iris-wipe mask texture: a 512x512 opaque-black
+// square with a transparent, softly anti-aliased circular hole (radius 128)
+// in the centre. drawTransition scales it so the hole maps to the wipe
+// radius on screen; the four bands around the drawn rect are plain black
+// fills. Generated once at startup - no per-frame CPU work.
+func newIrisMask(renderer *sdl.Renderer) *sdl.Texture {
+	const size = 512
+	const hole = 128.0
+	const edge = 2.0 // feather width, px
+	img := image.NewNRGBA(image.Rect(0, 0, size, size))
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			d := math.Hypot(float64(x)-size/2+0.5, float64(y)-size/2+0.5)
+			var a uint8
+			switch {
+			case d <= hole-edge:
+				a = 0
+			case d >= hole+edge:
+				a = 255
+			default:
+				a = uint8((d - (hole - edge)) / (2 * edge) * 255)
+			}
+			img.SetNRGBA(x, y, color.NRGBA{R: 0, G: 0, B: 0, A: a})
+		}
+	}
+	tex, _, _ := engine.TextureFromNRGBA(renderer, img)
+	if tex != nil {
+		tex.SetBlendMode(sdl.BLENDMODE_BLEND)
+	}
+	return tex
+}
+
 func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm := &sceneManager{
 		scenes:      make(map[string]*scene),
 		currentName: "camp_entrance",
+		irisTex:     newIrisMask(renderer),
 	}
 
 	loadAmbientSprites(renderer)
@@ -266,7 +312,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	}
 
 	// ===== Camp Chilly Wa Wa: Night (JSON-driven) =====
-	// Higgins is silent here — the night cutscene drives his dialog via the
+	// Higgins is silent here - the night cutscene drives his dialog via the
 	// g.dialog helper so he appears to speak "in place" at the campfire.
 	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "camp_night"); s != nil {
 		decorateCampNight(s)
@@ -291,7 +337,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	}
 	// User 2026-04-26: Paris bakery interior. NPC = bakery_woman, floor item
 	// = rolling pin (registered in setupParisCallbacks). No decorate hook
-	// yet — the JSON + factory are enough; add one later if ambient is
+	// yet - the JSON + factory are enough; add one later if ambient is
 	// needed (e.g. flour particles).
 	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "paris_bakery"); s != nil {
 		sm.scenes["paris_bakery"] = s
@@ -434,8 +480,51 @@ func (sm *sceneManager) drawTransition(renderer *sdl.Renderer) {
 	if !sm.transitioning {
 		return
 	}
-	renderer.SetDrawColor(0, 0, 0, uint8(sm.fadeAlpha))
-	renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
+	// Retro plan #4 (2026-06-12): iris wipe instead of a plain fade - the
+	// PTP reference uses an oval iris between scenes. fadeAlpha (0..255)
+	// doubles as wipe progress: the black is always opaque, only the hole
+	// radius animates. Closes onto PP on the way out, reopens from his
+	// spawn point in the new scene.
+	if sm.irisTex == nil {
+		renderer.SetDrawColor(0, 0, 0, uint8(sm.fadeAlpha))
+		renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
+		return
+	}
+	cx := float64(engine.ScreenWidth) / 2
+	cy := float64(engine.ScreenHeight) / 2
+	if sm.transPlayer != nil {
+		cx = sm.transPlayer.x + float64(playerDstW)/2
+		cy = sm.transPlayer.y + float64(playerDstH)/2
+	}
+	// Fully open = the hole reaches the farthest screen corner.
+	maxR := math.Hypot(
+		math.Max(cx, float64(engine.ScreenWidth)-cx),
+		math.Max(cy, float64(engine.ScreenHeight)-cy),
+	)
+	r := (1 - sm.fadeAlpha/255.0) * maxR
+	renderer.SetDrawColor(0, 0, 0, 255)
+	if r <= 1 {
+		renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
+		return
+	}
+	// Map the mask (512px square, hole radius 128 at centre) so its hole
+	// radius lands on r: drawn half-size = r * (256/128) = 2r.
+	half := int32(2 * r)
+	dst := sdl.Rect{X: int32(cx) - half, Y: int32(cy) - half, W: half * 2, H: half * 2}
+	renderer.Copy(sm.irisTex, nil, &dst)
+	// The mask only covers its own rect - fill the four bands around it.
+	if dst.Y > 0 {
+		renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: dst.Y})
+	}
+	if bottom := dst.Y + dst.H; bottom < engine.ScreenHeight {
+		renderer.FillRect(&sdl.Rect{X: 0, Y: bottom, W: engine.ScreenWidth, H: engine.ScreenHeight - bottom})
+	}
+	if dst.X > 0 {
+		renderer.FillRect(&sdl.Rect{X: 0, Y: dst.Y, W: dst.X, H: dst.H})
+	}
+	if right := dst.X + dst.W; right < engine.ScreenWidth {
+		renderer.FillRect(&sdl.Rect{X: right, Y: dst.Y, W: engine.ScreenWidth - right, H: dst.H})
+	}
 }
 
 func (s *scene) checkNPCClick(x, y int32) *npc {
@@ -596,7 +685,7 @@ func (s *scene) drawActors(renderer *sdl.Renderer, plr *player) {
 		if n.silent {
 			continue
 		}
-		// #27: drawFootY override lets seated front-of-room NPCs (café patrons)
+		// #27: drawFootY override lets seated front-of-room NPCs (cafe patrons)
 		// sort in front of PP even though their bounds sit high on screen.
 		fy := n.footY()
 		if n.drawFootY > 0 {
@@ -773,7 +862,7 @@ func (s *scene) updateAmbient(dt float64, showAmbientLife bool) {
 	}
 
 	// Sheet-backed ambient movers run every frame regardless of the
-	// camp-wildlife gate — they're authored per scene (biker, worshippers,
+	// camp-wildlife gate - they're authored per scene (biker, worshippers,
 	// crow), not the Day-1 camp flyover set.
 	for _, a := range s.ambientSprites {
 		a.update(dt)

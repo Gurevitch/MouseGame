@@ -104,7 +104,7 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 		n.itemMatch = false
 	}
 
-	// #9: hovering PP (when not carrying an item) means "open the bag" — the
+	// #9: hovering PP (when not carrying an item) means "open the bag" - the
 	// same priority HandleClick uses (PP is checked first). Without this the
 	// cursor over PP showed the entrance arrow of an overlapping cabin hotspot,
 	// so the player thought a click would enter the cabin instead of opening
@@ -119,9 +119,9 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 
 	// User 2026-05-22: floor items BEFORE npcs so the grab cursor wins
 	// when a pickable item sits under an NPC's bounds rect (e.g. the
-	// rolling pin on a café table near Nicolas). Previously NPCs were
+	// rolling pin on a cafe table near Nicolas). Previously NPCs were
 	// checked first, so hovering a floor item next to an NPC showed
-	// the talk cursor — wrong action signal for the player.
+	// the talk cursor - wrong action signal for the player.
 	for _, fi := range s.floorItems {
 		// #14: also light up the grab cursor for hidden-but-interactable items
 		// (e.g. the rolling pin tucked in the bike basket) so the player learns
@@ -130,10 +130,9 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 			pt := sdl.Point{X: mx, Y: my}
 			if pt.InRect(&fi.bounds) {
 				ui.hoverName = fi.name
-				// User playtest #11: show the pink "action/point" cursor over a
-				// pickable item (was the grab claw), so hovering an item reads as
-				// "click to act on this."
-				ui.cursor = cursorPoint
+				// User 2026-06-11 (#4): pickable item = OPEN HAND (grab)
+				// cursor; the pink point stays for PP/inventory actions.
+				ui.cursor = cursorGrab
 				return
 			}
 		}
@@ -149,7 +148,7 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 			// itemMatch feedback: pulse on the NPC + swap the cursor tint
 			// whenever clicking will actually run the alt dialog. The held
 			// path still wins (so drag-onto-NPC gives a stronger cue), but
-			// we also light up when the required item is just in the bag —
+			// we also light up when the required item is just in the bag -
 			// this is what tells the player "you've got what Lily needs,
 			// click her to give it" without forcing them to manually draw
 			// the flower out first.
@@ -161,7 +160,7 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 					n.altDialogRequiresItem != "" &&
 					inv.hasItem(n.altDialogRequiresItem)
 				if heldMatches || bagMatches {
-					entries, _ := n.altDialogFunc()
+					entries, _, _ := n.altDialogFunc()
 					if entries != nil {
 						n.itemMatch = true
 					}

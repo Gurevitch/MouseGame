@@ -23,6 +23,8 @@ var paths = []string{
 	"assets/images/player/PP talk front.png",
 	"assets/images/player/PP idle side.png",
 	"assets/images/player/PP celebrate.png",
+	"assets/images/player/PP jump back.png",
+	"assets/images/player/PP pull map.png",
 }
 
 func absInt(a int) int {

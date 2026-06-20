@@ -35,7 +35,7 @@ type travelMapJSON struct {
 // locations with all JSON-authored fields populated. Returns (nil, err) on
 // missing file or parse error so the caller can decide whether to panic or
 // fall back to an empty map. Runtime-only fields (textures, dimensions) are
-// left zero — newTravelMap fills those after loading textures.
+// left zero - newTravelMap fills those after loading textures.
 func loadTravelLocations(path string) ([]travelLocation, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

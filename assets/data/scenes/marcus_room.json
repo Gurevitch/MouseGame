@@ -1,7 +1,7 @@
 {
   "name": "marcus_room",
   "background": "assets/images/locations/camp/background/marcus_room_day.png",
-  "spawnX": 700,
+  "spawnX": 500,
   "spawnY": 360,
   "minY": 320,
   "maxY": 400,
@@ -15,7 +15,7 @@
     {"x": 0, "y": 0, "w": 400, "h": 450},
     {"x": 400, "y": 0, "w": 500, "h": 300},
     {"x": 1000, "y": 0, "w": 400, "h": 450},
-    {"x": 850, "y": 460, "w": 380, "h": 240}
+    {"x": 700, "y": 430, "w": 530, "h": 270}
   ],
   "walkSegments": [
     {"x1": 250, "y1": 360, "x2": 1050, "y2": 360}

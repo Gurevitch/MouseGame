@@ -31,7 +31,7 @@ var parisStreetMonologue = []dialogEntry{
 // Plays once, after he walks in from the tunnel on the left.
 var louvreArrivalMonologue = []dialogEntry{
 	{speaker: "Pink Panther", text: "So this is the Louvre... my first time inside."},
-	{speaker: "Pink Panther", text: "Marble floors, quiet halls, and somewhere in here — the painting Marcus keeps drawing."},
+	{speaker: "Pink Panther", text: "Marble floors, quiet halls, and somewhere in here - the painting Marcus keeps drawing."},
 	{speaker: "Pink Panther", text: "That must be the curator over there. Let's have a word."},
 }
 
@@ -79,10 +79,14 @@ type Game struct {
 	menu       *gameMenu
 	devMenu    *devMenu
 	clickProbe *clickProbe
-	font       *engine.BitmapFont
-	lastScene  string
-	mouseX     int32
-	mouseY     int32
+	walkDbg    *walkDebug
+	// bikerBumpCheck is the paris_street biker-encounter proximity trigger
+	// (2026-06-12 #12); set by setupParisCallbacks, run from Update.
+	bikerBumpCheck func()
+	font           *engine.BitmapFont
+	lastScene      string
+	mouseX         int32
+	mouseY         int32
 
 	// Story progression
 	monologuePlayed bool
@@ -116,7 +120,7 @@ type Game struct {
 	// cabin, but that left the walking PP visible there.
 	nightHidePlayer bool
 
-	// Flight cutscene — 4-second biplane transition between cities.
+	// Flight cutscene - 4-second biplane transition between cities.
 	flight *flightCutscene
 
 	// City monologues
@@ -126,7 +130,7 @@ type Game struct {
 	// "scene_name/variant" (e.g. "marcus_room/day", "marcus_room/night").
 	// SeqSetSceneBG looks up through setSceneAltBG; reverting day-mode on
 	// save load uses the same map. Replaces what used to be two named
-	// *background fields — new alts drop in by adding a load call in
+	// *background fields - new alts drop in by adding a load call in
 	// Game.New and a JSON sequence step.
 	sceneAltBGs map[string]*background
 }
@@ -156,7 +160,7 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 		if it == nil || it.name != "Travel Map" {
 			return false
 		}
-		g.travelMap.Show(g.sceneMgr.currentName)
+		g.openTravelMap(g.sceneMgr.currentName)
 		return true
 	}
 
@@ -175,6 +179,7 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	g.menu = newGameMenu()
 	g.devMenu = newDevMenu()
 	g.clickProbe = newClickProbe()
+	g.walkDbg = newWalkDebug()
 	g.font = font
 	g.attachGameToNPCs()
 	g.setupCampCallbacks()
@@ -195,14 +200,17 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	// NOTE: requires the regenerated single-row PNGs (EXTRA_PROMPTS §AD); a
 	// legacy 2-row sheet loaded as 8×1 will stack both rows into each cell.
 	// Store the opaque box (gf.OX/OY/OW/OH) so the draw can size PP by his actual
-	// pixels, not the 192×1024 cell — the new sheets fill only part of each tall
+	// pixels, not the 192×1024 cell - the new sheets fill only part of each tall
 	// cell, so the old full-cell scale drew him huge/out of place.
-	sleepGrid := engine.SpriteGridFromPNGCleanAggressive(renderer, "assets/images/player/pp_sleeping.png", 8, 1, 4)
+	// 2026-06-11 #6/#11: the AGGRESSIVE key (tol 32) ate PP's cream face and
+	// chest on these sheets - the CONNECTED key only removes background
+	// reachable from the cell edges, so interior light colors survive.
+	sleepGrid := engine.SpriteGridFromPNGCleanConnected(renderer, "assets/images/player/pp_sleeping.png", 8, 1, 4)
 	for c := 0; c < 8 && len(sleepGrid) > 0 && c < len(sleepGrid[0]); c++ {
 		gf := sleepGrid[0][c]
 		g.sleepingFrames = append(g.sleepingFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
 	}
-	wakeGrid := engine.SpriteGridFromPNGCleanAggressive(renderer, "assets/images/player/pp_waking.png", 8, 1, 4)
+	wakeGrid := engine.SpriteGridFromPNGCleanConnected(renderer, "assets/images/player/pp_waking.png", 8, 1, 4)
 	for c := 0; c < 8 && len(wakeGrid) > 0 && c < len(wakeGrid[0]); c++ {
 		gf := wakeGrid[0][c]
 		g.wakingFrames = append(g.wakingFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
@@ -210,7 +218,7 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 
 	// User feedback 2026-04-26: switched from the bulky campfire_idle.png
 	// (8x4, rows 1-3 had bg drift) to the dedicated campfire_small.png
-	// generated for the 2026-04-19 campaign — clean 6x1 grid sized to land
+	// generated for the 2026-04-19 campaign - clean 6x1 grid sized to land
 	// the visible flame inside the (581,592)-(702,594) target band at 1×
 	// draw. Aggressive color-key + inset 4 still strip any white halo.
 	fireGrid := engine.SpriteGridFromPNGCleanAggressive(renderer, "assets/images/locations/camp/campfire_small.png", 6, 1, 4)
@@ -257,7 +265,7 @@ func (g *Game) startDay2() {
 		}
 	}
 
-	// User 2026-05-23: hide all camp_grounds NPCs on Day 2 — they're each
+	// User 2026-05-23: hide all camp_grounds NPCs on Day 2 - they're each
 	// in their cabin (Marcus freaking out, Lily / Danny still inside, etc.)
 	// or at the office (Higgins). The Day-2 story flow runs through their
 	// individual room scenes, not from the grounds. Without this, the user
@@ -268,7 +276,7 @@ func (g *Game) startDay2() {
 	// here so Day-2 is consistent regardless of whether those sequences
 	// actually ran.
 	//
-	// Restoring `hidden` (not `silent`) — silent leaves the sprite drawn
+	// Restoring `hidden` (not `silent`) - silent leaves the sprite drawn
 	// but un-clickable, which we don't want. hidden=true removes them
 	// from the scene entirely.
 	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
@@ -291,10 +299,10 @@ func (g *Game) startDay2() {
 		}
 	}
 
-	// Restore Marcus room to day background (night cutscene is over)
-	if marcusRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok {
-		marcusRoom.bg = newPNGBackground(g.renderer, "assets/images/locations/camp/background/marcus_room_day.png")
-	}
+	// Restore Marcus room to day background (night cutscene is over). Routed
+	// through setSceneAltBG so Marcus's strange-idle also flips to the DAY
+	// lighting variant (2026-06-12).
+	g.setSceneAltBG("marcus_room", "day")
 }
 
 func (g *Game) setupCampCallbacks() {
@@ -324,14 +332,14 @@ func (g *Game) setupCampCallbacks() {
 				jake.onDialogEnd = func() {
 					jake.dialog = jakePostStrangeDialog
 				}
-				jake.altDialogFunc = func() ([]dialogEntry, func()) {
+				jake.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					if !game.inv.hasItem("Coin Rubbing") {
-						return nil, nil
+						return nil, nil, nil
 					}
 					return []dialogEntry{
 							{speaker: "Pink Panther", text: "Jake. I went to Jerusalem. I found your tunnels."},
 							{speaker: "Jake", text: "The... the wall? You were THERE?"},
-							{speaker: "Pink Panther", text: "Here — a rubbing from one of Miriam's coins. Emperor Hadrian, look."},
+							{speaker: "Pink Panther", text: "Here - a rubbing from one of Miriam's coins. Emperor Hadrian, look."},
 							{speaker: "Jake", text: "That's HIM. That's the face in my head. You put him on PAPER!"},
 							{speaker: "Jake", text: "The echoes... they're... quieter. Like someone closed a door in my skull."},
 							{speaker: "Pink Panther", text: "Rest easy, tough guy. Two down."},
@@ -358,7 +366,7 @@ func (g *Game) setupCampCallbacks() {
 								{speaker: "Pink Panther", text: "Lily next. She's been drawing pink petals for a week."},
 								{speaker: "Pink Panther", text: "Tokyo just lit up on the map."},
 							})
-						}
+						}, &handOff{item: "Coin Rubbing"}
 				}
 				break
 			}
@@ -374,9 +382,9 @@ func (g *Game) setupCampCallbacks() {
 				lily.onDialogEnd = func() {
 					lily.dialog = lilyPostStrangeDialog
 				}
-				lily.altDialogFunc = func() ([]dialogEntry, func()) {
+				lily.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					if !game.inv.hasItem("Pressed Sakura") {
-						return nil, nil
+						return nil, nil, nil
 					}
 					return []dialogEntry{
 							{speaker: "Pink Panther", text: "Lily. Oba-chan sent you a petal."},
@@ -407,7 +415,7 @@ func (g *Game) setupCampCallbacks() {
 								{speaker: "Pink Panther", text: "Tommy next. He keeps yelling about a sister he doesn't have."},
 								{speaker: "Pink Panther", text: "Rio AND Buenos Aires both lit up. This one might take two stops."},
 							})
-						}
+						}, &handOff{item: "Pressed Sakura"}
 				}
 				break
 			}
@@ -423,9 +431,9 @@ func (g *Game) setupCampCallbacks() {
 				tommy.onDialogEnd = func() {
 					tommy.dialog = tommyPostStrangeDialog
 				}
-				tommy.altDialogFunc = func() ([]dialogEntry, func()) {
+				tommy.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					if !game.inv.hasItem("Dance Card") {
-						return nil, nil
+						return nil, nil, nil
 					}
 					return []dialogEntry{
 							{speaker: "Pink Panther", text: "Tommy. I found both halves of the dance card. Rio and Buenos Aires."},
@@ -455,7 +463,7 @@ func (g *Game) setupCampCallbacks() {
 								{speaker: "Pink Panther", text: "Danny's last. He keeps drawing Roman arches in the dirt."},
 								{speaker: "Pink Panther", text: "Rome just unlocked. Let's finish this."},
 							})
-						}
+						}, &handOff{item: "Dance Card"}
 				}
 				break
 			}
@@ -471,16 +479,16 @@ func (g *Game) setupCampCallbacks() {
 				danny.onDialogEnd = func() {
 					danny.dialog = dannyPostStrangeDialog
 				}
-				danny.altDialogFunc = func() ([]dialogEntry, func()) {
+				danny.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					if !game.inv.hasItem("Inscription Rubbing") {
-						return nil, nil
+						return nil, nil, nil
 					}
 					return []dialogEntry{
 							{speaker: "Pink Panther", text: "Danny. Look at the letters I copied from the Roman monument."},
 							{speaker: "Danny", text: "That's... that's my NAME. My real name. In Latin."},
 							{speaker: "Danny", text: "I've been drawing that arch for weeks because I was trying to draw my own name."},
 							{speaker: "Pink Panther", text: "You found yourself in the inscription."},
-							{speaker: "Danny", text: "Yeah. I did. All of us — we're spread across the world in pieces."},
+							{speaker: "Danny", text: "Yeah. I did. All of us - we're spread across the world in pieces."},
 							{speaker: "Pink Panther", text: "Five down. All home. Let's tell Higgins."},
 						}, func() {
 							game.inv.giveItemTo("Inscription Rubbing", "danny")
@@ -492,9 +500,9 @@ func (g *Game) setupCampCallbacks() {
 							// Danny's heal unlocks Mexico City for the finale.
 							game.travelMap.setUnlocked("mexico_street", true)
 							game.dialog.queueDialog([]dialogEntry{
-								{speaker: "Pink Panther", text: "One pin left — Mexico City. That's where this ends."},
+								{speaker: "Pink Panther", text: "One pin left - Mexico City. That's where this ends."},
 							})
-						}
+						}, &handOff{item: "Inscription Rubbing"}
 				}
 				break
 			}
@@ -511,9 +519,9 @@ func (g *Game) setupCampCallbacks() {
 						marcus.dialog = marcusPostStrangeDialog
 					}
 				}
-				marcus.altDialogFunc = func() ([]dialogEntry, func()) {
+				marcus.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					if !game.inv.hasItem("Postcard") {
-						return nil, nil
+						return nil, nil, nil
 					}
 					return []dialogEntry{
 							{speaker: "Pink Panther", text: "Marcus, look at this postcard from the Louvre."},
@@ -560,10 +568,10 @@ func (g *Game) setupCampCallbacks() {
 								}
 							}
 							game.dialog.queueDialog([]dialogEntry{
-								{speaker: "Pink Panther", text: "One down. Jake's next — he keeps muttering about tunnels and a wall."},
+								{speaker: "Pink Panther", text: "One down. Jake's next - he keeps muttering about tunnels and a wall."},
 								{speaker: "Pink Panther", text: "The travel map just lit up Jerusalem. That can't be a coincidence."},
 							})
-						}
+						}, &handOff{item: "Postcard"}
 				}
 				break
 			}
@@ -580,7 +588,7 @@ func (g *Game) setupCampCallbacks() {
 						game.parisUnlocked = true
 						game.travelMap.setUnlocked("paris_street", true)
 						// User 2026-04-26: replace the silent giveMapItem
-						// with the higgins_give_map sequence — Higgins
+						// with the higgins_give_map sequence - Higgins
 						// plays his give-map anim, PP plays receive_map,
 						// then the item drops into inventory. No more
 						// inventory-bar pop on map handover.
@@ -610,7 +618,7 @@ func (g *Game) setupCampCallbacks() {
 				// metInDay1 latches once so re-clicking Marcus after the post
 				// dialog swap doesn't bump metKids twice (user 2026-04-26:
 				// "i spoke with the kids and then the night scene just
-				// started" — the unguarded Day 1 branch let metKids hit 5
+				// started" - the unguarded Day 1 branch let metKids hit 5
 				// from one or two kids alone).
 				marcusMet := false
 				kid.onDialogEnd = func() {
@@ -682,16 +690,18 @@ func (g *Game) setupCampCallbacks() {
 				//   0 -> 1: shy dialog done, arm the flower alt-dialog
 				//   1 -> 2: flower handed over, swap to post-dialog
 				// Day 2+ uses the flat dialogDone flag and lilyPostStrangeDialog.
-				kid.altDialogFunc = func() ([]dialogEntry, func()) {
+				kid.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					if kid.hintState != 1 || !game.inv.hasItem("Flower") {
-						return nil, nil
+						return nil, nil, nil
 					}
-					// Kick off Lily's receive-flower animation in parallel with
-					// the dialog so the user actually sees the handoff. The
-					// one-shot's duration loosely covers her opening lines; the
-					// standard wrapCb in startNPCDialog resets her anim state
-					// when dialog ends.
-					kid.playOneShotAnim("receive_flower", 1.4)
+					// NOTE: altDialogFunc must stay SIDE-EFFECT FREE before the
+					// returned callback - the cursor hover probe (ui.go
+					// itemMatch) calls it every frame to test for a match.
+					// Her receive-flower one-shot used to fire HERE, which made
+					// Lily react the moment PP merely HOVERED her with the
+					// flower (2026-06-12 #5).
+					// PR#1: the hand-off beat (PP's give + her receive_flower)
+					// moved to the handOff return - it plays BEFORE the text.
 					return lilyFlowerDialog, func() {
 						game.inv.giveItemTo("Flower", "lily")
 						game.metKids++
@@ -705,7 +715,7 @@ func (g *Game) setupCampCallbacks() {
 						kid.altDialogRequiresHeld = false
 						kid.altDialogRequiresItem = ""
 						game.checkDay1Complete()
-					}
+					}, &handOff{item: "Flower", npcAnim: "receive_flower", npcAnimDur: 1.4}
 				}
 				kid.onDialogEnd = func() {
 					if game.day == 1 && kid.hintState == 0 {
@@ -714,7 +724,7 @@ func (g *Game) setupCampCallbacks() {
 						// only fires when PP has actively pulled the flower
 						// out of inventory (it's heldItem on the cursor) and
 						// clicked Lily. Just having the flower in the bag is
-						// NOT enough — user wants the give-item motion
+						// NOT enough - user wants the give-item motion
 						// required. Same pattern will apply to Marcus
 						// postcard, Jake coin, etc.
 						kid.altDialogRequiresHeld = true
@@ -781,6 +791,12 @@ func (g *Game) setupCampCallbacks() {
 			bounds:  sdl.Rect{X: 150, Y: 440, W: 100, H: 100},
 			name:    "Flower",
 			visible: true,
+			// 2026-06-15 (#1 follow-up): the grab_flower sheet has PP leaning
+			// LEFT toward a daisy on his left. walkToFloorItem stands PP to the
+			// item's LEFT by default, which puts the flower on his RIGHT - so he
+			// bent AWAY from it ("looks at the other side"). Stand to the flower's
+			// RIGHT so the daisy is on his left, matching the animation.
+			standRight: true,
 			onPickup: func() {
 				// Hide flower in scene first so the grab anim doesn't play
 				// over a still-visible daisy on the ground.
@@ -829,7 +845,7 @@ func (g *Game) setupCampCallbacks() {
 // checkDay1Complete triggers the Day 1 -> Night transition once PP has met
 // all 5 kids. Higgins delivers a short "it's getting late" beat on
 // camp_grounds first so the fade to night isn't abrupt (user complaint
-// 2026-04-17: "higgins didnt say it time to sleep" — the previous version
+// 2026-04-17: "higgins didnt say it time to sleep" - the previous version
 // cut straight to the campfire and the Lily-flower handoff felt swallowed
 // by the transition).
 func (g *Game) checkDay1Complete() {
@@ -850,11 +866,36 @@ func (g *Game) checkDay1Complete() {
 	// Latch so the handoff can't re-fire the bedtime sequence.
 	g.day1BedtimeStarted = true
 	game := g
+	// User 2026-06-12 (#6): this is the bellow the player actually watches -
+	// swap BOTH idle and talk to the shout frames for the dialog (the dialog
+	// system puts the speaker into TALK state, which would override a swapped
+	// idle alone; that's why the camp_night ctor sets idle=talk=shout too).
+	// Restored in the callback right before the night transition.
+	var hg *npc
+	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
+		for _, n := range grounds.npcs {
+			if n.name == "Director Higgins" {
+				hg = n
+				break
+			}
+		}
+	}
+	var savedTalk []npcFrame
+	if hg != nil && len(hg.oneShotAnims["shout"]) > 0 {
+		hg.swapIdleForOneShot("shout")
+		savedTalk = hg.talkGrid
+		hg.talkGrid = hg.oneShotAnims["shout"]
+	}
 	g.dialog.startDialogWithCallback([]dialogEntry{
 		{speaker: "Director Higgins", text: "Ahem! It's getting very late, counselor."},
 		{speaker: "Director Higgins", text: "All campers to their cabins. NOW."},
-		{speaker: "Pink Panther", text: "Goodnight, Director. I'll turn in by the fire."},
 	}, func() {
+		if hg != nil {
+			if savedTalk != nil {
+				hg.talkGrid = savedTalk
+			}
+			hg.restoreSwappedIdle()
+		}
 		game.sceneMgr.transitionTo("camp_night", game.player)
 	})
 }
@@ -890,19 +931,50 @@ func (g *Game) giveMapItem() {
 	g.inv.addItem(item)
 }
 
+// genericPickupLines rotate through PP's pocket-quips. SKILL.md §8c (user
+// 2026-06-11 #18): pickup lines stay GENERIC - "who needs this" hints belong
+// in NPC dialogs, not in the pocket beat, so items stay reusable across
+// quests and the player keeps discovering uses by talking to people.
+var genericPickupLines = []string{
+	"This might come in handy.",
+	"Straight into the pocket.",
+	"A panther never leaves a clue behind.",
+	"You never know when you'll need one of these.",
+}
+var genericPickupIdx int
+
+// genericPickupDialog builds the standard one-line pickup beat: the caller's
+// flavor description of WHAT was found + a rotating generic quip.
+func genericPickupDialog(flavor string) []dialogEntry {
+	line := genericPickupLines[genericPickupIdx%len(genericPickupLines)]
+	genericPickupIdx++
+	return []dialogEntry{
+		{speaker: "Pink Panther", text: flavor + " " + line},
+	}
+}
+
 func (g *Game) setupParisCallbacks() {
 	// --- Paris side-quest state (2026-06-10) ---
 	// Shared across the street / louvre / bakery blocks below. Closure state
 	// follows the existing pattern (souvenirArmed, pierre.hintState); none of
 	// it needs to survive a save/load any more than those do.
+	// PR (2026-06-12) Paris chain reorder — strictly linear, softlock-proof:
+	//   rolling pin → Poulain (baguette+coffee) → Henri (confiture) →
+	//   Pierre (baguette+confiture → PRESS PASS) → Claude (press pass →
+	//   louvreUnlocked) → Beaumont (asks for Camille's sketch) → Camille
+	//   (needs her pencil; the flower-pot pigeon guards it) → Poulain gives
+	//   the day-old Baguette Heel → Pierre shoos the pot pigeon with it
+	//   (pigeonsCleared) → pot reveals the pencil → Camille sketches →
+	//   Beaumont trades the Postcard. The old easel "pigeon critic" +
+	//   mini_portrait beat is removed; the heel's job is shooing the pot
+	//   pigeon. Closure state (none needs save/load):
 	var (
 		sketchAsked    bool // Beaumont asked for Camille's replica sketch (postcards sold out)
 		camilleAsked   bool // Camille sent PP after her lost lucky pencil
-		pigeonsCleared bool // Pierre repaid his favor: pigeons off the flower pot
+		louvreUnlocked bool // Claude took the press pass and waved PP in
+		pigeonsCleared bool // Pierre shooed the flower-pot pigeon with the heel
 		pencilTaken    bool // pencil fished out of the flower pot by the Louvre steps
 		sketchDone     bool // Camille drew the Room 7 replica, sketch in PP's bag
-		pigeonAsked    bool // Pierre asked for crumbs (post press-pass trade)
-		pigeonDone     bool // pigeon landed, mini portrait given
 		souvenirAsked  bool // Poulain asked for the grandson postcard (post-heal)
 		souvenirDone   bool // signed postcard delivered to Poulain
 	)
@@ -920,6 +992,29 @@ func (g *Game) setupParisCallbacks() {
 	// French Guide + the two locals: all swap to post-dialog after first chat.
 	if parisStreet, ok := g.sceneMgr.scenes["paris_street"]; ok {
 		game := g
+		// clearPotPigeon (2026-06-12): the pigeon lady lures the flower-pot
+		// guard pigeon off with the heel. Swaps the pot prop to the exposed
+		// pencil and flaps the pigeon up-and-away. Shared so the pencil
+		// pickup gate (pigeonsCleared) and the lady's hand-off agree.
+		clearPotPigeon := func() {
+			pigeonsCleared = true
+			for _, fi := range parisStreet.floorItems {
+				if fi.name == "Charcoal Pencil" {
+					tex, w, h := engine.SafeTextureFromPNGKeyed(game.renderer, "assets/images/locations/paris/props/flower_pot_pencil.png")
+					if tex != nil {
+						fi.tex = tex
+						fi.srcW = w
+						fi.srcH = h
+					}
+					break
+				}
+			}
+			// 2026-06-15 #14: fly-up follows the relocated pot (was 1118,590 →
+			// near the new pot top-centre ~947,610).
+			if amb := newAmbientPigeonFlyUp(game.renderer, 947, 610); amb != nil {
+				parisStreet.ambientSprites = append(parisStreet.ambientSprites, amb)
+			}
+		}
 		for _, n := range parisStreet.npcs {
 			switch n.name {
 			case "Madame Colette":
@@ -938,7 +1033,7 @@ func (g *Game) setupParisCallbacks() {
 				// PP cannot present both items at once (one of them is no
 				// longer in the inventory at stage 2).
 				pierre := n
-				// User 2026-05-22: depth-walk choreography on click —
+				// User 2026-05-22: depth-walk choreography on click -
 				// PP walks to middle of road (x=700, y=700), then plays
 				// playRecede (back-walk + shrink) toward Pierre's position,
 				// then dialog plays. After dialog, PP stays at the shrunken
@@ -948,60 +1043,86 @@ func (g *Game) setupParisCallbacks() {
 					if game.player == nil || game.dialog == nil {
 						return
 					}
-					game.player.walkToAndDo(700, 700, func() {
-						game.player.playRecede(1.0, 0.65, 50, func() {
-							game.player.state = stateTalking
-							// User playtest #16: PP must talk to the SIDE, not the
-							// front, when chatting with Pierre. Pierre stands to PP's
-							// right (his easel is at x≈780), so face right → the
-							// side-talk frames play instead of the front-talk ones.
-							game.player.facingLeft = false
-							game.player.dir = dirRight
-							// User 2026-05-23: release the recede freeze
-							// AFTER dialog ends so PP can walk again. The
-							// recede tween leaves recedeActive=true (so
-							// his rendered scale stays small) which
-							// short-circuits the normal update path —
-							// PP is frozen at the receded position. We
-							// call clearRecede() to free movement;
-							// depthScale (Y-based) keeps him visually
-							// small as long as his Y stays high. The
-							// next click that moves him will gradually
-							// restore his size as he walks toward the
-							// front of the scene.
-							releaseRecede := func() {
-								game.player.state = stateIdle
-								// User playtest #28: PP STAYS at the shrunk Pierre-depth
-								// size after the dialog and only grows back when the
-								// player clicks elsewhere to move (setTarget releases
-								// it). Pierre himself never changes size.
-								game.player.holdRecede()
-							}
-							if pierre.altDialogFunc != nil {
-								entries, cb := pierre.altDialogFunc()
-								if entries != nil {
+					// PR#21: (x,y) is PP's CENTRE. 700,700 put his foot at ~790
+					// (clamped), well below Pierre's foot line (645). Walk to
+					// centre-Y 510 → foot 645, so PP stands IN LINE with Pierre,
+					// just to his left (Pierre centre ~819). Then recede.
+					// 2026-06-15 #12: factor the post-walk/recede conversation out
+					// so a stage-2+ click can run it in place (see the recedeHeld
+					// branch below) instead of re-walking + re-receding.
+					talk := func() {
+						game.player.state = stateTalking
+						// User playtest #16: PP must talk to the SIDE, not the
+						// front, when chatting with Pierre. Pierre stands to PP's
+						// right (his easel is at x≈780), so face right → the
+						// side-talk frames play instead of the front-talk ones.
+						game.player.facingLeft = false
+						game.player.dir = dirRight
+						// User 2026-05-23: release the recede freeze
+						// AFTER dialog ends so PP can walk again. The
+						// recede tween leaves recedeActive=true (so
+						// his rendered scale stays small) which
+						// short-circuits the normal update path -
+						// PP is frozen at the receded position. We
+						// call clearRecede() to free movement;
+						// depthScale (Y-based) keeps him visually
+						// small as long as his Y stays high. The
+						// next click that moves him will gradually
+						// restore his size as he walks toward the
+						// front of the scene.
+						releaseRecede := func() {
+							game.player.state = stateIdle
+							// User playtest #28: PP STAYS at the shrunk Pierre-depth
+							// size after the dialog and only grows back when the
+							// player clicks elsewhere to move (setTarget releases
+							// it). Pierre himself never changes size.
+							game.player.holdRecede()
+						}
+						if pierre.altDialogFunc != nil {
+							entries, cb, ho := pierre.altDialogFunc()
+							if entries != nil {
+								// PR#21: clear the cursor item NOW so it doesn't
+								// ride the mouse through the whole walk+dialog
+								// (this onClickOverride path skipped the normal
+								// heldItem=nil). altDialogFunc already read it.
+								game.inv.heldItem = nil
+								// PR#1: hand-over beat before the text here too
+								// (Pierre's scripted click flow owns its own
+								// dialog start).
+								start := func() {
 									game.dialog.startDialogWithCallback(entries, func() {
 										if cb != nil {
 											cb()
 										}
 										releaseRecede()
 									})
-									return
 								}
+								if ho != nil {
+									game.player.playHandOff(pierre, ho, start)
+								} else {
+									start()
+								}
+								return
 							}
-							game.dialog.startDialogWithCallback(pierre.dialog, func() {
-								if pierre.hintState == 0 {
-									pierre.dialog = pierreArtistPostDialog
-								}
-								// The crumbs ask just played → from now on Poulain
-								// offers the heel and Pierre waits for it.
-								if pierre.hintState == 2 && !pigeonAsked && !pigeonDone {
-									pigeonAsked = true
-									pierre.dialog = pierrePigeonWaitDialog
-								}
-								releaseRecede()
-							})
+						}
+						game.dialog.startDialogWithCallback(pierre.dialog, func() {
+							if pierre.hintState == 0 {
+								pierre.dialog = pierreArtistPostDialog
+							}
+							releaseRecede()
 						})
+					}
+					// 2026-06-15 #12: if PP already held the receded Pierre-depth
+					// from a previous click (e.g. the stage-2 confiture right after
+					// the stage-1 baguette), don't re-walk to the road and re-recede
+					// - that read as PP "jumping back to the main road" then trudging
+					// in again. Talk in place at his current spot.
+					if game.player.recedeHeld {
+						talk()
+						return
+					}
+					game.player.walkToAndDo(690, 510, func() {
+						game.player.playRecede(1.0, 0.65, 50, talk)
 					})
 				}
 				pierre.onDialogEnd = func() {
@@ -1014,7 +1135,7 @@ func (g *Game) setupParisCallbacks() {
 				}
 				pierre.altDialogRequiresHeld = false
 				pierre.altDialogRequiresItem = "Baguette"
-				pierre.altDialogFunc = func() ([]dialogEntry, func()) {
+				pierre.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					// User playtest #25: the trade only fires when PP actively
 					// HANDS OVER the item (it's on the cursor), never just from
 					// having it in the bag. heldMatches checks the carried item.
@@ -1027,7 +1148,7 @@ func (g *Game) setupParisCallbacks() {
 								{speaker: "Pierre", text: "Mon Dieu! Is zat a fresh baguette from Madame Poulain?"},
 								{speaker: "Pink Panther", text: "It can be yours, Pierre. I need a favor."},
 								{speaker: "Pierre", text: "Bread is good, mon ami, but it is so... dry."},
-								{speaker: "Pierre", text: "Bring me a spread — beurre or confiture — and we can talk press passes."},
+								{speaker: "Pierre", text: "Bring me a spread - beurre or confiture - and we can talk press passes."},
 							}, func() {
 								game.inv.giveItemTo("Baguette", "pierre")
 								pierre.hintState = 1
@@ -1035,116 +1156,181 @@ func (g *Game) setupParisCallbacks() {
 									{speaker: "Pierre", text: "Still waiting on zat spread, mon ami. Beurre or confiture, anything."},
 								}
 								pierre.altDialogRequiresItem = "Confiture"
-							}
+							}, &handOff{item: "Baguette"}
 					}
 					// Stage 2: PP brings the spread.
 					if pierre.hintState == 1 && heldMatches("Confiture") {
 						return []dialogEntry{
-								{speaker: "Pierre", text: "Magnifique! Strawberries from ze south — perfect with my baguette."},
-								{speaker: "Pierre", text: "Here, ze press pass — Claude owes me a favor anyway."},
-								{speaker: "Pink Panther", text: "Bon appétit, Pierre."},
+								{speaker: "Pierre", text: "Magnifique! Strawberries from ze south - perfect with my baguette."},
+								{speaker: "Pierre", text: "Here, ze press pass - Claude owes me a favor anyway."},
+								{speaker: "Pink Panther", text: "Bon appetit, Pierre."},
 							}, func() {
+								// §8b: the confiture hand-over now plays pre-dialog
+								// (PR#1); Pierre's press pass comes back AFTER his
+								// "here, ze press pass" line.
+								game.player.playOneShot("receive_item", 1.0, nil)
 								game.inv.giveItemTo("Confiture", "pierre")
 								if item := game.items.createItem("press_pass"); item != nil {
 									game.inv.addItem(item)
 								}
 								pierre.hintState = 2
-								// "The Pigeon Critic" (2026-06-10): the next chat after
-								// the trade becomes Pierre's crumbs ask, and his altDialog
-								// pivots to the Baguette Heel hand-over.
-								pierre.dialog = pierrePigeonAskDialog
-								pierre.altDialogRequiresItem = "Baguette Heel"
-								pierre.altDialogFunc = func() ([]dialogEntry, func()) {
-									// Favor first (user 2026-06-10): after the
-									// baguette + confiture, Pierre owes PP one —
-									// he whistles the pigeons off the flower pot
-									// so PP can grab Camille's pencil.
-									if camilleAsked && !pencilTaken && !pigeonsCleared {
-										return pierrePencilFavorDialog, func() {
-											pigeonsCleared = true
-											if ps, ok := game.sceneMgr.scenes["paris_street"]; ok {
-												for _, fi := range ps.floorItems {
-													if fi.name == "Charcoal Pencil" {
-														tex, w, h := engine.SafeTextureFromPNGKeyed(game.renderer, "assets/images/locations/paris/props/flower_pot_pencil.png")
-														if tex != nil {
-															fi.tex = tex
-															fi.srcW = w
-															fi.srcH = h
-														}
-														break
-													}
-												}
-											}
-										}
-									}
-									if !pigeonAsked || pigeonDone || !heldMatches("Baguette Heel") {
-										return nil, nil
-									}
-									return pierrePigeonLandDialog, func() {
-										// Sequence the two one-shots: playOneShotAnim REPLACES the
-										// active anim, so calling pigeon+give back to back skipped
-										// the pigeon entirely. Pigeon lands first (while PP plays
-										// his grab), then Pierre hands the portrait over when PP's
-										// grab completes (§PR2).
-										pierre.playOneShotAnim("pigeon", 1.2)
-										game.player.playOneShot("receive_item", 1.0, func() {
-											pierre.playOneShotAnim("give", 1.0)
-										})
-										game.inv.giveItemTo("Baguette Heel", "pierre")
-										if item := game.items.createItem("mini_portrait"); item != nil {
-											game.inv.addItem(item)
-										}
-										pigeonDone = true
-										pierre.dialog = pierrePigeonDoneDialog
-										pierre.altDialogFunc = nil
-										pierre.altDialogRequiresItem = ""
-									}
-								}
-							}
+								// Reorder (2026-06-12): Pierre is done questing after
+								// the press pass - he just points PP at the Louvre. The
+								// flower-pot pigeon is now handled by Madame Margaux,
+								// the pigeon lady across the street (PP brings HER the
+								// heel), so Pierre no longer takes it.
+								pierre.dialog = pierreArtistPostDialog
+								pierre.altDialogFunc = nil
+								pierre.altDialogRequiresItem = ""
+							}, &handOff{item: "Confiture"}
 					}
-					return nil, nil
+					return nil, nil, nil
+				}
+			case "Madame Margaux":
+				// PR (2026-06-12): the pigeon lady lures the flower-pot guard
+				// pigeon off when PP brings her the day-old Baguette Heel.
+				// Gated on camilleAsked (so it only matters once Camille has
+				// sent PP after the pencil) and !pigeonsCleared.
+				margaux := n
+				margaux.onDialogEnd = func() { margaux.dialog = pigeonLadyPostDialog }
+				margaux.altDialogRequiresHeld = true
+				margaux.altDialogRequiresItem = "Baguette Heel"
+				margaux.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+					held := game.inv.heldItem
+					if !camilleAsked || pigeonsCleared ||
+						held == nil || held.name != "Baguette Heel" {
+						return nil, nil, nil
+					}
+					return pigeonLadyHeelDialog, func() {
+						// §8b: the heel hand-over plays pre-dialog (PR#1); she
+						// scatters it and the pot pigeon flutters off.
+						game.inv.giveItemTo("Baguette Heel", "pigeon_lady")
+						margaux.playOneShotAnim("give", 1.4)
+						clearPotPigeon()
+						margaux.dialog = pigeonLadyPostDialog
+						margaux.altDialogFunc = nil
+						margaux.altDialogRequiresHeld = false
+						margaux.altDialogRequiresItem = ""
+					}, &handOff{item: "Baguette Heel"}
+				}
+				// 2026-06-15 #5: give Margaux the SAME walk-to-the-line + recede
+				// click choreography as Pierre (user: "act in the same way with
+				// move to the line"). PP walks up onto the street line, recedes
+				// into the mid-distance toward her, then the heel hand-off / her
+				// dialog plays. Held-item clicks route through onClickOverride too
+				// (see HandleClick), so this covers both the bare chat and the
+				// heel hand-over. Mirrors pierre.onClickOverride above.
+				margaux.onClickOverride = func() {
+					if game.player == nil || game.dialog == nil {
+						return
+					}
+					talk := func() {
+						game.player.state = stateTalking
+						// Margaux stands to PP's LEFT (PP walks in to her right),
+						// so face left so the side-talk frames play.
+						game.player.facingLeft = true
+						game.player.dir = dirLeft
+						releaseRecede := func() {
+							game.player.state = stateIdle
+							game.player.holdRecede()
+						}
+						if margaux.altDialogFunc != nil {
+							entries, cb, ho := margaux.altDialogFunc()
+							if entries != nil {
+								game.inv.heldItem = nil
+								start := func() {
+									game.dialog.startDialogWithCallback(entries, func() {
+										if cb != nil {
+											cb()
+										}
+										releaseRecede()
+									})
+								}
+								if ho != nil {
+									game.player.playHandOff(margaux, ho, start)
+								} else {
+									start()
+								}
+								return
+							}
+						}
+						game.dialog.startDialogWithCallback(margaux.dialog, func() {
+							margaux.dialog = pigeonLadyPostDialog
+							releaseRecede()
+						})
+					}
+					// Already lined up + receded from a prior click -> talk in
+					// place (no jump back), same guard as Pierre (#12).
+					if game.player.recedeHeld {
+						talk()
+						return
+					}
+					game.player.walkToAndDo(688, 458, func() {
+						game.player.playRecede(1.0, 0.65, 50, talk)
+					})
 				}
 			case "Nicolas":
 				// "Camille and the Sold-Out Postcard" street hop: once
 				// Camille asks about her lost pencil, Nicolas's lens knows
 				// exactly where it rolled.
 				nicolas := n
-				nicolas.altDialogFunc = func() ([]dialogEntry, func()) {
+				nicolas.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					if camilleAsked && !pencilTaken {
-						return nicolasPencilHintDialog, nil
+						return nicolasPencilHintDialog, nil, nil
 					}
-					return nil, nil
+					return nil, nil, nil
 				}
 			case "Claude":
-				// Quest step 3: press pass → museum ticket. Claude waves PP
-				// past the queue and hands over the ticket that opens the
-				// Louvre entrance hotspot.
+				// PR#24 (2026-06-12): the press pass was a silent key (the gate
+				// just checked ownership), so it felt stuck in the bag. Now PP
+				// HANDS it to Claude, who waves him in - that sets louvreUnlocked
+				// and consumes the pass. The Louvre hotspot checks the flag.
 				claude := n
 				claude.onDialogEnd = func() {
 					claude.dialog = gendarmePostDialog
 				}
-				// User playtest #37: collapsed the Press Pass and Museum Ticket
-				// into ONE credential. Claude no longer trades a separate ticket
-				// (PP was ending up shuffling two items for one gate). The Press
-				// Pass IS the museum credential; the Louvre gate below checks for
-				// it directly, and Claude is just the flavour gendarme at the door.
+				claude.altDialogRequiresHeld = true
+				claude.altDialogRequiresItem = "Press Pass"
+				claude.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+					if louvreUnlocked || !(game.inv.heldItem != nil && game.inv.heldItem.name == "Press Pass") {
+						return nil, nil, nil
+					}
+					return claudePressPassDialog, func() {
+						game.inv.giveItemTo("Press Pass", "claude") // consumed at the door
+						louvreUnlocked = true
+						claude.dialog = gendarmePostDialog
+						claude.altDialogFunc = nil
+						claude.altDialogRequiresHeld = false
+						claude.altDialogRequiresItem = ""
+					}, &handOff{item: "Press Pass"}
+				}
 			}
 		}
 
-		// Louvre entrance gate: needs the Press Pass (#37 — single credential).
+		// Louvre entrance gate: needs the Press Pass (#37 - single credential).
 		for i := range parisStreet.hotspots {
 			if parisStreet.hotspots[i].name != "To the Louvre" {
 				continue
 			}
 			h := &parisStreet.hotspots[i]
 			h.onInteract = func() bool {
-				if !game.inv.hasItem("Press Pass") {
+				// PR#24: opens only after PP HANDS Claude the pass (louvreUnlocked).
+				if !louvreUnlocked {
+					if game.inv.hasItem("Press Pass") {
+						game.dialog.startDialog([]dialogEntry{
+							{speaker: "Gendarme", text: "A press pass, oui? Bring it HERE, monsieur - hand it to me and I wave you straight in."},
+						})
+						return true
+					}
 					game.dialog.startDialog([]dialogEntry{
 						{speaker: "Gendarme", text: "Monsieur, ze museum is press and pass-holders only today."},
-						{speaker: "Gendarme", text: "Find a press pass — Pierre ze painter knows everyone."},
+						{speaker: "Gendarme", text: "Find a press pass - Pierre ze painter knows everyone."},
 					})
 					return true
 				}
+				// 2026-06-11 #34: single walk-in path - PP enters from the
+				// left tunnel via entryWalkPending (no double-spawn flicker).
+				game.sceneMgr.entryWalkPending = true
 				game.sceneMgr.transitionTo("paris_louvre", game.player)
 				return true
 			}
@@ -1161,7 +1347,7 @@ func (g *Game) setupParisCallbacks() {
 				postcardGiven := false
 				curator.onDialogEnd = func() {
 					// 2026-06-10 rework: the postcards are SOLD OUT, so the
-					// first chat no longer hands the postcard over — Beaumont
+					// first chat no longer hands the postcard over - Beaumont
 					// asks for Camille's replica sketch and the postcard moves
 					// to the sketch trade below. The flag flip also guards
 					// against the old duplicate-postcard repeat-chat bug.
@@ -1170,7 +1356,7 @@ func (g *Game) setupParisCallbacks() {
 						curator.dialog = curatorWaitingDialog
 					}
 				}
-				curator.altDialogFunc = func() ([]dialogEntry, func()) {
+				curator.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					// Sketch → postcard trade (main chain resumes here).
 					if held := game.inv.heldItem; held != nil && held.name == "Camille's Sketch" && !postcardGiven {
 						return curatorSketchTradeDialog, func() {
@@ -1188,11 +1374,12 @@ func (g *Game) setupParisCallbacks() {
 							game.vars.SetBool(ScopeGame, VarParisDone, true)
 							game.travelMap.setUnlocked("camp_entrance", true)
 							// #34: the camp turns "wrong" the moment the France
-							// trip is behind us — darken the grounds bg so the
+							// trip is behind us - darken the grounds bg so the
 							// return landing reads as ominous.
 							game.applyCampMood()
-							// §PR3: Beaumont visibly hands over the postcard while
-							// PP takes it, then the homeward monologue plays.
+							// §PR3: the sketch hand-over plays pre-dialog (PR#1).
+							// After Beaumont's lines he visibly hands the postcard
+							// back, PP takes it, then the homeward monologue plays.
 							curator.playOneShotAnim("give", 1.0)
 							game.player.playOneShot("receive_item", 1.0, func() {
 								game.dialog.startDialog([]dialogEntry{
@@ -1200,7 +1387,7 @@ func (g *Game) setupParisCallbacks() {
 									{speaker: "Pink Panther", text: "I should head back outside, then take the travel map home to camp. Marcus needs this."},
 								})
 							})
-						}
+						}, &handOff{item: "Camille's Sketch"}
 					}
 					// Grandson souvenir loop: once Poulain has asked, Beaumont
 					// signs a second postcard (the new prints have arrived).
@@ -1212,9 +1399,9 @@ func (g *Game) setupParisCallbacks() {
 							if item := game.items.createItem("postcard_grandson"); item != nil {
 								game.inv.addItem(item)
 							}
-						}
+						}, nil
 					}
-					return nil, nil
+					return nil, nil, nil
 				}
 				break
 			}
@@ -1235,13 +1422,21 @@ func (g *Game) setupParisCallbacks() {
 	// freebie. PP has to find Madame Poulain's lost rolling pin on the bakery
 	// floor, hand it over, and only then does she trade the baguette.
 	if bakery, ok := g.sceneMgr.scenes["paris_bakery"]; ok {
-		// #27: cafe patrons sit at the FRONT tables, so they must draw IN
-		// FRONT of PP even though their seated bounds sit high on screen.
-		// Give them a large draw-foot-Y; Poulain keeps her natural (low)
-		// foot-Y so she renders BEHIND PP (behind the counter).
+		// Playtest 2026-06-15 (#7/#10): PP "disappeared" after talking to ANY
+		// bakery NPC. Root cause: PR#12 moved PP's stand row up into the aisle
+		// (foot ~470-480), which lands him squarely in the seated patrons' bust
+		// band (~y352-487). The old #27 hack forced every patron to draw IN
+		// FRONT of PP (drawFootY=900), so a patron bust overlapping PP's spot
+		// swallowed him whole. PP's foot in this scene is always >=470 (minY
+		// 200) and always ABOVE the tablecloth line (~y536+), so drawing PP in
+		// FRONT of the seated patrons keeps him visible without putting him "on
+		// the cloths." Pin the patrons' sort-foot BELOW PP's minimum foot so the
+		// roaming protagonist always renders on top of the seated regulars.
+		// (Poulain keeps her natural low foot-Y → she renders BEHIND PP, behind
+		// the counter, which already read correctly.)
 		for _, bn := range bakery.npcs {
 			if bn.name != "Madame Poulain" {
-				bn.drawFootY = 900
+				bn.drawFootY = 400
 			}
 		}
 		game := g
@@ -1255,7 +1450,7 @@ func (g *Game) setupParisCallbacks() {
 					// User playtest #26: do NOT shrink on exit. PP has already
 					// walked to the door (the hotspot walks him to its centre
 					// before onInteract fires), so just transition out at full
-					// size — no recede.
+					// size - no recede.
 					game.sceneMgr.transitionTo("paris_street", game.player)
 					return true
 				}
@@ -1272,7 +1467,7 @@ func (g *Game) setupParisCallbacks() {
 				// Subsequent clicks while the rolling pin is still missing
 				// just replay the lost-pin beat (no flag flip yet).
 				// User 2026-05-20: once Marcus is healed, Poulain pivots
-				// to the next anchor beat — asking for a Louvre postcard
+				// to the next anchor beat - asking for a Louvre postcard
 				// for her grandson. Wires the next chapter so the bakery
 				// stops looping the trade-complete line forever.
 				if game.marcusHealed && !souvenirArmed {
@@ -1290,33 +1485,36 @@ func (g *Game) setupParisCallbacks() {
 			// becomes the renewable source the side quests draw on. Branches
 			// are checked in priority order; nil falls through to her regular
 			// dialog. Armed by the trade callback below.
-			poulainCounterService := func() ([]dialogEntry, func()) {
+			poulainCounterService := func() ([]dialogEntry, func(), *handOff) {
 				// 1) Signed postcard hand-in (grandson souvenir loop).
 				if held := game.inv.heldItem; held != nil && held.name == "Signed Postcard" && !souvenirDone {
 					return bakeryWomanSouvenirThanksDialog, func() {
 						game.inv.giveItemTo("Signed Postcard", "madame_poulain")
 						souvenirDone = true
 						poulain.dialog = bakeryWomanSouvenirDoneDialog
-					}
+					}, &handOff{item: "Signed Postcard"}
 				}
-				// 2) Day-old heel for Pierre's pigeon critics.
-				if pigeonAsked && !pigeonDone && !game.inv.hasItem("Baguette Heel") {
+				// 2) Day-old heel to shoo the flower-pot pigeon (PR#29). Offered
+				// once Camille has sent PP after the pencil, until Pierre has
+				// shooed the bird.
+				if camilleAsked && !pigeonsCleared && !game.inv.hasItem("Baguette Heel") {
 					return bakeryWomanHeelDialog, func() {
 						// SKILL.md §8b: hand-overs are animated on both sides.
 						// Her give sheet + PP's baguette receive are the closest
-						// existing sheets (it IS a baguette end).
-						poulain.playOneShotAnim("give", 1.0)
-						game.player.playOneShot("get_baguette", 1.0, nil)
+						// existing sheets (it IS a baguette end). PR#18: face PP.
+						poulain.flipped = (game.player.x + playerDstW/2) < float64(poulain.bounds.X+poulain.bounds.W/2)
+						poulain.playOneShotAnim("give", 1.5)
+						game.player.playOneShot("get_baguette", 1.6, nil)
 						if item := game.items.createItem("baguette_heel"); item != nil {
 							game.inv.addItem(item)
 						}
-					}
+					}, nil
 				}
 				// 3) Coffee refill while Henri's confiture trade is still
-				//    pending — keeps the chain unstuckable if the first cup
+				//    pending - keeps the chain unstuckable if the first cup
 				//    goes cold (or a later quest borrows it).
 				henriWaiting := bakeryHenri != nil && bakeryHenri.altDialogFunc != nil
-				if !game.inv.hasItem("Café au Lait") && henriWaiting {
+				if !game.inv.hasItem("Cafe au Lait") && henriWaiting {
 					return bakeryWomanCoffeeRefillDialog, func() {
 						// §8b: she hands the cup over the counter; PP takes it.
 						poulain.playOneShotAnim("give", 1.0)
@@ -1324,34 +1522,39 @@ func (g *Game) setupParisCallbacks() {
 						if item := game.items.createItem("cafe_au_lait"); item != nil {
 							game.inv.addItem(item)
 						}
-					}
+					}, nil
 				}
-				return nil, nil
+				return nil, nil, nil
 			}
 			poulain.altDialogRequiresItem = "Rolling Pin"
 			// User playtest #25: PP must actively hand the rolling pin over (pull
-			// it from the bag and drop it on Poulain) — having it in the bag is no
+			// it from the bag and drop it on Poulain) - having it in the bag is no
 			// longer enough. Clicking her without holding it just replays her
 			// lost-pin line, which is the nudge to bring it.
 			poulain.altDialogRequiresHeld = true
-			poulain.altDialogFunc = func() ([]dialogEntry, func()) {
+			poulain.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 				if !game.inv.hasItem("Rolling Pin") || game.inv.hasItem("Baguette") {
-					return nil, nil
+					return nil, nil, nil
 				}
 				// User 2026-05-21: Poulain now hands out BOTH a Baguette and
-				// a Café au Lait when PP returns her rolling pin. The coffee
-				// is for Henri (who's been waiting in the café corner), and
+				// a Cafe au Lait when PP returns her rolling pin. The coffee
+				// is for Henri (who's been waiting in the cafe corner), and
 				// the baguette goes to Pierre via the new 2-stage trade.
 				return []dialogEntry{
 						{speaker: "Pink Panther", text: "I think I found what you were looking for, madame."},
 						{speaker: "Madame Poulain", text: "My rolling pin! Bless you, monsieur!"},
-						{speaker: "Madame Poulain", text: "Here — your baguette, fresh and warm."},
-						{speaker: "Madame Poulain", text: "And take zis café au lait too. Henri has been waiting for one all morning — give it to him for me, oui?"},
+						{speaker: "Madame Poulain", text: "Here - your baguette, fresh and warm."},
+						{speaker: "Madame Poulain", text: "And take zis cafe au lait too. Henri has been waiting for one all morning - give it to him for me, oui?"},
 					}, func() {
-						// #25: Poulain hands the baguette over the counter and PP
+						// #25: the pin hand-over plays pre-dialog (PR#1). After her
+						// lines Poulain hands the baguette over the counter and PP
 						// takes it (cosmetic hand-off; items still land in the bag).
-						poulain.playOneShotAnim("give", 1.0)
-						game.player.playOneShot("get_baguette", 1.0, nil)
+						// PR#18: face her toward PP so she hands it in his direction
+						// (her sheet draws facing right; flip if PP is to her left).
+						poulain.flipped = (game.player.x + playerDstW/2) < float64(poulain.bounds.X+poulain.bounds.W/2)
+						// PR#17/#19: slow the hand-over so it reads (was 1.0, jumpy).
+						poulain.playOneShotAnim("give", 1.5)
+						game.player.playOneShot("get_baguette", 1.6, nil)
 						game.inv.giveItemTo("Rolling Pin", "madame_poulain")
 						if b := game.items.createItem("baguette"); b != nil {
 							game.inv.addItem(b)
@@ -1366,13 +1569,13 @@ func (g *Game) setupParisCallbacks() {
 						poulain.altDialogRequiresItem = ""
 						poulain.altDialogRequiresHeld = false
 						poulain.altDialogFunc = poulainCounterService
-					}
+					}, &handOff{item: "Rolling Pin"}
 			}
 			break
 		}
 
-		// --- Henri (café patron): coffee → confiture trade ---
-		// User 2026-05-21: PP brings the Café au Lait → Henri trades it for
+		// --- Henri (cafe patron): coffee → confiture trade ---
+		// User 2026-05-21: PP brings the Cafe au Lait → Henri trades it for
 		// homemade Confiture from his bag. The confiture is then traded to
 		// Pierre (stage 2 of his 2-stage quest) for the press pass.
 		for _, n := range bakery.npcs {
@@ -1384,26 +1587,29 @@ func (g *Game) setupParisCallbacks() {
 				// While PP doesn't have the coffee yet, just replay the
 				// "fetch me a coffee" beat on subsequent clicks.
 			}
-			// User playtest #25: PP must hand the café au lait over (held),
+			// User playtest #25: PP must hand the cafe au lait over (held),
 			// not just carry it, before Henri trades the confiture.
 			henri.altDialogRequiresHeld = true
-			henri.altDialogRequiresItem = "Café au Lait"
-			henri.altDialogFunc = func() ([]dialogEntry, func()) {
-				if !game.inv.hasItem("Café au Lait") || game.inv.hasItem("Confiture") {
-					return nil, nil
+			henri.altDialogRequiresItem = "Cafe au Lait"
+			henri.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+				if !game.inv.hasItem("Cafe au Lait") || game.inv.hasItem("Confiture") {
+					return nil, nil, nil
 				}
 				return henriCoffeeTradeDialog, func() {
-					// #25: Henri digs the jam from his bag and PP takes it.
-					henri.playOneShotAnim("give_jam", 1.0)
-					game.player.playOneShot("get_jam", 1.0, nil)
-					game.inv.giveItemTo("Café au Lait", "monsieur_henri")
+					// #25: the coffee hand-over plays pre-dialog (PR#1). After his
+					// lines Henri digs the jam from his bag and PP takes it.
+					// PR#20: 1.0s read as a flicker ("get confiture not working") -
+					// slow both so the jam hand-over actually plays.
+					henri.playOneShotAnim("give_jam", 1.5)
+					game.player.playOneShot("get_jam", 1.6, nil)
+					game.inv.giveItemTo("Cafe au Lait", "monsieur_henri")
 					if c := game.items.createItem("confiture"); c != nil {
 						game.inv.addItem(c)
 					}
 					henri.dialog = henriPostTradeDialog
 					henri.altDialogFunc = nil
 					henri.altDialogRequiresItem = ""
-				}
+				}, &handOff{item: "Cafe au Lait"}
 			}
 			break
 		}
@@ -1422,21 +1628,31 @@ func (g *Game) setupParisCallbacks() {
 			}
 			camille := n
 			// User 2026-06-10: the sketching one-shot
-			// (npc_camille_sketching.png) already exists — show it off on her
+			// (npc_camille_sketching.png) already exists - show it off on her
 			// first regular chat, so she's seen mid-sketch from the start.
 			sketchShown := false
 			camille.onDialogEnd = func() {
 				if !sketchShown {
 					sketchShown = true
-					camille.playOneShotAnim("sketch", 1.0)
+					camille.playOneShotAnimHold("sketch", 2.0, 1.0) // PR#14: slower + hold the reveal
 				}
 			}
-			camille.altDialogFunc = func() ([]dialogEntry, func()) {
+			camille.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+				held := game.inv.heldItem
+				holdingPencil := held != nil && held.name == "Charcoal Pencil"
+				// (debug print removed 2026-06-12 - the hover probe calls this
+				// func every frame, so it spammed the console on mere hover)
 				// Branch 1: pencil hand-over → she sketches the Room 7 replica.
-				if held := game.inv.heldItem; held != nil && held.name == "Charcoal Pencil" && sketchAsked && !sketchDone {
+				// Gate on EITHER quest flag (2026-06-11 #38: the story dead-ended
+				// here - accept the pencil as soon as anyone asked for it).
+				if holdingPencil && (sketchAsked || camilleAsked) && !sketchDone {
 					return camilleSketchTradeDialog, func() {
-						// §8b: her sketching one-shot is the give; PP takes the page.
-						camille.playOneShotAnim("sketch", 1.0)
+						// §8b: the pencil hand-over plays pre-dialog (PR#1). Her
+						// "watch zis" lines play, then the sketching one-shot is
+						// the give-back and PP takes the page.
+						// PR#14: slower (2.6s) + hold the reveal 1.2s so the
+						// finished sketch is readable before she reverts to idle.
+						camille.playOneShotAnimHold("sketch", 2.6, 1.2)
 						game.player.playOneShot("receive_item", 1.0, nil)
 						game.inv.giveItemTo("Charcoal Pencil", "camille")
 						if item := game.items.createItem("camille_sketch"); item != nil {
@@ -1444,16 +1660,32 @@ func (g *Game) setupParisCallbacks() {
 						}
 						sketchDone = true
 						camille.dialog = camillePostSketchDialog
-					}
+					}, &handOff{item: "Charcoal Pencil"}
+				}
+				// Holding the pencil before the quest is active - never silent.
+				if holdingPencil && !sketchDone {
+					return []dialogEntry{
+						{speaker: "Mademoiselle Camille", text: "Zat is a fine charcoal pencil, monsieur. Mine is still lost out on ze street somewhere..."},
+					}, nil, nil
+				}
+				// Pencil in the BAG but not on the cursor: nudge the hand-over
+				// motion instead of replaying the stale "ask Nicolas" reminder
+				// (2026-06-11 #38 - this read as the quest being stuck).
+				if camilleAsked && !sketchDone && game.inv.hasItem("Charcoal Pencil") {
+					return []dialogEntry{
+						{speaker: "Mademoiselle Camille", text: "You FOUND it?! Don't tease an artist, monsieur - take it from your bag and hand it here!"},
+					}, nil, nil
 				}
 				// Branch 2: Beaumont has asked → Camille's lost-pencil ask.
 				if sketchAsked && !camilleAsked {
 					return camilleSketchAskDialog, func() {
 						camilleAsked = true
 						camille.dialog = camillePencilReminderDialog
-					}
+						// PR#23: her dismay one-shot (§CAM2) plays on the ask.
+						camille.playOneShotAnimHold("lost_pencil", 2.0, 0.8)
+					}, nil
 				}
-				return nil, nil
+				return nil, nil, nil
 			}
 			break
 		}
@@ -1461,12 +1693,73 @@ func (g *Game) setupParisCallbacks() {
 	}
 
 	// User playtest #14: the rolling pin is HIDDEN inside the bicycle basket on
-	// the cobblestone street (~539,644). Its sprite is NOT drawn — the player
+	// the cobblestone street (~539,644). Its sprite is NOT drawn - the player
 	// only discovers it because the cursor changes to the grab hand over the
 	// basket. Picking it up plays PP's dedicated "grab rolling pin" animation
 	// (reach into basket, lift overhead) before the item lands in the bag.
 	if parisStreet, ok := g.sceneMgr.scenes["paris_street"]; ok {
 		game := g
+
+		// 2026-06-12 #12 (encounter v2): clicking the biker no longer brakes
+		// him on the spot. PP walks into the lane AHEAD of him while he keeps
+		// riding; the moment the bike reaches PP it brakes (dedicated braked
+		// pose), PP flinches (stateReacting holds through the dialog because
+		// player.update is gated on !dialog.active), the apology plays, and
+		// he rides on when it closes. If PP can't reach the lane in time the
+		// wrap-around brings the biker back and the bump fires on his next
+		// pass. bikerBumpCheck runs from Game.Update while on paris_street.
+		for _, amb := range parisStreet.ambientSprites {
+			a := amb
+			bumpArmed := false
+			a.onClick = func() {
+				if bumpArmed || a.paused {
+					return
+				}
+				bumpArmed = true
+				// Meet point: ahead of the biker in his lane, clamped
+				// on-screen. walkToAndDo's y is PP's CENTER - a.y minus half
+				// the player box plants PP's feet on the biker's ground line.
+				meetX := a.x + 320
+				if meetX < 300 {
+					meetX = 300
+				} else if meetX > 1150 {
+					meetX = 1150
+				}
+				game.player.walkToAndDo(meetX, a.y-float64(playerDstH)/2, nil)
+			}
+			g.bikerBumpCheck = func() {
+				if !bumpArmed || a.paused || game.dialog.active || game.seqPlayer.IsPlaying() {
+					return
+				}
+				px, py := game.player.footCenter()
+				if afAbs(float64(py)-a.y) > 70 {
+					return // PP hasn't reached the lane yet
+				}
+				if afAbs(a.x-float64(px)) > 50 {
+					return
+				}
+				bumpArmed = false
+				a.paused = true // brake: ambient update holds the braked pose
+				game.player.moving = false
+				// PR#9: PP recoils/hops backward from the bump. Plays the
+				// dedicated jump-back one-shot if its art has landed, else the
+				// generic flinch. Dialog starts after the recoil.
+				bikerLines := []dialogEntry{
+					{speaker: "Biker", text: "Pardon, pardon! Sorry monsieur, but you are blocking ze way!"},
+					{speaker: "Pink Panther", text: "My apologies. Nice bell."},
+					{speaker: "Biker", text: "Merci! Bonne journee!"},
+				}
+				if game.player.hasOneShot("jump_back") {
+					game.player.playOneShot("jump_back", 0.7, func() {
+						game.dialog.startDialogWithCallback(bikerLines, func() { a.paused = false })
+					})
+				} else {
+					game.player.playAction(stateReacting, nil)
+					game.dialog.startDialogWithCallback(bikerLines, func() { a.paused = false })
+				}
+			}
+		}
+
 		pin := &floorItem{
 			// Hidden: no sprite drawn. Bounds cover the bike basket so the
 			// grab cursor lights up there.
@@ -1474,6 +1767,9 @@ func (g *Game) setupParisCallbacks() {
 			name:    "Rolling Pin",
 			visible: false,
 			hidden:  true,
+			// 2026-06-12 #15: stand to the basket's RIGHT so the grab anim's
+			// reach hand lands inside the basket instead of past it.
+			standRight: true,
 			onPickup: func() {
 				// Mark it taken so it can't be re-grabbed, then play the grab
 				// one-shot and only add the item + dialog when the anim ends.
@@ -1486,14 +1782,20 @@ func (g *Game) setupParisCallbacks() {
 						}
 					}
 				}
+				// PR#16: PP stands to the basket's RIGHT (standRight) so he must
+				// face LEFT to reach into it - flip 180 from the default. The
+				// grab_rolling_pin draw offset (drawScaled) also drops him down so
+				// the reach lands in the basket.
+				game.player.facingLeft = true
+				game.player.dir = dirLeft
 				game.player.playOneShot("grab_rolling_pin", 1.0, func() {
 					if item := game.items.createItem("rolling_pin"); item != nil {
 						game.inv.addItem(item)
 					}
-					game.dialog.startDialog([]dialogEntry{
-						{speaker: "Pink Panther", text: "A wooden rolling pin... tucked away in someone's bike basket."},
-						{speaker: "Pink Panther", text: "Madame Poulain at the bakery might be missing this."},
-					})
+					// 2026-06-11 #18 / SKILL.md §8c: pickup lines are GENERIC -
+					// the "who needs this" hint lives in NPC dialogs instead.
+					game.dialog.startDialog(genericPickupDialog(
+						"A wooden rolling pin, tucked away in someone's bike basket."))
 				})
 			},
 		}
@@ -1505,13 +1807,14 @@ func (g *Game) setupParisCallbacks() {
 		// Pierre repays his favor, then the art swaps to the exposed-pencil state.
 		potTex, potW, potH := engine.SafeTextureFromPNGKeyed(g.renderer, "assets/images/locations/paris/props/flower_pot_pigeon.png")
 		pencil := &floorItem{
-			// x 1085-1155 sits in the gap between Nicolas (ends ~1070) and
-			// Claude (starts 1180) so the grab cursor doesn't fight their
-			// dialog hit rects.
+			// 2026-06-15 #14: user moved the pot to bottom-centre (947,745) and
+			// asked to fit its size to the new (closer, front-of-scene) spot.
+			// Bottom-centre 947 with W=130 → X=882; bottom 745 with H=145 → Y=600.
+			// Bigger than the old 85x95 since it now sits at the front.
 			tex:     potTex,
 			srcW:    potW,
 			srcH:    potH,
-			bounds:  sdl.Rect{X: 1085, Y: 585, W: 85, H: 95},
+			bounds:  sdl.Rect{X: 882, Y: 600, W: 130, H: 145},
 			name:    "Charcoal Pencil",
 			visible: true,
 			hidden:  true,
@@ -1527,8 +1830,8 @@ func (g *Game) setupParisCallbacks() {
 						return
 					}
 					game.dialog.startDialog([]dialogEntry{
-						{speaker: "Pink Panther", text: "Ow! These pigeons guard Camille's pencil like the crown jewels — just like Nicolas said."},
-						{speaker: "Pink Panther", text: "Pierre speaks fluent pigeon... and after that baguette and confiture, he owes me a favor."},
+						{speaker: "Pink Panther", text: "Ow! This pigeon guards Camille's pencil like the crown jewels."},
+						{speaker: "Pink Panther", text: "Madame Margaux, the pigeon lady across the street, can coax it off - I'll bring her a day-old baguette heel from Madame Poulain."},
 					})
 					return
 				}
@@ -1541,14 +1844,19 @@ func (g *Game) setupParisCallbacks() {
 						}
 					}
 				}
-				game.player.playAction(stateGrabbing, func() {
+				// 2026-06-15 #19/#20: was playAction(stateGrabbing, ...) which
+				// player.update kills before the callback runs, so the pencil was
+				// never added and PP appeared stuck. Use the guaranteed "grab"
+				// one-shot (fires onDone even if art is missing) like the rolling pin.
+				game.player.playOneShot("grab", 1.0, func() {
 					pencilTaken = true
 					if item := game.items.createItem("charcoal_pencil"); item != nil {
 						game.inv.addItem(item)
 					}
-					game.dialog.startDialog([]dialogEntry{
-						{speaker: "Pink Panther", text: "Camille's lucky pencil — merci, Pierre. The pigeons drive a hard bargain."},
-					})
+					// §8c: generic pickup line - Camille's own dialog already
+					// nudges where the pencil goes.
+					game.dialog.startDialog(genericPickupDialog(
+						"A charcoal pencil, rescued from the pigeons."))
 				})
 			},
 		}
@@ -1569,10 +1877,10 @@ func (g *Game) setupTravelHotspots() {
 					game.player.playRecede(1.6, 0.35, 80, func() {
 						if grounds, ok := game.sceneMgr.scenes["camp_grounds"]; ok {
 							// Destination PP walks IN to (on the path), not the
-							// far-left edge — he enters from off-screen left and
+							// far-left edge - he enters from off-screen left and
 							// strolls onto the path (#2).
 							// User playtest #35: on arrival PP walks in from the
-							// off-screen left to ~(245, 652) — foot at y≈652 means a
+							// off-screen left to ~(245, 652) - foot at y≈652 means a
 							// top-left spawnY of 652-270=382. (Was overshooting to
 							// ~861,781.) Starting values; tune against the path in-game.
 							grounds.spawnX = 245
@@ -1592,14 +1900,53 @@ func (g *Game) setupTravelHotspots() {
 
 	// User 2026-05-21: removed the "Camp Chilly Wa Wa Air" left-arrow
 	// hotspot from camp_entrance. Travel is opened by clicking the
-	// Travel Map item in the inventory (see g.inv.onSelectItem above) —
+	// Travel Map item in the inventory (see g.inv.onSelectItem above) -
 	// the scene-edge hotspot was a stale leftover from the pre-2026-04-26
 	// design and showed up as a confusing left arrow on first entry to
 	// the game.
 }
 
+// openTravelMap is THE way to open the travel globe (user 2026-06-12): PP
+// first plays the §PM1 "pull_map" one-shot - pulling the map out of his
+// invisible hip pocket - and the map screen opens when it finishes. Every
+// open path (inventory item click, held-item drop, the city street
+// hotspots) routes through here so the beat is consistent. While the §PM1
+// sheet isn't on disk, playOneShot fires the callback immediately, so the
+// map still opens (just without the flourish).
+func (g *Game) openTravelMap(fromScene string) {
+	g.player.playOneShot("pull_map", 0.9, func() {
+		g.travelMap.Show(fromScene)
+	})
+}
+
 func (g *Game) Close() {
 	g.audio.close()
+}
+
+// walkToFloorItem (2026-06-12 #14/#15, SKILL.md §8c): PP walks to a stand
+// point BESIDE a floor item instead of on top of it - feet aligned with the
+// item's base, to its LEFT by default (standRight flips sides for grabs whose
+// reach hand points the other way). On arrival he squares up to the camera
+// (dir front) so blocked/observation lines play facing the player, then the
+// pickup action runs.
+func (g *Game) walkToFloorItem(fi *floorItem, action func()) {
+	itemCX := float64(fi.bounds.X) + float64(fi.bounds.W)/2
+	itemBase := float64(fi.bounds.Y) + float64(fi.bounds.H)
+	offset := float64(fi.bounds.W)/2 + 80
+	standX := itemCX - offset
+	if fi.standRight {
+		standX = itemCX + offset
+	}
+	plr := g.player
+	// walkToAndDo's y is PP's CENTER: itemBase minus half the player box
+	// plants his feet on the item's base line (scene minY/maxY still clamp).
+	plr.walkToAndDo(standX, itemBase-float64(playerDstH)/2, func() {
+		plr.dir = dirDown
+		plr.facingLeft = false
+		if action != nil {
+			action()
+		}
+	})
 }
 
 func (g *Game) HandleClick(x, y int32) {
@@ -1613,7 +1960,7 @@ func (g *Game) HandleClick(x, y int32) {
 		}
 	}
 
-	// Pause menu sits above everything — click routes here first.
+	// Pause menu sits above everything - click routes here first.
 	if g.menuHandleClick(x, y) {
 		return
 	}
@@ -1701,7 +2048,7 @@ func (g *Game) HandleClick(x, y int32) {
 	//       logic below. User 2026-05-24: previously this block toggled
 	//       inventory for ANY click on PP, which meant trying to deliver a
 	//       flower to Lily standing next to PP would hit PP's rect first
-	//       and re-pocket the item — making the give-item beat
+	//       and re-pocket the item - making the give-item beat
 	//       undeliverable ("can't move item to Lily, game stack").
 	if g.player.containsPoint(x, y) && g.inv.heldItem == nil {
 		if len(g.inv.items) > 0 {
@@ -1712,22 +2059,32 @@ func (g *Game) HandleClick(x, y int32) {
 
 	if g.inv.heldItem != nil {
 		if clickedNPC := scene.checkNPCClick(x, y); clickedNPC != nil {
+			// #33 (2026-06-11): NPCs with a scripted click flow (Pierre's
+			// walk-up + recede choreography) must get it for hand-overs too -
+			// the inline path below skipped the choreography, so giving Pierre
+			// the baguette traded at full size with no shrink. The override
+			// reads g.inv.heldItem itself; giveItemTo clears it on a match.
+			if clickedNPC.onClickOverride != nil {
+				ov := clickedNPC.onClickOverride
+				g.player.interactTarget = nil
+				ov()
+				return
+			}
 			if clickedNPC.altDialogFunc != nil &&
 				(clickedNPC.altDialogRequiresItem == "" ||
 					g.inv.heldItem.name == clickedNPC.altDialogRequiresItem) {
-				entries, cb := clickedNPC.altDialogFunc()
+				entries, cb, ho := clickedNPC.altDialogFunc()
 				if entries != nil {
 					g.inv.heldItem = nil
 					ds := g.dialog
 					target := clickedNPC
-					// #10: walk to the talk spot and fire the hand-off there —
+					// #10: walk to the talk spot and fire the hand-off there -
 					// walkToTalkPos runs the callback whether PP walks in or is
 					// already adjacent, so giving Lily the flower works standing
 					// next to her (the old walkToAndInteract snapped and opened
 					// her NORMAL dialog when close, skipping this hand-off).
 					g.player.interactTarget = nil
 					g.player.walkToTalkPos(target, func() {
-						g.player.state = stateTalking
 						targetCenter := float64(target.bounds.X + target.bounds.W/2)
 						playerCenter := g.player.x + playerDstW/2
 						g.player.facingLeft = playerCenter > targetCenter
@@ -1736,16 +2093,13 @@ func (g *Game) HandleClick(x, y int32) {
 						} else {
 							g.player.dir = dirRight
 						}
-						// Same face-toward-PP flip used by startNPCDialog — the
+						// Same face-toward-PP flip used by startNPCDialog - the
 						// drag-onto-NPC path runs its own dialog start so it
 						// needs its own snapshot/restore. Otherwise dropping
 						// Lily's flower would leave her still facing into the
 						// flower patch even though she's mid-conversation.
 						target.preTalkFlipped = target.flipped
 						target.flipped = playerCenter < targetCenter
-						if len(target.talkGrid) > 0 {
-							target.setAnimState(npcAnimTalk)
-						}
 						wrappedCb := func() {
 							if len(target.talkGrid) > 0 {
 								target.setAnimState(npcAnimIdle)
@@ -1755,7 +2109,33 @@ func (g *Game) HandleClick(x, y int32) {
 								cb()
 							}
 						}
-						ds.startDialogWithCallback(entries, wrappedCb)
+						// PR#1 (2026-06-12): the item changes hands BEFORE the
+						// text - PP's give one-shot, the NPC's receive one-shot,
+						// then talk state + dialog.
+						start := func() {
+							// PR#1 (#1): re-assert side-facing at the moment talk
+							// begins. The give one-shot runs for ~2s after the
+							// arrival callback set dir, and can leave it stale so
+							// the front-talk sheet played (user: "PP talks front
+							// not side after giving Lily the flower").
+							pc := g.player.x + playerDstW/2
+							g.player.facingLeft = pc > targetCenter
+							if g.player.facingLeft {
+								g.player.dir = dirLeft
+							} else {
+								g.player.dir = dirRight
+							}
+							g.player.state = stateTalking
+							if len(target.talkGrid) > 0 {
+								target.setAnimState(npcAnimTalk)
+							}
+							ds.startDialogWithCallback(entries, wrappedCb)
+						}
+						if ho != nil {
+							g.player.playHandOff(target, ho, start)
+						} else {
+							start()
+						}
 					})
 					return
 				}
@@ -1764,11 +2144,33 @@ func (g *Game) HandleClick(x, y int32) {
 		// Travel Map: drop anywhere to open globe
 		if g.inv.heldItem.name == "Travel Map" {
 			g.inv.heldItem = nil
-			g.travelMap.Show(g.sceneMgr.currentName)
+			g.openTravelMap(g.sceneMgr.currentName)
+			return
+		}
+		// PR#27: clicking a FLOOR ITEM (e.g. the flower pot) while holding
+		// something used to fall through and silently pocket the held item
+		// ("clicked the pot with the pencil and it just disappeared"). Keep the
+		// item on the cursor instead - a floor-item click isn't a hand-over.
+		if scene.checkFloorItemClick(x, y) != nil {
 			return
 		}
 		g.inv.heldItem = nil
 		return
+	}
+
+	// Clickable ambient sprites (2026-06-11 #16: the crossing biker). Checked
+	// before floor items / NPCs - he's a moving target, the click should win.
+	// 2026-06-12 #12: no auto-pause here anymore - the encounter handler
+	// decides when the biker actually brakes (he keeps riding until he
+	// reaches PP in the lane).
+	for _, amb := range scene.ambientSprites {
+		if amb.containsPoint(x, y) && !amb.paused {
+			cb := amb.onClick
+			if cb != nil {
+				cb()
+			}
+			return
+		}
 	}
 
 	// User 2026-05-22: floor items BEFORE npcs so a pickable item that sits
@@ -1777,15 +2179,11 @@ func (g *Game) HandleClick(x, y int32) {
 	// priority in ui.go.
 	if fi := scene.checkFloorItemClick(x, y); fi != nil {
 		fiLocal := fi
-		g.player.walkToAndDo(
-			float64(fiLocal.bounds.X+fiLocal.bounds.W/2),
-			float64(fiLocal.bounds.Y+fiLocal.bounds.H/2),
-			func() {
-				if fiLocal.onPickup != nil {
-					fiLocal.onPickup()
-				}
-			},
-		)
+		g.walkToFloorItem(fiLocal, func() {
+			if fiLocal.onPickup != nil {
+				fiLocal.onPickup()
+			}
+		})
 		return
 	}
 	if npc := scene.checkNPCClick(x, y); npc != nil {
@@ -1797,6 +2195,13 @@ func (g *Game) HandleClick(x, y int32) {
 		return
 	}
 	if hs := scene.checkHotspotClick(x, y); hs != nil {
+		// PR#25: if PP is frozen at Pierre's shrunk depth (recedeHeld), a
+		// hotspot click used walkToAndDo and marched him off still tiny.
+		// Release the recede first so he grows back to full size as he heads
+		// to the exit ("move to the main road, then walk left").
+		if g.player.recedeHeld {
+			g.player.releaseRecedeSmooth(0.5)
+		}
 		if hs.onInteract != nil {
 			hsLocal := hs
 			g.player.walkToAndDo(
@@ -1826,6 +2231,16 @@ func (g *Game) HandleClick(x, y int32) {
 			})
 			return
 		}
+		// User 2026-06-12 (#10): the office exit used walkToExit(downRight)
+		// which marched PP diagonally off-screen from wherever he stood.
+		// Route him along the painted path instead: mid-path on the main
+		// trail first, then down the right-hand trail, then transition.
+		if g.sceneMgr.currentName == "camp_grounds" && tgt == "camp_office" {
+			plr.walkToAndDo(900, 483, func() {
+				plr.walkToAndDo(1050, 640, onArrival)
+			})
+			return
+		}
 		if hs.arrow == arrowLeft || hs.arrow == arrowRight || hs.arrow == arrowDown || hs.arrow == arrowUp || hs.arrow == arrowDownRight {
 			plr.walkToExit(hs.arrow, onArrival)
 		} else {
@@ -1846,6 +2261,9 @@ func (g *Game) HandleClick(x, y int32) {
 	}
 	tx, ty := float64(x), float64(y)
 	tx, ty = scene.snapToPath(tx, ty)
+	if g.walkDbg != nil {
+		g.walkDbg.recordSnap(tx, ty)
+	}
 	g.player.setTarget(tx, ty)
 }
 
@@ -1859,12 +2277,21 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 		}
 		return
 	}
-	// F2 toggles the click probe — a dev diagnostic that, while active,
+	// F2 toggles the click probe - a dev diagnostic that, while active,
 	// turns clicks into alpha-channel hit-tests on NPC sprites and drops
 	// a green/red marker at the click point. See click_probe.go.
 	if scancode == sdl.SCANCODE_F2 {
 		if g.clickProbe != nil {
 			g.clickProbe.toggle()
+		}
+		return
+	}
+	// F3 toggles the walk-debug overlay - draws walkSegments, PP's foot
+	// point and the last snapped click target with live coordinates, so the
+	// painted-path tuning is done with exact numbers (2026-06-12 #2).
+	if scancode == sdl.SCANCODE_F3 {
+		if g.walkDbg != nil {
+			g.walkDbg.toggle()
 		}
 		return
 	}
@@ -1890,7 +2317,7 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 		return
 	}
 	if g.menu.Visible() {
-		// Menu is modal — eat other input until it closes.
+		// Menu is modal - eat other input until it closes.
 		return
 	}
 	if scancode == sdl.SCANCODE_M && !g.dialog.active && !g.sceneMgr.transitioning {
@@ -1918,7 +2345,7 @@ func (g *Game) Update(dt float64, mx, my int32) {
 	// sequences and save files can treat VarStore as the source of truth.
 	g.syncFlagsToVars()
 
-	// Pause menu freezes game state — only update its own hover and return.
+	// Pause menu freezes game state - only update its own hover and return.
 	if g.menu.Visible() {
 		g.menu.UpdateHover(mx, my)
 		g.ui.cursor = cursorNormal
@@ -1926,13 +2353,15 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		return
 	}
 
-	// User 2026-05-22: inventory is modal — freeze the world while it's
+	// User 2026-05-22: inventory is modal - freeze the world while it's
 	// open. Only the inventory's own ticks (pulse animation in inv.draw)
 	// keep running. Clicks behind are already blocked at HandleClick:1235.
 	// This stops NPC frames, floor-item visibility, ambient effects, and
 	// scene-trigger checks from advancing while the player browses items.
 	if g.inv.open {
-		g.ui.cursor = cursorNormal
+		// 2026-06-11 #4: inside the open bag every click is an inventory
+		// action (page/pick) - show the pink POINT hand, not the arrow.
+		g.ui.cursor = cursorPoint
 		g.ui.hoverName = ""
 		return
 	}
@@ -1993,7 +2422,7 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		}
 	}
 
-	// User 2026-05-22: Day-2 monologue removed from here — it was duplicating
+	// User 2026-05-22: Day-2 monologue removed from here - it was duplicating
 	// the wake-up dialog the night_bedtime.json sequence already plays at
 	// lines 38-42 (the "*yawn* What a night..." beat). Now plays exactly
 	// once, in-context, at the end of the sequence.
@@ -2004,19 +2433,27 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		g.dialog.startDialog(parisStreetMonologue)
 	}
 
+	// Biker bump encounter (2026-06-12 #12): armed by clicking the biker,
+	// fires when he reaches PP standing in his lane.
+	if g.bikerBumpCheck != nil && g.sceneMgr.currentName == "paris_street" && !g.sceneMgr.transitioning {
+		g.bikerBumpCheck()
+	}
+
 	// Museum first arrival (#28/#30): the first time PP reaches the Louvre, walk
 	// him in from the tunnel on the left, then play the arrival monologue. Gated
 	// on a VarStore flag so it fires exactly once (survives save/load).
-	if !g.vars.GetBool(ScopeGame, VarMonologueLouvre) && g.sceneMgr.currentName == "paris_louvre" && !g.sceneMgr.transitioning {
+	// 2026-06-11 #34: the old playWalkIn here raced the transition spawn -
+	// PP popped on at the spawn point, vanished off-screen, then walked in
+	// again. The Louvre gate hotspot now sets entryWalkPending (the single
+	// walk-in path, scene.go), so this block only waits for that walk to
+	// finish and plays the monologue once.
+	if !g.vars.GetBool(ScopeGame, VarMonologueLouvre) && g.sceneMgr.currentName == "paris_louvre" &&
+		!g.sceneMgr.transitioning && !g.player.moving && !g.dialog.active {
 		g.vars.SetBool(ScopeGame, VarMonologueLouvre, true)
-		startX := -float64(playerDstW) // off-screen left = the tunnel mouth
-		endX := scene.spawnX - float64(playerDstW)/2
-		g.player.playWalkIn(startX, endX, g.player.y, 2.2, func() {
-			g.player.state = stateTalking
-			g.player.dir = dirRight
-			g.dialog.startDialogWithCallback(louvreArrivalMonologue, func() {
-				g.player.state = stateIdle
-			})
+		g.player.state = stateTalking
+		g.player.dir = dirRight
+		g.dialog.startDialogWithCallback(louvreArrivalMonologue, func() {
+			g.player.state = stateIdle
 		})
 	}
 
@@ -2156,7 +2593,7 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 
 	// Draw campfire animation in night scene. User 2026-05-19: scale
 	// 2.5 → 1.5 (fire was reading way too large vs the camp bg), anchor
-	// (622, 573) → (646, 598) — slight shift right + down so the fire
+	// (622, 573) → (646, 598) - slight shift right + down so the fire
 	// sits on the actual fire-pit position in the camp_night.png art.
 	if g.sceneMgr.currentName == "camp_night" && len(g.campfireFrames) > 0 {
 		f := g.campfireFrames[g.campfireFrameIdx%len(g.campfireFrames)]
@@ -2198,12 +2635,16 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 				// User 2026-06-02 (#14): nudge sleeping/waking PP down to 650 so
 				// he rests lower by the fire instead of floating above it.
 				// User playtest #12: place the sleeping/waking PP at (337,565)
-				// (centre-X 337, foot/bottom at Y=565) — "just like before". The
+				// (centre-X 337, foot/bottom at Y=565) - "just like before". The
 				// wake-up draws at the exact same spot so there's no jump.
 				// Size by PP's pixels (opaque box), not the tall 192x1024 cell.
 				// One shared scale (tallest wake-up pose ~220px) for both sleeping
 				// and waking, anchored bottom-centre at (337,565). (#12)
-				const sleepStandH = 220.0
+				// 2026-06-12 #7: match PP's RENDERED idle height - drawScaled
+				// fills only playerRenderFillFrac (0.78) of playerDstH, so
+				// scaling the sleep pose to the raw 270 made it ~28% bigger
+				// than the idle next to it.
+				const sleepStandH = float64(playerDstH) * playerRenderFillFrac
 				refH := 0.0
 				for _, wf := range g.wakingFrames {
 					if float64(wf.oh) > refH {
@@ -2261,6 +2702,9 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	// markers stay visible even if the menu was just used to jump scenes.
 	if g.clickProbe != nil {
 		g.clickProbe.draw(renderer, g.ui.font)
+	}
+	if g.walkDbg != nil {
+		g.walkDbg.draw(renderer, g.ui.font, g.sceneMgr.current(), g.player)
 	}
 	g.ui.drawCursor(renderer, g.mouseX, g.mouseY)
 }

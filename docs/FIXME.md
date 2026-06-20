@@ -14,6 +14,466 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### Reported (2026-06-15 — playtest batch, 20 items; grouped fix sweep)
+
+**Group 1 — camp office / Higgins:**
+- [x] #2/#3 office double-click + stuck at entrance + "standing on air" — the
+  scene had no walk-Y range (min/max 0 → engine defaults 265-395, foot max
+  665), so walking up to Higgins raised PP's 270px body-box into the top wall
+  blocker {500,0,900,360}; that shoved him back to the entrance and fired a
+  false blocker-arrival (eating the 1st click), and kept his feet floating.
+  FIX: `camp_office.json` minY/maxY → 420/520 (foot 690-790, the floor strip),
+  so PP stays below the wall blocker and the desk blocker gives a clean
+  first-click arrival on the floor.
+
+**Group 2 — bakery PP "disappears":**
+- [x] #7/#10 PP vanished after talking to ANY bakery NPC — PR#12 moved PP's
+  stand row up into the seated patrons' bust band (foot ~470-480), and the old
+  #27 hack forced every patron to draw IN FRONT of PP (drawFootY=900), so a
+  patron bust swallowed him. FIX (game.go bakery setup): patrons' sort-foot
+  pinned BELOW PP's min foot (900→400) so the roaming PP always renders on top
+  of the seated regulars; he's always above the tablecloth line so this doesn't
+  put him "on the cloths." Poulain unchanged (renders behind the counter).
+
+**Group 3 — Paris give / trade flow:**
+- [x] #11/#17 baguette / heel "bring broken" — Pierre & Margaux register only a
+  `give` reach one-shot (no `receive_*`/`receive_item`), so `playHandOff`'s NPC
+  half was an instant no-op. FIX (player.playHandOff): fall back to the NPC's
+  `give` reach when no receive anim exists, so they visibly take the item.
+- [x] #12 confiture → PP "jumped back to the main road" — Pierre's
+  onClickOverride re-ran walkToAndDo(690,510)+recede on every click; on the
+  stage-2 click PP (already recede-held at Pierre, logical y drifted up by the
+  recede) walked back down to the road then re-receded. FIX: factored the
+  conversation into `talk()`; when `recedeHeld` is already set, talk in place.
+- [x] #13 press pass → Claude played a "pick" anim + PP stuck shrunk — (a)
+  `giveAnimKeyForItem` had no "Press Pass" → fell to the generic grab/"pick"
+  frames; mapped it to the flat-paper `postcard` give sheet. (b) recedeHeld
+  (carried from Pierre) was only released by setTarget, so walking to Claude
+  left PP shrunk; `walkToAndInteract` + `walkToTalkPos` now releaseRecedeSmooth
+  when recedeHeld, so walking to any other NPC grows PP back.
+
+**Group 4 — pencil pickup + inventory softlock:**
+- [x] #19/#20 pencil never entered the inventory + PP stuck — the pot pencil
+  used `playAction(stateGrabbing, cb)`, but player.update force-resets any
+  non-talking state to idle every frame while !moving, killing the grab before
+  its add-item callback fired. FIX: register a generic `grab` one-shot and use
+  the guaranteed `playOneShot` (like the rolling pin) so the item is always
+  added and PP returns to idle.
+- [x] #19 inventory L/R arrow bands opened the (single) Travel Map — with one
+  item the paging bands were skipped and any in-oval click selected it. FIX
+  (inventory.handleClick): clicks in the arrow bands are consumed without
+  selecting even when len(items)==1.
+- [x] #9 rolling-pin pickup — dropped the grab pose further (offset 30→60).
+
+**Group 5 — positioning (bottom-centre dots, Poulain convention):**
+- [x] #5 Margaux → (559,593) bottom-centre → bounds {520,448,78,145}; given
+  Pierre-style walk-to-the-line + recede onClickOverride ("act the same way").
+- [x] #8 Camille nudged left + down → {470,384,...} (test bound synced).
+- [x] #14 flower pot → bottom-centre (947,745) → {882,600,130,145} (bigger,
+  front of scene); pigeon fly-up spawn moved to match (1118,590 → 947,610).
+- [x] #15/#16 Beaumont brought forward + bigger ({546,450,150,290} →
+  {520,490,165,315}) and gallery characterScale 0.7→0.85 so the meeting reads
+  closer; PP foot-aligns beside him. (TUNE in playtest.)
+- [x] #4 biker lane restored "as was before" (755 → 735).
+
+**Group 6 — sprite backgrounds:**
+- [x] #4-bg biker + #18 flying pigeon — both sheets already ship TRANSPARENT
+  and load raw (SpriteGridFromPNGRaw), so the in-game box is gone; verify.
+- [x] #1 PP pick-flower "looks at the other side" — the grab_flower sheet leans
+  LEFT toward a daisy on PP's left, but walkToFloorItem stood PP to the item's
+  LEFT (daisy on his right) so he bent away. FIX: flower floor item now
+  `standRight: true` (PP stands to the daisy's right, daisy on his left).
+- [x] #1 PP pick-flower outer white halo — `gridFramesConnected` keyed at tol 8
+  (soft fringe); added `gridFramesConnectedTol` and load grab_flower at tol 36.
+- [ ] #1 PP pick-flower BLINKING + white between hand/body — `jitter_audit`:
+  CONTENT CROSSES 3 cell borders (14-16px) and the detached frame-1 daisy slices
+  as an 82px sliver, so gap-detection mis-aligns the 6 frames → flicker; the
+  arm/body gap is an enclosed white pocket the edge key can't reach. Engine
+  can't fix either - re-roll queued at EXTRA_PROMPTS §FLOWER-PICK (even
+  self-contained frames, ≥15px gaps, anchor-lock, daisy in reach, open arm gap).
+- [ ] #6 Pierre "missing board" frame — white-on-white chroma-key (his easel
+  canvas is pure white → the edge key eats it where it abuts the bg). Re-roll
+  queued at EXTRA_PROMPTS §PIERRE-BOARD (cream canvas).
+
+### SOFTLOCK FIX (2026-06-12) — couldn't travel to Jerusalem (or any city) after a heal
+
+- [x] Root cause: a travel pin must be **unlocked AND relevant** to be a
+  travel target; each city's `relevantWhen` reads `vars.game.<id>_unlocked`,
+  but those vars (jerusalem/tokyo/rome/rio/mexico) were **defined and never
+  written** - heal callbacks only called `travelMap.setUnlocked(scene)` (the
+  pin's bool), not the var. So after healing Marcus the Jerusalem pin lit up
+  but couldn't be clicked to travel. (Paris worked only because
+  `paris_unlocked` is synced from a Go bool.) FIX: `setUnlocked` now also
+  mirrors `vars.game.<id>_unlocked`, so every existing unlock call fixes its
+  city at once. Live flow Paris→camp→Marcus→Jerusalem verified reachable.
+  NOTE: save/load only RE-restores the paris/jerusalem/camp pins on load
+  (saveload.go) - tokyo+ pins aren't re-applied after a reload yet (pre-
+  existing gap, separate from this live-flow fix).
+
+### Reported (2026-06-12 — Marcus strange idle: day + night variants)
+
+- [x] User split the strange idle into `npc_marcus_strange_idle_day.png` +
+  `_night.png`. Wired: newRoomMarcus loads both (`strangeIdleDay/Night`);
+  new `npc.setStrangeVariant(night)` picks the one matching the cabin bg.
+  Hooked into `setSceneAltBG` (the single bg chokepoint) so the night
+  cutscene → night variant and Day-2 → day variant (Day-2's bg swap now
+  routes through setSceneAltBG too). Both sheets gap-detect clean; manifests
+  + content-grid test updated. strange_alt stays the periodic fidget.
+
+### Reported (2026-06-12 — pigeon lady becomes a quest NPC)
+
+- [x] Street felt too crowded + the pot pigeon needed an owner → the
+  background "crumb lady" ambient is promoted to a real NPC, **Madame
+  Margaux**, on the LEFT of paris_street (Pierre-sized, x=230 foot 645). PP
+  now brings the day-old Baguette Heel to HER (not Pierre); she lures the
+  flower-pot pigeon off (shared `clearPotPigeon`: swaps the pot to the
+  pencil + flaps the pigeon up via the existing fly-up sheet). Pierre is
+  done questing after the press pass. The two street-density ambient stubs
+  (accordion + crumb lady) were dropped. Camille's hint + the pot dialog now
+  point to Madame Margaux. Art queued at §PIGEON-LADY (idle required, give
+  optional) — wired + clickable now, invisible until the sheet lands.
+
+### Reported (2026-06-12 — 30-item playtest batch; plan replicated-dazzling-parrot)
+
+**Batch A — scene/position/speed:**
+- [x] #4 office blocker added {278,588,131,101}.
+- [x] #11 Poulain → bottom-center dot (726,318): bounds {641,173,170,145}.
+- [x] #12 patrons "stand on the table" — approachYOverride 405→210 + bakery
+  minY 400→200 so PP stands in the aisle BEHIND the front tables. F3-verify.
+- [x] #14 Camille talk 0.10→0.22, bounds up (370→352); sketch one-shot now
+  uses a HOLD (new npc.playOneShotAnimHold) so the reveal lingers ~1.2s.
+- [x] #15 Bernard/Yvette talk 0.10→0.20; Bernard down (355→372).
+- [x] #22 Beaumont too small under the 0.7 louvre scale → bounds H 205→290
+  (foot kept), W→150.
+- [x] #10 Pierre shrink (84×156→78×145) + CONNECTED key (was losing colour).
+
+**Batch B — anim mechanics:**
+- [x] #1 Lily flower → PP faced front: re-assert side-facing `dir` at the
+  moment talk begins (give one-shot was leaving it stale). Fixes all gives.
+- [x] #3 wake-up idle jump: resume-snap aligned to the wake render spot
+  (foot 565, was 650).
+- [x] #16 rolling-pin pickup: face PP left (toward basket) + drop the grab
+  pose 30px so the reach lands in the basket.
+- [x] #17/#19 give "broken"/coffee "too fast" — were TIMING (sheets are
+  fine): playHandOff give 0.8→1.3 + per-give override.
+- [x] #20 get confiture "not working" — get_jam/give_jam 1.0→1.6/1.5.
+- [x] #21 give-to-Pierre: held item rode the cursor through the dialog
+  (onClickOverride skipped the heldItem clear) → cleared at hand-off start;
+  PP walked to foot 790 not Pierre's 645 → walk to centre-Y 510 (foot 645).
+- [x] #25 walk-left stayed shrunk: a hotspot click now releases the recede
+  so PP grows heading to the exit.
+- [x] #18 Poulain handed items away from PP → face her toward PP on give.
+
+**Batch C — Paris quest-chain reorder (full, softlock-proof):**
+- [x] #24 Press pass is no longer a silent key — PP HANDS it to Claude, who
+  consumes it and sets `louvreUnlocked`; the Louvre hotspot checks the flag.
+- [x] #27/#29 Pot pigeon: leaves when PP gives Pierre the day-old Baguette
+  Heel (Camille's hint → Poulain gives heel → Pierre shoos). Pot swaps to
+  the pencil; an optional fly-up ambient (new ambientFlyOff kind) plays when
+  its art lands (§AMB-PIGEON). Clicking the pot while holding an item no
+  longer pockets it ("disappeared").
+- [x] #30 softlock: chain is now strictly linear (rolling pin→Poulain→Henri→
+  Pierre→press pass→Claude→Beaumont→Camille pencil via heel→sketch→postcard);
+  no out-of-order pencil/sketch/portrait. The old easel pigeon-critic +
+  mini_portrait beat is removed (the heel's job is the pot pigeon now).
+
+**Batch D — color-key:**
+- [x] #13 Henri tol 8→16 (clears his fringe; measured +3.4k bg px).
+- [x] #7 biker tol→40 (shaves the edge halo). Interior white pockets inside
+  the bike frame can't be reached by the edge key → transparent-bg re-roll
+  queued (§BK2).
+
+**Batch E — art:**
+- [x] #9 PP jump-back — `PP jump back.png` LANDED, fitted (gap-detect OK),
+  wired into the biker bump.
+- [x] #23 Camille lost-pencil — `cafe_patron_camille_lostpencil.png` LANDED,
+  wired as her `lost_pencil` one-shot (plays on the ask).
+- [x] #26 Pierre idle/talk — split sheets LANDED, loader prefers them.
+- [x] #18 Poulain give — re-rolled to a baguette, LANDED + code flip.
+- [x] #7 biker transparent bg — LANDED, loader switched to raw.
+- [ ] #2 Marcus room strange idle — standalone re-roll prompt now at
+  §MARCUS-STRANGE-IDLE (no smiling, no touching figures). Interim still in
+  place (strange_alt frantic frames + connected key) until it lands.
+- [x] "Marcus too scary" pullback (2026-06-12) — dialled the freak-out back
+  to eerie-sad, not horror: tremble amplitude/frequency halved (1.1/0.9 at
+  ~20Hz, was 2.2/1.8 at ~43Hz), strange-idle cadence 0.14→0.26, punctuation
+  2s→4.5s, and §MARCUS-STRANGE-IDLE prompt rewritten to "a little off /
+  faraway" (no bloodshot eyes, sweat, manic shaking).
+- [x] "Marcus MORE strange/freak out" (2026-06-12) — code intensity boost,
+  art-independent: (1) NERVOUS TREMBLE on all strange NPCs (buzzing summed
+  sines on the drawn rect; hit-test stays steady); (2) Marcus's strange idle
+  IS the frantic scribbling loop now (not the smiling sheet); (3) faster
+  manic cadence (new per-NPC strangeIdleFrameSpeed=0.14) + freakout
+  punctuation every 2s (was 5). §MARCUS-STRANGE-IDLE prompt rewritten to a
+  genuinely disturbing freak-out (wide bloodshot eyes, trembling, manic
+  scribbling, jolting frames).
+- [x] #29 pigeon fly-up — DONE: reuses the existing transparent
+  `npc_pierre_pigeon_lands.png` (a perched→takeoff strip) via the
+  newAmbientPigeonFlyUp ambient. Plays when Pierre shoos the pot pigeon.
+- [x] #5 map pull — already wired (§PM1, art pending).
+
+### Reported (2026-06-12 — travel-map pocket beat)
+
+- [ ] Pull-map-from-pocket sprite before the map screen — WIRED, art
+  pending: every map-open path (Travel Map inventory click, held-item
+  drop, all six city street hotspots) now routes through
+  `Game.openTravelMap`, which plays a `pull_map` one-shot (~0.9s) and
+  opens the globe when it finishes. Until the §PM1 sheet lands on
+  `assets/images/player/PP pull map.png`, the one-shot no-ops and the map
+  opens immediately as before. Prompt queued at EXTRA_PROMPTS §PM1.
+
+### Retro plan items 3-5 (2026-06-12, from the retro_frames design review)
+
+- [x] #3 Character presence — paris_street `characterScale` 1.0 → 1.15
+  (PTP reference shows PP at ~35-40% of screen height; ours was ~26%).
+  Scales PP + NPCs together so the tuned relative sizes survive; feet stay
+  planted (both draw paths anchor at the foot line). EXPERIMENT on this
+  scene only — if it reads right in playtest, roll out per scene.
+- [x] #4 Iris wipe transition — scene changes now use a retro iris instead
+  of the plain alpha fade: opaque black with a soft-edged circular hole
+  that closes onto PP on the way out and reopens from his spawn in the new
+  scene (scene.go: newIrisMask + drawTransition; fadeAlpha doubles as wipe
+  progress, plain fade kept as fallback if the mask texture fails).
+- [ ] #5 Street density — two flavor ambients pre-wired crow-style on
+  paris_street (accordion player at x≈120, pigeon lady at x≈1080): they
+  auto-appear when their art lands, prompts queued at §AMB5/§AMB6 (renamed
+  from AMB3/4 — those numbers were already the camp crow / biker). New
+  generic `newAmbientSway` constructor for any future walk-line flavor
+  figure.
+
+### Reported (2026-06-12 — night playtest: Marcus night, walk front, Higgins hand, bakery)
+
+- [x] Marcus strange idle (night) smiling + losing colors — FIXED both
+  sides: strange_alt now loads with the CONNECTED key (the global key ate
+  ~7.5k px of eye whites/teeth/highlights), and the relaxed/smiling poses
+  (frames 5-7 per row) are filtered out so only the frantic scribbling
+  beats loop. Art-side fix stays §JIT-MARCUS (prompt updated: "never
+  smiling in any frame").
+- [x] Marcus talk blinks one frame — root cause: the gap slicer gave two
+  stray specks their own cells (52×39 and 49×45 vs ~150×365 real frames)
+  and the size normalizer blew them up. New `dropMalformedFrames` filter in
+  framesFromGrid drops RUNT frames (<40% of median content height) and
+  DOUBLE-FIGURE frames (>1.9× median width) on every NPC sheet load — this
+  also covers Bernard/Camille below.
+- [ ] PP walk front is not a walk cycle (16 near-identical standing poses,
+  PP "glides" when walking toward camera) — regen queued at §JIT-WALKFRONT.
+- [x] Office Higgins loses color in his hand — his pale hand/skin
+  highlights sit inside the connected key's tol-8 band, so the background
+  flood bled into them. Office idle/talk/give-map now load at tol 4
+  (measured +12k opaque px on idle; background still keys cleanly).
+- [x] Biker — user: "brilliant". No action.
+- [x] Poulain reposition — Y=319 per playtest (waist-cut foot 464).
+- [x] Poulain work alt-idle never played while idle — ENGINE BUG: the
+  alt-idle restore check (frame 0 + tiny timer) was also true on the tick
+  right after the swap-in, so every alt cycle ended after ONE invisible
+  tick (this also silently killed Marcus's freakout punctuation). Restore
+  now waits for the cycle to actually advance past frame 0 and wrap.
+- [x] Camille + Bernard idle sprites broken — interim fix shipped via the
+  `dropMalformedFrames` filter (kills the 3px/7px sliver "blink" frames and
+  the two-patrons-in-one-cell frames). Real fix stays the §JIT-PATRONS
+  re-roll.
+
+### Reported (2026-06-12 — PR batch: give ordering + give flower + Marcus strange idle + office spawn)
+
+- [x] PR#1 give-item order (EVERY give in the game) — FIXED: the alt-dialog
+  contract now returns an optional `handOff` third value; every dispatcher
+  (held-item click, walk-up startNPCDialog, Pierre's onClickOverride) plays
+  the hand-over BEFORE the text: PP's `give_<item>` one-shot → the NPC's
+  receive one-shot (`npcAnim` override / `receive_<key>` / `receive_item`,
+  skipped if absent) → talk anim + dialog. The end-callbacks keep only the
+  hand-BACK anims (NPC give + PP receive) and state flips. New plumbing:
+  `npc.playOneShotAnimThen` (one-shot with completion callback),
+  `player.playHandOff`, `giveAnimKeyForItem`. Wired for: Lily's flower, all
+  five kid anchor heals, Pierre baguette/confiture/heel, Poulain rolling
+  pin + signed postcard, Henri coffee, Camille pencil, Beaumont sketch.
+- [x] PR#2 give flower not smooth — TWO causes. Engine side FIXED: the
+  player one-shot loader used the GLOBAL white color key, which erased the
+  white parts of the handed items (daisy petals, coffee cup, postcard,
+  sketch page) - the give/receive/grab-flower one-shots now load with the
+  edge-connected key (recovers ~4.6k petal px on the give sheet, ~7.7k on
+  grab). Art side QUEUED: frames 1-2 and 4-6 of the sheet are
+  near-duplicates (a 4-pose hand-over) - re-roll at §JIT-GIVEFLOWER.
+- [x] PR#3 Marcus strange idle swapping frames — root cause: it's the ONE
+  Marcus sheet that fails gap detection (figures touch; content crosses the
+  proportional borders by up to 335px), so the fallback slices two
+  Marcuses into each frame. INTERIM FIX: strange idle plays the clean
+  strange_alt sheet (same freakout-sketching vibe). Real fix stays the
+  §JIT-MARCUS re-roll.
+- [x] PR#4 PP office spawn — moved down (spawnY 480 → 505, feet ~775) so he
+  stands on the open floor instead of floating at the door/radiator line.
+
+### Reported (2026-06-12 — follow-up: bakery sizes + PP vs Paris adults)
+
+- [x] Bakery patrons huge / only heads visible — FIXED (root cause of #16's
+  bad tune): measured the sheets — every cafe-patron sheet is a WAIST-UP
+  BUST (~190×300px opaque content, no legs, no chair), not full-body art.
+  Filling a 240px full-body box and then cropping to the top 55% rendered
+  a ~2×-life-size head and nothing else. Fix (npc.go): `srcCropBottomFrac`
+  dropped from all 5 patrons; the whole bust renders at 110×135 with the
+  waist cut (bounds.Y+H) anchored at each table's cloth-top edge (left
+  ~y490, middle ~y505, right ~y500). Heads now read at standing-NPC scale.
+- [x] Madame Poulain oversized — FIXED: her sheets are the same bust
+  framing (192×227 content); a 180px bust implied a ~330px standing person
+  vs PP's rendered 211px. Bounds 170×180 → 170×145, waist-cut foot kept at
+  y=508.
+- [x] PP smaller than the Paris adults — FIXED: PP renders at
+  playerDstH 270 × fillFrac 0.78 ≈ 211px, but Colette/Nicolas/Claude filled
+  H=235 and Beaumont 240. All four → H=205 (feet kept; Y shifted down by
+  the delta), so PP now reads a touch taller than the humans, per the
+  classic look. Pierre (156, mid-distance) untouched.
+- [ ] Bernard + Camille idle sheets: two figures TOUCH → the gap slicer
+  yields a 3px sliver frame (blink) + a double-figure frame in each.
+  Re-roll queued at EXTRA_PROMPTS §JIT-PATRONS. Their talking sheets and
+  the other patrons split clean.
+
+### Reported (2026-06-12 — playtest batch #3, 17 items; plan velvety-exploring-pnueli)
+
+**Regression fixes:**
+
+- [x] #1/#3 Higgins/Jake talk ≠ idle size — FIXED: reverted the idle-grid
+  size-reference change (last PR's #30 fix); `drawScaled` normalizes each
+  state by its OWN sheet's `maxOpaqueH` again (idle/talk sheets ship at
+  different resolutions). The original #30 was a crop-path bug, fixed for
+  real below.
+- [x] #4 Marcus talk vanishing frames — FIXED: `sheet_clean` had run on the
+  RESTORED old talk sheet (art strays outside fixed cells → real body parts
+  erased). PNG restored from HEAD; all four Marcus sheets REMOVED from the
+  cleaner allowlist. Real fix stays §JIT-MARCUS (art).
+- [x] #16 bakery NPC sizes ("you must fix this!") — FIXED: the legacy seated
+  crop aspect-fit the FULL 192×1024 cell into 80×140 bounds (≈26px-wide
+  patrons). Seated crop now runs through the opaque-box pipeline: scale from
+  content height, crop the CONTENT box to its top 55%, anchor at bounds.Y.
+  Patron bounds → full-body 110×240 (visible ≈132px) — tune in playtest.
+  **SUPERSEDED same day (playtest: "huge, only heads")** — see the
+  2026-06-12 follow-up batch below.
+- [x] #7 sleeping PP bigger than idle — FIXED: `sleepStandH` now multiplies
+  by `playerRenderFillFrac` (0.78), matching the rendered idle height ~211.
+- [x] #5 Lily pre-trigger + missing give anim — FIXED: the hover probe CALLS
+  `altDialogFunc` every frame, and Lily's receive one-shot sat in the func
+  BODY → fired on hover. Moved into the returned callback (give anim chain
+  `playGive("flower")` → `receive_flower` now runs on the real handoff).
+  Camille's hover-firing debug print removed. New SKILL.md §8a rule:
+  altDialogFunc must be PURE.
+
+**Diagnosis tooling:**
+
+- [x] #2 walk line (3rd report) — built the F3 walk-debug overlay
+  (`game/walk_debug.go`): yellow walkSegments with endpoint coords, green
+  PP-foot crosshair, red last-snap marker. Walk the path with F3 on,
+  screenshot, and we set the segment coords once with real numbers.
+- [x] #6 Higgins shout (again) — ROOT CAUSE FOUND: the bellow the player
+  actually WATCHES is the pre-transition beat at camp_grounds
+  (`checkDay1Complete`) — delivered by the GROUNDS Higgins, who had no shout
+  frames, in plain talk. The camp_night shout wiring was always fine (the
+  scene + sheet verified: 8×2 gap-detects, 16 frames). FIXED: grounds
+  Higgins registers the shout sheet; the beat swaps idle+talk to shout for
+  the dialog and restores after. Duplicated "It's getting very late / NOW"
+  lines removed from night_bedtime.json (kept the campfire-only lines).
+
+**Camp / office:**
+
+- [x] #9 standing over Marcus's desk — FIXED: spawn 700→500 (spawn placement
+  bypasses blockers — that was the actual overlap) + desk blocker extended
+  left/down {850,460,380,240} → {700,430,530,270}.
+- [x] #10 office exit walked off-screen — FIXED: camp_grounds → camp_office
+  now chains waypoints (mid-path 900,483 → down-right trail 1050,640 →
+  transition) instead of `walkToExit(downRight)`.
+- [x] #11 office Higgins "a tiny up" — Y 300→290. (Speed untouched.)
+
+**Paris street:**
+
+- [x] #12 biker v2 — FIXED: halo keyed at tol 24 (new engine
+  `SpriteGridFromPNGCleanConnectedTol`); faster vx 120→190; lane 735→755;
+  encounter REDESIGNED: click → PP walks into the lane ahead, biker keeps
+  riding, brakes when he reaches PP (±50px), PP flinches (stateReacting
+  holds through the dialog), apology plays, rides on at close.
+- [x] #13 Colette talk spot still on the bike rack — FIXED: `approachRight`
+  (PP stands street-side). The previous X-nudge alone wasn't enough.
+- [x] #14/#15 floor-item stand points — FIXED: new `walkToFloorItem` helper
+  (HandleClick pickup path): PP stands BESIDE the item, feet on its base
+  line, left by default / right via new `floorItem.standRight`; faces FRONT
+  on arrival so blocked beats (pigeon pot) play to camera. Rolling pin sets
+  standRight so the reach hand lands in the basket. SKILL.md §8c addendum.
+
+**Art (user generation pass — prompts already live):**
+
+- [ ] #8 Marcus strange idle swiping — §JIT-MARCUS (straddled cells). ART.
+- [ ] #17 remaining broken last-PR sprites — the live §JIT batch: Marcus set,
+  §JIT-POULAIN idle/talk, §JIT-PP2 walk back, §JIT-JAKE strange talk,
+  §JIT-LILY, §JIT-FLOWER, §OD office talk, §NIC1-v2b Nicolas talk. After the
+  #1/#3 engine fix, re-judge in-game which still look broken — the size
+  mismatches were engine, not art.
+
+### Reported (2026-06-11 — NEW PR playtest, 39 items; plan velvety-exploring-pnueli)
+
+**Systemic fixes:**
+
+- [x] `[P0]` NPC one-shots never terminated when played standalone → NPCs
+  froze on the last give frame forever (#26 Poulain, #29 Henri, Camille
+  mid-sketch). FIXED: `npc.update` auto-ends at `oneShotDuration` elapsed.
+- [x] `[P0]` Held-item drops bypassed `onClickOverride` (#33: no shrink when
+  giving to Pierre) → routed through the override; `giveItemTo` now clears a
+  matching held item (no ghost cursor item).
+- [x] `[P0]` #38 pencil→Camille dead end: gate loosened to
+  `sketchAsked || camilleAsked`, plus never-silent branches (holding pencil
+  pre-quest = polite line; pencil in bag = "hand it here!" nudge) + a
+  `[camille]` debug print for the playtest.
+- [x] `[P1]` #28 "Caf??": the bitmap font is ASCII-only — renamed
+  `Cafe au Lait`/`Elise`, ASCII-swept ALL strings (accents + em-dashes →
+  ASCII) across game/*.go and assets/data JSONs.
+- [x] `[P1]` #12/#27/#35 talk speed vs text: office Higgins 0.20, Henri 0.20,
+  Beaumont 0.22.
+- [x] `[P1]` #30 NPC one-shot size: drawScaled's size reference now comes
+  from the IDLE grid, so talk + one-shots render at idle's size.
+- [x] `[P1]` #37 inventory icons centered by CONTENT box (engine
+  ContentBoxKeyed; bag + held cursor draw by it).
+- [x] `[P1]` #4 cursors: floor items show the GRAB (open hand); open bag +
+  PP click show the pink POINT.
+
+**Camp / office / flight:**
+
+- [x] #1 walk line rerouted through (755,470) — TUNE IN PLAYTEST.
+- [x] #2 Jake approached from his LEFT (new `approachLeft`); #3 Lily Y 440→425.
+- [x] #6/#11 pp_sleeping/pp_waking + office Higgins: Aggressive(32)→Connected
+  key (face/eye colors survive); sleeping height matched to idle (270).
+- [x] #10/#13 office Higgins re-mirrored (flipped=false) with the give-map
+  throw kept at its old orientation (new per-one-shot `oneShotFlip`); Y→300.
+- [x] #14 airplane drawn by per-frame OPAQUE BOX — no more two-row jumping.
+- [ ] #5 Higgins shout: wiring verified correct; the SHEET is one pose ×14 —
+  re-roll with the existing storyboarded prompt. ART-ONLY.
+- [ ] #7 Marcus room strange idle: known straddled sheet (§JIT-MARCUS). ART.
+- [x] #8/#24/#31 last-frame blink: trailing BLANK frames now trimmed at load
+  (`trimBlankTail`). If Bernard idle still looks broken it's art (§BRN1 then).
+
+**Paris:**
+
+- [x] #16 biker (user choice: INTERACTIVE): keyed load (no more white box),
+  rides the MAIN street (foot 735, scale 0.85), clickable → brakes +
+  "Pardon! Sorry monsieur, but you are blocking ze way!" → rides on.
+  §BK1 art landed 2026-06-11 with real alpha.
+- [x] #17 Colette X 300→335 (PP off the bike rack — tune).
+- [x] #19 Pierre walk-away: two-stage exit (down to full size, THEN to the
+  clicked point).
+- [x] #37 pigeon: now an ambient perch critter at the easel (returns every
+  morning) — playing it as Pierre's one-shot literally turned HIM into a
+  pigeon.
+- [x] #18/#33 generic pickup lines (`genericPickupDialog`, SKILL §8c) + PP
+  `give_item` one-shot wired at every hand-over (SKILL §8b, §PG1 art landed
+  2026-06-11).
+- [x] #34 museum: single walk-in via entryWalkPending (no double-spawn);
+  Beaumont moved onto PP's line (Y 359→500 — tune W/H if he reads big).
+- [x] #22/#23/#25/#32 bakery: patrons 80×140 + seated crop (0.55) restored +
+  PP stands in the counter/tables aisle (band minY 400, approachY 405);
+  Poulain → (733,328).
+- [~] #20 Nicolas regen: split IDLE sheet landed + verified 2026-06-12
+  (gap-detected, camera routine, mouth closed). TALK sheet still pending
+  (§NIC1-v2b); the loader reuses the old combined sheet's talk row meanwhile.
+- [ ] #26 Poulain outfit mismatch → §JIT-POULAIN amended (match WORK sheet). ART.
+- [x] #36 flower pot re-roll → §PA2-v2. ART landed 2026-06-11.
+- [x] `[P2]` Biker §BK1, PP give §PG1 — sheets landed 2026-06-11.
+
+**Out of scope:** #39 Jerusalem (next batch).
+
 ### Reported (2026-06-10 — automated sprite jitter audit, camp + Paris)
 
 Ran `go run ./tools/jitter_audit` (new tool: measures per-frame content
@@ -144,17 +604,20 @@ object stays in the same spot" — no padding/splitting hacks):**
 **Still drifting / ghosted — live re-roll prompts in EXTRA_PROMPTS §JIT
 (now ART-QUALITY only; the renderer cancels positional drift):**
 
+> 2026-06-12 prune: the drift-only re-rolls below were RETIRED from
+> EXTRA_PROMPTS (user: file too long; the feet-anchoring renderer cancels
+> drift on screen, so nothing is visibly wrong in-game). Their lines are
+> checked off here; re-open from git history if one ever shows on screen.
+
 - [ ] `[P1]` Marcus talk + strange idle/talk/alt: regen #1 straddled cell
   borders; reverted to old art (old drift numbers back) (§JIT-MARCUS).
-- [ ] `[P1]` Poulain idle/talk: regen #1 made it WORSE (142/167px FOOT) (§JIT-POULAIN).
+- [x] ~~Poulain idle/talk~~ — RETIRED 2026-06-12 (renders correctly at bust
+  scale; re-open only for the #26 outfit mismatch).
 - [ ] `[P1]` PP walk back: regen #1 made it WORSE (60→97px FOOT) (§JIT-PP2).
-- [ ] `[P1]` Jake strange talk: improved 115→87px, still bad (§JIT-JAKE).
-- [ ] `[P2]` Lily idle/talk: barely moved, 53/65px (§JIT-LILY).
-- [ ] `[P2]` PP grab flower: improved, still 70px X + 23% pump (§JIT-FLOWER).
-- [ ] `[P2]` PP idle front: foot fixed, 31px X remains — borderline (§JIT-PP1).
-- [ ] `[P2]` Colette talk: 37px foot / 36px X remain after ghost-clean — borderline (§JIT-COLETTE).
-- [ ] `[P1]` Higgins office talk: FOOT 121px remains after ghost-clean (the
-  sheet now LOOKS good — verify in-game before re-rolling) (§OD).
+- [x] ~~Jake strange talk / Lily idle+talk / PP grab flower / PP idle front /
+  Colette talk~~ — RETIRED 2026-06-12 (drift-only; renderer compensates).
+- [x] ~~Higgins office talk (§OD)~~ — RETIRED 2026-06-12: accepted in every
+  playtest since 06-05; got the tol-4 color-key fix instead.
 - [ ] `[P2]` Ghosted but NOT auto-cleanable (legit props in frame — re-roll
   or hand-edit): PP get baguette / get jam / grab rolling pin / receive map
   (incoming map), Lily receive flower, Poulain give + bring baguette, pigeon

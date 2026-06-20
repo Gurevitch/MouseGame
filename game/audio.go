@@ -75,7 +75,7 @@ func (am *audioManager) playSFX(path string) {
 		return
 	}
 	if _, err := os.Stat(path); err != nil {
-		// Silent no-op — authors haven't dropped the file yet.
+		// Silent no-op - authors haven't dropped the file yet.
 		return
 	}
 	// Close any previous SFX instance first so rapid clicks don't stack.

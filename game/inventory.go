@@ -14,6 +14,20 @@ type inventoryItem struct {
 	srcH  int32
 	desc  string
 	owner string // "player", "lily", "curator", "none" (on ground)
+	// content box within the texture (post color-key artwork bounds).
+	// Zero cw/ch = unknown -> draw the full texture. The bag and the held
+	// cursor draw by this box so icons center on the ART, not the canvas
+	// (generated icons often float off-center in big margins; 2026-06-11 #37).
+	cbX, cbY, cbW, cbH int32
+}
+
+// contentSrc returns the source rect + dimensions to draw an item by: the
+// content box when known, else the full texture.
+func (it *inventoryItem) contentSrc() (*sdl.Rect, int32, int32) {
+	if it.cbW > 0 && it.cbH > 0 {
+		return &sdl.Rect{X: it.cbX, Y: it.cbY, W: it.cbW, H: it.cbH}, it.cbW, it.cbH
+	}
+	return nil, it.srcW, it.srcH
 }
 
 type inventory struct {
@@ -77,6 +91,12 @@ func (inv *inventory) giveItemTo(name, newOwner string) {
 			break
 		}
 	}
+	// If the given item is riding the cursor, drop it too - trade paths that
+	// don't go through the inline hand-off (Pierre's onClickOverride) used to
+	// leave a ghost item stuck on the cursor (2026-06-11).
+	if inv.heldItem != nil && inv.heldItem.name == name {
+		inv.heldItem = nil
+	}
 	inv.removeItem(name)
 }
 
@@ -104,7 +124,7 @@ func (inv *inventory) update(dt float64) {
 const (
 	// User playtest #18: bag felt too small on a 1400×800 screen. Bumped from
 	// 720×600 to 816×680 (kept the inv_circle.png 1.2:1 aspect so the art does
-	// not stretch). Centered, it spans x≈276..1124 / y≈4..716 — fills more of
+	// not stretch). Centered, it spans x≈276..1124 / y≈4..716 - fills more of
 	// the screen without clipping the top edge.
 	invOvalW = 816
 	invOvalH = 680
@@ -127,12 +147,13 @@ func (inv *inventory) handleClick(x, y int32) bool {
 		return true
 	}
 
+	// Left/right click bands page through items (the inv_circle hand grips sit
+	// on these bands). ~10% of the oval width on each side; the wide center band
+	// picks the current item. (#18 oval grew to 816 wide.)
+	leftCut := int32(invOvalW / 10)
+	rightCut := int32(invOvalW / 10)
+	inArrowBand := x < cx-leftCut || x > cx+rightCut
 	if len(inv.items) > 1 {
-		// Left/right click bands page through items (the inv_circle hand grips
-		// sit on these bands). ~10% of the oval width on each side; the wide
-		// center band picks the current item. (#18 oval grew to 816 wide.)
-		leftCut := int32(invOvalW / 10)
-		rightCut := int32(invOvalW / 10)
 		if x < cx-leftCut {
 			inv.selectedIdx--
 			if inv.selectedIdx < 0 {
@@ -144,6 +165,12 @@ func (inv *inventory) handleClick(x, y int32) bool {
 			inv.selectedIdx = (inv.selectedIdx + 1) % len(inv.items)
 			return true
 		}
+	} else if inArrowBand {
+		// 2026-06-15 #19: with a single item, a click on the L/R paging bands
+		// used to fall through and SELECT the only item (e.g. opening the Travel
+		// Map even though the player was clicking the arrows). Consume the click
+		// without selecting - only the center band picks the item up.
+		return true
 	}
 
 	if len(inv.items) > 0 {
@@ -169,7 +196,7 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 
 	cx, cy := invOvalCenter()
 
-	// Dim background — user 2026-05-22: bumped from 140 to 190 so the modal
+	// Dim background - user 2026-05-22: bumped from 140 to 190 so the modal
 	// freeze reads more clearly visually (matches Update-side gate above).
 	renderer.SetDrawColor(0, 0, 0, 190)
 	renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: engine.ScreenWidth, H: engine.ScreenHeight})
@@ -188,17 +215,19 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 	item := inv.items[inv.selectedIdx]
 	if item.tex != nil {
 		// Scaled up with the larger oval (#18) so the item art keeps filling
-		// the bag rather than looking lost in the middle.
+		// the bag rather than looking lost in the middle. Drawn by the
+		// content box so the artwork itself is centered (#37).
+		src, sw, sh0 := item.contentSrc()
 		maxW := int32(440)
 		maxH := int32(400)
-		scale := float64(maxW) / float64(item.srcW)
-		if sh := float64(maxH) / float64(item.srcH); sh < scale {
+		scale := float64(maxW) / float64(sw)
+		if sh := float64(maxH) / float64(sh0); sh < scale {
 			scale = sh
 		}
-		dstW := int32(float64(item.srcW) * scale)
-		dstH := int32(float64(item.srcH) * scale)
+		dstW := int32(float64(sw) * scale)
+		dstH := int32(float64(sh0) * scale)
 		dst := sdl.Rect{X: cx - dstW/2, Y: cy - dstH/2 - 20, W: dstW, H: dstH}
-		renderer.Copy(item.tex, nil, &dst)
+		renderer.Copy(item.tex, src, &dst)
 	}
 
 	nameW := inv.font.TextWidth(item.name, 4)
@@ -215,7 +244,7 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 
 		// User playtest #17: the drawn chevron "logos" are removed. The
 		// inv_circle.png art already shows hand grips on the left/right, and
-		// the left/right click bands (handleClick) still page through items —
+		// the left/right click bands (handleClick) still page through items -
 		// the extra drawn arrows were redundant clutter.
 	}
 }
@@ -225,13 +254,14 @@ func (inv *inventory) drawHeld(renderer *sdl.Renderer, mx, my int32) {
 		return
 	}
 	item := inv.heldItem
+	src, sw, sh0 := item.contentSrc()
 	const sz = 48
-	scale := float64(sz) / float64(item.srcW)
-	if sh := float64(sz) / float64(item.srcH); sh < scale {
+	scale := float64(sz) / float64(sw)
+	if sh := float64(sz) / float64(sh0); sh < scale {
 		scale = sh
 	}
-	dstW := int32(float64(item.srcW) * scale)
-	dstH := int32(float64(item.srcH) * scale)
+	dstW := int32(float64(sw) * scale)
+	dstH := int32(float64(sh0) * scale)
 	dst := sdl.Rect{X: mx + 12, Y: my + 12, W: dstW, H: dstH}
 
 	cx := dst.X + dst.W/2
@@ -243,7 +273,7 @@ func (inv *inventory) drawHeld(renderer *sdl.Renderer, mx, my int32) {
 		a := uint8(float64(20-i*3) * pulse)
 		drawFilledOval(renderer, cx, cy, rx, ry, 255, 220, 100, a)
 	}
-	renderer.Copy(item.tex, nil, &dst)
+	renderer.Copy(item.tex, src, &dst)
 }
 
 func createComicBookTexture(renderer *sdl.Renderer) *inventoryItem {

@@ -7,7 +7,9 @@
   "minY": 450,
   "maxY": 520,
   "musicPath": "assets/audio/music/paris.mp3",
-  "npcs": ["french_guide", "pierre_artist", "press_photographer", "gendarme_claude"],
+  "_comment_scale": "Retro plan #3 (2026-06-12): PTP reference frames show PP at ~35-40% of screen height; ours rendered ~26%. characterScale 1.15 lifts PP to ~243px and every NPC with him (relative sizes preserved, feet stay planted). Experiment on this scene only - roll out per scene if it reads right.",
+  "characterScale": 1.15,
+  "npcs": ["french_guide", "pierre_artist", "pigeon_lady", "press_photographer", "gendarme_claude"],
   "hotspots": [
     {
       "bounds": {"x": 1300, "y": 200, "w": 100, "h": 400},

@@ -58,7 +58,7 @@ var nonnaRosaPostDialog = []dialogEntry{
 }
 
 var lucaMusicianDialog = []dialogEntry{
-	{speaker: "Luca", text: "Oi! Want a song? One euro. 'O Sole Mio' or Metallica — your choice!"},
+	{speaker: "Luca", text: "Oi! Want a song? One euro. 'O Sole Mio' or Metallica - your choice!"},
 	{speaker: "Pink Panther", text: "Metallica. On an accordion. I'd pay to see that."},
 	{speaker: "Luca", text: "Zat is ze SPIRIT, panther! Maybe later. First zou must find Dottor Bianchi. He is in ze arena."},
 }
@@ -73,8 +73,8 @@ var dottorBianchiDialog = []dialogEntry{
 	{speaker: "Dottor Bianchi", text: "Around his name? Hm. Most Roman arches were dedicated to emperors. A few to families."},
 	{speaker: "Dottor Bianchi", text: "Tell me ze child's name."},
 	{speaker: "Pink Panther", text: "Danny. But he signs his drawings 'D.M.' in weird curly letters."},
-	{speaker: "Dottor Bianchi", text: "D.M. — ze letters appear on every tomb. Dis Manibus. 'To ze spirits of ze departed.'"},
-	{speaker: "Dottor Bianchi", text: "But also — see? Danillus Marcus. Ze arch on ze east side bears zat name."},
+	{speaker: "Dottor Bianchi", text: "D.M. - ze letters appear on every tomb. Dis Manibus. 'To ze spirits of ze departed.'"},
+	{speaker: "Dottor Bianchi", text: "But also - see? Danillus Marcus. Ze arch on ze east side bears zat name."},
 	{speaker: "Dottor Bianchi", text: "Here. A fresh rubbing, still warm from ze chalk. Take it to your boy."},
 }
 
@@ -220,7 +220,7 @@ func (g *Game) setupRomeCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.travelMap.Show("rome_street")
+				game.openTravelMap("rome_street")
 				return true
 			},
 		})

@@ -7,7 +7,7 @@ import (
 
 // devMenu is a developer overlay that lets the user click a scenario name to
 // jump straight into that chapter / scene with the right story flags pre-set.
-// Toggle with F1. Always available — shipping builds can gate this behind a
+// Toggle with F1. Always available - shipping builds can gate this behind a
 // build tag if needed; for now it's part of the QA + dev workflow the user
 // asked for ("create a test file so we will be able to start chapters by
 // click after we will be happy").
@@ -33,17 +33,17 @@ func newDevMenu() *devMenu {
 		panelW: 540,
 	}
 	dm.rows = []devMenuRow{
-		{"Day 1 — Camp Entrance (fresh start)", jumpDay1Entrance},
-		{"Day 1 — Camp Grounds (no kids met)", jumpDay1Grounds},
-		{"Day 1 — Flower in pocket (give to Lily)", jumpDay1FlowerInPocket},
-		{"Day 1 — Bedtime ready (5 kids met + flower given)", jumpDay1Bedtime},
-		{"Day 1 — Night campfire scene", jumpDay1Night},
-		{"Day 2 — Marcus's Cabin (strange)", jumpDay2MarcusRoom},
-		{"Day 2 — Higgins Office (give map)", jumpDay2Office},
-		{"Paris — Street (fresh arrival)", jumpParisStreet},
-		{"Paris — Bakery (rolling pin puzzle)", jumpParisBakery},
-		{"Paris — Holding Press Pass", jumpParisPressPass},
-		{"Paris — Louvre interior (with ticket)", jumpParisLouvre},
+		{"Day 1 - Camp Entrance (fresh start)", jumpDay1Entrance},
+		{"Day 1 - Camp Grounds (no kids met)", jumpDay1Grounds},
+		{"Day 1 - Flower in pocket (give to Lily)", jumpDay1FlowerInPocket},
+		{"Day 1 - Bedtime ready (5 kids met + flower given)", jumpDay1Bedtime},
+		{"Day 1 - Night campfire scene", jumpDay1Night},
+		{"Day 2 - Marcus's Cabin (strange)", jumpDay2MarcusRoom},
+		{"Day 2 - Higgins Office (give map)", jumpDay2Office},
+		{"Paris - Street (fresh arrival)", jumpParisStreet},
+		{"Paris - Bakery (rolling pin puzzle)", jumpParisBakery},
+		{"Paris - Holding Press Pass", jumpParisPressPass},
+		{"Paris - Louvre interior (with ticket)", jumpParisLouvre},
 	}
 	return dm
 }
@@ -68,7 +68,7 @@ func (dm *devMenu) handleClick(x, y int32, g *Game) bool {
 			return true
 		}
 	}
-	// Click outside any row but inside the panel — eat it.
+	// Click outside any row but inside the panel - eat it.
 	panelH := int32(60) + int32(len(dm.rows))*dm.rowH + 20
 	panelRect := sdl.Rect{X: dm.panelX, Y: dm.panelY, W: dm.panelW, H: panelH}
 	pt := sdl.Point{X: x, Y: y}
@@ -113,8 +113,8 @@ func (dm *devMenu) draw(renderer *sdl.Renderer, font *engine.BitmapFont) {
 // --- Jump helpers --------------------------------------------------------
 //
 // Each helper mutates Game state then transitions PP into the target scene.
-// They are deliberately blunt — flipping flat flags directly rather than
-// going through the proper story callbacks — so the dev can land at any
+// They are deliberately blunt - flipping flat flags directly rather than
+// going through the proper story callbacks - so the dev can land at any
 // point in the story without playing through. Don't use these from
 // production code paths.
 

@@ -128,7 +128,7 @@ func (g *Game) syncFlagsToVars() {
 // art once PP has come back from France (paris_done), and back to the normal
 // daytime art otherwise (#34). The user tied the mood to the France return, so
 // once the adventure proper begins the camp reads as "wrong" until the story
-// resolves. Safe to call repeatedly — it just reassigns scene.bg, the same
+// resolves. Safe to call repeatedly - it just reassigns scene.bg, the same
 // mechanism the Marcus-room day/night swap uses.
 func (g *Game) applyCampMood() {
 	if g == nil || g.sceneMgr == nil {

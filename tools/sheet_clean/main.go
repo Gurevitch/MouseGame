@@ -32,10 +32,10 @@ var sheets = []sheet{
 	{"assets/images/player/PP talk front.png", 8, 2},
 	{"assets/images/player/PP idle side.png", 8, 2},
 	{"assets/images/player/PP celebrate.png", 8, 2},
-	{"assets/images/locations/camp/npc/kids/marcus/npc_marcus_talk.png", 8, 2},
-	{"assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_idle.png", 8, 2},
-	{"assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_talk.png", 8, 2},
-	{"assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_alt.png", 8, 2},
+	// Marcus sheets REMOVED from the allowlist (2026-06-12 #4): these are the
+	// restored OLD sheets whose figures stray outside the fixed cells the
+	// cleaner assumes - cleaning erased real body parts (talk frames went
+	// blank in-game). Only re-add once the §JIT-MARCUS regens land.
 	{"assets/images/locations/paris/npc/outside/npc_madame_colette_talk.png", 8, 2},
 	{"assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2},
 	{"assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2},

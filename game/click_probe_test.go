@@ -6,7 +6,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// mapScreenToFramePixel is the load-bearing math for the probe — if it's
+// mapScreenToFramePixel is the load-bearing math for the probe - if it's
 // wrong, every alpha sample reads from the wrong pixel and bad cuts go
 // undetected (or good cuts are flagged as bad). These tests pin the
 // inverse-mapping behaviour the real probe relies on.
@@ -96,7 +96,7 @@ func TestMapScreenToFramePixel_ZeroSizeReturnsFalse(t *testing.T) {
 	}
 }
 
-// Marker lifecycle tests — make sure stale markers actually get evicted.
+// Marker lifecycle tests - make sure stale markers actually get evicted.
 
 func TestClickProbe_MarkerExpires(t *testing.T) {
 	cp := newClickProbe()
@@ -105,7 +105,7 @@ func TestClickProbe_MarkerExpires(t *testing.T) {
 	if len(cp.markers) != 1 {
 		t.Fatalf("expected 1 marker, got %d", len(cp.markers))
 	}
-	// Tick forward past the lifetime — marker should be gone.
+	// Tick forward past the lifetime - marker should be gone.
 	cp.update(probeMarkerLifetimeSeconds + 0.1)
 	if len(cp.markers) != 0 {
 		t.Errorf("marker should have expired, still %d alive", len(cp.markers))
@@ -128,7 +128,7 @@ func TestClickProbe_ToggleClearsMarkers(t *testing.T) {
 	cp.pushMarker(100, 100, sdl.Color{}, "a")
 	cp.pushMarker(200, 200, sdl.Color{}, "b")
 	cp.toggle() // off
-	cp.toggle() // on — should also clear leftovers
+	cp.toggle() // on - should also clear leftovers
 	if len(cp.markers) != 0 {
 		t.Errorf("re-enabling probe should clear stale markers, got %d", len(cp.markers))
 	}

@@ -8,14 +8,14 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// flightCutscene owns the 4-second airplane-flight scene state — the
+// flightCutscene owns the 4-second airplane-flight scene state - the
 // destination the player is flying to, the elapsed timer, and the biplane
 // animation frames. Previously these were 5 flat fields on Game; extracted
 // during Phase 6 so the cutscene is self-contained.
 //
 // Not wired through SequencePlayer because the flight carries a parameter
 // (destination) that the current JSON sequence schema doesn't support, and
-// the logic is tiny (~15 lines) — keeping it as a typed struct is simpler
+// the logic is tiny (~15 lines) - keeping it as a typed struct is simpler
 // than adding variable substitution to sequences.
 type flightCutscene struct {
 	destination string
@@ -43,10 +43,14 @@ func loadAirplaneFrames(renderer *sdl.Renderer) []npcFrame {
 	for r := 0; r < len(grid); r++ {
 		for c := 0; c < len(grid[r]); c++ {
 			gf := grid[r][c]
-			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+			// Keep the opaque box so Draw can center the PLANE itself per
+			// frame - the two grid rows place the plane at different cell
+			// heights, which read as "jumping between two lines" (#14).
+			frames = append(frames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
 		}
 	}
-	return frames
+	return trimBlankTail(frames)
 }
 
 // Start kicks off a new flight toward `dest`. Caller is responsible for
@@ -62,7 +66,7 @@ func (f *flightCutscene) Start(dest string) {
 func (f *flightCutscene) Active() bool { return f.destination != "" }
 
 // Update advances the timer and animation. Returns (true, dest) when the
-// cutscene finishes — the caller should transitionTo(dest). Otherwise
+// cutscene finishes - the caller should transitionTo(dest). Otherwise
 // returns (false, "").
 func (f *flightCutscene) Update(dt float64) (bool, string) {
 	if !f.Active() {
@@ -85,7 +89,7 @@ func (f *flightCutscene) Update(dt float64) (bool, string) {
 
 // Draw renders the current airplane frame centered on screen with a
 // subtle sinusoidal bob so the biplane feels airborne. User 2026-05-12:
-// scale dropped from 3.0 to 1.5 — the cells are already 295×443 each,
+// scale dropped from 3.0 to 1.5 - the cells are already 295×443 each,
 // so 1.5× gives 443×665 on screen (was 885×1329 at 3.0 which dwarfed
 // the 1400×800 background).
 func (f *flightCutscene) Draw(renderer *sdl.Renderer) {
@@ -99,16 +103,24 @@ func (f *flightCutscene) Draw(renderer *sdl.Renderer) {
 	}
 	const scale = 1.5
 	bob := math.Sin(f.timer*2.0) * 8
-	dstW := int32(float64(frame.w) * scale)
-	dstH := int32(float64(frame.h) * scale)
-	// User playtest 2026-06-05: the regenerated sheet locks the fuselage
-	// centerline to the same Y in every cell, so the old per-row Y-offset
-	// compensation is gone — every frame draws centered with just the bob.
+	// 2026-06-11 #14: draw by the frame's OPAQUE BOX, not the full cell.
+	// The plane sits at different heights inside row-0 vs row-1 cells, so
+	// full-cell centering bounced it between two lines. Centering the
+	// content box pins the fuselage to one spot regardless of sheet layout.
+	var src *sdl.Rect
+	cw, ch := frame.w, frame.h
+	if frame.ow > 0 && frame.oh > 0 {
+		s := sdl.Rect{X: frame.ox, Y: frame.oy, W: frame.ow, H: frame.oh}
+		src = &s
+		cw, ch = frame.ow, frame.oh
+	}
+	dstW := int32(float64(cw) * scale)
+	dstH := int32(float64(ch) * scale)
 	dst := sdl.Rect{
 		X: engine.ScreenWidth/2 - dstW/2,
 		Y: int32(float64(engine.ScreenHeight)/2 - float64(dstH)/2 + bob),
 		W: dstW,
 		H: dstH,
 	}
-	renderer.Copy(frame.tex, nil, &dst)
+	renderer.Copy(frame.tex, src, &dst)
 }

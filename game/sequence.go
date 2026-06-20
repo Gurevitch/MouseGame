@@ -27,7 +27,7 @@ const (
 	SeqNPCHidden                           // Toggle an NPC's hidden + silent flags (un-hide on un-silent)
 	SeqNPCTeleport                         // Snap an NPC to an absolute (x, y) position
 	SeqNPCMove                             // Linearly interpolate an NPC's position over Duration seconds
-	SeqGiveItem                            // Add an item to inventory by id (silent — no UI pop)
+	SeqGiveItem                            // Add an item to inventory by id (silent - no UI pop)
 	SeqPlayerAnim                          // Play a one-shot PP animation (e.g. "receive_map") for Duration seconds
 	SeqNPCOneShotAnim                      // Play a one-shot named anim on an NPC ("give_map") for Duration seconds
 	SeqTweenItem                           // Lerp a sprite from (FromX,FromY) → (TargetX,TargetY) over Duration (e.g. thrown map)
@@ -51,12 +51,12 @@ type SeqStep struct {
 	BGKey   string // identifier of the alternate background (e.g. "night")
 	Hide    bool   // for SeqHidePlayer, SeqPlayerSleep, SeqNPCHidden
 	DayNum  int    // for SeqStartDay (1 or 2)
-	ItemID  string // for SeqGiveItem — matches assets/data/items.json id
-	// NPC move/teleport targets — absolute pixel coords.
+	ItemID  string // for SeqGiveItem - matches assets/data/items.json id
+	// NPC move/teleport targets - absolute pixel coords.
 	TargetX int32
 	TargetY int32
 	// EndScale, when > 0, makes a SeqNPCMove also lerp the NPC's render scale
-	// (npc.extraScale) to EndScale over the move — so it shrinks as it walks
+	// (npc.extraScale) to EndScale over the move - so it shrinks as it walks
 	// "into" the scene (Jake into his cabin).
 	EndScale float64
 	// Runtime-only scratch space for in-progress moves (start pos + elapsed).
@@ -65,7 +65,7 @@ type SeqStep struct {
 	moveStartScale float64
 	moveElapsed    float64
 
-	// SeqTweenItem — visible thrown/flying sprite that lerps across screen.
+	// SeqTweenItem - visible thrown/flying sprite that lerps across screen.
 	Sprite string // PNG path; loaded lazily on first execute.
 	FromX  int32  // start screen x
 	FromY  int32  // start screen y
@@ -221,7 +221,7 @@ func (sp *SequencePlayer) Draw(renderer *sdl.Renderer) {
 	dx := float64(step.TargetX - step.FromX)
 	dy := float64(step.TargetY - step.FromY)
 	cx := step.FromX + int32(dx*t)
-	// User 2026-05-22: PARABOLIC arc — the projectile flies HIGH at the
+	// User 2026-05-22: PARABOLIC arc - the projectile flies HIGH at the
 	// midpoint and lands at the target. arcHeight is the pixels above the
 	// straight-line midpoint the projectile reaches at t=0.5.
 	// Formula: arc(t) = 4*h*t*(1-t) → 0 at t=0/1, max=h at t=0.5.
@@ -304,7 +304,7 @@ func (sp *SequencePlayer) executeStep() {
 					fmt.Printf("[SeqNPCAnim] swapped idle to %q (%d frames) on %q\n",
 						step.Anim, len(frames), step.NPC)
 				} else {
-					fmt.Printf("[SeqNPCAnim] anim %q not registered on %q (frames=%d) — falling back to idle\n",
+					fmt.Printf("[SeqNPCAnim] anim %q not registered on %q (frames=%d) - falling back to idle\n",
 						step.Anim, step.NPC, len(frames))
 					n.setAnimState(npcAnimIdle)
 				}
@@ -333,14 +333,15 @@ func (sp *SequencePlayer) executeStep() {
 			sp.game.sleepingTimer = 0
 			sp.game.wakingPhase = 0
 		} else if sp.game.player != nil {
-			// User 2026-05-17: when the sleep overlay turns off (waking
-			// complete), snap PP's coords to the sleep anchor (335, 615)
-			// so the normal idle/walk path picks up at the campfire
-			// position instead of wherever the player was before the
-			// sequence started. Foot at y=615 matches the sleep render.
-			// User 2026-06-02 (#14): match the lowered sleep anchor (650).
-			sp.game.player.x = float64(335 - playerDstW/2)
-			sp.game.player.y = float64(650 - playerDstH)
+			// When the sleep overlay turns off (waking complete), snap PP's
+			// coords so the normal idle picks up at the EXACT spot the wake
+			// animation drew at, with no jump.
+			// PR#3 (2026-06-12): the wake draws its opaque foot at screen
+			// y=565, centre-X 337 (see game.go camp_night draw). The idle
+			// path anchors PP's foot at player.y+playerDstH, so set y so the
+			// foot lands on 565 (was 650 → PP dropped ~85px on wake).
+			sp.game.player.x = float64(337 - playerDstW/2)
+			sp.game.player.y = float64(565 - playerDstH)
 			sp.game.player.targetX = sp.game.player.x
 			sp.game.player.targetY = sp.game.player.y
 			sp.game.player.moving = false
@@ -405,12 +406,12 @@ func (sp *SequencePlayer) executeStep() {
 				sp.nextStep()
 			}
 		} else {
-			// NPC not found — skip the step rather than hang.
+			// NPC not found - skip the step rather than hang.
 			sp.nextStep()
 		}
 
 	case SeqGiveItem:
-		// Silent add — no inventory bar pop. Skips the add if PP already
+		// Silent add - no inventory bar pop. Skips the add if PP already
 		// owns the item (idempotent, matches giveMapItem's old guard).
 		if step.ItemID != "" && sp.game.items != nil && sp.game.inv != nil {
 			def, ok := sp.game.items.getDef(step.ItemID)
@@ -465,7 +466,7 @@ func (sp *SequencePlayer) executeStep() {
 				stepPtr.tweenW = w
 				stepPtr.tweenH = h
 			} else {
-				fmt.Printf("SeqTweenItem: sprite %q missing — skipping projectile draw\n", step.Sprite)
+				fmt.Printf("SeqTweenItem: sprite %q missing - skipping projectile draw\n", step.Sprite)
 			}
 		}
 		stepPtr.moveElapsed = 0
@@ -492,10 +493,20 @@ func (g *Game) setSceneAltBG(sceneName, bgKey string) {
 	if bg, ok := g.sceneAltBGs[sceneName+"/"+bgKey]; ok {
 		scene.bg = bg
 	}
+	// 2026-06-12: keep Marcus's strange-idle lighting in step with the cabin
+	// background (night during the cutscene, day on Day 2).
+	if sceneName == "marcus_room" {
+		for _, n := range scene.npcs {
+			if n.name == "Marcus" {
+				n.setStrangeVariant(bgKey == "night")
+				break
+			}
+		}
+	}
 }
 
 // findNPC locates a named NPC inside a named scene; returns nil if either is
-// missing (logs silently — sequences that reference an NPC by typo will
+// missing (logs silently - sequences that reference an NPC by typo will
 // simply skip the action rather than crash the game).
 func (sp *SequencePlayer) findNPC(sceneName, npcName string) *npc {
 	s, ok := sp.game.sceneMgr.scenes[sceneName]

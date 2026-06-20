@@ -74,7 +74,7 @@ func (g *Game) fireTrigger(n *npc, trigger string, rules []InteractionRule) bool
 		}
 		r.fired = true
 		fired = true
-		// First matching rule wins — more specific rules should be listed first.
+		// First matching rule wins - more specific rules should be listed first.
 		break
 	}
 	return fired
@@ -90,7 +90,7 @@ func (g *Game) fireTrigger(n *npc, trigger string, rules []InteractionRule) bool
 //	A || B
 //
 // Unknown expressions return false (safer: unmatched condition = rule skipped).
-// Parser is whitespace-tolerant but NOT recursive-descent — it assumes flat
+// Parser is whitespace-tolerant but NOT recursive-descent - it assumes flat
 // left-to-right evaluation of && / ||. Good enough for the NPC rules we have;
 // if someone needs grouping, rewrite the rule as two simpler rules.
 func evalCondition(expr string, ctx ruleContext) bool {
@@ -173,7 +173,7 @@ func evalCondition(expr string, ctx ruleContext) bool {
 	return false
 }
 
-// splitTop splits `s` on `sep` but only at the top level — it doesn't
+// splitTop splits `s` on `sep` but only at the top level - it doesn't
 // recurse into parens. Used so an expression like `inv.has(x) && state == y`
 // splits on && without tearing apart the inv.has(...) call.
 func splitTop(s, sep string) []string {

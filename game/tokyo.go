@@ -17,7 +17,7 @@ import (
 //     elderly flower-arranger, works beneath a pressed-petal awning, and
 //     Gary the tourist is back, lost in a guidebook.
 //
-// Chapter anchor item: "Pressed Sakura" — Oba-chan presses a petal into
+// Chapter anchor item: "Pressed Sakura" - Oba-chan presses a petal into
 // parchment and hands it over when PP asks about quiet things.
 //
 // Bring the pressed sakura to Lily's cabin to finish her arc.
@@ -64,7 +64,7 @@ var hiroRamenPostDialog = []dialogEntry{
 }
 
 var kenjiStudentDialog = []dialogEntry{
-	{speaker: "Kenji", text: "Please, do not nudge — my brush is mid-stroke."},
+	{speaker: "Kenji", text: "Please, do not nudge - my brush is mid-stroke."},
 	{speaker: "Pink Panther", text: "What are you writing?"},
 	{speaker: "Kenji", text: "Ze kanji for 'voice'. My sister said hers has gone quiet."},
 	{speaker: "Kenji", text: "I write it every morning. Ink is how my family speaks across ze ocean."},
@@ -76,9 +76,9 @@ var kenjiStudentPostDialog = []dialogEntry{
 
 var obachanDialog = []dialogEntry{
 	{speaker: "Oba-chan", text: "..."},
-	{speaker: "Pink Panther", text: "Hello, madame. A friend is losing her voice — not literally, but inside. Do you know a gift for that?"},
+	{speaker: "Pink Panther", text: "Hello, madame. A friend is losing her voice - not literally, but inside. Do you know a gift for that?"},
 	{speaker: "Oba-chan", text: "Mm. Ze quiet ones cannot hear their own words. We must give zem something to hold."},
-	{speaker: "Oba-chan", text: "Here — a petal I pressed zis morning. Sakura keeps its shape but loses its weight."},
+	{speaker: "Oba-chan", text: "Here - a petal I pressed zis morning. Sakura keeps its shape but loses its weight."},
 	{speaker: "Oba-chan", text: "Give her ze petal. Let her practice being light."},
 }
 
@@ -245,7 +245,7 @@ func (g *Game) setupTokyoCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.travelMap.Show("tokyo_street")
+				game.openTravelMap("tokyo_street")
 				return true
 			},
 		})

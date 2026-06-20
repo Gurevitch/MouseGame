@@ -1,6 +1,6 @@
 {
   "id": "higgins_walk_in",
-  "_comment": "User 2026-05-18: removed the auto-dialog step at the end — Higgins arrives and waits silently. PP must CLICK on him to trigger his hint dialog (higginsLilyHintDialog, set on the grounds Higgins factory). The npc_hidden step's un-hide also flips silent=false so he's clickable.",
+  "_comment": "User 2026-05-18: removed the auto-dialog step at the end - Higgins arrives and waits silently. PP must CLICK on him to trigger his hint dialog (higginsLilyHintDialog, set on the grounds Higgins factory). The npc_hidden step's un-hide also flips silent=false so he's clickable.",
   "steps": [
     {"type": "npc_teleport", "scene": "camp_grounds", "npc": "Director Higgins", "x": 1266, "y": 750},
     {"type": "npc_hidden", "scene": "camp_grounds", "npc": "Director Higgins", "hide": false},

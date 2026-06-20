@@ -17,7 +17,7 @@ import (
 // (npc.containsPoint -> lastDrawRect) is rectangular, so a sprite with a
 // sloppy halo of semi-opaque or accidentally-opaque pixels around the
 // character will register clicks in dead air. The probe samples the source
-// PNG's alpha channel at the clicked screen pixel — if the hit-test said yes
+// PNG's alpha channel at the clicked screen pixel - if the hit-test said yes
 // but the alpha is transparent, the cut is bad and the NPC name is logged.
 //
 // Toggle with F2. While active, clicks no longer talk to NPCs; instead they
@@ -25,9 +25,9 @@ import (
 //
 // Marker colors:
 //
-//	GREEN — clicked an opaque pixel of an NPC's drawn frame (good cut)
-//	RED   — bbox-hit an NPC but the source pixel is transparent (bad cut)
-//	GREY  — no NPC under the click (background only)
+//	GREEN - clicked an opaque pixel of an NPC's drawn frame (good cut)
+//	RED   - bbox-hit an NPC but the source pixel is transparent (bad cut)
+//	GREY  - no NPC under the click (background only)
 type clickProbe struct {
 	active  bool
 	markers []probeMarker
@@ -60,7 +60,7 @@ func newClickProbe() *clickProbe { return &clickProbe{} }
 func (cp *clickProbe) toggle() {
 	cp.active = !cp.active
 	if cp.active {
-		fmt.Println("[click-probe] ON — F2 again to disable. Clicks won't talk to NPCs.")
+		fmt.Println("[click-probe] ON - F2 again to disable. Clicks won't talk to NPCs.")
 		cp.markers = cp.markers[:0]
 	} else {
 		fmt.Println("[click-probe] off")
@@ -101,7 +101,7 @@ func (cp *clickProbe) recordClick(s *scene, x, y int32) {
 	if !ok {
 		cp.pushMarker(x, y, sdl.Color{R: 200, G: 200, B: 60, A: 255},
 			fmt.Sprintf("%s: no sprite path", n.name))
-		fmt.Printf("[click-probe] %q hit but no srcPath — can't validate cut\n", n.name)
+		fmt.Printf("[click-probe] %q hit but no srcPath - can't validate cut\n", n.name)
 		return
 	}
 	if alpha >= probeAlphaThreshold {
@@ -163,7 +163,7 @@ func (cp *clickProbe) draw(renderer *sdl.Renderer, font *engine.BitmapFont) {
 // topmostNPCAt mirrors checkNPCClick's iteration but ignores the silent /
 // hidden filters. The probe wants to flag bad cuts on every clickable NPC
 // regardless of story state, so we iterate everything and skip only NPCs
-// that haven't drawn yet (lastDrawRect is zero) — those have no sprite to
+// that haven't drawn yet (lastDrawRect is zero) - those have no sprite to
 // validate.
 func topmostNPCAt(s *scene, x, y int32) *npc {
 	pt := sdl.Point{X: x, Y: y}

@@ -7,7 +7,8 @@
   "minY": 470,
   "maxY": 560,
   "musicPath": "assets/audio/music/paris.mp3",
-  "characterScale": 0.7,
+  "_comment_scale": "2026-06-15 #15/#16: 0.7 read as 'too far/too small' - user wants Beaumont closer + bigger and PP fitted with him. 0.7 -> 0.85 brings the whole meeting forward (PP + Beaumont scale together, feet planted). Beaumont also moved forward/bigger in newCurator. Tune in playtest.",
+  "characterScale": 0.85,
   "npcs": ["museum_curator"],
   "hotspots": [
     {

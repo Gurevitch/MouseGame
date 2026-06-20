@@ -18,5 +18,9 @@
   "blockers": [
     {"x": 0, "y": 0, "w": 120, "h": 800}
   ],
-  "walkSegments": []
+  "_comment_walk": "User 2026-06-12 (4th walk-line report): retro PTP keeps every character ON one ground line. v1 segments: a main line across the clearing in front of the fence/gate (center y=600, foot ~735) + a spur up the dirt path to the gate opening. Estimated from the BG - walk it with F3 and tune the endpoints.",
+  "walkSegments": [
+    {"x1": 150, "y1": 600, "x2": 1350, "y2": 600},
+    {"x1": 840, "y1": 656, "x2": 715, "y2": 540}
+  ]
 }

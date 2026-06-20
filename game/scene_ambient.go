@@ -9,8 +9,8 @@ import (
 
 // Ambient decorators. Once scenes load from JSON, the static parts
 // (bg, npcs, hotspots, blockers, walk, spawn) live in assets/data/scenes/*.json
-// but the procedural ambient — birds, butterflies, floating motes, clouds,
-// warm glow — still reads best as Go code with rand + loops. Each scene's
+// but the procedural ambient - birds, butterflies, floating motes, clouds,
+// warm glow - still reads best as Go code with rand + loops. Each scene's
 // ambient lives in its own function here.
 //
 // JSON-authored spawners (kind + count + ranges) are a future refactor: the
@@ -22,7 +22,7 @@ import (
 
 // decorateParisStreet adds cafe steam drifting up from the table cluster at
 // left, plus dust motes in the afternoon air and a warm upper-sky glow. Paris
-// skips birds/clouds on purpose — the plan wants it to feel urban, not rural.
+// skips birds/clouds on purpose - the plan wants it to feel urban, not rural.
 func decorateParisStreet(s *scene) {
 	if s == nil {
 		return
@@ -66,11 +66,19 @@ func decorateParisStreetSprites(s *scene, renderer *sdl.Renderer) {
 	if s == nil {
 		return
 	}
-	// Small + high on screen so it reads as background depth; drawn before
-	// the actors so it always sits behind PP.
+	// 2026-06-11 #16 (user choice: interactive crossing): the biker rides
+	// along the MAIN street PP stands on at near-character scale. He's
+	// clickable - setupParisCallbacks wires the click to the bump encounter.
+	// 2026-06-12 #12: faster (120 -> 190) and lane nudged down (735 -> 755).
+	// 2026-06-15 #4: user - biker "not in the right place as was before."
+	// Restore the prior lane (755 -> 735); speed kept.
 	s.ambientSprites = append(s.ambientSprites,
-		newAmbientBiker(renderer, -200, 430, 80, 0.5),
+		newAmbientBiker(renderer, -200, 735, 190, 0.85),
 	)
+	// 2026-06-12: the street-density flavor ambients (accordion player + crumb
+	// lady) were dropped - the screen was getting crowded, and the pigeon lady
+	// is now a real quest NPC (Madame Margaux, who lures the pot pigeon for the
+	// heel) rather than background filler. See npc.go newPigeonLady.
 }
 
 // decorateParisLouvre adds the museum mood: dust motes swirling in the
@@ -97,7 +105,7 @@ func decorateParisLouvre(s *scene) {
 	)
 }
 
-// decorateAirplaneFlight adds streaming cloud puffs whizzing past at speed —
+// decorateAirplaneFlight adds streaming cloud puffs whizzing past at speed -
 // the cutscene sells travel by making the clouds move, not the plane.
 func decorateAirplaneFlight(s *scene) {
 	if s == nil {
@@ -208,14 +216,14 @@ func decorateDannyRoom(s *scene) {
 }
 
 // decorateCampLanding adds the airstrip arrival mood (#34): a crow that flaps
-// in, lands on the CAMP sign, sits a beat, then flaps off again (art pending —
+// in, lands on the CAMP sign, sits a beat, then flaps off again (art pending -
 // no-ops until assets/images/ambient/crow.png lands), plus drifting dust and a
 // couple of slow clouds. Takes the renderer because the crow is a sprite mover.
 func decorateCampLanding(s *scene, renderer *sdl.Renderer) {
 	if s == nil {
 		return
 	}
-	// Dust hanging over the dirt strip (ungated — generic motes always run).
+	// Dust hanging over the dirt strip (ungated - generic motes always run).
 	for i := 0; i < 8; i++ {
 		s.particles = append(s.particles, particle{
 			x:     rand.Float64() * float64(engine.ScreenWidth),
@@ -295,7 +303,7 @@ func decorateCampNight(s *scene) {
 	)
 }
 
-// decorateCampLake adds the lake mood — drifting motes, birds, water shimmer
+// decorateCampLake adds the lake mood - drifting motes, birds, water shimmer
 // ripples across the surface, dragonflies patrolling the water, and shoreline
 // butterflies hovering near the flower patch.
 func decorateCampLake(s *scene) {
@@ -371,7 +379,7 @@ func decorateCampLake(s *scene) {
 	)
 }
 
-// decorateCampGrounds adds the campsite mood — drifting motes, the campfire
+// decorateCampGrounds adds the campsite mood - drifting motes, the campfire
 // flame + smoke column, birds, clouds, fireflies at dusk, plus warm-light
 // glows around the fire and the upper sky.
 func decorateCampGrounds(s *scene) {
@@ -458,7 +466,7 @@ func decorateCampGrounds(s *scene) {
 	)
 }
 
-// decorateCampEntrance adds the forest-entrance mood — drifting motes, a few
+// decorateCampEntrance adds the forest-entrance mood - drifting motes, a few
 // birds, butterflies near the flower beds, slow clouds, and a soft warm glow
 // at the top of the scene.
 func decorateCampEntrance(s *scene) {

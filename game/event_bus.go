@@ -6,7 +6,7 @@ package game
 //
 // It is intentionally dependency-free and synchronous: handlers run in the
 // same goroutine that publishes the event, in registration order. No queues,
-// no threading — the game loop is single-threaded and sequences expect
+// no threading - the game loop is single-threaded and sequences expect
 // deterministic ordering.
 //
 // Status: infrastructure-only in Phase 1. Not wired into existing code yet.
@@ -63,7 +63,7 @@ func (b *EventBus) Subscribe(t EventType, h Handler) func() {
 
 // Publish dispatches an event synchronously to all current subscribers.
 // Handlers registered during dispatch fire on the *next* publish of the same
-// type, not this one — preventing re-entrant surprises.
+// type, not this one - preventing re-entrant surprises.
 func (b *EventBus) Publish(t EventType, payload map[string]string) {
 	handlers := b.subs[t]
 	evt := Event{Type: t, Payload: payload}

@@ -37,7 +37,7 @@ type travelMap struct {
 	renderer  *sdl.Renderer
 	bgTex     *sdl.Texture
 	// visible + returnScene were previously flags on Game (showTravelMap,
-	// travelMapFrom). Moved here during the Phase 6 god-object collapse —
+	// travelMapFrom). Moved here during the Phase 6 god-object collapse -
 	// they're display state that belongs with the widget, not the game loop.
 	visible     bool
 	returnScene string
@@ -79,7 +79,7 @@ func (tm *travelMap) Toggle(fromScene string) {
 
 // travelMapDataPath is the canonical location of the authoritative travel-
 // map data. Moved out of the constructor so save/load + tests can override
-// it if ever needed. Camp Chilly Wa Wa is intentionally NOT in this file —
+// it if ever needed. Camp Chilly Wa Wa is intentionally NOT in this file -
 // see docs/FIXME.md "Deferred to follow-up" for why and when to re-add.
 const travelMapDataPath = "assets/data/travel_map.json"
 
@@ -98,7 +98,7 @@ func newTravelMap(renderer *sdl.Renderer) *travelMap {
 	// hand-edited the landmark PNGs to have a solid white background.
 	// The Keyed loader runs the corner-sample color-key, lifting the
 	// white BG transparent at load. Already-transparent PNGs still
-	// work — the color-key is a no-op when corners are alpha=0.
+	// work - the color-key is a no-op when corners are alpha=0.
 	for i := range tm.locations {
 		if tm.locations[i].landmarkPath != "" {
 			tex, w, h := engine.SafeTextureFromPNGKeyed(renderer, tm.locations[i].landmarkPath)
@@ -168,7 +168,7 @@ func (tm *travelMap) generateMapTexture() *sdl.Texture {
 
 	// --- Landmasses ---
 
-	// North America (Camp Chilly Wa Wa area) — left side
+	// North America (Camp Chilly Wa Wa area) - left side
 	landColor := sdl.MapRGBA(f, 85, 130, 70, 255)
 	landDark := sdl.MapRGBA(f, 70, 110, 55, 255)
 
@@ -178,7 +178,7 @@ func (tm *travelMap) generateMapTexture() *sdl.Texture {
 	fillEllipseTM(surface, 420, 380, 100, 70, landDark)
 	fillEllipseTM(surface, 300, 360, 80, 50, landDark)
 
-	// Europe (London & Paris area) — right side
+	// Europe (London & Paris area) - right side
 	fillEllipseTM(surface, 750, 270, 180, 110, landColor)
 	fillEllipseTM(surface, 850, 230, 100, 70, landColor)
 	fillEllipseTM(surface, 680, 310, 80, 60, landDark)
@@ -390,7 +390,7 @@ func (tm *travelMap) pinHitRect(loc *travelLocation) sdl.Rect {
 }
 
 // distanceSqFromPin returns the squared distance from (mx, my) to the
-// location's pin center. Used to tie-break when two hit rects overlap —
+// location's pin center. Used to tie-break when two hit rects overlap -
 // the click snaps to the closest pin, not the first one in slice order.
 func (tm *travelMap) distanceSqFromPin(loc *travelLocation, mx, my int32) int64 {
 	dx := int64(mx - loc.pinX)
@@ -399,7 +399,7 @@ func (tm *travelMap) distanceSqFromPin(loc *travelLocation, mx, my int32) int64 
 }
 
 // hitTest returns the TRAVEL-TARGET at (mx, my). Only story-relevant pins
-// are valid travel targets — unlocked-but-not-currently-relevant pins fall
+// are valid travel targets - unlocked-but-not-currently-relevant pins fall
 // through and behave like locked pins (they open the info popup instead).
 // This keeps the player from accidentally skipping ahead to a previously
 // visited city when a new story target is glowing.
@@ -451,6 +451,16 @@ func (tm *travelMap) setUnlocked(scene string, unlocked bool) {
 	for i := range tm.locations {
 		if tm.locations[i].scene == scene {
 			tm.locations[i].unlocked = unlocked
+			// 2026-06-12 SOFTLOCK FIX: mirror into the VarStore so the pin's
+			// relevantWhen (which reads vars.game.<id>_unlocked) can light it as
+			// a valid travel target. A pin must be unlocked AND relevant to
+			// travel; the city _unlocked vars (jerusalem/tokyo/rome/rio/mexico)
+			// were defined but never written, so every city after Paris was
+			// unlocked-but-not-relevant → not clickable. (Paris worked only
+			// because paris_unlocked is synced from a Go bool.)
+			if tm.game != nil && tm.game.vars != nil {
+				tm.game.vars.SetBool(ScopeGame, tm.locations[i].id+"_unlocked", unlocked)
+			}
 		}
 	}
 }

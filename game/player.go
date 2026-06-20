@@ -36,7 +36,7 @@ const (
 	// User 2026-05-12: PP made the tallest character on screen by design
 	// (see docs/CHARACTERS.md + retro_frames reference). Initial rebalance
 	// targeted H=340 to match raw retro 54% screen-fill, but that
-	// overshot — our background art is composed at a smaller character
+	// overshot - our background art is composed at a smaller character
 	// scale than retro PtP, so PP at 340 dwarfed the cabins and the kids
 	// rose above the cabin doorways. Pulled back to H=270, which keeps PP
 	// the tallest on screen (still > all NPCs) without overwhelming the
@@ -146,7 +146,7 @@ type player struct {
 
 	// recedeHeld (#28): PP keeps rendering at the receded (shrunk) scale after a
 	// recede-framed dialog ends, with movement re-enabled. He grows back to full
-	// size (releaseRecedeSmooth) on the next setTarget — i.e. the next click that
+	// size (releaseRecedeSmooth) on the next setTarget - i.e. the next click that
 	// moves him elsewhere. Used for Pierre: PP stays small at Pierre's depth
 	// until the player walks him away.
 	recedeHeld bool
@@ -205,6 +205,42 @@ func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFra
 	return frames
 }
 
+// gridFramesConnected is gridFrames with the EDGE-CONNECTED color key (the
+// same loader the NPCs use): only background white reachable from the sheet
+// edges is cleared, so enclosed whites survive. Used for the item hand-off
+// one-shots (give_*/receive/grab flower) - their hand-held props are WHITE
+// (daisy petals, coffee cup, postcard, sketch page, jam-jar label) and the
+// global key punched see-through holes in the very item being handed over
+// (user 2026-06-12 PR#2: "give flower not smooth" - the flower flickered).
+func gridFramesConnected(renderer *sdl.Renderer, path string, cols, rows int) []spriteFrame {
+	// Default connected-key tolerance (8) leaves an anti-aliased white fringe on
+	// softly-drawn sheets. gridFramesConnectedTol lets a caller widen it.
+	return gridFramesConnectedTol(renderer, path, cols, rows, 8)
+}
+
+// gridFramesConnectedTol is gridFramesConnected with a caller-chosen
+// edge-connected key tolerance. A wider tol (24-40) eats the soft white halo
+// around the outline while the edge-only flood still protects interior whites
+// (off-white belly, sclera, held props) - they're enclosed by dark outlines the
+// flood can't cross. 2026-06-15 (#1): the flower-pick read with "white around
+// him" at tol 8, same fringe the biker fixed at tol 40.
+func gridFramesConnectedTol(renderer *sdl.Renderer, path string, cols, rows int, tol uint8) []spriteFrame {
+	grid := engine.SpriteGridFromPNGCleanConnectedTol(renderer, path, cols, rows, spriteInset, tol)
+	var frames []spriteFrame
+	for r := 0; r < rows && r < len(grid); r++ {
+		for c := 0; c < cols && c < len(grid[r]); c++ {
+			gf := grid[r][c]
+			if gf.Tex == nil {
+				continue
+			}
+			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX, footRow: gf.FRY})
+		}
+	}
+	stabilizeFootCX(frames)
+	return frames
+}
+
 func gridFramesRow(renderer *sdl.Renderer, path string, cols, rows, row int) []spriteFrame {
 	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, spriteInset)
 	var frames []spriteFrame
@@ -224,7 +260,7 @@ func gridFramesRow(renderer *sdl.Renderer, path string, cols, rows, row int) []s
 
 // stabilizeFootCX applies a DEADBAND to every frame's foot anchors (foot
 // centre X + foot row Y): values within ±6px of the sheet median snap to the
-// median — killing detection noise so well-aligned frames are rock-stable —
+// median - killing detection noise so well-aligned frames are rock-stable -
 // while larger deviations keep the frame's OWN feet position, so art that
 // genuinely drifts inside the cell (e.g. row 0 drawn higher than row 1) is
 // compensated per frame instead of rendering as a jump (user 2026-06-10:
@@ -268,10 +304,10 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// User playtest 2026-06-05: walk-left is now a SINGLE ROW of 8 frames (the
 	// whole walk cycle). The old 8×2 read only row 0, so a cycle split across
 	// two rows showed as half a stride ("not a full circle"). Load 8×1.
-	// §AB (2026-06-10): the side-walk strip exists in two generations — the
+	// §AB (2026-06-10): the side-walk strip exists in two generations - the
 	// current 10×1 (2400px wide) and the regen spec 8×1 (1536px wide). Pick
 	// the column count from the sheet on disk so dropping the new art in
-	// just works ("read the sprite properly" — no code change needed).
+	// just works ("read the sprite properly" - no code change needed).
 	walkSideCols := 10
 	if w, _, err := engine.PNGSize("assets/images/player/PP walk left.png"); err == nil && w <= 1600 {
 		walkSideCols = 8
@@ -280,7 +316,7 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	p.walkDownFrames = gridFramesRow(renderer, "assets/images/player/PP walk front.png", 8, 2, 0)
 	p.walkUpFrames = gridFrames(renderer, "assets/images/player/PP walk back.png", 8, 2)
 
-	// Idle images — use all frames for animated idle
+	// Idle images - use all frames for animated idle
 	p.idleFrontFrames = gridFrames(renderer, "assets/images/player/PP idle front.png", 8, 2)
 	p.idleSideFrames = gridFrames(renderer, "assets/images/player/PP idle side.png", 8, 2)
 	p.idleBackFrames = gridFrames(renderer, "assets/images/player/PP idle back.png", 8, 2)
@@ -291,7 +327,7 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// User 2026-05-12: swapped from "PP grab flower.png" (square 128×128
 	// cells) to the canonical "PP grab.png" (portrait 172×384 cells). The
 	// square cells made the grab anim render shorter than idle inside the
-	// 245×340 bounds — full size now matches idle. PP grab.png shows the
+	// 245×340 bounds - full size now matches idle. PP grab.png shows the
 	// same crouch-and-rise cycle with a flower in the last frames.
 	p.grabFrames = gridFrames(renderer, "assets/images/player/PP grab.png", 8, 2)
 
@@ -310,15 +346,19 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// flower floor item at the lake is picked up (and re-used when handing
 	// it over to Lily).
 	p.oneShotAnims = map[string][]spriteFrame{}
-	// User 2026-05-31 (#15): receive-map sheet is 4×2, not 8×2 — cutting 8×2
+	// User 2026-05-31 (#15): receive-map sheet is 4×2, not 8×2 - cutting 8×2
 	// split every pose down the middle so PP "blinked" the whole catch.
 	receiveMap := gridFrames(renderer, "assets/images/player/PP receive map.png", 4, 2)
 	if len(receiveMap) > 0 {
 		p.oneShotAnims["receive_map"] = receiveMap
 	}
 	// Dedicated six-frame flower pickup strip: neutral, crouch, reach, grab,
-	// stand holding low, stand holding chest-high.
-	grabFlower := gridFrames(renderer, "assets/images/player/PP grab flower.png", 6, 1)
+	// stand holding low, stand holding chest-high. Connected key (PR#2): the
+	// daisy's petals are white - the global key punched holes in them.
+	// 2026-06-15 (#1): tol 36 (was the default 8) lifts the soft white halo the
+	// user saw "around him" in-game; interior whites (belly, daisy petals) stay
+	// because the edge flood can't cross PP's dark outline.
+	grabFlower := gridFramesConnectedTol(renderer, "assets/images/player/PP grab flower.png", 6, 1, 36)
 	if len(grabFlower) > 0 {
 		p.oneShotAnims["grab_flower"] = grabFlower
 	}
@@ -332,21 +372,70 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	}
 	// #25: PP receiving the baguette / the jam from the bakery NPCs. 8 frames
 	// in one row each (counted from the art). Played by the trade callbacks.
-	if f := gridFrames(renderer, "assets/images/player/PP get bagguette.png", 8, 1); len(f) > 0 {
+	if f := gridFramesConnected(renderer, "assets/images/player/PP get bagguette.png", 8, 1); len(f) > 0 {
 		p.oneShotAnims["get_baguette"] = f
 	}
-	if f := gridFrames(renderer, "assets/images/player/PP get jam.png", 8, 1); len(f) > 0 {
+	if f := gridFramesConnected(renderer, "assets/images/player/PP get jam.png", 8, 1); len(f) > 0 {
 		p.oneShotAnims["get_jam"] = f
 	}
 	// §PR1: generic receive for small flat hand-overs (postcard, sketch,
 	// coffee cup, mini portrait) when no item-specific sheet exists. The
-	// sheet isn't generated yet — until it lands, fall back to the generic
+	// sheet isn't generated yet - until it lands, fall back to the generic
 	// grab frames so PP still visibly takes the item (and the game no longer
 	// crashes on the missing PNG; the loader warns + degrades instead).
-	if f := gridFrames(renderer, "assets/images/player/PP receive.png", 8, 1); len(f) > 0 {
+	if f := gridFramesConnected(renderer, "assets/images/player/PP receive.png", 8, 1); len(f) > 0 {
 		p.oneShotAnims["receive_item"] = f
 	} else if len(p.grabFrames) > 0 {
 		p.oneShotAnims["receive_item"] = p.grabFrames
+	}
+	// Generic "grab" one-shot (the crouch-and-lift cycle). Floor-item pickups
+	// must run through a ONE-SHOT, never playAction(stateGrabbing): player.update
+	// force-resets any non-talking state to idle every frame while !moving, so a
+	// playAction grab is killed before it completes and its add-item callback
+	// never fires (2026-06-15 #19/#20 - the pot pencil softlock). One-shots are
+	// tracked separately (activeOneShot) and always fire onDone.
+	if len(p.grabFrames) > 0 {
+		p.oneShotAnims["grab"] = p.grabFrames
+	}
+	// §PG1 (2026-06-11 #33, refined same day): PER-ITEM give one-shots - the
+	// user wants each hand-over to SHOW the actual item leaving PP's paw.
+	// Each sheet is optional; playGive falls back item -> generic -> grab.
+	// Connected key (PR#2): the handed items are largely WHITE (daisy, cup,
+	// postcard, sketch page, jar label) - the global key erased them mid-give.
+	for key, path := range map[string]string{
+		"flower":        "assets/images/player/PP give flower.png",
+		"rolling_pin":   "assets/images/player/PP give rolling pin.png",
+		"baguette":      "assets/images/player/PP give baguette.png",
+		"confiture":     "assets/images/player/PP give confiture.png",
+		"cafe_au_lait":  "assets/images/player/PP give coffee.png",
+		"baguette_heel": "assets/images/player/PP give heel.png",
+		"pencil":        "assets/images/player/PP give pencil.png",
+		"sketch":        "assets/images/player/PP give sketch.png",
+		"postcard":      "assets/images/player/PP give postcard.png",
+	} {
+		if f := gridFramesConnected(renderer, path, 8, 1); len(f) > 0 {
+			p.oneShotAnims["give_"+key] = f
+		}
+	}
+	// §PM1 (2026-06-12): PP pulls the travel map out of his invisible hip
+	// pocket BEFORE the globe screen opens (user: "a new sprite of us pull
+	// it out from pocket and then the map screen"). Optional - until the
+	// sheet lands, openTravelMap's playOneShot no-ops straight to the map.
+	if f := gridFramesConnected(renderer, "assets/images/player/PP pull map.png", 8, 1); len(f) > 0 {
+		p.oneShotAnims["pull_map"] = f
+	}
+	// PR#9 (2026-06-12): PP recoils/hops backward when the Paris biker bumps
+	// him. Optional - the bump falls back to the generic flinch until this
+	// sheet lands (§JUMPBACK).
+	if f := gridFramesConnected(renderer, "assets/images/player/PP jump back.png", 8, 1); len(f) > 0 {
+		p.oneShotAnims["jump_back"] = f
+	}
+	// Generic fallback give (neutral parcel) for anything without its own
+	// sheet yet; grab frames as the last resort so the beat is never silent.
+	if f := gridFramesConnected(renderer, "assets/images/player/PP give.png", 8, 1); len(f) > 0 {
+		p.oneShotAnims["give_item"] = f
+	} else if len(p.grabFrames) > 0 {
+		p.oneShotAnims["give_item"] = p.grabFrames
 	}
 
 	p.dir = dirDown
@@ -354,9 +443,112 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	return p
 }
 
+// giveAnimKeyForItem maps inventory item NAMES to the per-item give one-shot
+// keys registered in newPlayer ("give_<key>"). Unknown names return "item",
+// which playGive resolves through the generic give/grab fallback chain.
+func giveAnimKeyForItem(name string) string {
+	switch name {
+	case "Flower":
+		return "flower"
+	case "Rolling Pin":
+		return "rolling_pin"
+	case "Baguette":
+		return "baguette"
+	case "Confiture":
+		return "confiture"
+	case "Cafe au Lait":
+		return "cafe_au_lait"
+	case "Baguette Heel":
+		return "baguette_heel"
+	case "Charcoal Pencil":
+		return "pencil"
+	case "Camille's Sketch":
+		return "sketch"
+	case "Postcard", "Signed Postcard":
+		return "postcard"
+	case "Press Pass":
+		// 2026-06-15 #13: had no mapping → fell through to the generic "item"
+		// key, which (no "PP give.png") degraded to the grab frames, so handing
+		// Claude the pass played a "pick" pose. The press pass is a flat card -
+		// reuse the postcard give sheet (also a flat paper hand-over).
+		return "postcard"
+	}
+	return "item"
+}
+
+// playHandOff runs the physical hand-over beat for an alt dialog (user
+// 2026-06-12 PR#1): PP's give one-shot plays, then the NPC's receive
+// one-shot, and only then `then` fires (the dispatcher starts the dialog
+// text there). Every step degrades to an immediate `then` when art is
+// missing, so the flow can't deadlock.
+func (p *player) playHandOff(target *npc, ho *handOff, then func()) {
+	if ho == nil || target == nil {
+		if then != nil {
+			then()
+		}
+		return
+	}
+	key := giveAnimKeyForItem(ho.item)
+	// PR#17/#19: 0.8s over 8 frames read as a fast jump ("give is broken /
+	// too fast"). 1.3s lets the hand-over actually animate. Per-give override
+	// via ho.giveDur.
+	giveDur := ho.giveDur
+	if giveDur <= 0 {
+		giveDur = 1.3
+	}
+	p.playGive(key, giveDur, func() {
+		anim := ho.npcAnim
+		if anim == "" {
+			anim = "receive_" + key
+			if !target.hasOneShotAnim(anim) {
+				anim = "receive_item"
+			}
+			// 2026-06-15 #11/#17: Pierre & Margaux register only a "give"
+			// reaching one-shot (no receive_*/receive_item), so the NPC half of
+			// the hand-over was an instant no-op - the trade looked "broken"
+			// (PP mimed handing over but the NPC never moved). Fall back to the
+			// NPC's own "give" reach so they visibly take the item.
+			if !target.hasOneShotAnim(anim) && target.hasOneShotAnim("give") {
+				anim = "give"
+			}
+		}
+		dur := ho.npcAnimDur
+		if dur <= 0 {
+			dur = 1.3
+		}
+		target.playOneShotAnimThen(anim, dur, then)
+	})
+}
+
+// playGive plays the ITEM-SPECIFIC give one-shot ("give_<key>") when its
+// sheet exists, falling back to the generic "give_item" (which itself falls
+// back to the grab frames at load). 2026-06-11: each hand-over should show
+// the actual item leaving PP's paw - drop a "PP give <item>.png" sheet in
+// and the matching trade upgrades automatically, no code change.
+func (p *player) playGive(itemKey string, dur float64, onDone func()) {
+	name := "give_" + itemKey
+	if p.oneShotAnims == nil {
+		if onDone != nil {
+			onDone()
+		}
+		return
+	}
+	if _, ok := p.oneShotAnims[name]; !ok {
+		name = "give_item"
+	}
+	p.playOneShot(name, dur, onDone)
+}
+
 // playOneShot runs a registered one-shot animation for `dur` seconds, then
 // fires onDone. If the named anim isn't registered, onDone is invoked
 // immediately so sequences don't deadlock on missing assets.
+// hasOneShot reports whether a one-shot animation is registered (its art
+// landed). Callers fall back to a generic action when it isn't.
+func (p *player) hasOneShot(name string) bool {
+	_, ok := p.oneShotAnims[name]
+	return ok
+}
+
 func (p *player) playOneShot(name string, dur float64, onDone func()) {
 	if p.oneShotAnims == nil {
 		if onDone != nil {
@@ -492,8 +684,24 @@ func (p *player) maxY() float64 {
 func (p *player) setTarget(x, y float64) {
 	// #28: a move-elsewhere click grows PP back to full size if he was holding
 	// the shrunk Pierre-depth pose after a dialog.
+	// 2026-06-11 #19: TWO-STAGE exit from the receded depth - PP first walks
+	// straight TOWARD the camera (down to the front row, growing to full
+	// size), and only then heads for the clicked point. The old diagonal
+	// beeline read wrong ("walk front until full size, then to the dot").
 	if p.recedeHeld {
 		p.releaseRecedeSmooth(0.5)
+		fx, fy := x, y
+		p.targetX = engine.Clamp(p.x, playerMinX, playerMaxX)
+		p.targetY = p.maxY()
+		p.moving = true
+		p.allowOffscreen = false
+		p.state = stateWalking
+		p.dir = dirDown
+		p.interactTarget = nil
+		p.onArrival = func() {
+			p.setTarget(fx, fy)
+		}
+		return
 	}
 	tx := engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
 	ty := engine.Clamp(y-playerDstH/2, p.minY(), p.maxY())
@@ -507,7 +715,7 @@ func (p *player) setTarget(x, y float64) {
 }
 
 // talkApproachPos returns the world top-left (tx,ty) PP should stand at to talk
-// to target — picking the interior side, avoiding overlap, honoring approachRight,
+// to target - picking the interior side, avoiding overlap, honoring approachRight,
 // and foot-aligning to the NPC. Shared by walkToAndInteract and the held-item
 // hand-off so both place PP identically.
 func (p *player) talkApproachPos(target *npc) (float64, float64) {
@@ -525,24 +733,40 @@ func (p *player) talkApproachPos(target *npc) (float64, float64) {
 	if tx < npcRight && tx+playerDstW > npcLeft {
 		tx = engine.Clamp(pickSide(preferred), playerMinX, playerMaxX)
 	}
-	// #7: far-right kid (Danny) — force the right side so PP doesn't approach
+	// #7: far-right kid (Danny) - force the right side so PP doesn't approach
 	// from the left and end up standing on Marcus.
 	if target.approachRight {
 		tx = engine.Clamp(pickSide(true), playerMinX, playerMaxX)
+	}
+	// 2026-06-11 #2: mirror flag - Jake is approached from his LEFT so PP
+	// doesn't stand on Lily (and faces Jake's back at the campfire).
+	if target.approachLeft {
+		tx = engine.Clamp(pickSide(false), playerMinX, playerMaxX)
 	}
 	ty := p.y
 	if !target.elevated {
 		ty = float64(target.bounds.Y+target.bounds.H) - playerDstH + 4
 	}
+	// 2026-06-11 #25: per-NPC stand row (bakery patrons - PP stands in the
+	// aisle between Poulain's counter and the tables instead of below them).
+	if target.approachYOverride > 0 {
+		ty = float64(target.approachYOverride)
+	}
 	return tx, engine.Clamp(ty, p.minY(), p.maxY())
 }
 
-// walkToTalkPos walks PP to the approach position and fires onArrive there —
+// walkToTalkPos walks PP to the approach position and fires onArrive there -
 // even when PP is already adjacent (snaps + fires immediately). Used by the
 // held-item hand-off (interactTarget is NOT set), so the give-item beat works at
 // any distance (#10), not only when PP has to walk in. Does not touch
 // interactTarget, so it won't also trigger the normal NPC dialog.
 func (p *player) walkToTalkPos(target *npc, onArrive func()) {
+	// 2026-06-15 #13: same as walkToAndInteract - a held-item hand-over to
+	// another NPC (e.g. handing Claude the Press Pass) must release any held
+	// Pierre-depth recede so PP isn't stuck shrunk.
+	if p.recedeHeld {
+		p.releaseRecedeSmooth(0.5)
+	}
 	tx, ty := p.talkApproachPos(target)
 	p.targetX = tx
 	p.targetY = ty
@@ -565,6 +789,13 @@ func (p *player) walkToTalkPos(target *npc, onArrive func()) {
 }
 
 func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
+	// 2026-06-15 #13: PP could carry the held Pierre-depth recede (recedeHeld)
+	// into a click on ANOTHER NPC (Claude). Only setTarget released it, so PP
+	// stayed shrunk through and after that NPC's dialog. Release it here too so
+	// walking to any NPC grows him back to full size.
+	if p.recedeHeld {
+		p.releaseRecedeSmooth(0.5)
+	}
 	tx, ty := p.talkApproachPos(target)
 	p.targetX = tx
 	p.targetY = ty
@@ -572,7 +803,7 @@ func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
 	p.dialogSys = ds
 	p.onArrival = nil
 	// User 2026-05-10: clicking an NPC must open the dialog as the direct result
-	// of THE CLICK. If PP is already adjacent, snap + fire now instead of a 1–2s
+	// of THE CLICK. If PP is already adjacent, snap + fire now instead of a 1-2s
 	// walk that reads as "my click did nothing"; otherwise the movement-arrival
 	// handler fires startNPCDialog via interactTarget.
 	dx := tx - p.x
@@ -604,14 +835,14 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 // entrance transition. PP stays anchored near his current X (no left-drift),
 // faces upward so the back-walk frames cycle, drifts up by dyUp pixels over
 // dur seconds, and shrinks from 1.0 to endScale. onDone fires once the tween
-// completes — typically a sceneMgr.transitionTo call.
+// completes - typically a sceneMgr.transitionTo call.
 //
 // User 2026-04-26: replaces the old walkToAndDo(599, 200, ...) that read as
 // "walking left then up". Recede is intended to read as "walking away into
 // the camp" without a strafe.
 // clearRecede resets the recede tween state so PP renders at full size
 // again. Call after a scene transition repositions the player so the
-// next scene starts fresh — without this PP would keep rendering at
+// next scene starts fresh - without this PP would keep rendering at
 // recedeEndScale after the cabin/camp-entrance transition completes.
 func (p *player) clearRecede() {
 	p.recedeActive = false
@@ -798,7 +1029,7 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 			// doesn't appear "stuck" mid-walk after a grab/receive one-shot
 			// completes. Without this, if PP was stateWalking when the
 			// one-shot started (he walked to the flower), state stayed
-			// walking after — the user sees PP frozen in a walk pose.
+			// walking after - the user sees PP frozen in a walk pose.
 			p.state = stateIdle
 			p.moving = false
 			if cb != nil {
@@ -808,7 +1039,7 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 		return
 	}
 
-	// Recede tween (camp-entrance transition) — drives position+scale itself
+	// Recede tween (camp-entrance transition) - drives position+scale itself
 	// and short-circuits the rest of update so movement / blocker code can't
 	// fight the tween. Walk-frame ticking still runs so PP cycles his back
 	// walk during the recede.
@@ -831,7 +1062,7 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 		}
 
 		if t >= 1 {
-			// User 2026-05-10: don't reset scale to 1.0 here — that lets
+			// User 2026-05-10: don't reset scale to 1.0 here - that lets
 			// one frame render at full size between this update and the
 			// scene transition's first fade tick, which the user sees as
 			// "shrink, then a beat at full size, then transition". Clamp
@@ -1092,7 +1323,7 @@ func (p *player) startNPCDialog() {
 	}
 	// User 2026-05-22: NPC may want to fully script the click flow (Pierre's
 	// walk-to-middle → recede → talk choreography). If onClickOverride is
-	// set, hand off control and return — the override owns dialog start +
+	// set, hand off control and return - the override owns dialog start +
 	// any post-dialog state.
 	if n.onClickOverride != nil {
 		cb := n.onClickOverride
@@ -1155,9 +1386,27 @@ func (p *player) startNPCDialog() {
 	}
 
 	if n.altDialogFunc != nil && p.canTriggerAltDialog(n) {
-		entries, cb := n.altDialogFunc()
+		entries, cb, ho := n.altDialogFunc()
 		if entries != nil {
-			ds.startDialogWithCallback(entries, wrapCb(cb))
+			// PR#1 (2026-06-12): hand-over dialogs play the give beat FIRST -
+			// PP hands the item, the NPC takes it, THEN the text starts. The
+			// NPC drops back to idle for the beat (talk anim was armed above)
+			// and re-enters talk when the dialog actually begins.
+			start := func() {
+				p.state = stateTalking
+				if len(n.talkGrid) > 0 {
+					n.setAnimState(npcAnimTalk)
+				}
+				ds.startDialogWithCallback(entries, wrapCb(cb))
+			}
+			if ho != nil {
+				if len(n.talkGrid) > 0 {
+					n.setAnimState(npcAnimIdle)
+				}
+				p.playHandOff(n, ho, start)
+			} else {
+				start()
+			}
 			p.interactTarget = nil
 			return
 		}
@@ -1166,7 +1415,7 @@ func (p *player) startNPCDialog() {
 	// Strict gate (user 2026-05-21): if the NPC has a give-item gate but PP
 	// doesn't satisfy it (no held item / not in inventory), AND the NPC has
 	// a strict-missing hint dialog set, play the hint instead of falling
-	// through to the regular n.dialog. Lily is the canonical case — without
+	// through to the regular n.dialog. Lily is the canonical case - without
 	// this, clicking her after the hint phase replays her flower-thanks
 	// dialog every time, even when PP doesn't have a flower.
 	if n.altDialogFunc != nil &&
@@ -1196,7 +1445,7 @@ func (p *player) playAction(s playerState, cb func()) {
 }
 
 // containsPoint is the "click is on PP" test used to open the inventory bag.
-// User playtest #22: the full 200×270 dst rect was too wide — the bag opened
+// User playtest #22: the full 200×270 dst rect was too wide - the bag opened
 // when clicking well to the side of PP's slim body, so it felt like a big
 // invisible radius. Tightened to a 100-px-wide band centered on his body and
 // dropped 24px from the very top (his head is narrow), so the bag only opens
@@ -1240,7 +1489,7 @@ func (p *player) depthScale() float64 {
 // sheets 512px cells with different amounts of blank padding (#1/#2/#3).
 const playerRenderFillFrac = 0.78
 
-// maxOpaqueHeightP is the tallest opaque content height across a frame slice —
+// maxOpaqueHeightP is the tallest opaque content height across a frame slice -
 // the player-side mirror of npc.maxOpaqueH.
 func maxOpaqueHeightP(frames []spriteFrame) int32 {
 	var m int32
@@ -1311,7 +1560,7 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	var dstW, dstH, dstX int32
 	// Normalise by the tallest opaque pose in the active animation so every
 	// sheet (front 384px cells, side 512px cells, old/new art) renders PP at the
-	// same standing height — fixes "not the same size" across walk/talk/idle and
+	// same standing height - fixes "not the same size" across walk/talk/idle and
 	// the per-frame size jump that read as "two frames at once" (#1/#2/#3).
 	refH := maxOpaqueHeightP(p.currentGroup())
 	anchorX := float64(p.x) + float64(playerDstW)/2
@@ -1349,7 +1598,7 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 			dstX = int32(anchorX - footFromLeft)
 		}
 		// Anchor Y by the animation's CONSTANT foot ROW (sheet median, set by
-		// stabilizeFootCX) instead of each frame's own content bottom — a
+		// stabilizeFootCX) instead of each frame's own content bottom - a
 		// dipped tail or a higher-sitting pose extends past the line instead
 		// of lifting the whole body (user 2026-06-10: stay in the same spot).
 		footRow := frame.footRow
@@ -1371,6 +1620,12 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	// with the flower on the ground instead of bending below it.
 	if p.activeOneShot == "grab_flower" {
 		dstY -= 38
+	}
+	// PR#16: drop the rolling-pin grab pose so PP's reach lands in the bike
+	// basket instead of above it. 2026-06-15 #9: user wants PP dropped further
+	// down on this pickup (30→60).
+	if p.activeOneShot == "grab_rolling_pin" {
+		dstY += 60
 	}
 
 	switch p.state {

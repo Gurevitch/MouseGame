@@ -189,6 +189,12 @@ How to wire it:
 
 Same rule applies to camp (Lily's flower already uses `altDialogRequiresHeld`).
 
+**`altDialogFunc` must be PURE** (2026-06-12 #5): the hover probe in
+`ui.go updateHover` CALLS it every frame the cursor passes over the NPC to
+decide which cursor to show — any side effect (one-shot anims, state flips,
+debug prints) fires on hover, before the player ever clicks. Effects belong
+in the *returned callback*, which only runs on a real interaction.
+
 ## 8b. Item-acquisition animation rule (gameplay + art)
 
 **Every item the player collects must be visibly acquired — never just appear
@@ -217,6 +223,31 @@ a placeholder so the beat isn't silent while the art is pending.
 Canonical full examples: rolling pin → Poulain trade (PP `get_baguette` +
 Poulain `give`), Henri confiture (PP `get_jam` + Henri `give_jam`), Higgins
 map throw (tween + PP `receive_map`).
+
+**GIVING is animated too (2026-06-11 #33):** when PP hands an item to an
+NPC, play the generic `"give_item"` player one-shot (sheet `PP give.png`,
+§PG1; falls back to the grab frames until it lands). For trades that go both
+ways, CHAIN them - give first, receive in its callback:
+`game.player.playOneShot("give_item", 0.8, func() { game.player.playOneShot("receive_item", 1.0, nil) })`.
+
+## 8c. Generic pickup lines (gameplay)
+
+**Pickup dialogs stay GENERIC** (2026-06-11 #18): use
+`genericPickupDialog(flavor)` (game.go) - it appends a rotating PP quip to
+the caller's one-line description of what was found. The "who might need
+this" hint belongs in NPC dialogs (Poulain's lost-pin line, Camille's
+reminder), NOT in the pocket beat - items stay reusable across quests and
+the player keeps discovering uses by talking to people.
+
+**Floor-item stand points (2026-06-12 #14/#15):** PP never stands ON a floor
+item. `Game.walkToFloorItem` (the HandleClick pickup path) walks him to a
+spot BESIDE the item — feet aligned with the item's base, LEFT of it by
+default, RIGHT when the item sets `standRight: true` (pick the side that
+puts the grab anim's reach hand over the item; the rolling-pin basket is the
+canonical standRight case). On arrival PP squares up FRONT (dir down), so
+blocked/observation beats ("the pigeons guard the pot") play facing the
+camera. New floor items get this behavior for free — only set `standRight`
+when the reach hand needs the other side.
 
 ## 9. Doc legend (quick reference)
 

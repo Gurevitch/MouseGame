@@ -13,7 +13,7 @@ import (
 // for a character into a single texture, and the loaders below tried it first
 // before falling back to the per-animation PNGs. In practice only Marcus ever
 // had an atlas on disk, and its presence overrode freshly-regenerated PNGs
-// until someone re-ran the packer — a confusing footgun. Every character now
+// until someone re-ran the packer - a confusing footgun. Every character now
 // loads directly from its per-animation PNGs, so dropping a regenerated sheet
 // in takes effect on the next run with no packing step.
 

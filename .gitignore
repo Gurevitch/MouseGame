@@ -23,3 +23,5 @@ secrets.yaml
 */images/retro_frames/*
 # visual hit-test debug dumps
 hit_debug/
+
+.gotmp/

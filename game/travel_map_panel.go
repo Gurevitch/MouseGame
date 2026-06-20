@@ -145,7 +145,7 @@ func (tm *travelMap) drawInfoPanel(renderer *sdl.Renderer, font *engine.BitmapFo
 	cy := factsY
 	for _, fact := range facts {
 		for _, line := range wrapLine(fact, maxChars) {
-			// User 2026-05-12: bullet swapped from "• " to "- " — the bitmap
+			// User 2026-05-12: bullet swapped from "• " to "- " - the bitmap
 			// font atlas doesn't have a U+2022 glyph, and the renderer
 			// treats each missing UTF-8 byte as its own char so the bullet
 			// rendered as "???" (3 question marks per fact line).
@@ -167,7 +167,7 @@ func (tm *travelMap) drawInfoPanel(renderer *sdl.Renderer, font *engine.BitmapFo
 }
 
 // wrapLine breaks `s` into lines no longer than `maxChars` runes, breaking
-// at spaces when possible. Keeps it simple — no hyphenation or fancy
+// at spaces when possible. Keeps it simple - no hyphenation or fancy
 // word-break heuristics.
 func wrapLine(s string, maxChars int) []string {
 	if maxChars <= 0 {

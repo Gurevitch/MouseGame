@@ -7,12 +7,12 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// ambientSprite is a sheet-backed background mover — the Paris biker, the
+// ambientSprite is a sheet-backed background mover - the Paris biker, the
 // Jerusalem worshippers, the camp crow. Unlike `particle` (which draws
 // procedural shapes: dots, triangles, rects), an ambientSprite plays an
 // animated sprite strip behind the actors. It loads from a TRANSPARENT PNG
 // via SpriteGridFromPNGRaw (NO color-key) so cream robes and white-striped
-// shirts survive — color-keying white would punch holes in them.
+// shirts survive - color-keying white would punch holes in them.
 //
 // Each frame is drawn cropped to its opaque box (ox/oy/ow/oh) and anchored
 // by a foot point (a.x, a.y = where the figure stands on the ground), so the
@@ -23,6 +23,7 @@ const (
 	ambientTravel ambientKind = iota // crosses the screen horizontally, then wraps
 	ambientSway                      // stays put, just cycles frames in place (worshippers)
 	ambientPerch                     // flies in -> perches -> holds -> flies off -> repeats (crow)
+	ambientFlyOff                    // starts at (x,y), flaps, drifts up+away, self-clears (PR#29 pot pigeon)
 )
 
 type ambientSprite struct {
@@ -30,11 +31,25 @@ type ambientSprite struct {
 	kind   ambientKind
 	scale  float64
 
+	// Interactive crossing (2026-06-11 #16, the Paris biker): when onClick is
+	// set, the sprite is clickable. paused freezes movement (he brakes
+	// mid-street); the click handler resumes it when its dialog ends.
+	onClick  func()
+	paused   bool
+	lastRect sdl.Rect
+	// pauseFrame (>0): frame index shown while paused - the §BK1 biker sheet
+	// has dedicated BRAKED poses in frames 7-8 (index 6). 0 = freeze current.
+	pauseFrame int
+	// loopFrames (>0): the ride/sway loop cycles only frames [0,loopFrames) -
+	// keeps the biker's braked poses out of the riding animation. 0 = all.
+	loopFrames int
+
 	// x, y is the foot anchor: the ground point the figure stands on.
 	x, y float64
 
 	// travel / fly speed in px/sec. Sign sets facing (negative = face left).
 	vx      float64
+	vyUp    float64 // ambientFlyOff: upward drift px/sec
 	wrapPad float64 // travel: how far off-screen before wrapping
 
 	// animation
@@ -52,7 +67,7 @@ type ambientSprite struct {
 }
 
 // loadAmbientStrip cuts a single-row transparent sprite strip into frames
-// WITHOUT color-keying. Returns nil if the PNG isn't on disk yet — callers
+// WITHOUT color-keying. Returns nil if the PNG isn't on disk yet - callers
 // then no-op, so the wiring can ship ahead of the art (same pattern as the
 // bird/cloud ambient sheets in scene.go).
 func loadAmbientStrip(renderer *sdl.Renderer, path string, frames int) []npcFrame {
@@ -63,12 +78,47 @@ func loadAmbientStrip(renderer *sdl.Renderer, path string, frames int) []npcFram
 	return framesFromGrid(grid, frames, 1, path)
 }
 
+// loadAmbientStripKeyed is for ambient sheets that shipped with a BAKED
+// white background instead of transparency (the current biker.png rendered
+// as a white box riding the street, 2026-06-11 #16). The edge-connected key
+// strips the background while keeping interior whites. Tol 24 (2026-06-12
+// #12): tol 8 left a white halo around the biker's anti-aliased outline.
+func loadAmbientStripKeyed(renderer *sdl.Renderer, path string, frames int) []npcFrame {
+	return loadAmbientStripKeyedTol(renderer, path, frames, 24)
+}
+
+// loadAmbientStripKeyedTol is loadAmbientStripKeyed with a caller-chosen
+// connected-key tolerance. PR#7: the biker uses tol 40 to shave the last
+// anti-aliased edge halo. (Its leftover INTERIOR white - bike-frame
+// triangles, wheel gaps - is enclosed by the outline so the edge flood can't
+// reach it; a full fix needs a transparent-bg re-roll, queued at §BK2.)
+func loadAmbientStripKeyedTol(renderer *sdl.Renderer, path string, frames int, tol uint8) []npcFrame {
+	if _, err := os.Stat(path); err != nil {
+		return nil
+	}
+	grid := engine.SpriteGridFromPNGCleanConnectedTol(renderer, path, frames, 1, 0, tol)
+	return framesFromGrid(grid, frames, 1, path)
+}
+
+// containsPoint hit-tests the sprite's last drawn rect (clickable ambients).
+func (a *ambientSprite) containsPoint(x, y int32) bool {
+	if a.onClick == nil || a.lastRect.W <= 0 {
+		return false
+	}
+	pt := sdl.Point{X: x, Y: y}
+	return pt.InRect(&a.lastRect)
+}
+
 // --- constructors ---
 
 // newAmbientBiker is the Parisian cyclist that drifts past near the Eiffel
 // (item 9 / §AMB2). 8-frame ride loop, faces right, rides left->right.
 func newAmbientBiker(renderer *sdl.Renderer, startX, groundY, vx, scale float64) *ambientSprite {
 	return &ambientSprite{
+		// PR#7 (§BK2 landed 2026-06-12): biker.png now ships with a TRANSPARENT
+		// background (interior bike-frame/wheel pockets are see-through), so it
+		// loads RAW - no color-key needed, and the key can't accidentally eat
+		// his white striped shirt.
 		frames:   loadAmbientStrip(renderer, "assets/images/locations/paris/npc/outside/biker.png", 8),
 		kind:     ambientTravel,
 		x:        startX,
@@ -77,6 +127,32 @@ func newAmbientBiker(renderer *sdl.Renderer, startX, groundY, vx, scale float64)
 		scale:    scale,
 		wrapPad:  240,
 		frameSec: 0.09,
+		// §BK1 sheet layout: frames 1-6 ride loop, 7-8 braked poses.
+		loopFrames: 6,
+		pauseFrame: 6,
+	}
+}
+
+// newAmbientPigeonFlyUp (PR#29): the flower-pot pigeon lifts off when Pierre
+// shoos it, flapping up and to the right toward the rooftops, then clears
+// itself. Reuses the existing transparent `npc_pierre_pigeon_lands.png` - an
+// 8-frame takeoff strip (perched → flapping → climbing up-right), which is
+// exactly a fly-up. Raw load (the sheet is already transparent). Returns nil
+// if the art is ever absent (the pot texture swap is the reliable reveal).
+func newAmbientPigeonFlyUp(renderer *sdl.Renderer, x, y float64) *ambientSprite {
+	frames := loadAmbientStrip(renderer, "assets/images/locations/paris/npc/outside/npc_pierre_pigeon_lands.png", 8)
+	if len(frames) == 0 {
+		return nil
+	}
+	return &ambientSprite{
+		frames:   frames,
+		kind:     ambientFlyOff,
+		scale:    0.35,
+		x:        x,
+		y:        y,
+		vx:       90,  // drift right
+		vyUp:     130, // rise toward the rooftops
+		frameSec: 0.08,
 	}
 }
 
@@ -93,8 +169,25 @@ func newAmbientWorshippers(renderer *sdl.Renderer, x, y, scale float64) *ambient
 	}
 }
 
+// newAmbientSway is the generic in-place looping flavor figure (retro plan
+// #5, 2026-06-12): an N-frame strip cycling at frameSec, anchored at (x, y),
+// no movement. Used for the Paris street-density ambients (§AMB5/§AMB6);
+// any future "someone doing something along the walk line" reuses this
+// instead of a bespoke constructor. Keyed load - these sheets ship with a
+// baked white background like the biker's.
+func newAmbientSway(renderer *sdl.Renderer, sheet string, cols int, x, y, scale, frameSec float64) *ambientSprite {
+	return &ambientSprite{
+		frames:   loadAmbientStripKeyed(renderer, sheet, cols),
+		kind:     ambientSway,
+		x:        x,
+		y:        y,
+		scale:    scale,
+		frameSec: frameSec,
+	}
+}
+
 // newAmbientCrow is the camp crow that flaps in, lands on the camp sign, sits
-// a beat, then flaps away — and repeats. Art is pending (assets/images/ambient/
+// a beat, then flaps away - and repeats. Art is pending (assets/images/ambient/
 // crow.png, 8-frame: 0-5 flap, 6-7 perched). No-ops until the PNG lands.
 func newAmbientCrow(renderer *sdl.Renderer, perchX, perchY float64) *ambientSprite {
 	startX := -120.0
@@ -122,6 +215,19 @@ func (a *ambientSprite) update(dt float64) {
 	if len(a.frames) == 0 {
 		return
 	}
+	if a.paused {
+		// Braked mid-street (clicked biker) - hold position until the click
+		// handler's dialog resumes us, showing the dedicated braked pose
+		// when the sheet has one (§BK1 frames 7-8).
+		if a.pauseFrame > 0 && a.pauseFrame < len(a.frames) {
+			a.frameIdx = a.pauseFrame
+		}
+		return
+	}
+	loopHi := len(a.frames)
+	if a.loopFrames > 0 && a.loopFrames < loopHi {
+		loopHi = a.loopFrames
+	}
 	switch a.kind {
 	case ambientTravel:
 		a.x += a.vx * dt
@@ -130,11 +236,20 @@ func (a *ambientSprite) update(dt float64) {
 		} else if a.vx < 0 && a.x < -a.wrapPad {
 			a.x = float64(engine.ScreenWidth) + a.wrapPad
 		}
-		a.advanceFrame(dt, 0, len(a.frames))
+		a.advanceFrame(dt, 0, loopHi)
 	case ambientSway:
-		a.advanceFrame(dt, 0, len(a.frames))
+		a.advanceFrame(dt, 0, loopHi)
 	case ambientPerch:
 		a.updatePerch(dt)
+	case ambientFlyOff:
+		// PR#29: pigeon lifts off the flower pot and drifts up+away toward the
+		// rooftops, then clears itself (nil frames → update/draw no-op).
+		a.x += a.vx * dt
+		a.y -= a.vyUp * dt
+		a.advanceFrame(dt, 0, loopHi)
+		if a.y < -140 || a.x > float64(engine.ScreenWidth)+140 {
+			a.frames = nil
+		}
 	}
 }
 
@@ -216,6 +331,7 @@ func (a *ambientSprite) draw(renderer *sdl.Renderer) {
 		flip = sdl.FLIP_HORIZONTAL
 	}
 	renderer.CopyEx(f.tex, &src, &dst, 0, nil, flip)
+	a.lastRect = dst
 }
 
 // small float helpers (kept local so they don't collide with the Go 1.21

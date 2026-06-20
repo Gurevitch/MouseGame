@@ -65,7 +65,7 @@ func (sm *sceneManager) loadSceneFromJSON(renderer *sdl.Renderer, store *sceneCo
 
 // buildBackground picks the right background constructor based on the
 // scene def. Animated sheets (backgroundFrames > 1) bypass the placeholder
-// fallback because they're authored sprite sheets, not single stills — if
+// fallback because they're authored sprite sheets, not single stills - if
 // the file is missing we still want the gradient placeholder rather than a
 // crash, so route through the animated path only when the file exists.
 func buildBackground(renderer *sdl.Renderer, def sceneDef) *background {

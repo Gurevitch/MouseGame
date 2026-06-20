@@ -17,11 +17,11 @@ import (
 //   - jerusalem_wall: up at the Western Wall. Miriam the archeologist works
 //     the tunnels behind the stones, Dov (her kid brother) hunts "glow-bugs"
 //     with a flashlight, and worshippers sway at the base of the wall.
-//   - jerusalem_market: the covered Old City souk — a stone tunnel of stalls.
+//   - jerusalem_market: the covered Old City souk - a stone tunnel of stalls.
 //     Eli the spice seller works the SPICES stall and Gary the tourist
 //     wanders here.
 //
-// Chapter anchor item: "Coin Rubbing" — Miriam hands it over at the wall once
+// Chapter anchor item: "Coin Rubbing" - Miriam hands it over at the wall once
 // PP asks for something the boy can hold. Bringing it back to Jake's cabin
 // triggers his healing dialogue. The "tunnels under a wall" thread from Jake's
 // nightmare pays off here as the real Western Wall tunnels + the souk tunnel.
@@ -37,23 +37,23 @@ import (
 // the worshipper overlay ARE authored (2026-06-08).
 
 const (
-	// Eli the spice seller — runs the SPICES stall on the left of the souk.
+	// Eli the spice seller - runs the SPICES stall on the left of the souk.
 	// Art vendor sheet (8x2 split idle/talk) as placeholder until a Jerusalem
 	// spice-merchant sheet is authored (see §JN1 in EXTRA_PROMPTS.md).
 	jerArtEli     = "assets/images/locations/jerusalem/npc/npc_eli_idle.png"
 	jerArtEliBack = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 
-	// Gary the tourist — reuse the security guard sheet (6x2)
+	// Gary the tourist - reuse the security guard sheet (6x2)
 	jerArtGary     = "assets/images/locations/jerusalem/npc/npc_gary_tourist.png"
 	jerArtGaryBack = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 
-	// Miriam the archeologist — French guide sheet layout
+	// Miriam the archeologist - French guide sheet layout
 	jerArtMiriamIdle     = "assets/images/locations/jerusalem/npc/npc_miriam_idle.png"
 	jerArtMiriamIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
 	jerArtMiriamTalk     = "assets/images/locations/jerusalem/npc/npc_miriam_talk.png"
 	jerArtMiriamTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
 
-	// Dov, a curious local kid — borrows the camp kid idle sheet (8x2)
+	// Dov, a curious local kid - borrows the camp kid idle sheet (8x2)
 	jerArtDov         = "assets/images/locations/jerusalem/npc/npc_dov_idle.png"
 	jerArtDovBack     = "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png"
 	jerArtDovTalk     = "assets/images/locations/jerusalem/npc/npc_dov_talk.png"
@@ -65,7 +65,7 @@ const (
 	jerBgMarket   = "assets/images/locations/jerusalem/background/market.png"
 )
 
-// Placeholder palette — warm limestone for the plaza/wall, dim amber for the souk
+// Placeholder palette - warm limestone for the plaza/wall, dim amber for the souk
 var (
 	jerPlazaBase  = color.NRGBA{R: 214, G: 182, B: 140, A: 255}
 	jerWallBase   = color.NRGBA{R: 224, G: 190, B: 120, A: 255}
@@ -75,11 +75,11 @@ var (
 // ---------- NPC dialogs ----------
 
 var eliSpiceDialog = []dialogEntry{
-	{speaker: "Eli", text: "Shalom! Za'atar, sumac, cardamom — ze finest spices in ze whole souk! Here, smell zis one."},
+	{speaker: "Eli", text: "Shalom! Za'atar, sumac, cardamom - ze finest spices in ze whole souk! Here, smell zis one."},
 	{speaker: "Pink Panther", text: "*sniff* ...My eyes are watering and I have never been happier."},
 	{speaker: "Eli", text: "Zat is ze real Jerusalem gold. Forget ze tourists and their little postcards."},
-	{speaker: "Pink Panther", text: "Speaking of which — I'm chasing a boy's nightmare. Tunnels. A face in an old wall."},
-	{speaker: "Eli", text: "Ah — ze Western Wall, and ze tunnels behind it. Miriam digs there."},
+	{speaker: "Pink Panther", text: "Speaking of which - I'm chasing a boy's nightmare. Tunnels. A face in an old wall."},
+	{speaker: "Eli", text: "Ah - ze Western Wall, and ze tunnels behind it. Miriam digs there."},
 	{speaker: "Eli", text: "Out ze arch to ze plaza, then along to ze Wall. Tell her Eli sent you. She owes me for a kilo of cumin."},
 }
 
@@ -107,7 +107,7 @@ var miriamArchDialog = []dialogEntry{
 	{speaker: "Miriam", text: "Last week I lifted a Roman coin from a crack in the tunnel wall. Emperor Hadrian, sharp as the day it was struck."},
 	{speaker: "Miriam", text: "Kids come back from the tunnels with it in their dreams. The Wall remembers you right back."},
 	{speaker: "Pink Panther", text: "Could I take something to the boy? Something he can hold?"},
-	{speaker: "Miriam", text: "Here — a pencil rubbing of the coin. Paper carries what stone keeps quiet."},
+	{speaker: "Miriam", text: "Here - a pencil rubbing of the coin. Paper carries what stone keeps quiet."},
 	{speaker: "Miriam", text: "Tell him the face in his dream isn't chasing him. It's only remembering."},
 }
 
@@ -130,7 +130,7 @@ var dovKidPostDialog = []dialogEntry{
 
 // ---------- NPC constructors ----------
 
-// newEli builds the souk spice seller — stands behind the SPICES stall on the
+// newEli builds the souk spice seller - stands behind the SPICES stall on the
 // left of the market and points PP toward Miriam at the Wall.
 func newEli(renderer *sdl.Renderer, x int32) *npc {
 	return &npc{
@@ -185,7 +185,7 @@ func newDov(renderer *sdl.Renderer, x int32) *npc {
 // addJerusalemScenes wires the three Jerusalem scenes into the given manager.
 // Called from newSceneManager so load is deterministic.
 func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
-	// ===== Entrance plaza (hub — PP lands here) =====
+	// ===== Entrance plaza (hub - PP lands here) =====
 	entrance := &scene{
 		name:   "jerusalem_entrance",
 		bg:     newPNGBackgroundOr(renderer, jerBgEntrance, jerPlazaBase),
@@ -313,14 +313,14 @@ func (g *Game) setupJerusalemCallbacks() {
 	game := g
 
 	// Entrance plaza: travel-map return (this is where PP arrives, so it's
-	// where he leaves Jerusalem from — open the map at the top of the plaza).
+	// where he leaves Jerusalem from - open the map at the top of the plaza).
 	if entrance, ok := g.sceneMgr.scenes["jerusalem_entrance"]; ok {
 		entrance.hotspots = append(entrance.hotspots, hotspot{
 			bounds: sdl.Rect{X: 540, Y: 0, W: 300, H: 90},
 			name:   "Travel Map",
 			arrow:  arrowUp,
 			onInteract: func() bool {
-				game.travelMap.Show("jerusalem_entrance")
+				game.openTravelMap("jerusalem_entrance")
 				return true
 			},
 		})

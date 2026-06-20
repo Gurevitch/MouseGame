@@ -61,6 +61,10 @@ func (reg *itemRegistry) createItem(id string) *inventoryItem {
 		tex.SetBlendMode(sdl.BLENDMODE_BLEND)
 	}
 
+	// Content box of the artwork (post color-key) so the bag + held cursor
+	// center the item by its ART, not its canvas (2026-06-11 #37).
+	cbX, cbY, cbW, cbH := engine.ContentBoxKeyed(def.Texture)
+
 	return &inventoryItem{
 		name:  def.Name,
 		tex:   tex,
@@ -68,6 +72,7 @@ func (reg *itemRegistry) createItem(id string) *inventoryItem {
 		srcH:  h,
 		desc:  def.Description,
 		owner: "player",
+		cbX:   cbX, cbY: cbY, cbW: cbW, cbH: cbH,
 	}
 }
 

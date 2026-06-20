@@ -10,7 +10,7 @@ import (
 
 // sequenceJSON is the on-disk shape of a sequence file under
 // `assets/data/sequences/*.json`. Each step carries the discriminator `type`
-// and whatever subset of fields that step type reads — extra fields are
+// and whatever subset of fields that step type reads - extra fields are
 // ignored so the schema can grow without breaking old files.
 type sequenceJSON struct {
 	ID    string     `json:"id"`
@@ -73,7 +73,7 @@ func newSequenceStore(dir string, game *Game) *sequenceStore {
 	return store
 }
 
-// Get returns a cached sequence by ID. Callers get a shared Sequence value —
+// Get returns a cached sequence by ID. Callers get a shared Sequence value -
 // SequencePlayer.Play resets its playback cursor on entry so re-running is safe.
 func (s *sequenceStore) Get(id string) *Sequence {
 	return s.defs[id]

@@ -70,7 +70,7 @@
       "id": "inscription_rubbing",
       "name": "Inscription Rubbing",
       "texture": "assets/images/items/inscription_rubbing.png",
-      "description": "A rubbing taken from a Roman monument — the letters still smell of chalk."
+      "description": "A rubbing taken from a Roman monument - the letters still smell of chalk."
     },
     {
       "id": "rolling_pin",
@@ -98,7 +98,7 @@
     },
     {
       "id": "cafe_au_lait",
-      "name": "Café au Lait",
+      "name": "Cafe au Lait",
       "texture": "assets/images/items/cafe_au_lait.png",
       "description": "A cream porcelain cup of steaming Parisian coffee. Henri is waiting for this."
     },
@@ -106,7 +106,7 @@
       "id": "confiture",
       "name": "Confiture",
       "texture": "assets/images/items/confiture.png",
-      "description": "Henri's homemade strawberry confiture. Smells incredible — Pierre might like it on his dry baguette."
+      "description": "Henri's homemade strawberry confiture. Smells incredible - Pierre might like it on his dry baguette."
     },
     {
       "id": "charcoal_pencil",
@@ -130,7 +130,7 @@
       "id": "mini_portrait",
       "name": "Mini Portrait",
       "texture": "assets/images/items/mini_portrait.png",
-      "description": "A tiny oil portrait of PP by Pierre, approved by the toughest critic in Paris — a pigeon."
+      "description": "A tiny oil portrait of PP by Pierre, approved by the toughest critic in Paris - a pigeon."
     },
     {
       "id": "postcard_grandson",

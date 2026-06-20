@@ -2,7 +2,7 @@ package game
 
 import "testing"
 
-// background.update is pure logic — no SDL calls — so we can construct a
+// background.update is pure logic - no SDL calls - so we can construct a
 // background literal directly and exercise the frame-advance loop without a
 // renderer. These tests pin the contract the airplane_flight cloud loop
 // depends on.
@@ -61,7 +61,7 @@ func TestBackgroundUpdate_WrapsAtFrameCount(t *testing.T) {
 
 func TestBackgroundUpdate_LargeDtAdvancesMultipleFrames(t *testing.T) {
 	// One huge dt (e.g. window was minimized then restored) should not
-	// drop frames — the for-loop in update() catches up.
+	// drop frames - the for-loop in update() catches up.
 	b := &background{frames: 6, frameSeconds: 0.15}
 	b.update(0.46) // 3 full frames + 0.01 leftover
 	if b.frameIdx != 3 {
@@ -74,7 +74,7 @@ func TestBackgroundUpdate_LargeDtAdvancesMultipleFrames(t *testing.T) {
 }
 
 func TestBackgroundUpdate_LargeDtWrapsCleanly(t *testing.T) {
-	// dt big enough to wrap past the frame count in a single tick — the
+	// dt big enough to wrap past the frame count in a single tick - the
 	// loop must keep going, not stop at the 6-frame boundary. Using a
 	// non-exact multiple of frameSeconds (1.25 s vs 0.15) avoids the
 	// float-subtraction edge where the residual lands a hair under

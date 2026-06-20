@@ -8,7 +8,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// gameMenu is the pause/system menu overlay — Save, Load, Exit. Opened with
+// gameMenu is the pause/system menu overlay - Save, Load, Exit. Opened with
 // ESC, dismissed with ESC again or by clicking a button. Renders as a
 // centered column of large buttons over a dimmed background so the current
 // scene stays visible underneath.
@@ -122,7 +122,7 @@ func (g *Game) menuHandleClick(x, y int32) bool {
 			return true
 		}
 	}
-	// Click missed all buttons — swallow it so a stray click doesn't
+	// Click missed all buttons - swallow it so a stray click doesn't
 	// also hit the scene behind.
 	return true
 }

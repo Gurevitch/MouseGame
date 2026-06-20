@@ -10,13 +10,13 @@ import (
 
 // Mexico City chapter: the finale.
 //
-// Only one scene — the plaza in front of the Palacio de Bellas Artes,
+// Only one scene - the plaza in front of the Palacio de Bellas Artes,
 // where all five healed kids (Marcus, Jake, Lily, Tommy, Danny) meet up
 // in a single frame for the ending monologue. Director Higgins stands
 // to the side wearing a straw hat.
 //
 // This chapter's "anchor" is simply the player arriving with every heal
-// flag set. No item puzzle — the story has already been paid for.
+// flag set. No item puzzle - the story has already been paid for.
 
 const (
 	mxBgPlaza           = "assets/images/locations/mexico/background/mexico_plaza.png"
@@ -35,7 +35,7 @@ var mxPlazaBase = color.NRGBA{R: 240, G: 170, B: 120, A: 255}
 // ---------- Dialogs ----------
 
 var mariachiDialog = []dialogEntry{
-	{speaker: "Mariachi", text: "Hola, amigo! One song for ze lady? Oh — no lady. One song for ze panther!"},
+	{speaker: "Mariachi", text: "Hola, amigo! One song for ze lady? Oh - no lady. One song for ze panther!"},
 	{speaker: "Pink Panther", text: "I'm not much of a singer, but I appreciate the offer."},
 	{speaker: "Mariachi", text: "Zen you must DANCE. Ze plaza is waiting."},
 }
@@ -55,9 +55,9 @@ var abuelaPostDialog = []dialogEntry{
 }
 
 var mxVendorDialog = []dialogEntry{
-	{speaker: "Vendor", text: "Tamales, elote, agua fresca — everything for ze reunion!"},
+	{speaker: "Vendor", text: "Tamales, elote, agua fresca - everything for ze reunion!"},
 	{speaker: "Pink Panther", text: "You already know about the reunion?"},
-	{speaker: "Vendor", text: "Five kids, one panther — ze whole city has been waiting for you."},
+	{speaker: "Vendor", text: "Five kids, one panther - ze whole city has been waiting for you."},
 }
 
 var mxVendorPostDialog = []dialogEntry{
@@ -66,7 +66,7 @@ var mxVendorPostDialog = []dialogEntry{
 
 var finaleMonologue = []dialogEntry{
 	{speaker: "Pink Panther", text: "Five cities. Five names. Five kids."},
-	{speaker: "Pink Panther", text: "Turns out they weren't broken. They were connected — to places they had never seen, to histories they had never lived."},
+	{speaker: "Pink Panther", text: "Turns out they weren't broken. They were connected - to places they had never seen, to histories they had never lived."},
 	{speaker: "Pink Panther", text: "Marcus to Paris. Jake to Jerusalem. Lily to Tokyo. Tommy to Rio and Buenos Aires. Danny to Rome."},
 	{speaker: "Pink Panther", text: "And all of them, somehow, to this plaza."},
 	{speaker: "Director Higgins", text: "PP. You did it. Every cabin is smiling again."},
@@ -162,7 +162,7 @@ func (g *Game) setupMexicoCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.travelMap.Show("mexico_street")
+				game.openTravelMap("mexico_street")
 				return true
 			},
 		})

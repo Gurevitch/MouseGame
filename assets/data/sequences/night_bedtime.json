@@ -4,8 +4,6 @@
     {"type": "wait", "seconds": 0.6},
     {"type": "npc_anim", "scene": "camp_night", "npc": "Director Higgins", "anim": "shout"},
     {"type": "dialog", "dialog": [
-      {"speaker": "Director Higgins", "text": "Ahem! It's getting very late, counselor."},
-      {"speaker": "Director Higgins", "text": "All campers to their cabins. NOW."},
       {"speaker": "Director Higgins", "text": "And you Pink Panther, get some rest by the fire. Big day tomorrow."},
       {"speaker": "Pink Panther", "text": "Goodnight, Director."}
     ]},

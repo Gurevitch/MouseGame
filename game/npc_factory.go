@@ -35,10 +35,11 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"french_guide":       newFrenchGuide,
 	"museum_curator":     newMuseumCurator,
 	"pierre_artist":      newPierreArtist,
+	"pigeon_lady":        newPigeonLady,
 	"gendarme_claude":    newGendarmeClaude,
 	"bakery_woman":       newBakeryWoman,
 	"press_photographer": newPressPhotographer,
-	// Café patrons (paris_bakery interior). Henri carries the coffee-jam
+	// Cafe patrons (paris_bakery interior). Henri carries the coffee-jam
 	// quest beat; the other 5 are flavor.
 	"cafe_patron_yvette":  newCafePatronYvette,
 	"cafe_patron_bernard": newCafePatronBernard,

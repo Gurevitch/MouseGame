@@ -602,6 +602,24 @@ func blankCornerLogo(img *image.NRGBA, w, h int) {
 	}
 }
 
+// ContentBoxKeyed returns the opaque content box of a PNG after the standard
+// white color-key - the rectangle around the actual artwork. Inventory icons
+// use it to center items by their CONTENT: generated icons often sit
+// off-center inside large keyed-out margins (2026-06-11 #37).
+func ContentBoxKeyed(filename string) (ox, oy, ow, oh int32) {
+	img, err := loadPNG(filename)
+	if err != nil {
+		return 0, 0, 0, 0
+	}
+	applyColorKey(img)
+	b := findOpaqueBounds(img, img.Bounds())
+	if b.Dx() <= 0 || b.Dy() <= 0 {
+		return 0, 0, 0, 0
+	}
+	return int32(b.Min.X - img.Bounds().Min.X), int32(b.Min.Y - img.Bounds().Min.Y),
+		int32(b.Dx()), int32(b.Dy())
+}
+
 // PNGSize returns a PNG's pixel dimensions without decoding the pixel data.
 // Used by loaders that pick a grid layout from the sheet on disk (e.g. PP's
 // side-walk strip shipped as 10×1 and its regen spec is 8×1 — the caller
@@ -1084,12 +1102,21 @@ func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows,
 // only background-colored pixels connected to the image edge. Use it for
 // character sheets whose eye whites or teeth match the white background.
 func SpriteGridFromPNGCleanConnected(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
+	return SpriteGridFromPNGCleanConnectedTol(renderer, filename, cols, rows, inset, 8)
+}
+
+// SpriteGridFromPNGCleanConnectedTol is SpriteGridFromPNGCleanConnected with a
+// caller-chosen match tolerance. Tol 8 leaves a visible fringe on sheets whose
+// background was authored with soft anti-aliased edges (the Paris biker,
+// 2026-06-12 #12) - a wider tolerance eats the halo while the edge-connected
+// flood still protects interior whites.
+func SpriteGridFromPNGCleanConnectedTol(renderer *sdl.Renderer, filename string, cols, rows, inset int, tol uint8) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {
 		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
 		return emptyGrid(cols, rows)
 	}
-	applyColorKeyConnectedTol(img, 8)
+	applyColorKeyConnectedTol(img, tol)
 	eraseGridLines(img, cols, rows)
 
 	bounds := img.Bounds()

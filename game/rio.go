@@ -70,7 +70,7 @@ var tioJorgePostDialog = []dialogEntry{
 var marisaBartenderDialog = []dialogEntry{
 	{speaker: "Marisa", text: "Every Carnival since 1987 I keep ze cards. My father says I am sentimental."},
 	{speaker: "Pink Panther", text: "A boy at camp keeps shouting 'Marisa' like he knows her. His handwriting looks like yours."},
-	{speaker: "Marisa", text: "Dios meu. Take zis — half of a dance card I tore in 1991. ZE other half... I never found."},
+	{speaker: "Marisa", text: "Dios meu. Take zis - half of a dance card I tore in 1991. ZE other half... I never found."},
 	{speaker: "Marisa", text: "Ze other half has ze partner's name. Maybe in Buenos Aires. My cousin ran away zere."},
 }
 
@@ -103,7 +103,7 @@ var brunoKidPostDialog = []dialogEntry{
 var donRafaDialog = []dialogEntry{
 	{speaker: "Don Rafa", text: "Ah, a panther in my school? Ze tango does not discriminate!"},
 	{speaker: "Pink Panther", text: "I'm looking for a torn dance card. The other half is in Rio."},
-	{speaker: "Don Rafa", text: "Rio and Buenos Aires — always zey share ze halves. Check ze lost-and-found box by ze piano."},
+	{speaker: "Don Rafa", text: "Rio and Buenos Aires - always zey share ze halves. Check ze lost-and-found box by ze piano."},
 }
 
 var donRafaPostDialog = []dialogEntry{
@@ -113,7 +113,7 @@ var donRafaPostDialog = []dialogEntry{
 var luciaTangoDialog = []dialogEntry{
 	{speaker: "Lucia", text: "Ay, who taught you to stand like zat? Knees soft, senhor."},
 	{speaker: "Pink Panther", text: "I'm more of a leans-against-a-wall dancer."},
-	{speaker: "Lucia", text: "Pity. Here — if you want ze piano box, it is under ze red shawl. Do not touch ze shawl."},
+	{speaker: "Lucia", text: "Pity. Here - if you want ze piano box, it is under ze red shawl. Do not touch ze shawl."},
 	{speaker: "Lucia", text: "Ze shawl is my grandmother's. She is ninety-six and she will know."},
 }
 
@@ -358,7 +358,7 @@ func (g *Game) setupRioCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.travelMap.Show("rio_street")
+				game.openTravelMap("rio_street")
 				return true
 			},
 		})
@@ -405,7 +405,7 @@ func (g *Game) setupRioCallbacks() {
 			name:   "Travel Map",
 			arrow:  arrowLeft,
 			onInteract: func() bool {
-				game.travelMap.Show("buenos_aires_street")
+				game.openTravelMap("buenos_aires_street")
 				return true
 			},
 		})
@@ -425,7 +425,7 @@ func (g *Game) setupRioCallbacks() {
 							game.inv.addItem(item)
 						}
 						game.dialog.queueDialog([]dialogEntry{
-							{speaker: "Pink Panther", text: "Both halves. The card says 'Tommy y Marisa — Carnival 1991'."},
+							{speaker: "Pink Panther", text: "Both halves. The card says 'Tommy y Marisa - Carnival 1991'."},
 							{speaker: "Pink Panther", text: "Time to go home."},
 						})
 					}

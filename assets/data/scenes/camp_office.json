@@ -2,9 +2,11 @@
   "name": "camp_office",
   "background": "assets/images/locations/camp/background/camp_office.png",
   "spawnX": 220,
-  "spawnY": 480,
-  "minY": 0,
-  "maxY": 0,
+  "_comment_spawn": "User 2026-06-12 PR#4: PP stood too high entering the office (feet 750, floating against the door/radiator line). spawnY 480 -> 505 drops his feet to ~775 on the open floor in front of the rug.",
+  "spawnY": 505,
+  "_comment_walkY": "2026-06-15 #2/#3: the office had no walk-Y range (min/max 0 → defaults 265-395). That let PP walk UP toward Higgins until his 270px body-box rose into the top wall blocker (y0-360), which shoved him back to the entrance and fired a false 'arrival' (needed a 2nd click), and kept his feet floating high off the floor. Pin the walkable band to the actual floor strip (foot 690-790) so PP stays below the wall blocker and stands on the floor in front of the desk.",
+  "minY": 420,
+  "maxY": 520,
   "musicPath": "assets/audio/music/camp_office.mp3",
   "characterScale": 1.0,
   "npcs": ["office_higgins"],
@@ -13,7 +15,8 @@
   ],
   "blockers": [
     {"x": 500, "y": 0, "w": 900, "h": 360},
-    {"x": 950, "y": 480, "w": 450, "h": 200}
+    {"x": 950, "y": 480, "w": 450, "h": 200},
+    {"_comment": "User 2026-06-12 PR#4: block the radiator/door corner (278,588)-(409,689) so PP can't walk into it.", "x": 278, "y": 588, "w": 131, "h": 101}
   ],
   "walkSegments": []
 }
