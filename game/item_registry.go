@@ -10,10 +10,11 @@ import (
 )
 
 type itemDef struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Texture     string `json:"texture"`
-	Description string `json:"description"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Texture     string  `json:"texture"`
+	Description string  `json:"description"`
+	IconScale   float64 `json:"iconScale"` // <1 shrinks an oversized bag icon (#17); 0 = full fit
 }
 
 type itemRegistry struct {
@@ -71,8 +72,9 @@ func (reg *itemRegistry) createItem(id string) *inventoryItem {
 		srcW:  w,
 		srcH:  h,
 		desc:  def.Description,
-		owner: "player",
-		cbX:   cbX, cbY: cbY, cbW: cbW, cbH: cbH,
+		owner:     "player",
+		iconScale: def.IconScale,
+		cbX:       cbX, cbY: cbY, cbW: cbW, cbH: cbH,
 	}
 }
 

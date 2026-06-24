@@ -115,11 +115,12 @@ func (a *ambientSprite) containsPoint(x, y int32) bool {
 // (item 9 / §AMB2). 8-frame ride loop, faces right, rides left->right.
 func newAmbientBiker(renderer *sdl.Renderer, startX, groundY, vx, scale float64) *ambientSprite {
 	return &ambientSprite{
-		// PR#7 (§BK2 landed 2026-06-12): biker.png now ships with a TRANSPARENT
-		// background (interior bike-frame/wheel pockets are see-through), so it
-		// loads RAW - no color-key needed, and the key can't accidentally eat
-		// his white striped shirt.
-		frames:   loadAmbientStrip(renderer, "assets/images/locations/paris/npc/outside/biker.png", 8),
+		// 2026-06-21: biker.png is NOT actually transparent - it ships with a
+		// near-white OPAQUE background (every pixel alpha=255, corners ~233-253),
+		// so the old RAW load drew a white box around him. Use the EDGE-CONNECTED
+		// white key (tol 40): it floods the background away from the sheet edges
+		// while leaving his enclosed white striped shirt intact.
+		frames:   loadAmbientStripKeyedTol(renderer, "assets/images/locations/paris/npc/outside/biker.png", 8, 40),
 		kind:     ambientTravel,
 		x:        startX,
 		y:        groundY,
@@ -135,12 +136,13 @@ func newAmbientBiker(renderer *sdl.Renderer, startX, groundY, vx, scale float64)
 
 // newAmbientPigeonFlyUp (PR#29): the flower-pot pigeon lifts off when Pierre
 // shoos it, flapping up and to the right toward the rooftops, then clears
-// itself. Reuses the existing transparent `npc_pierre_pigeon_lands.png` - an
-// 8-frame takeoff strip (perched → flapping → climbing up-right), which is
-// exactly a fly-up. Raw load (the sheet is already transparent). Returns nil
-// if the art is ever absent (the pot texture swap is the reliable reveal).
+// itself. Reuses the existing `npc_pierre_pigeon_lands.png` - an 8-frame takeoff
+// strip (perched → flapping → climbing up-right), which is exactly a fly-up.
+// 2026-06-21: this sheet is opaque near-white (NOT transparent), so it loads
+// through the edge-connected white key (tol 40) - otherwise it drew a white box
+// around the pigeon. Returns nil if the art is ever absent.
 func newAmbientPigeonFlyUp(renderer *sdl.Renderer, x, y float64) *ambientSprite {
-	frames := loadAmbientStrip(renderer, "assets/images/locations/paris/npc/outside/npc_pierre_pigeon_lands.png", 8)
+	frames := loadAmbientStripKeyedTol(renderer, "assets/images/locations/paris/npc/outside/npc_pierre_pigeon_lands.png", 8, 40)
 	if len(frames) == 0 {
 		return nil
 	}
@@ -160,7 +162,10 @@ func newAmbientPigeonFlyUp(renderer *sdl.Renderer, x, y float64) *ambientSprite 
 // Wall (item 9 / §AMB1). 6-frame in-place sway loop.
 func newAmbientWorshippers(renderer *sdl.Renderer, x, y, scale float64) *ambientSprite {
 	return &ambientSprite{
-		frames:   loadAmbientStrip(renderer, "assets/images/locations/jerusalem/npc/wall/people_pray.png", 6),
+		// 2026-06-21 (#22): people_pray.png is opaque near-white (not transparent),
+		// so key the background out (edge-connected, tol 40) instead of a raw load
+		// that boxed the worshippers.
+		frames:   loadAmbientStripKeyedTol(renderer, "assets/images/locations/jerusalem/npc/wall/people_pray.png", 6, 40),
 		kind:     ambientSway,
 		x:        x,
 		y:        y,

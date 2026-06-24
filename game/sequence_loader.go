@@ -41,6 +41,10 @@ type stepJSON struct {
 	FromY    int32   `json:"fromY,omitempty"`
 	Sprite   string  `json:"sprite,omitempty"`
 	EndScale float64 `json:"endScale,omitempty"`
+	// ToPlayer (#5): when true, a tween_item retargets at runtime to PP's
+	// current paw/chest position so a thrown item lands where he's actually
+	// standing (X/Y stay as the fallback). 2026-06-20.
+	ToPlayer bool `json:"toPlayer,omitempty"`
 	// Raw kept for debugging unknown step types.
 	_ json.RawMessage `json:"-"`
 }
@@ -163,6 +167,7 @@ func compileStep(j stepJSON, game *Game) (SeqStep, error) {
 			TargetX:  j.X,
 			TargetY:  j.Y,
 			Duration: j.Seconds,
+			ToPlayer: j.ToPlayer,
 		}, nil
 	}
 	return SeqStep{}, fmt.Errorf("unknown step type %q", j.Type)

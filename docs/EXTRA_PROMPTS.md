@@ -145,15 +145,27 @@ the background (or leaves enclosed white pockets / halos the edge-flood can't
 reach). The biker (§BK2) and the pot pigeon already ship transparent and load
 raw — those two are fine; these two are not.
 
-#### §FLOWER-PICK — `PP grab flower.png` blinks + leftover white (#1) · STILL NEEDED
+#### §FLOWER-PICK — `PP grab flower.png` mis-cuts: frame 0 = the daisy alone (#1) · STILL NEEDED
 
 **Path:** `assets/images/player/PP grab flower.png` · **6×1** single row · pure
-`#FFFFFF` background (chroma key). `tools/jitter_audit` on the current sheet:
-**CONTENT CROSSES 3 cell borders (14-16px)** + the frame-1 daisy sits far from PP
-as a detached 82px sliver, so gap-detection slices unevenly → frames show pieces
-of their neighbours = the **blinking** in-game. Plus an enclosed white pocket
-between his arm and body (the edge key can't reach it) reads as background.
-Re-roll with the layout rules below; the loader keys it at tol 36 already.
+`#FFFFFF` background (chroma key). The loader keys it at tol 36 already.
+
+**Re-generated 2026-06-20 — STILL BROKEN, same two layout flaws as before:**
+- `go test ./engine -run ContentGrid` gap-detects it **1×6 but the FIRST cell is
+  only (0,0)-(82,1024)** — that 82px sliver is the daisy lying detached on the
+  ground at the far LEFT of frame 1. So the animation's frame 0 is *just the
+  daisy with no panther*, and every real PP pose is shoved one slot over → the
+  pickup reads as broken/blinking in-game.
+- `tools/jitter_audit` (fixed grid): **GHOST PIECES in 2 cells**, **CONTENT
+  CROSSES 3 borders (13-16px)**, **"2 cells touch BOTH side edges"** — the 6 PP
+  poses are packed so tightly they touch each other, so a fixed grid can't cut
+  them either.
+
+The engine cannot recover 6 clean frames from this layout (detached object +
+figures with no gap between them). It needs a re-roll that fixes BOTH:
+**(1) the daisy must be in PP's paw / within a few px of it in EVERY frame —
+never a separate object on the ground at the cell edge; (2) the 6 PP poses need
+≥15px of clear background between them so neither touches its neighbour.**
 
 Key fixes for the re-roll:
 - **Even, self-contained frames:** 6 cells of equal width, each holding ONE
@@ -215,6 +227,88 @@ present and identical in EVERY frame.
 > no separators or gridlines, no portrait or labels. Tall rectangular cells.
 ===PROMPT END===
 
+### 2026-06-20 bug-sweep art
+
+#### §MARCUS-SLEEP — Marcus dozes off after the postcard heal (#19) · DONE 2026-06-20
+
+LANDED: `npc_marcus_going_to_sleep.png` + `npc_marcus_sleeping.png` (sitting-doze),
+both GAP-DETECTED 1×8 clean and wired in `newRoomMarcus`. Prompt kept below for re-rolls.
+
+Two sheets. Once PP gives Marcus the Louvre postcard he's healed and finally calm,
+and nods off (so Higgins's "sleeping soundly" line is true). Wired already - the
+go-to-sleep one-shot ("sleep") plays at his spot, then his idle swaps to the
+sleeping loop; both no-op until the art lands. Match `npc_marcus_idle.png` exactly
+(brown hair, round glasses, golden-yellow polo `#EEB421`, brown shorts).
+
+**Pose choice (important — read his room `marcus_room_day.png` first):** his cabin
+has a bunk bed on the LEFT, a desk under the window, and his obsessive drawings
+papered over every wall and the floor. He renders at his STANDING spot (centre of
+the room, bottom-anchored), and the engine scales each frame by its tallest opaque
+pose - so a flat, lying-in-bed figure would render stretched and wrong. Instead he
+**sinks down and dozes off SITTING on the floor among his drawings**, head drooping
+onto his chest, knees up, sketchbook sliding from his lap - a kid who finally
+stopped and conked out mid-sketch. This stays vertical (anchors + scales cleanly at
+his spot, no bed alignment needed) and reads far better than lying flat.
+
+**Paths:** `assets/images/locations/camp/npc/kids/marcus/npc_marcus_sleep.png`
+(doze-off one-shot) and `npc_marcus_sleeping_idle.png` (sleeping loop) ·
+**8×1 each, 1536×1024** (cells 192×1024). **ATTACH** `npc_marcus_idle.png`.
+
+===PROMPT START — SLEEP (one-shot)===
+> Use the attached sheet as the reference: the SAME boy, Marcus - copy his exact
+> design (brown hair, round glasses, golden-yellow polo `#EEB421`, brown shorts),
+> size and framing. An 8-frame ONE-SHOT of him nodding off where he stands in his
+> camp-cabin bedroom, single row on pure #FFFFFF at exactly 1536×1024 (cells
+> 192×1024). KID-FRIENDLY, calm and content - he's just been soothed, not sad.
+> Play 1→8: 1 standing relaxed, small smile; 2-3 a big sleepy yawn, rubbing one
+> eye; 4-5 sinking down to sit on the floor, legs folding under/in front of him;
+> 6 settled cross-legged, shoulders sagging, his little sketchbook sliding off his
+> lap; 7 head drooping forward onto his chest, eyes closing; 8 fast asleep sitting
+> up, head down, mouth softly closed, a tiny "z" starting above his head. He stays
+> in ONE spot - his seated bottom lands on the SAME floor row as his standing feet.
+> ANCHOR LOCK: body centerline on the SAME column every cell; one complete figure
+> per cell, ≥15px clear background to both neighbours and the sheet edges, nothing
+> crosses a cell boundary, no ghost/duplicate limbs, no separators, no portrait,
+> no text. Pure #FFFFFF background only.
+===PROMPT END===
+
+===PROMPT START — SLEEPING IDLE (loop)===
+> Use the attached sheet as the reference: the SAME boy, Marcus - copy his exact
+> design and size. An 8-frame LOOPING idle of him ASLEEP, sitting cross-legged on
+> his cabin floor with his head drooped forward onto his chest (the pose the
+> doze-off one-shot ends on), single row on pure #FFFFFF at exactly 1536×1024
+> (cells 192×1024). KID-FRIENDLY and peaceful. The only motion across the loop is
+> gentle breathing (shoulders/chest rise and fall a few px) and a soft "z z z"
+> that drifts up and fades in/out above his head. He does NOT wake or shift pose.
+> ANCHOR LOCK: his seated bottom stays on the SAME floor row and his body
+> centerline on the SAME column in every cell; one complete figure per cell, ≥15px
+> clear background to both neighbours and the edges, nothing crosses a cell
+> boundary, no ghost limbs, no separators, no portrait, no text. Pure #FFFFFF only.
+===PROMPT END===
+
+#### §GIVE-HEEL — `PP give heel.png` blinks (#15) · NEEDED (re-roll)
+
+**Path:** `assets/images/player/PP give heel.png` · **8×1, 1536×1024** (cells
+192×1024). `tools/jitter_audit`: PP's extended ARM + the bread heel reach into
+the NEIGHBOURING cells (CONTENT CROSSES 18-30px, "cells touch both edges"), so
+the gap slicer cuts unevenly → the hand-over blinks in-game. Re-roll with each
+pose fully inside its own cell.
+
+===PROMPT START===
+> Use the attached `PP idle side.png` as the exact character reference (same
+> head, muzzle, outline weight, pink fills, NO gloves, off-white `#F2EFE5` belly).
+> An 8-frame one-shot of the Pink Panther, LEFT profile, handing a small bread
+> "heel" (a stubby end of a baguette, golden-brown) to someone beside him. Play
+> 1→8: 1 stands holding the heel low, 2-3 raises it, 4-5 extends his arm to offer
+> it (arm and heel must stay WITHIN the cell - do not let them reach into the
+> next frame), 6 the heel leaves his open paw, 7 pulls the arm back, 8 relaxed
+> empty-handed stand with a small smile. CRITICAL: each of the 8 poses is fully
+> inside its own cell with ≥15px clear background to both neighbours and the
+> edges - no arm, paw, tail or heel may cross a cell boundary. ANCHOR LOCK - feet
+> on the SAME pixel row, body centerline on the SAME column. Pure #FFFFFF
+> background, no ghost limbs, no separators, no portrait, no text.
+===PROMPT END===
+
 ### Backgrounds + ambient life (camp return, darkening, Jerusalem, bg life)
 
 All backgrounds are **1376×768**, drawn in the game's hand-drawn 90s Pink Panther
@@ -240,38 +334,46 @@ flies off, on a loop.
 > small beak and eye. One pose per cell, even spacing, no separators or gridlines.
 ===PROMPT END===
 
-#### §JN1 — Jerusalem: Eli the spice seller (souk vendor) — market scene
+spice_seller_give.png` (cardamom),
+`market/npc_coffee_seller_give.png` (the cup), `wall/npc_bagel_seller_give.png`
+(ka'ak), `wall/npc_praying_man_give.png` (the note slip).
 
-**Path:** `assets/images/locations/jerusalem/npc/npc_eli_idle.png` · **8×2 grid** (row 0 = idle, row 1 = talk), white background for color-key. Currently borrows the Paris art-vendor sheet as placeholder — this replaces it with a proper souk spice merchant.
+**Fence prop:** `assets/images/locations/jerusalem/props/fence.png` — single-frame
+transparent/white-bg overlay of a low separation fence Shimon stands by (plaza).
+#### §JERUSALEM — Jerusalem chapter art (new coffee/spice/bagel/note/pen/coin flow, WIRED) · STILL NEEDED
 
-===PROMPT START===
-> A friendly Middle-Eastern spice merchant for a 90s point-and-click cartoon, full
-> body, facing the viewer/slightly right, standing behind a market stall. Warm
-> earth-tone tunic/apron, rolled sleeves, a small cap, short beard, weathered
-> cheerful face. Lay out an 8-column × 2-row sprite sheet on a PLAIN WHITE
-> background: ROW 1 = 8 idle poses (small gestures, scooping spice, wiping hands,
-> a welcoming wave), ROW 2 = 8 talking poses (mouth open, hands presenting/
-> gesturing as if describing his spices). Consistent character, size and baseline
-> across all 16 cells, even spacing, no gridlines or separators. Hand-drawn 90s
-> cartoon style, bold clean outlines.
-===PROMPT END===
+The chain is wired in `game/jerusalem.go`; every NPC borrows a Paris/camp
+placeholder sheet and every give-one-shot / icon no-ops or falls back until its
+art lands. Art lives under `jerusalem/npc/wall/` (plaza + Wall NPCs) and
+`jerusalem/npc/market/` (souk NPCs). Standard rules apply (pure `#FFFFFF`, anchor
+lock, ≥15px gaps, no separators/extras). Backgrounds already exist.
 
-### Parked — Jerusalem task-chain art (don't generate yet; see `docs/JERUSALEM_TASKS.md`)
+**LANDED:** `wall/npc_shimon.png` (6×2 full body, idle row0 / talk row1) ·
+`market/npc_spice_seller_idle.png`.
 
-The chain is designed but NOT wired, and the exact items may still change.
-One-line specs only — full prompt bodies get written when we build the chain
-(older drafts recoverable from git history):
+**NPC sheets still needed — FULL BODY, SEPARATE idle/talk for the sellers + kid:**
+- `market/npc_spice_seller_talk.png` — **8×1**, matches the landed idle. APPEARANCE:
+  earth-tone tunic/apron, small cap, short dark beard, behind a colourful spice stall
+  (scooping/offering cardamom).
+- `market/npc_coffee_seller_idle.png` + `_talk.png` — **8×1 each**. The coffee + spice
+  sellers currently look IDENTICAL (shared placeholder) — make this man VISIBLY DIFFERENT
+  from the spice seller: a **dark waistcoat over a cream shirt, a small red fez/cap, a big
+  mustache (no beard)**, working a **brass finjan coffee pot** (brewing/pouring a tiny cup).
+- `wall/npc_bagel_seller.png` — **6×2** (idle row0 / talk row1), ka'ak (sesame bagel) cart seller.
+- `wall/npc_praying_man_idle.png` **8×2** (idle = facing the Wall, praying/swaying) + `wall/npc_praying_man_talk.png` **8×1** (turned toward PP).
+- `wall/npc_wall_kid_idle.png` + `_talk.png` — **8×1 each**, a bar-mitzvah-age boy
+  (used for both kids). **MUST NOT look like Marcus** — dark brown/black WAVY hair, a
+  small KNITTED KIPPAH, a plain PALE-BLUE collared shirt (cream `#E5DDC8` if "white"),
+  dark trousers. **NO round glasses, NO golden-yellow polo, NO notepad** (those read as
+  Marcus). One kid may hold a small prayer book in the talk frames.
 
-- **§JW1** `assets/images/player/PP write note.png` — ~6×1, PP writes a note,
-  ends pocketing it.
-- **§JW2** `assets/images/player/PP put note in wall.png` — ~6×1, PP tucks the
-  note into a Western Wall crack.
-- **§JC1** `assets/images/locations/jerusalem/npc/alley_cat.png` — ~6×1
-  transparent, sit/idle loop + trot-away.
-- **§JI1** item icons: guidebook, sardine_tin, glow_bug_jar, charcoal_stick,
-  paper, pencil, note.
-- **§JG1** four NPC give one-shots (Gary, Eli, Dov, Miriam) — 8×1 each,
-  SKILL.md §8b rule.
+**GIVE one-shots (8×1, the §8b "both sides" rule):** `wall/npc_shimon_give.png`
+(pen, then coin), `market/npc_
+**Item icons (256×256, white bg):** `items/cardamom.png`, `items/jerusalem_coffee.png`,
+`items/bagel.png`, `items/note_paper.png`, `items/pen.png`, `items/coin.png`.
+
+**PP one-shots (wired, grab fallback):** `player/PP write note.png` (6×1, writes the
+slip, pockets it) + `player/PP put note in wall.png` (6×1, tucks it into a Wall crack).
 
 #### §NIC1-v2b — Nicolas TALK sheet (idle landed + verified; talk still pending)
 
@@ -295,24 +397,6 @@ back to the OLD combined sheet's talk row. **Path:**
 > centerline on the SAME column, same size in all 8 cells. No separators,
 > no extra portrait, no text.
 ===PROMPT END===
-
-#### §JG1 — Jerusalem NPC GIVE one-shots (rule SKILL.md §8b — needed BEFORE the chain is wired)
-
-The Jerusalem daisy-chain (docs/JERUSALEM_TASKS.md) has FOUR person-to-PP
-hand-overs, and per §8b each giving NPC needs a give one-shot. Queue these
-alongside the §JI1 item icons when the chain gets built. All four: **1536×1024,
-8×1** strips, pure #FFFFFF, matching each NPC's existing design, ANCHOR LOCK
-(feet/waist on the same pixel row, centerline on the same column, only arms
-and head move, nothing touches cell edges, no separators/extras/text):
-
-- `assets/images/locations/jerusalem/npc/npc_gary_give.png` — Gary the
-  tourist digs the Pencil + Sardine Tin out of his daypack and holds them out.
-- `assets/images/locations/jerusalem/npc/npc_eli_give.png` — Eli the spice
-  seller tears a paper slip off his wrapping roll and offers it.
-- `assets/images/locations/jerusalem/npc/npc_dov_give.png` — Dov hands over
-  the Charcoal Stick from his tool belt.
-- `assets/images/locations/jerusalem/npc/npc_miriam_give.png` — Miriam the
-  archeologist carefully presents the finished Coin Rubbing with both hands.
 
 ---
 

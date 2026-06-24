@@ -56,7 +56,13 @@
       "Bash(grep -v \"//\")",
       "PowerShell(go run ./tools/sheet_clean .)",
       "PowerShell($env:GOTMPDIR = \\(Resolve-Path .gotmp\\).Path; go run ./tools/jitter_audit . 2>$null | Select-String -Pattern \"cafe_patron|poulain\" -Context 0,6 | Select-Object -First 80)",
-      "PowerShell(Remove-Item engine\\\\tmp_measure_test.go -Confirm:$false)"
+      "PowerShell(Remove-Item engine\\\\tmp_measure_test.go -Confirm:$false)",
+      "Bash(GOTMPDIR=\"$\\(pwd\\)/.gotmp\" go test ./engine -v -run ContentGrid)",
+      "Bash(GOTMPDIR=\"$\\(pwd\\)/.gotmp\" go run ./tools/jitter_audit .)",
+      "Bash(grep -iA6 \"grab flower\")",
+      "Bash(GOTMPDIR=\"$\\(pwd\\)/.gotmp\" go build ./...)",
+      "Bash(echo \"BUILD_DONE_EXIT=$?\")",
+      "Bash(GOTMPDIR=\"$\\(pwd\\)/.gotmp\" go test ./game -v -run NPCClick)"
     ]
   }
 }

@@ -1,8 +1,9 @@
 {
   "name": "marcus_room",
-  "background": "assets/images/locations/camp/background/marcus_room_day.png",
+  "background": "assets/images/locations/camp/background/day1/marcus_room.png",
+  "_comment_spawn": "2026-06-21 #20: spawnY 360→330 so PP enters a little higher in the room (within minY 320).",
   "spawnX": 500,
-  "spawnY": 360,
+  "spawnY": 330,
   "minY": 320,
   "maxY": 400,
   "musicPath": "assets/audio/music/camp_cabin.mp3",

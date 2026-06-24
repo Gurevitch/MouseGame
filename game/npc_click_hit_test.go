@@ -82,11 +82,11 @@ func npcHitCases() []npcHitCase {
 
 		// --- Kid bedrooms ---
 		{scene: "tommy_room", name: "Tommy (room)", bounds: sdl.Rect{X: 670, Y: 440, W: 162, H: 245}},
-		{scene: "jake_room", name: "Jake (room)", bounds: sdl.Rect{X: 720, Y: 460, W: 162, H: 245}},
+		{scene: "jake_room", name: "Jake (room)", bounds: sdl.Rect{X: 760, Y: 480, W: 162, H: 200}}, // #20 shrunk
 		{scene: "lily_room", name: "Lily (room)", bounds: sdl.Rect{X: 666, Y: 476, W: 162, H: 245}},
 		// User 2026-05-20: Marcus room Y nudged 350 → 385 so feet land
 		// on the cabin floor.
-		{scene: "marcus_room", name: "Marcus (room)", bounds: sdl.Rect{X: 600, Y: 385, W: 187, H: 270}},
+		{scene: "marcus_room", name: "Marcus (room)", bounds: sdl.Rect{X: 615, Y: 470, W: 150, H: 185}}, // #20 shrunk
 		{scene: "danny_room", name: "Danny (room)", bounds: sdl.Rect{X: 760, Y: 445, W: 162, H: 245}},
 
 		// --- Paris street (outside NPCs) ---
@@ -94,7 +94,7 @@ func npcHitCases() []npcHitCase {
 		// (feet kept) so PP (~211px rendered) isn't shorter than them.
 		// Pierre stays smaller (back-of-line perspective).
 		{scene: "paris_street", name: "Madame Colette", bounds: sdl.Rect{X: 335, Y: 520, W: 120, H: 205}},
-		{scene: "paris_street", name: "Madame Margaux", bounds: sdl.Rect{X: 230, Y: 500, W: 78, H: 145}},
+		{scene: "paris_street", name: "Madame Margaux", bounds: sdl.Rect{X: 617, Y: 494, W: 78, H: 145}}, // #7 foot (656,639)
 		{scene: "paris_street", name: "Pierre", bounds: sdl.Rect{X: 780, Y: 470, W: 95, H: 175}},
 		{scene: "paris_street", name: "Nicolas", bounds: sdl.Rect{X: 950, Y: 520, W: 120, H: 205}},
 		{scene: "paris_street", name: "Gendarme Claude", bounds: sdl.Rect{X: 1180, Y: 540, W: 120, H: 205}},
@@ -111,7 +111,7 @@ func npcHitCases() []npcHitCase {
 		// each table's cloth-top edge.
 		{scene: "paris_bakery", name: "Madame Yvette", bounds: sdl.Rect{X: 80, Y: 355, W: 110, H: 135}},
 		{scene: "paris_bakery", name: "Monsieur Bernard", bounds: sdl.Rect{X: 195, Y: 355, W: 110, H: 135}},
-		{scene: "paris_bakery", name: "Mademoiselle Camille", bounds: sdl.Rect{X: 470, Y: 384, W: 110, H: 135}},
+		{scene: "paris_bakery", name: "Mademoiselle Camille", bounds: sdl.Rect{X: 470, Y: 360, W: 110, H: 135}}, // #12 up
 		{scene: "paris_bakery", name: "Monsieur Henri", bounds: sdl.Rect{X: 580, Y: 370, W: 110, H: 135}},
 		{scene: "paris_bakery", name: "Lucien", bounds: sdl.Rect{X: 920, Y: 365, W: 110, H: 135}},
 		// Elise: removed from paris_bakery scene's npcs list 2026-05-22

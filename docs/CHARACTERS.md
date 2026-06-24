@@ -125,7 +125,10 @@ per-character palette & silhouette tags are already in `PROMPTS.md` so
 they are not duplicated here; what matters is the draw size is
 consistent.
 
-- Jerusalem: Eli (spice seller) **215**, Miriam (archeologist) **215**, Dov (scared kid) **220**, Gary (tourist) **215**.
+- Jerusalem (rebuilt 2026-06-21 — coffee/spice/bagel/note/pen/coin flow): Shimon
+  (gate-keeper) **225**, Spice Seller **215**, Coffee Seller **215**, Bagel Seller
+  **215**, Praying Man (robed) **225**, Wall Kid **190**. See the dedicated
+  Jerusalem identity block below — the Wall Kid must NOT look like Marcus.
 - Tokyo: Hiro **210**, Kenji **215**, Oba-chan **200**, Gary **215**.
 - Rio: Tio Jorge **220**, Marisa **215**, Padre Antonio **225**,
   Bruno **215**.
@@ -134,6 +137,28 @@ consistent.
 - Rome: Nonna Rosa **205**, Luca **215**, Dottor Bianchi **225**,
   Garibaldi (cat) **120**.
 - Mexico City: Mariachi **215**, Abuela **200**, Vendor **215**.
+
+### Jerusalem cast — visual identity (rebuilt 2026-06-21)
+
+Distinct, warm 90s-cartoon Israelis. Every kid/adult here must read as Jerusalem
+locals, NOT recolored camp kids. **No pure white** (cream `#E5DDC8` for shirts/robes).
+
+- **Shimon** — the friendly gate-keeper by the separation fence (plaza). Older man,
+  early 60s; small knitted **kippah**, short grey beard, weathered kind face; plain
+  tan/beige button-down, dark trousers. (Sheet `wall/npc_shimon.png` — LANDED.)
+- **Spice Seller** (souk) — middle-aged merchant behind a spice stall; warm earth-tone
+  tunic/apron, rolled sleeves, small cap, short dark beard.
+- **Coffee Seller** (souk centre) — coffee vendor with a brass finjan pot; dark waistcoat
+  over a cream shirt, small fez/cap, full mustache.
+- **Bagel Seller** (plaza) — cheerful ka'ak (sesame bagel) cart vendor; apron, flat cap,
+  round friendly face, a tray/ring of long sesame bagels.
+- **Praying Man** (Wall) — elderly devout man; long grey beard, black hat, a **tallit**
+  (cream-and-stripe prayer shawl) over a dark coat. Idle = facing the Wall, swaying.
+- **Wall Kid** (×2, same sheet) — a bar-mitzvah-age boy, ~**190px**. **MUST be visibly
+  DIFFERENT from Marcus:** dark brown/black wavy hair, a small **knitted kippah**, a
+  plain **pale-blue** collared shirt (cream if "white" is needed), dark trousers. **NO
+  round glasses, NO golden-yellow polo, NO notepad** (those are Marcus's). One is
+  rehearsing his Torah portion (could hold a small book in talk frames).
 
 ---
 

@@ -19,6 +19,9 @@ type inventoryItem struct {
 	// cursor draw by this box so icons center on the ART, not the canvas
 	// (generated icons often float off-center in big margins; 2026-06-11 #37).
 	cbX, cbY, cbW, cbH int32
+	// iconScale (2026-06-20 #17) multiplies the bag fit-scale so an oversized
+	// icon (the charcoal pencil) can be drawn smaller. 0/1 = full fit.
+	iconScale float64
 }
 
 // contentSrc returns the source rect + dimensions to draw an item by: the
@@ -223,6 +226,9 @@ func (inv *inventory) draw(renderer *sdl.Renderer) {
 		scale := float64(maxW) / float64(sw)
 		if sh := float64(maxH) / float64(sh0); sh < scale {
 			scale = sh
+		}
+		if item.iconScale > 0 {
+			scale *= item.iconScale
 		}
 		dstW := int32(float64(sw) * scale)
 		dstH := int32(float64(sh0) * scale)

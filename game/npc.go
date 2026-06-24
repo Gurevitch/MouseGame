@@ -74,11 +74,23 @@ type npc struct {
 	// approachYOverride, when >0, pins PP's stand row (top-left Y) for this
 	// NPC instead of foot-aligning to its bounds (bakery patrons; 2026-06-11 #25).
 	approachYOverride int32
+	// approachGapX, when >0, is the horizontal gap (px) PP leaves between his
+	// body edge and the NPC when standing to talk (default 10). Office Higgins
+	// uses a large gap so PP stops clear of the trash bin (2026-06-20 #3).
+	approachGapX int32
 	// fixedFacing keeps the NPC's authored `flipped` during dialog instead of
 	// auto-turning to face PP. For seated NPCs (office Higgins) who must hold a
 	// fixed orientation behind a desk (#16).
 	fixedFacing bool
-	silent      bool
+	// fixedFootAnchor (#2): anchor by content center-X + content BOTTOM instead
+	// of the per-frame detected feet. For seated/bust NPCs (office Higgins) whose
+	// foot detection is unreliable and makes the talk loop jitter/blink.
+	fixedFootAnchor bool
+	// ppFacePlayer (#10): PP faces the camera (front) during this NPC's dialog
+	// instead of left/right. For NPCs behind a back-of-scene counter (Poulain)
+	// who sit above PP, where side-facing reads as PP showing his back.
+	ppFacePlayer bool
+	silent       bool
 	// hidden skips the draw pass for this NPC. Used for story-timed
 	// arrivals (e.g. Higgins appearing next to Lily only after her shy
 	// dialog) so the NPC can sit in the scene list from load without
@@ -185,7 +197,11 @@ type npc struct {
 	strangeIdleNight []npcFrame
 	normalIdle       []npcFrame
 	normalTalk       []npcFrame
-	isStrange        bool
+	// sleepIdleGrid (#19): once Marcus is healed he goes to sleep - the heal
+	// swaps his idleGrid to this looping sleeping pose (empty = keep normal
+	// idle until the art lands). The go-to-sleep beat is the "sleep" one-shot.
+	sleepIdleGrid []npcFrame
+	isStrange     bool
 	// strangeTalkFrameSpeed slows the talk animation while the NPC is in
 	// strange state (Marcus's freakout looked too flickery at the default
 	// 0.10 s/frame). 0 = inherit talkFrameSpeed unchanged.
@@ -572,7 +588,13 @@ func newDirectorHiggins(renderer *sdl.Renderer) *npc {
 		// User 2026-05-18: shifted X 660 → 760 so PP's walk-up-to-talk
 		// position lands clear of the left gate post / fence rail. PP
 		// resting spot (post walk-in) also shifted to keep the same gap.
-		bounds:         sdl.Rect{X: 760, Y: 390, W: 168, H: 220},
+		// User 2026-06-20: moved to (820, 490). At the old (760, 390) his
+		// sprite sat on the gate-path walk line (x≈778), so PP climbing the
+		// path rendered behind him. Now he stands to the RIGHT of the path
+		// and lower in the clearing (foot ~710), greeting beside the gate
+		// rather than in it. (NPCs don't block movement - this is purely so
+		// the dirt path reads as clear.)
+		bounds:         sdl.Rect{X: 820, Y: 490, W: 168, H: 220},
 		name:           "Director Higgins",
 		dialog:         higginsDefaultDialog,
 		bobAmount:      0,
@@ -621,7 +643,9 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// User 2026-06-11 (#13): back down a little so he sits in one line
 		// with the desk.
 		// User 2026-06-12 (#11): "a tiny up" - 300 -> 290.
-		bounds:    sdl.Rect{X: 990, Y: 290, W: 220, H: 200},
+		// 2026-06-20 #3: shrunk a few px (H 200→185, foot kept at 490) so the
+		// idle/talk/give-map all render a touch smaller behind the desk.
+		bounds:    sdl.Rect{X: 990, Y: 305, W: 220, H: 185},
 		name:      "Director Higgins",
 		dialog:    higginsWorriedDialog,
 		bobAmount: 0,
@@ -631,10 +655,15 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// orientation -> back to unflipped sheets. The give-map throw stays at
 		// its previous (flipped) orientation via oneShotFlip below ("map is in
 		// good side"). fixedFacing keeps startNPCDialog from re-flipping him.
-		flipped:     false,
-		fixedFacing: true,
-		oneShotFlip: map[string]bool{"give_map": true},
-		silent:      true,
+		flipped:         false,
+		fixedFacing:     true,
+		fixedFootAnchor: true, // #2: bust NPC - stop the talk-loop jitter/blink
+		oneShotFlip:     map[string]bool{"give_map": true},
+		silent:          true,
+		// 2026-06-20 #3: PP stood at the default 10px gap (foot ~x750), right on
+		// the trash bin (~x715-840). A big gap stops him clear of the bin, to the
+		// left, facing right to talk.
+		approachGapX: 280,
 	}
 	// Register the give-map one-shot animation. User 2026-05-31 (#14): the
 	// sheet is a 6×2 grid (detect_grid), not 8×1 - cutting it 8×1 made cellH
@@ -703,7 +732,9 @@ func newRoomTommy(renderer *sdl.Renderer) *npc {
 
 func newRoomJake(renderer *sdl.Renderer) *npc {
 	n := newJake(renderer)
-	n.bounds = sdl.Rect{X: 760, Y: 435, W: 162, H: 245}
+	// 2026-06-20 #20: H 245 rendered Jake taller than PP (~211px). Shrink to
+	// 200 (feet kept at y=680) so he reads clearly shorter than PP.
+	n.bounds = sdl.Rect{X: 760, Y: 480, W: 162, H: 200}
 	n.silent = true
 	return n
 }
@@ -730,7 +761,9 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	// 187×270 matched PP's height (the "looming freakout giant" intent), but the
 	// user wants him clearly shorter than PP. Shrunk to 150×205 with the foot
 	// kept on the cabin floor line (Y+H ≈ 655), so he now reads as a kid.
-	n.bounds = sdl.Rect{X: 615, Y: 450, W: 150, H: 205}
+	// 2026-06-20 #20: H 205 read about PP's height; shrink to 185 (feet kept
+	// at y=655) so room Marcus is clearly shorter than PP too.
+	n.bounds = sdl.Rect{X: 615, Y: 470, W: 150, H: 185}
 	// Hidden until the night freakout cutscene unhides him. Without this,
 	// peeking into Marcus's cabin on Day 1 already shows him there even
 	// though Day-1 Marcus belongs on the camp grounds.
@@ -762,6 +795,26 @@ func newRoomMarcus(renderer *sdl.Renderer) *npc {
 	n.altIdleAfterSec = 4.5        // freakout punctuation every ~4.5s
 	n.strangeTalkFrameSpeed = 0.16 // unsettled, not strobing
 	n.strangeIdleFrameSpeed = 0.26 // unsettled scribble, not manic
+	// #19 (2026-06-20): once healed Marcus goes to sleep so Higgins's "sleeping
+	// soundly" line is true. The go-to-sleep one-shot ("sleep") plays, then the
+	// heal swaps his idle to sleepIdleGrid (the looping sleeping pose). Both are
+	// optional - if the art isn't on disk the heal just leaves him on his calm
+	// normal idle (the dialog still reads fine). Art queued at EXTRA_PROMPTS.
+	if f := loadNPCGridConnected(renderer, base+"npc_marcus_going_to_sleep.png", 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["sleep"] = f
+	}
+	n.sleepIdleGrid = loadNPCGridConnected(renderer, base+"npc_marcus_sleeping.png", 8, 1)
+	// #22: Marcus takes/looks at the Louvre postcard during the heal hand-over.
+	// Optional - the hand-off NPC half no-ops until this art lands (§MARCUS-POSTCARD).
+	if f := loadNPCGridConnected(renderer, base+"npc_marcus_postcard.png", 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["receive_postcard"] = f
+	}
 	return n
 }
 
@@ -920,7 +973,9 @@ func newJake(renderer *sdl.Renderer) *npc {
 		name:           "Jake",
 		dialog:         jakeDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.10,
+		// 2026-06-20 #1: 0.10 strobed far faster than the ~20-char/s text
+		// reveal. 0.18 matches the other slowed talkers. (newRoomJake inherits.)
+		talkFrameSpeed: 0.18,
 		// 2026-06-11 #2: approach from the LEFT - the interior side stood PP
 		// on top of Lily; from the left PP also faces Jake's back at the fire.
 		approachLeft: true,
@@ -1048,9 +1103,14 @@ var marcusStrangeDialog = []dialogEntry{
 	{speaker: "Marcus", text: "I've never been to Paris! But I can't stop drawing it!"},
 }
 
+// marcusPostStrangeDialog — the REPEAT pre-heal lines (subsequent visits while
+// he's still afflicted). 2026-06-21 #22: rude/irritable, like a kid who can't
+// stand being interrupted, until PP brings the postcard and snaps him out of it.
 var marcusPostStrangeDialog = []dialogEntry{
-	{speaker: "Marcus", text: "The woman's face again... the golden frames... something is missing..."},
-	{speaker: "Marcus", text: "I filled twelve pages last night. I can't stop."},
+	{speaker: "Marcus", text: "What do you want NOW? Can't you see I'm busy?"},
+	{speaker: "Pink Panther", text: "Marcus, I'm trying to help-"},
+	{speaker: "Marcus", text: "Then go AWAY and let me draw! The woman's face... the golden frames... it's all I can think about!"},
+	{speaker: "Marcus", text: "Bring me the picture or leave me alone."},
 }
 
 func newMarcus(renderer *sdl.Renderer) *npc {
@@ -1593,6 +1653,16 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		if fry <= frame.oy {
 			fry = frame.oy + frame.oh
 		}
+		// 2026-06-20 #2: seated/bust NPCs (office Higgins) have no real feet -
+		// the per-frame foot detector latches onto his chest/desk and jumps
+		// frame-to-frame (jitter_audit FOOT drift 121px), so the talk loop
+		// "blinks"/bobs. fixedFootAnchor ignores the detected fcx/fry and pins
+		// the CONTENT center-X + content BOTTOM at the bounds, so every frame
+		// sits still (head bobs up from a fixed waist line).
+		if n.fixedFootAnchor {
+			fcx = frame.ox + frame.ow/2
+			fry = frame.oy + frame.oh
+		}
 		anchorX := float64(n.bounds.X) + float64(n.bounds.W)/2
 		colFromLeft := (float64(fcx) - float64(frame.ox)) * scale
 		if flippedNow {
@@ -1829,6 +1899,9 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 		flipped:        false, // sheet draws her facing right already
+		// 2026-06-20 #10: she's behind the back counter (above PP), so face PP to
+		// the CAMERA for her dialog/receive instead of up (which showed his back).
+		ppFacePlayer: true,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/bakery_woman") {
 		// User 2026-05-31 (#19): use Madame Poulain's dedicated new sheets
@@ -1962,9 +2035,10 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 		// User 2026-05-31 (#21): her talk was too fast at 0.08; 0.13 slows the
 		// cadence so it reads smoothly (#20).
 		talkFrameSpeed: 0.13,
-		// User 2026-06-12 (#13): the X-nudge wasn't enough - PP still stood
-		// on the bike rack to her left. Force the STREET side instead.
-		approachRight: true,
+		// User 2026-06-12 (#13): force a side so PP doesn't stand on the bike rack.
+		// 2026-06-20 #7: user wants the OTHER side - approach from her LEFT. She's
+		// not fixedFacing, so startNPCDialog flips her to FACE PP from the new side.
+		approachLeft: true,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/french_guide") {
 		// User 2026-05-31 (#18): use Colette's dedicated new sheets
@@ -2133,13 +2207,12 @@ func newPierreArtist(renderer *sdl.Renderer) *npc {
 			n.talkGrid = loadNPCGridRowConnected(renderer, sheet, 8, 2, 1)
 		}
 	}
-	// Pierre's give one-shot (he tosses the crumbs / shoos the pot pigeon).
-	if f := loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_pierre_give.png", 8, 1); len(f) > 0 {
-		if n.oneShotAnims == nil {
-			n.oneShotAnims = map[string][]npcFrame{}
-		}
-		n.oneShotAnims["give"] = f
-	}
+	// 2026-06-20 #14: Pierre no longer registers a "give" one-shot. The
+	// shoo-the-pigeon role moved to Madame Margaux, and `npc_pierre_give.png`
+	// (Pierre presenting his painting/portrait) was being used by playHandOff
+	// as his "take the item" fallback - so handing Pierre the baguette played
+	// the portrait-display sprite instead of a take. With no "give" anim the
+	// hand-off NPC half is a clean no-op and PP's give anim carries the beat.
 	return n
 }
 
@@ -2174,11 +2247,15 @@ func newPigeonLady(renderer *sdl.Renderer) *npc {
 		// right, toward the street/pot. 2026-06-15 #5: user dot (559,593) is
 		// her bottom-CENTRE (same convention as Poulain) → bottom-centre 559
 		// with W=78 → X=520; bottom 593 with H=145 → Y=448.
-		bounds:         sdl.Rect{X: 520, Y: 448, W: 78, H: 145},
+		// 2026-06-20 #7: user dot - her FOOT must sit at (656,639). Bottom-centre
+		// 656 with W=78 → X=617; foot 639 with H=145 → Y=494.
+		bounds:         sdl.Rect{X: 617, Y: 494, W: 78, H: 145},
 		name:           "Madame Margaux",
 		dialog:         pigeonLadyDialog,
 		bobAmount:      0,
-		talkFrameSpeed: 0.13,
+		// 2026-06-20 #10: 0.13 cycled too fast for her speech; match the slowed
+		// talkers at 0.22.
+		talkFrameSpeed: 0.22,
 	}
 	// Art pending (§PIGEON-LADY): idle + optional give/scatter one-shot. Until
 	// the sheets land she renders invisible but stays clickable via bounds, so
@@ -2416,7 +2493,8 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 		// 2026-06-12 sprite-check: bust art rendered whole (see Yvette).
 		// PR#14: moved up a little (370→352).
 		// 2026-06-15 #8: user asked to move her a little left and down.
-		bounds:            sdl.Rect{X: 470, Y: 384, W: 110, H: 135},
+		// 2026-06-20 #12: user asked to move her back up a little (384→360).
+		bounds:            sdl.Rect{X: 470, Y: 360, W: 110, H: 135},
 		name:              "Mademoiselle Camille",
 		dialog:            camilleFlavorDialog,
 		bobAmount:         0,

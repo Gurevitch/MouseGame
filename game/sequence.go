@@ -66,9 +66,10 @@ type SeqStep struct {
 	moveElapsed    float64
 
 	// SeqTweenItem - visible thrown/flying sprite that lerps across screen.
-	Sprite string // PNG path; loaded lazily on first execute.
-	FromX  int32  // start screen x
-	FromY  int32  // start screen y
+	Sprite   string // PNG path; loaded lazily on first execute.
+	FromX    int32  // start screen x
+	FromY    int32  // start screen y
+	ToPlayer bool   // #5: retarget to PP's runtime paw position on entry
 	// Runtime-only: loaded texture + dimensions, set on first execute and
 	// cleared when the step finishes so the Draw hook stops rendering.
 	tweenTex *sdl.Texture
@@ -458,6 +459,14 @@ func (sp *SequencePlayer) executeStep() {
 		// step pointer's runtime scratch so Draw can pick it up. If the
 		// PNG is missing, log + skip (don't deadlock the sequence).
 		stepPtr := &seq.Steps[seq.current]
+		// #5 (2026-06-20): retarget to PP's actual paw/chest so the thrown map
+		// lands where he's standing now (he stops at a per-NPC gap, so a fixed
+		// catch point misses). Right paw ≈ top-left + (0.8W, 0.45H), facing right.
+		if stepPtr.ToPlayer && sp.game != nil && sp.game.player != nil {
+			stepPtr.TargetX = int32(sp.game.player.x + playerDstW*0.8)
+			stepPtr.TargetY = int32(sp.game.player.y + playerDstH*0.45)
+			step = *stepPtr
+		}
 		if stepPtr.tweenTex == nil && step.Sprite != "" {
 			tex, w, h := engine.SafeTextureFromPNGKeyed(sp.game.renderer, step.Sprite)
 			if tex != nil {

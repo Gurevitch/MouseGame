@@ -1,23 +1,28 @@
 {
   "name": "camp_landing",
-  "background": "assets/images/locations/camp/background/camp_landing.png",
-  "_comment": "User 2026-06-08 (#34): returning from a city lands here by plane. The propeller plane is parked at left; PP spawns beside it and walks RIGHT along the dirt strip, out the gate, into camp_grounds (which is darkened once paris_done). Open dirt foreground: foot band y~640-740, so minY=640-270=370, maxY=740-270=470. spawnY=420 -> foot ~690. A crow perches on the CAMP sign (decorateCampLanding).",
+  "background": "assets/images/locations/camp/background/day1/camp_landing.png",
+  "_comment": "User 2026-06-08 (#34): returning from a city lands here by plane. 2026-06-20 #18: the exit is now UP the dirt road to the gate at the right (hotspot center 1194,303), not a side 'right' arrow. minY lowered to 295 so PP can walk up the receding road toward the gate; the camp_landing->camp_grounds exit in game.go walks him along the road waypoints. spawnY=420 -> foot ~690 by the plane.",
   "spawnX": 320,
   "spawnY": 420,
-  "minY": 370,
+  "minY": 295,
   "maxY": 470,
   "musicPath": "assets/audio/music/camp.mp3",
   "npcs": [],
   "hotspots": [
     {
-      "bounds": {"x": 1200, "y": 250, "w": 176, "h": 420},
+      "_comment": "#18: arrow UP to the camp; center (1194,303) at the gate arch on the right. bounds 1106,93 + 176x420 -> center (1194,303).",
+      "bounds": {"x": 1106, "y": 93, "w": 176, "h": 420},
       "targetScene": "camp_grounds",
       "name": "To the Camp",
-      "arrow": "right"
+      "arrow": "up"
     }
   ],
   "blockers": [
     {"x": 0, "y": 0, "w": 110, "h": 800}
   ],
-  "walkSegments": []
+  "_comment_walk": "#18: the dirt road, as CENTER lines (foot=y+135), from the foreground up-right to the gate. F3-verify against the painted road.",
+  "walkSegments": [
+    {"x1": 360, "y1": 600, "x2": 820, "y2": 540},
+    {"x1": 820, "y1": 540, "x2": 1160, "y2": 440}
+  ]
 }

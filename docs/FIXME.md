@@ -14,6 +14,150 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### Reported (2026-06-21 — biker/pigeon/worshippers white-box bg, REAL fix)
+
+- [x] Earlier diagnosis was WRONG: `biker.png`, `npc_pierre_pigeon_lands.png` and
+  `people_pray.png` are NOT transparent - they ship opaque near-white (every pixel
+  alpha=255, corners ~233-253), so the RAW ambient load drew a white box around each.
+  FIX: their loaders (newAmbientBiker / newAmbientPigeonFlyUp / newAmbientWorshippers)
+  now use `loadAmbientStripKeyedTol(..., 40)` - the EDGE-CONNECTED white key strips the
+  background while protecting enclosed whites (the biker's striped shirt). Verify the
+  biker's shirt survives in-game; if the key leaks into it, re-export that sheet with
+  true alpha transparency.
+
+### Reported (2026-06-21 — opening flow now starts at the airstrip + day2 art)
+
+- [x] Game now STARTS at camp_landing (was camp_entrance): scene.go start scene + the opening
+  monologue/walk-in moved to camp_landing. New day-1 flow: landing → monologue → up-arrow to the
+  ENTRANCE (Higgins) → grounds. The landing's up-arrow target is conditional - camp_entrance on
+  the first arrival (!paris_done), camp_grounds on city returns (the dark-landing flow).
+- [x] day2 room art LANDED (user) — renamed to the folder scheme (day2/jake_room.png etc., same
+  filename as day1) so moodBG finds them; day2/camp_grounds.png + day2/camp_landing.png + the 4
+  rooms wired. Marcus's room added to applyCampMood (gated !marcus_healed, so the heal still
+  brightens it). day3/camp_landing.png renamed in too. NOTE: a stray day3/camp_camp_dark.png is
+  unused (day3/camp_grounds.png is the canonical full-dark grounds) - delete or rename if intended.
+
+### Reported (2026-06-21 — Jerusalem art structure refinement)
+
+- [x] Shimon art LANDED (`npc/wall/npc_shimon.png`, full-body 6×2); loader repointed.
+- [x] Reorganised Jerusalem NPC art into `npc/wall/` (plaza+Wall) + `npc/market/` (souk).
+- [x] Spice + coffee seller: now load SEPARATE idle/talk sheets and render FULL BODY (bounds
+  150→230 tall), per user; kid also SEPARATE idle/talk. Fallback to Paris placeholders until art.
+- [x] GIVE one-shots wired on every giving NPC (Shimon/spice/coffee/bagel/praying) + PP take
+  beats in each trade callback (§8b both-sides); separation-fence prop wired in the plaza
+  (`props/fence.png`, no-ops until art). All queued at EXTRA_PROMPTS §JERUSALEM.
+
+### Reported (2026-06-21 — PR Step C: Jerusalem chapter, item 26)
+
+- [x] Built the full Jerusalem daisy-chain (game/jerusalem.go rewrite), retiring the trivial
+  "Miriam hands the coin rubbing" stub and the old sardine/cat/jar design:
+  Shimon (plaza fence, directs up→Wall / left→market) → spice seller gives **Cardamom** →
+  coffee seller (souk centre) trades it for **Coffee** (sits + teaches Jerusalem) → bagel
+  seller trades for a **Bagel/ka'ak** → praying man at the Wall (idle=praying, turns to talk)
+  takes the bagel + gives a **Note Paper** → Shimon gives a **Pen** → the Wall-crack hotspot
+  writes + places the note (`jer_note_placed`) → Shimon gives the **Coin**.
+- [x] Coin is Jake's anchor now — Jake's heal repointed from "Coin Rubbing" to "Coin" (game.go).
+- [x] Return flight gated on `jer_note_placed` (travel_map.json camp pin) — can't leave Jerusalem
+  until the note is in the Wall.
+- [x] Scenes given Paris-style walk lines (#23); market uses the user's #25 coords (entry far→
+  centre, up-square exit). Worshippers MULTIPLIED at the plaza + Wall (#22).
+- [x] New items (Cardamom/Coffee/Bagel/Note Paper/Pen/Coin) in items.json; PP write_note/put_note
+  one-shots wired with grab fallback. All Jerusalem NPC/item/one-shot art queued at
+  EXTRA_PROMPTS §JERUSALEM (NPCs borrow Paris/camp sheets, icons/one-shots no-op, until it lands).
+
+### Reported (2026-06-21 — PR Step B: dark camp + Marcus arc, items 20-23)
+
+- [x] #20 Marcus room entry higher — marcus_room spawnY 360→330.
+- [x] #21 Graded dark camp — `applyCampMood` now grades (campMoodLevel 0/1/2): mid-dark
+  post-Paris, fully-dark from the Jerusalem leg. Swaps camp_grounds + camp_landing + the
+  4 non-Marcus cabin interiors, each falling back through available art. Marcus room darkens
+  via its existing day/night bg.
+- [x] BG folder reorg (user 2026-06-21) — camp_grounds + camp_landing + the 5 rooms moved into
+  `camp/background/day1/` (normal); `day2/` = mid-dark, `day3/` = full dark, SAME filenames in
+  each. `day3/camp_grounds.png` is the moved `camp_dark.png`. moodBG picks the folder by grade
+  (day1→day2→day3) and falls back down. Scene JSONs + sceneAltBGs repointed to day1/. Art queued
+  at EXTRA_PROMPTS §DARK-CAMP/§DARK-ROOMS (new folder naming).
+- [x] #22 Marcus rude pre-heal dialog — marcusPostStrangeDialog now irritable ("What do you
+  want NOW?"). Postcard hand-over plays a `receive_postcard` NPC one-shot (art §MARCUS-POSTCARD,
+  no-ops until it lands).
+- [x] #23 Sleep now STICKS — the strange-alt "freakout" punctuation (altIdleGrid/altIdleAfterSec)
+  was still firing after the heal; the heal callback now disables it + clears any in-flight alt
+  cycle, so the sleeping idle persists. Sleepy dialog reworded ("I'm so tired... maybe tomorrow").
+
+### Reported (2026-06-21 — PR Step A: Paris/camp fixes, items 1-19,25)
+
+- [x] #1 Lake dock still low — raised walkSegments another ~40px (camp_lake.json). F3-verify.
+- [x] #2 Office Higgins talk BLINKS — root cause: per-frame foot anchoring jittered on his
+  waist-up bust (FOOT drift 121px). New `fixedFootAnchor` (npc.go drawScaled) pins content
+  center-X + bottom for seated NPCs; set on office Higgins.
+- [x] #3 Office Higgins shrunk (H 200→185, foot kept).
+- [x] #5 Biker — lane is y=750 (foot anchor) on the cobbles; biker.png IS transparent + loads
+  RAW (gap-detect confirms transparent gaps), so no bg box from the asset. Verify in-game.
+- [x] #7 Colette approached from the other side (approachRight→approachLeft); she's not
+  fixedFacing so she turns to face PP.
+- [x] #8 PP shrinks at Pierre again — restored Pierre's recede onClickOverride (the clean
+  version with the recedeHeld in-place-talk guard from #11); Margaux stays standard so no
+  inter-NPC size pop. depthScale can't do it (PP's y is clamped on the street).
+- [x] #9 Bakery walk lines added (user coords). NOTE center/foot+clamp — F3-tune (paris_bakery.json).
+- [~] #11 Rolling-pin pickup "jump" — couldn't pin the exact cause from code (stand-offset vs the
+  +60 grab draw-offset snap); needs F3 repro in-game before a fix to avoid regressing the pickup.
+- [~] #12 Pierre white pocket between board/arm — the connected key reads it right; the pocket is
+  ENCLOSED (edge-flood can't reach it). Needs the §PIERRE-BOARD re-roll (cream canvas), not a code fix.
+- [x] #13 Henri coffee→confiture — reordered to clean BRING-then-PICK-UP: coffee handed in the
+  pre-dialog handoff, then Henri give_jam → PP get_jam (chained) → Confiture added on completion.
+- [x] #14 Louvre arrival monologue — PP faces FRONT (dirRight→dirDown).
+- [x] #10 Poulain: PP showed his back — new `ppFacePlayer` (she's behind the back counter) makes
+  PP face the camera for her dialog/receive.
+- [x] #15 PP give heel blinks — §GIVE-HEEL re-roll queued (arm+heel cross cells). Code reads it right.
+- [x] #16 Pigeon fly-up — npc_pierre_pigeon_lands.png IS transparent + loads RAW; no bg box from
+  the asset (verify in-game).
+- [x] #17/#18 PP give/get item sheets — verified: give/receive sheets load keyed (white stripped);
+  `PP get bagguette/jam.png` gap-detect 1×8 clean (8 frames, correct grid). The "broken" look was
+  the facing (fixed via #10). No re-roll needed.
+- [x] #19 Paris pin off after the postcard (relevantWhen → paris_done==0); #25 the map never
+  offers PP's current region (travel_map.go hitTest skips it via travelRegionOf).
+
+### Reported (2026-06-20 — bug-sweep PR, Step 1, items 1-20)
+
+- [x] #1 Jake talks too fast — `newJake` talkFrameSpeed 0.10→0.18 (room Jake inherits). npc.go.
+- [x] #2 Lake dock: PP's foot floated at (844,608) below the planks — raised the dock
+  walkSegments ~40px (camp_lake.json). F3-verify the foot lands on the planks.
+- [x] #3 Office: PP stood on the trash bin — new per-NPC `approachGapX` (npc.go/player.go);
+  office Higgins gap 280 so PP stops left of the bin, facing right.
+- [x] #5 Thrown map missed PP — new `toPlayer` flag on `tween_item` retargets the projectile
+  to PP's runtime paw (sequence.go/sequence_loader.go + higgins_give_map.json).
+- [x] #6 Removed the "m"-opens-map shortcut (game.go HandleKey).
+- [x] #7 Margaux foot → (656,639); bounds {617,494,78,145}. npc.go + hit-test.
+- [x] #8 Flower pot shrunk + moved beside Pierre (bounds {868,562,82,88}); fly-up spawn moved
+  to (909,565). game.go.
+- [x] #9 Biker lane y 735→750 (scene_ambient.go). NOTE: biker.png is already transparent and
+  loads RAW, so no background box comes from the asset — couldn't reproduce a "bg box."
+- [x] #10 Margaux talk speed 0.13→0.22. npc.go.
+- [x] #11 Pierre "jump-back" — removed Pierre's recede onClickOverride; he now uses the
+  standard walk-up-and-talk (depthScale handles perspective). game.go.
+- [x] #12 Camille moved up (bounds Y 384→360). npc.go + hit-test.
+- [x] #13 PP "disappeared" after EVERY bakery NPC — the talk-stand row put his body box into
+  the full-width top-wall blocker {0,0,1400,280}, which shoved him off-screen. paris_bakery
+  minY 200→290 so his top-left can't enter the blocker; Margaux's recede override removed too.
+- [x] #14 Giving Pierre an item played his "portrait" sheet — Pierre's `give` one-shot
+  (used by playHandOff as the take-fallback) was the painting-display art; removed it. npc.go.
+- [~] #15 "PP give heel" blinks — the extended arm+heel cross cell borders (jitter_audit:
+  CONTENT CROSSES 18-30px). Layout re-roll queued at EXTRA_PROMPTS §GIVE-HEEL. Functional.
+- [x] #16 Flying-pigeon "bg" — `npc_pierre_pigeon_lands.png` is transparent and loads RAW;
+  no background box comes from the asset. (No change needed; flag if it still shows in-game.)
+- [x] #17 Pencil inventory icon too big — new per-item `iconScale` (items.json/inventory.go/
+  item_registry.go); charcoal pencil iconScale 0.6.
+- [x] #18 camp_landing exit → arrow UP, hotspot center (1194,303); added road walkSegments +
+  a camp_landing→camp_grounds waypoint walk so PP follows the road, not the side. game.go/json.
+- [x] #19 Marcus post-heal — fixed the dialog revert (onDialogEnd now guards on marcusHealed)
+  and wired a go-to-sleep one-shot + sleeping-idle so Higgins's "sleeping soundly" line is
+  true. ART LANDED 2026-06-20: `npc_marcus_going_to_sleep.png` + `npc_marcus_sleeping.png`
+  (sitting-doze among his drawings), both GAP-DETECTED 1×8 clean; loader points at those names.
+- [x] #20 Room Jake + room Marcus too big — shrunk (Jake H 245→200, Marcus H 205→185, feet
+  kept). npc.go + hit-test.
+- [ ] #4 Office Higgins talk last frame "disappears" — DEFERRED to verify the office_talk
+  sheet's trailing cell in a playtest before trimming the loaded frame count.
+
 ### Reported (2026-06-15 — playtest batch, 20 items; grouped fix sweep)
 
 **Group 1 — camp office / Higgins:**
@@ -85,12 +229,17 @@ When fixed, move to the **Resolved** section with the date.
   `standRight: true` (PP stands to the daisy's right, daisy on his left).
 - [x] #1 PP pick-flower outer white halo — `gridFramesConnected` keyed at tol 8
   (soft fringe); added `gridFramesConnectedTol` and load grab_flower at tol 36.
-- [ ] #1 PP pick-flower BLINKING + white between hand/body — `jitter_audit`:
-  CONTENT CROSSES 3 cell borders (14-16px) and the detached frame-1 daisy slices
-  as an 82px sliver, so gap-detection mis-aligns the 6 frames → flicker; the
-  arm/body gap is an enclosed white pocket the edge key can't reach. Engine
-  can't fix either - re-roll queued at EXTRA_PROMPTS §FLOWER-PICK (even
-  self-contained frames, ≥15px gaps, anchor-lock, daisy in reach, open arm gap).
+- [~] #1 PP pick-flower BLINKING — re-generated 2026-06-20, STILL broken (same
+  layout flaws). `go test ./engine -run ContentGrid` gap-detects the new sheet
+  1×6 but cell 0 is an 82px sliver = the daisy lying DETACHED at the far left of
+  frame 1, so frame 0 is "just the daisy, no panther" and every PP pose shifts a
+  slot → the blink. `jitter_audit` also shows the 6 PP poses TOUCHING (cross
+  borders 13-16px, "2 cells touch both edges"), so a fixed grid can't cut it
+  either. Engine can't recover 6 clean frames from a detached object + figures
+  with no gaps. Pickup still works functionally (item is added) but looks wrong.
+  Re-roll sharpened at EXTRA_PROMPTS §FLOWER-PICK: daisy in PP's paw EVERY frame
+  (never a separate ground object at the cell edge) + ≥15px gap between the 6
+  poses so none touches its neighbour.
 - [ ] #6 Pierre "missing board" frame — white-on-white chroma-key (his easel
   canvas is pure white → the edge key eats it where it abuts the bg). Re-roll
   queued at EXTRA_PROMPTS §PIERRE-BOARD (cream canvas).

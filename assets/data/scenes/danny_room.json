@@ -1,6 +1,6 @@
 {
   "name": "danny_room",
-  "background": "assets/images/locations/camp/background/danny_room.png",
+  "background": "assets/images/locations/camp/background/day1/danny_room.png",
   "spawnX": 900,
   "spawnY": 360,
   "minY": 320,

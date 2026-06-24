@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"bitbucket.org/Local/games/PP/engine"
 	"github.com/veandco/go-sdl2/sdl"
@@ -398,6 +399,28 @@ func (tm *travelMap) distanceSqFromPin(loc *travelLocation, mx, my int32) int64 
 	return dx*dx + dy*dy
 }
 
+// travelRegionOf maps a scene name to its travel "region" so the map can tell
+// when PP is already in a destination's area. Prefix-based: the camp scenes
+// (entrance/grounds/office/lake/night/landing + the cabin rooms) are one region;
+// each city's scenes share the city prefix. Empty string = unknown/not a region.
+func travelRegionOf(scene string) string {
+	switch scene {
+	case "camp_entrance", "camp_grounds", "camp_office", "camp_lake",
+		"camp_night", "camp_landing",
+		"marcus_room", "jake_room", "lily_room", "tommy_room", "danny_room":
+		return "camp"
+	}
+	for _, region := range []string{
+		"paris", "jerusalem", "tokyo", "rome", "rio", "buenos_aires",
+		"mexico", "egypt", "india", "thailand", "china", "australia",
+	} {
+		if strings.HasPrefix(scene, region) {
+			return region
+		}
+	}
+	return ""
+}
+
 // hitTest returns the TRAVEL-TARGET at (mx, my). Only story-relevant pins
 // are valid travel targets - unlocked-but-not-currently-relevant pins fall
 // through and behave like locked pins (they open the info popup instead).
@@ -410,9 +433,17 @@ func (tm *travelMap) hitTest(mx, my int32) *travelLocation {
 	pt := sdl.Point{X: mx, Y: my}
 	var best *travelLocation
 	var bestDist int64
+	curRegion := travelRegionOf(tm.returnScene)
 	for i := range tm.locations {
 		loc := &tm.locations[i]
 		if !loc.unlocked || !tm.isRelevant(loc) {
+			continue
+		}
+		// 2026-06-20 #25: never offer the region PP is already in as a travel
+		// target (e.g. opening the map at camp to fly to Jerusalem must not list
+		// camp). Pins map to a region's entry scene (camp -> camp_entrance) while
+		// PP may be in camp_grounds, so compare by region, not exact scene.
+		if curRegion != "" && travelRegionOf(loc.scene) == curRegion {
 			continue
 		}
 		hit := tm.pinHitRect(loc)

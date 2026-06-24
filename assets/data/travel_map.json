@@ -15,8 +15,8 @@
       ],
       "landmark": "",
       "audio": "",
-      "_relevantNote": "Relevant for BOTH camp returns: postcard back to heal Marcus, AND Coin Rubbing back from Jerusalem to heal Jake.",
-      "relevantWhen": "vars.game.paris_done == 1 && vars.game.marcus_healed == 0 || vars.game.jerusalem_unlocked == 1 && vars.game.jake_healed == 0"
+      "_relevantNote": "Relevant for BOTH camp returns: postcard back to heal Marcus, AND the Coin back from Jerusalem to heal Jake. 2026-06-21 #26: the Jerusalem return also requires jer_note_placed - PP can't fly home until he's left his note in the Wall.",
+      "relevantWhen": "vars.game.paris_done == 1 && vars.game.marcus_healed == 0 || vars.game.jerusalem_unlocked == 1 && vars.game.jake_healed == 0 && vars.game.jer_note_placed == 1"
     },
     {
       "id": "paris",
@@ -31,7 +31,8 @@
       ],
       "landmark": "assets/images/ui/landmarks/landmark_eiffel_tower.png",
       "audio": "",
-      "relevantWhen": "vars.game.paris_unlocked == 1 && vars.game.marcus_healed == 0"
+      "_relevantNote": "2026-06-20 #19: gate on paris_done==0 (not marcus_healed) so once PP has the postcard in hand, Paris stops being a fly-to target (the leg is finished there - he should fly home to heal Marcus, not back to Paris).",
+      "relevantWhen": "vars.game.paris_unlocked == 1 && vars.game.paris_done == 0"
     },
     {
       "id": "jerusalem",

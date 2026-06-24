@@ -1,6 +1,6 @@
 {
   "name": "camp_entrance",
-  "background": "assets/images/locations/camp/background/camp_entrance.png",
+  "background": "assets/images/locations/camp/background/day1/camp_entrance.png",
   "_comment": "User 2026-05-31 (#1): PP was standing on air. Walkable foot band ~x8..x1354 at foot y≈672-791 (walk line ~728). minY/maxY clamp PP's top-left so his foot (top+270) stays in that band: minY=672-270=402, maxY=791-270=521. spawnY=458 → foot ~728.",
   "spawnX": 580,
   "spawnY": 458,
@@ -10,7 +10,7 @@
   "npcs": ["director_higgins"],
   "hotspots": [
     {
-      "bounds": {"x": 500, "y": 100, "w": 300, "h": 250},
+      "bounds": {"x": 500, "y": 100, "w": 400, "h": 250},
       "name": "Enter Camp",
       "arrow": "up"
     }
@@ -18,9 +18,9 @@
   "blockers": [
     {"x": 0, "y": 0, "w": 120, "h": 800}
   ],
-  "_comment_walk": "User 2026-06-12 (4th walk-line report): retro PTP keeps every character ON one ground line. v1 segments: a main line across the clearing in front of the fence/gate (center y=600, foot ~735) + a spur up the dirt path to the gate opening. Estimated from the BG - walk it with F3 and tune the endpoints.",
+  "_comment_walk": "FOOT lines (footWalk=true): these are where PP's FEET walk, so the F3 yellow line and the green foot crosshair now coincide and a click lands his feet on the line. Line 1 = the clearing in front of the fence (foot y=735). Line 2 = the dirt path running UP to the gate opening, ending at the threshold the user pointed at: (778,546). Click up the path and PP's feet climb to the gate. Entrance Higgins moved off this line (npc.go: X 760 -> 820) so he greets beside the gate, not on the path.",
   "walkSegments": [
-    {"x1": 150, "y1": 600, "x2": 1350, "y2": 600},
-    {"x1": 840, "y1": 656, "x2": 715, "y2": 540}
+    {"x1": 150, "y1": 735, "x2": 1350, "y2": 735},
+    {"x1": 750, "y1": 735, "x2": 778, "y2": 546}
   ]
 }

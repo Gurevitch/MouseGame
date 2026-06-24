@@ -1,6 +1,6 @@
 {
   "name": "jake_room",
-  "background": "assets/images/locations/camp/background/jake_room.png",
+  "background": "assets/images/locations/camp/background/day1/jake_room.png",
   "spawnX": 900,
   "spawnY": 360,
   "minY": 320,

@@ -42,8 +42,6 @@ var sheets = []sheet{
 	{"PP put note in wall", "assets/images/player/PP put note in wall.png", 6, 1, -1},
 	{"PP get baguette", "assets/images/player/PP get bagguette.png", 8, 1, -1},
 	{"PP get jam", "assets/images/player/PP get jam.png", 8, 1, -1},
-	{"PP receive", "assets/images/player/PP receive.png", 8, 1, -1},
-	{"PP give", "assets/images/player/PP give.png", 8, 1, -1},
 	{"PP give flower", "assets/images/player/PP give flower.png", 8, 1, -1},
 	{"PP give rolling pin", "assets/images/player/PP give rolling pin.png", 8, 1, -1},
 	{"PP give baguette", "assets/images/player/PP give baguette.png", 8, 1, -1},
@@ -84,6 +82,8 @@ var sheets = []sheet{
 	{"Marcus strange idle (night)", "assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_idle_night.png", 8, 2, -1},
 	{"Marcus strange talk", "assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_talk.png", 8, 2, -1},
 	{"Marcus strange alt", "assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_alt.png", 8, 2, -1},
+	{"Marcus going to sleep", "assets/images/locations/camp/npc/kids/marcus/npc_marcus_going_to_sleep.png", 8, 1, -1},
+	{"Marcus sleeping", "assets/images/locations/camp/npc/kids/marcus/npc_marcus_sleeping.png", 8, 1, -1},
 	{"Danny idle", "assets/images/locations/camp/npc/kids/danny/npc_danny_idle.png", 8, 2, -1},
 	{"Danny talk", "assets/images/locations/camp/npc/kids/danny/npc_danny_talk.png", 8, 2, -1},
 

@@ -275,8 +275,10 @@ func newIrisMask(renderer *sdl.Renderer) *sdl.Texture {
 
 func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	sm := &sceneManager{
-		scenes:      make(map[string]*scene),
-		currentName: "camp_entrance",
+		scenes: make(map[string]*scene),
+		// 2026-06-21: the game opens at the airstrip (PP arrives by plane), not
+		// the gate. Landing → monologue → up to the entrance (Higgins) → grounds.
+		currentName: "camp_landing",
 		irisTex:     newIrisMask(renderer),
 	}
 

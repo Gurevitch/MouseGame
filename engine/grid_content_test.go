@@ -26,10 +26,10 @@ func TestContentGridRects_RealSheets(t *testing.T) {
 		{"../assets/images/player/PP receive map.png", 4, 2},
 		{"../assets/images/player/PP grab flower.png", 6, 1},
 		{"../assets/images/player/PP grab rolling pin.png", 6, 1},
+		{"../assets/images/player/PP write note.png", 6, 1},
 		{"../assets/images/player/PP put note in wall.png", 6, 1},
 		{"../assets/images/player/PP get bagguette.png", 8, 1},
 		{"../assets/images/player/PP get jam.png", 8, 1},
-		{"../assets/images/player/PP give.png", 8, 1},
 		{"../assets/images/player/PP give flower.png", 8, 1},
 		{"../assets/images/player/PP give rolling pin.png", 8, 1},
 		{"../assets/images/player/PP give baguette.png", 8, 1},
@@ -63,6 +63,8 @@ func TestContentGridRects_RealSheets(t *testing.T) {
 		{"../assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_idle_night.png", 8, 2},
 		{"../assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_talk.png", 8, 2},
 		{"../assets/images/locations/camp/npc/kids/marcus/npc_marcus_strange_alt.png", 8, 2},
+		{"../assets/images/locations/camp/npc/kids/marcus/npc_marcus_going_to_sleep.png", 8, 1},
+		{"../assets/images/locations/camp/npc/kids/marcus/npc_marcus_sleeping.png", 8, 1},
 		{"../assets/images/locations/camp/npc/kids/danny/npc_danny_idle.png", 8, 2},
 		{"../assets/images/locations/camp/npc/kids/danny/npc_danny_talk.png", 8, 2},
 		// ---- Paris NPCs ----
@@ -95,6 +97,22 @@ func TestContentGridRects_RealSheets(t *testing.T) {
 		{"../assets/images/locations/paris/npc/coffee/cafe_patron_lucien.png", 8, 1},
 		{"../assets/images/locations/paris/npc/coffee/npc_henri_give_jam.png", 6, 1},
 		{"../assets/images/locations/paris/npc/coffee/npc_camille_sketching.png", 8, 1},
+		// ---- Jerusalem NPCs (grids per game/jerusalem.go) ----
+		{"../assets/images/locations/jerusalem/npc/wall/npc_shimon.png", 6, 2},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_shimon_give.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_bagel_seller.png", 6, 2},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_bagel_seller_give.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_praying_man_idle.png", 8, 2},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_praying_man_talk.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_praying_man_give.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_wall_kid_idle.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_wall_kid_talk.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/market/npc_spice_seller_idle.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/market/npc_spice_seller_talk.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/market/npc_spice_seller_give.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/market/npc_coffee_seller_idle.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/market/npc_coffee_seller_talk.png", 8, 1},
+		{"../assets/images/locations/jerusalem/npc/market/npc_coffee_seller_give.png", 8, 1},
 	}
 	for _, c := range cases {
 		img, err := loadPNG(c.path)

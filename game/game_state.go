@@ -1,5 +1,7 @@
 package game
 
+import "os"
+
 // Chapter identifiers used as integer values in VarStore scope "game"
 // under the key VarChapter. They also map 1:1 to the old `day` concept for
 // Camp Sylvania, but allow future cities to have their own numbered arcs.
@@ -36,6 +38,7 @@ const (
 	VarMonologueParis    = "monologue_paris_played"
 	VarMonologueLouvre   = "monologue_louvre_played" // museum first-arrival beat (#28)
 	VarParisDone         = "paris_done"              // postcard obtained → camp return unlocked (#32)
+	VarJerNotePlaced     = "jer_note_placed"         // Jerusalem: note tucked in the Wall → return flight + coin (#26)
 
 	// "chapter" scope: resets when a chapter ends (via ResetChapter)
 	VarMetKids        = "met_kids" // How many kids PP has talked to on Day 1
@@ -124,25 +127,90 @@ func (g *Game) syncFlagsToVars() {
 	}
 }
 
-// applyCampMood swaps the camp grounds background to the darkened "affliction"
-// art once PP has come back from France (paris_done), and back to the normal
-// daytime art otherwise (#34). The user tied the mood to the France return, so
-// once the adventure proper begins the camp reads as "wrong" until the story
-// resolves. Safe to call repeatedly - it just reassigns scene.bg, the same
-// mechanism the Marcus-room day/night swap uses.
+// campMoodLevel returns the camp's darkness GRADE (2026-06-21 #20/#21):
+//   0 = normal (pre-Paris)
+//   1 = mid-dark (post-Paris, the Marcus affliction arc)
+//   2 = fully dark (deeper - a second kid afflicted; the Jerusalem leg onward)
+// Forward-compatible: widen the level-2 condition as later cities land.
+func (g *Game) campMoodLevel() int {
+	if g == nil || g.vars == nil || !g.vars.GetBool(ScopeGame, VarParisDone) {
+		return 0
+	}
+	if g.vars.GetBool(ScopeGame, VarJerusalemUnlocked) {
+		return 2
+	}
+	return 1
+}
+
+// firstExistingPath returns the first path that exists on disk, or "".
+func firstExistingPath(paths ...string) string {
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
+}
+
+// moodBG builds the background for the current darkness grade from the
+// day1/day2/day3 folders (2026-06-21 reorg: the same filename lives in each
+// folder). Falls back DOWN to day1 when a grade's art isn't on disk yet, so a
+// missing day2 (mid-dark) / day3 (full dark) degrades gracefully to day1.
+//   level 0 → day1/  (normal)
+//   level 1 → day2/  (mid-dark, then day1)
+//   level 2 → day3/  (full dark, then day2, then day1)
+func (g *Game) moodBG(level int, file string) *background {
+	const base = "assets/images/locations/camp/background/"
+	var folders []string
+	switch level {
+	case 2:
+		folders = []string{"day3/", "day2/", "day1/"}
+	case 1:
+		folders = []string{"day2/", "day1/"}
+	default:
+		folders = []string{"day1/"}
+	}
+	paths := make([]string, 0, len(folders))
+	for _, f := range folders {
+		paths = append(paths, base+f+file)
+	}
+	p := firstExistingPath(paths...)
+	if p == "" {
+		p = base + "day1/" + file
+	}
+	return newPNGBackground(g.renderer, p)
+}
+
+// applyCampMood swaps the camp backgrounds to the graded "affliction" art once
+// PP has returned from France (paris_done), and back to normal otherwise (#34,
+// graded + folder-based 2026-06-21). Covers the grounds, the airstrip landing,
+// and the cabin interiors. marcus_room is intentionally NOT touched here - its
+// bg is driven by the day/night setSceneAltBG system. Safe to call repeatedly.
 func (g *Game) applyCampMood() {
 	if g == nil || g.sceneMgr == nil {
 		return
 	}
-	grounds, ok := g.sceneMgr.scenes["camp_grounds"]
-	if !ok || grounds == nil {
-		return
+	level := g.campMoodLevel()
+	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok && grounds != nil {
+		grounds.bg = g.moodBG(level, "camp_grounds.png")
 	}
-	path := "assets/images/locations/camp/background/camp_grounds.png"
-	if g.vars != nil && g.vars.GetBool(ScopeGame, VarParisDone) {
-		path = "assets/images/locations/camp/background/camp_dark.png"
+	if landing, ok := g.sceneMgr.scenes["camp_landing"]; ok && landing != nil {
+		landing.bg = g.moodBG(level, "camp_landing.png")
 	}
-	grounds.bg = newPNGBackground(g.renderer, path)
+	for _, room := range []string{"jake_room", "lily_room", "tommy_room", "danny_room"} {
+		if s, ok := g.sceneMgr.scenes[room]; ok && s != nil {
+			s.bg = g.moodBG(level, room+".png")
+		}
+	}
+	// Marcus's room darkens with the camp too while he's still afflicted; once
+	// he's healed the heal callback brightens it (sceneAltBGs day) and we leave
+	// it alone here (so a load after the heal keeps it bright). The night
+	// cutscene runs pre-Paris at level 0, so it's unaffected.
+	if !g.vars.GetBool(ScopeGame, VarMarcusHealed) {
+		if s, ok := g.sceneMgr.scenes["marcus_room"]; ok && s != nil {
+			s.bg = g.moodBG(level, "marcus_room.png")
+		}
+	}
 }
 
 // syncVarsToFlags pulls values back from the VarStore into the flat runtime

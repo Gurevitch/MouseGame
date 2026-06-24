@@ -2,6 +2,7 @@ package game
 
 import (
 	"math"
+	"os"
 	"sort"
 
 	"bitbucket.org/Local/games/PP/engine"
@@ -380,12 +381,11 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	}
 	// §PR1: generic receive for small flat hand-overs (postcard, sketch,
 	// coffee cup, mini portrait) when no item-specific sheet exists. The
-	// sheet isn't generated yet - until it lands, fall back to the generic
-	// grab frames so PP still visibly takes the item (and the game no longer
-	// crashes on the missing PNG; the loader warns + degrades instead).
-	if f := gridFramesConnected(renderer, "assets/images/player/PP receive.png", 8, 1); len(f) > 0 {
-		p.oneShotAnims["receive_item"] = f
-	} else if len(p.grabFrames) > 0 {
+	// dedicated "PP receive.png" was never generated, so don't re-attempt that
+	// missing-file load on every startup (it warned, and a missing-file open is
+	// slow under on-access AV scanning) - use the grab frames directly so PP
+	// still visibly takes the item.
+	if len(p.grabFrames) > 0 {
 		p.oneShotAnims["receive_item"] = p.grabFrames
 	}
 	// Generic "grab" one-shot (the crouch-and-lift cycle). Floor-item pickups
@@ -430,12 +430,31 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if f := gridFramesConnected(renderer, "assets/images/player/PP jump back.png", 8, 1); len(f) > 0 {
 		p.oneShotAnims["jump_back"] = f
 	}
-	// Generic fallback give (neutral parcel) for anything without its own
-	// sheet yet; grab frames as the last resort so the beat is never silent.
-	if f := gridFramesConnected(renderer, "assets/images/player/PP give.png", 8, 1); len(f) > 0 {
-		p.oneShotAnims["give_item"] = f
-	} else if len(p.grabFrames) > 0 {
+	// Generic fallback give for any item without its own §PG1 sheet. The
+	// dedicated "PP give.png" was never generated, so skip the missing-file
+	// load (it warned every startup and a missing-file open is slow under
+	// on-access AV) and use the grab frames as the fallback so the give beat
+	// is never silent.
+	if len(p.grabFrames) > 0 {
 		p.oneShotAnims["give_item"] = p.grabFrames
+	}
+	// Jerusalem (#26): PP writes a note and tucks it in the Wall. Art is
+	// pending (§JW1/§JW2) - guard the load with os.Stat so a missing file isn't
+	// re-opened every startup (slow under on-access AV), and fall back to the
+	// grab frames so the beat still animates.
+	for _, ns := range []struct{ key, path string }{
+		{"write_note", "assets/images/player/PP write note.png"},
+		{"put_note", "assets/images/player/PP put note in wall.png"},
+	} {
+		if _, err := os.Stat(ns.path); err == nil {
+			if f := gridFramesConnected(renderer, ns.path, 6, 1); len(f) > 0 {
+				p.oneShotAnims[ns.key] = f
+				continue
+			}
+		}
+		if len(p.grabFrames) > 0 {
+			p.oneShotAnims[ns.key] = p.grabFrames
+		}
 	}
 
 	p.dir = dirDown
@@ -722,11 +741,15 @@ func (p *player) talkApproachPos(target *npc) (float64, float64) {
 	npcLeft := float64(target.bounds.X)
 	npcRight := float64(target.bounds.X + target.bounds.W)
 	npcCenter := float64(target.bounds.X + target.bounds.W/2)
+	gap := float64(target.approachGapX)
+	if gap <= 0 {
+		gap = 10
+	}
 	pickSide := func(preferRight bool) float64 {
 		if preferRight {
-			return npcRight + 10
+			return npcRight + gap
 		}
-		return npcLeft - playerDstW - 10
+		return npcLeft - playerDstW - gap
 	}
 	preferred := npcCenter >= engine.ScreenWidth/2
 	tx := engine.Clamp(pickSide(!preferred), playerMinX, playerMaxX)
@@ -1341,6 +1364,14 @@ func (p *player) startNPCDialog() {
 		p.dir = dirLeft
 	} else {
 		p.dir = dirRight
+	}
+	// 2026-06-20 #10: NPCs behind a back-of-scene counter (Madame Poulain) sit
+	// ABOVE PP, so the default left/right facing reads as PP showing his back.
+	// ppFacePlayer makes PP face the camera (front) for this NPC's dialog so we
+	// see his face instead.
+	if n.ppFacePlayer {
+		p.dir = dirDown
+		p.facingLeft = false
 	}
 
 	// Snapshot the NPC's authored facing so we can restore it when the

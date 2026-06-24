@@ -72,8 +72,9 @@ func decorateParisStreetSprites(s *scene, renderer *sdl.Renderer) {
 	// 2026-06-12 #12: faster (120 -> 190) and lane nudged down (735 -> 755).
 	// 2026-06-15 #4: user - biker "not in the right place as was before."
 	// Restore the prior lane (755 -> 735); speed kept.
+	// 2026-06-20 #9: user - biker rides over the air; drop the lane to y=750.
 	s.ambientSprites = append(s.ambientSprites,
-		newAmbientBiker(renderer, -200, 735, 190, 0.85),
+		newAmbientBiker(renderer, -200, 750, 190, 0.85),
 	)
 	// 2026-06-12: the street-density flavor ambients (accordion player + crumb
 	// lady) were dropped - the screen was getting crowded, and the pigeon lady

@@ -1,6 +1,6 @@
 {
   "name": "lily_room",
-  "background": "assets/images/locations/camp/background/lily_room.png",
+  "background": "assets/images/locations/camp/background/day1/lily_room.png",
   "spawnX": 700,
   "spawnY": 360,
   "minY": 320,

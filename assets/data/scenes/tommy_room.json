@@ -1,6 +1,6 @@
 {
   "name": "tommy_room",
-  "background": "assets/images/locations/camp/background/tommy_room.png",
+  "background": "assets/images/locations/camp/background/day1/tommy_room.png",
   "spawnX": 900,
   "spawnY": 360,
   "minY": 320,

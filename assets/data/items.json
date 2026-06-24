@@ -112,6 +112,7 @@
       "id": "charcoal_pencil",
       "name": "Charcoal Pencil",
       "texture": "assets/images/items/charcoal_pencil.png",
+      "iconScale": 0.6,
       "description": "Camille's lucky charcoal pencil, fished out of the flower pot by the Louvre steps. Worn flat on one side from years of sketching."
     },
     {
@@ -137,6 +138,42 @@
       "name": "Signed Postcard",
       "texture": "assets/images/items/postcard.png",
       "description": "A second Louvre postcard, signed by Curator Beaumont. Madame Poulain's grandson in Lyon collects these."
+    },
+    {
+      "id": "cardamom",
+      "name": "Cardamom",
+      "texture": "assets/images/items/cardamom.png",
+      "description": "A pinch of green cardamom pods (Elettaria cardamomum) from the souk - the secret to a proper Jerusalem coffee."
+    },
+    {
+      "id": "jerusalem_coffee",
+      "name": "Coffee",
+      "texture": "assets/images/items/jerusalem_coffee.png",
+      "description": "A tiny cup of thick, cardamom-spiced coffee from the souk. Strong enough to wake the stones."
+    },
+    {
+      "id": "bagel",
+      "name": "Bagel",
+      "texture": "assets/images/items/bagel.png",
+      "description": "A fresh sesame ka'ak - the long oval Jerusalem street bagel, still warm."
+    },
+    {
+      "id": "note_paper",
+      "name": "Note Paper",
+      "texture": "assets/images/items/note_paper.png",
+      "description": "A small slip of paper from the praying man at the Wall. You're meant to write a wish on it and tuck it in the stones."
+    },
+    {
+      "id": "pen",
+      "name": "Pen",
+      "texture": "assets/images/items/pen.png",
+      "description": "A simple pen from Shimon by the gate. For the note."
+    },
+    {
+      "id": "coin",
+      "name": "Coin",
+      "texture": "assets/images/items/coin.png",
+      "description": "An old coin Shimon pressed into your paw after you left your note in the Wall. A memory of this place - and exactly the face from Jake's dream."
     }
   ]
 }

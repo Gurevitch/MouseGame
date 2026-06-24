@@ -16,6 +16,7 @@
       "fromY": 380,
       "x": 440,
       "y": 540,
+      "toPlayer": true,
       "seconds": 1.5
     },
     {

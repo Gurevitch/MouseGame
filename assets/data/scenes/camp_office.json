@@ -1,6 +1,6 @@
 {
   "name": "camp_office",
-  "background": "assets/images/locations/camp/background/camp_office.png",
+  "background": "assets/images/locations/camp/background/day1/camp_office.png",
   "spawnX": 220,
   "_comment_spawn": "User 2026-06-12 PR#4: PP stood too high entering the office (feet 750, floating against the door/radiator line). spawnY 480 -> 505 drops his feet to ~775 on the open floor in front of the rug.",
   "spawnY": 505,
@@ -13,10 +13,10 @@
   "hotspots": [
     {"bounds": {"x": 0, "y": 400, "w": 200, "h": 360}, "targetScene": "camp_grounds", "name": "Back to Camp", "arrow": "left"}
   ],
+  "_comment_blockers": "User 2026-06-20: couldn't reach Higgins - too much was blocked. PP spawns on the LEFT (x220) and must walk RIGHT to the desk, but the radiator/door-corner blocker (278,588,131,101) sat squarely in his only path: PP's 270px body box always reaches down into y588-689 (foot band 690-790), so every step right re-collided with it and shoved him back to the radiator's left edge - he could never get past it. Removed it (the radiator is against the wall above the foot line; PP stands in front of it, not on it). Kept the top wall (above the walk band) and the desk blocker (stops PP in front of the desk so the talk-arrival fires).",
   "blockers": [
     {"x": 500, "y": 0, "w": 900, "h": 360},
-    {"x": 950, "y": 480, "w": 450, "h": 200},
-    {"_comment": "User 2026-06-12 PR#4: block the radiator/door corner (278,588)-(409,689) so PP can't walk into it.", "x": 278, "y": 588, "w": 131, "h": 101}
+    {"x": 950, "y": 480, "w": 450, "h": 200}
   ],
   "walkSegments": []
 }

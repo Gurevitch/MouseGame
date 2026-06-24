@@ -1,6 +1,6 @@
 {
   "name": "camp_lake",
-  "background": "assets/images/locations/camp/background/camp_lake.png",
+  "background": "assets/images/locations/camp/background/day1/camp_lake.png",
   "spawnX": 200,
   "spawnY": 365,
   "minY": 300,
@@ -17,8 +17,9 @@
     }
   ],
   "blockers": [],
+  "_comment_walk": "2026-06-20 #2 (round 2): still a touch low - raised another ~40px. CENTER lines (foot = y+135): far end y=393 → foot 528, near y=466 → foot 601. F3-verify the foot sits on the planks as the dock recedes to the boat.",
   "walkSegments": [
-    {"x1": 375, "y1": 546, "x2": 613, "y2": 513},
-    {"x1": 613, "y1": 513, "x2": 844, "y2": 473}
+    {"x1": 375, "y1": 466, "x2": 613, "y2": 433},
+    {"x1": 613, "y1": 433, "x2": 844, "y2": 393}
   ]
 }

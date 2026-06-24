@@ -1,6 +1,6 @@
 {
   "name": "camp_grounds",
-  "background": "assets/images/locations/camp/background/camp_grounds.png",
+  "background": "assets/images/locations/camp/background/day1/camp_grounds.png",
   "spawnX": 210,
   "spawnY": 483,
   "minY": 300,
