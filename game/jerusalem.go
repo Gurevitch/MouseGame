@@ -51,11 +51,19 @@ const (
 	// --- wall / plaza ---
 	jerArtShimon     = jerNPCWall + "npc_shimon.png"      // 6x2 (idle row0, talk row1) - LANDED
 	jerArtShimonGive = jerNPCWall + "npc_shimon_give.png" // 8x1 give one-shot (pen / coin)
-	jerArtBagel      = jerNPCWall + "npc_bagel_seller.png"
-	jerArtBagelGive  = jerNPCWall + "npc_bagel_seller_give.png"
-	jerArtPrayIdle   = jerNPCWall + "npc_praying_man_idle.png"
-	jerArtPrayTalk   = jerNPCWall + "npc_praying_man_talk.png"
-	jerArtPrayGive   = jerNPCWall + "npc_praying_man_give.png"
+	// Per-item Shimon gives (#35/#37) - upgrade the two-stage hand-off when they land.
+	jerArtShimonGivePen  = jerNPCWall + "npc_shimon_give_pen.png"
+	jerArtShimonGiveCoin = jerNPCWall + "npc_shimon_give_coin.png"
+	jerArtBagel          = jerNPCWall + "npc_bagel_seller.png"
+	jerArtBagelGive      = jerNPCWall + "npc_bagel_seller_give.png"
+	jerArtPrayIdle       = jerNPCWall + "npc_praying_man_idle.png"
+	jerArtPrayTalk       = jerNPCWall + "npc_praying_man_talk.png"
+	jerArtPrayGive       = jerNPCWall + "npc_praying_man_give.png"
+	jerArtPrayGivePaper  = jerNPCWall + "npc_praying_man_give_paper.png" // #34
+	// #33 distinct wall-worshipper sway sheets (4-frame each, seen from behind
+	// at the Wall). Used by the ambient sway system, NOT as NPC idle/talk.
+	jerArtWallPrayer1 = jerNPCWall + "praying_man.png"
+	jerArtWallPrayer2 = jerNPCWall + "praying_man2.png"
 	jerArtKidIdle    = jerNPCWall + "npc_wall_kid_idle.png" // #separate idle + talk
 	jerArtKidTalk    = jerNPCWall + "npc_wall_kid_talk.png"
 
@@ -66,6 +74,16 @@ const (
 	jerArtCoffeeIdle = jerNPCMarket + "npc_coffee_seller_idle.png"
 	jerArtCoffeeTalk = jerNPCMarket + "npc_coffee_seller_talk.png"
 	jerArtCoffeeGive = jerNPCMarket + "npc_coffee_seller_give.png"
+
+	// --- market antiques stall (#28): a kid minding the stall for her grandpa,
+	// who dozes on a chair beside it. SEPARATE idle/talk; art queued in
+	// EXTRA_PROMPTS.md, placeholders until then.
+	jerArtAntiqueKidIdle = jerNPCMarket + "kid_antique_idle.png"
+	jerArtAntiqueKidTalk = jerNPCMarket + "kid_antique_speak.png"
+	jerArtAntiqueKidAlt  = jerNPCMarket + "kid_antique_idle_alter.png"
+	// Grandpa has a single idle sheet (he dozes); talk reuses it.
+	jerArtOldManIdle = jerNPCMarket + "grandpa_idle.png"
+	jerArtOldManTalk = jerNPCMarket + "grandpa_idle.png"
 
 	// Separation-fence prop in the plaza (static overlay; keyed load).
 	jerArtFence = "assets/images/locations/jerusalem/props/fence.png"
@@ -103,6 +121,22 @@ func registerJerGive(renderer *sdl.Renderer, n *npc, path string) {
 			n.oneShotAnims = map[string][]npcFrame{}
 		}
 		n.oneShotAnims["give"] = f
+	}
+}
+
+// registerJerGiveNamed registers an optional per-item NPC give one-shot under
+// `key` (e.g. "give_paper", "give_pen", "give_coin") so the two-stage hand-off
+// upgrades from the generic "give" reach the moment that art lands. No-ops when
+// the sheet is absent (2026-06-24 #34/#35/#37).
+func registerJerGiveNamed(renderer *sdl.Renderer, n *npc, key, path string) {
+	if _, err := os.Stat(path); err != nil {
+		return
+	}
+	if f := loadNPCGrid(renderer, path, 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims[key] = f
 	}
 }
 
@@ -159,11 +193,14 @@ var coffeeNeedCardamomDialog = []dialogEntry{
 }
 
 var coffeeTradeDialog = []dialogEntry{
-	{speaker: "Coffee Seller", text: "Cardamom! Perfect. Sit, sit. Let it brew."},
+	{speaker: "Coffee Seller", text: "Cardamom! Perfect. Sit, sit. Let it brew, and stay a while with us."},
+	{speaker: "Pink Panther", text: "Ahh, I'd love to, truly - but I'm in a bit of a hurry. There's a frightened boy back at camp counting on me."},
+	{speaker: "Pink Panther", text: "Any chance I could take it to go? One coffee, to travel?"},
+	{speaker: "Coffee Seller", text: "A panther in a hurry! Of course, of course. A paper cup, then - but you must still hear one thing while I pour."},
 	{speaker: "Coffee Seller", text: "You feel that quiet? Three thousand years of people sitting exactly here. Romans, pilgrims, traders."},
 	{speaker: "Coffee Seller", text: "The boy in your story - the face he draws is on an old coin from the tunnels. The Wall keeps such things."},
 	{speaker: "Pink Panther", text: "So the nightmare is really a memory."},
-	{speaker: "Coffee Seller", text: "Just so. Here - take a cup for the road. And a tip: the ka'ak seller in the plaza trades bread for good coffee."},
+	{speaker: "Coffee Seller", text: "Just so. Here - your cup for the road. And a tip: the ka'ak seller in the plaza trades bread for good coffee."},
 }
 
 var coffeePostDialog = []dialogEntry{
@@ -218,6 +255,21 @@ var wallCrackBlockedDialog = []dialogEntry{
 	{speaker: "Pink Panther", text: "Cracks full of folded notes... I should leave one too. I'll need paper and something to write with first."},
 }
 
+// #28: the antiques stall - a girl keeping shop for her dozing grandfather.
+var antiqueKidDialog = []dialogEntry{
+	{speaker: "Antiques Girl", text: "Careful with the lamps, mister! Everything here belongs to the family."},
+	{speaker: "Pink Panther", text: "You run this whole stall yourself?"},
+	{speaker: "Antiques Girl", text: "I mind it while Saba rests. I'm saving it all for him - it's his life's work."},
+	{speaker: "Antiques Girl", text: "That's him on the chair. Don't wake him - he guards the oldest pieces even in his sleep."},
+}
+
+var oldManDialog = []dialogEntry{
+	{speaker: "Old Antiques Man", text: "*snoozes, a brass coin turning slowly between his fingers*"},
+	{speaker: "Old Antiques Man", text: "Hm? ...Ah. Every old thing here has a face, and every face has a story. My granddaughter knows them all now."},
+	{speaker: "Pink Panther", text: "She's keeping it safe for you."},
+	{speaker: "Old Antiques Man", text: "She is. That is how a thing outlives its maker. *drifts back to sleep*"},
+}
+
 // ---------- NPC constructors ----------
 
 func newShimon(renderer *sdl.Renderer, x int32) *npc {
@@ -231,6 +283,8 @@ func newShimon(renderer *sdl.Renderer, x int32) *npc {
 		talkFrameSpeed: 0.2,
 	}
 	registerJerGive(renderer, n, jerArtShimonGive)
+	registerJerGiveNamed(renderer, n, "give_pen", jerArtShimonGivePen)
+	registerJerGiveNamed(renderer, n, "give_coin", jerArtShimonGiveCoin)
 	return n
 }
 
@@ -239,7 +293,10 @@ func newSpiceSeller(renderer *sdl.Renderer, x int32) *npc {
 		// SEPARATE idle/talk sheets, FULL BODY (#user 2026-06-21).
 		idleGrid:       loadJerNPCSheet(renderer, jerArtSpiceIdle, 8, 1, jerFbkVendor8x2, 8, 2, 0),
 		talkGrid:       loadJerNPCSheet(renderer, jerArtSpiceTalk, 8, 1, jerFbkVendor8x2, 8, 2, 1),
-		bounds:         sdl.Rect{X: x, Y: 250, W: 140, H: 230},
+		// 2026-06-24 (#26): feet on the market floor (~598) at x≈319, not floating
+		// mid-scene. Y = 598 - H. (Leg "jitter" between idle/talk is a sheet
+		// baseline issue queued for sprite-check.)
+		bounds:         sdl.Rect{X: x, Y: 368, W: 140, H: 230},
 		name:           "Spice Seller",
 		dialog:         spiceIntroDialog,
 		bobAmount:      0,
@@ -291,6 +348,7 @@ func newPrayingMan(renderer *sdl.Renderer, x int32) *npc {
 		talkFrameSpeed: 0.2,
 	}
 	registerJerGive(renderer, n, jerArtPrayGive)
+	registerJerGiveNamed(renderer, n, "give_paper", jerArtPrayGivePaper)
 	return n
 }
 
@@ -307,6 +365,39 @@ func newWallKid(renderer *sdl.Renderer, x int32) *npc {
 	}
 }
 
+// newAntiquesKid (#28): a girl minding the family antiques stall in the souk.
+func newAntiquesKid(renderer *sdl.Renderer, x int32) *npc {
+	n := &npc{
+		idleGrid:       loadJerNPCSheet(renderer, jerArtAntiqueKidIdle, 8, 1, jerFbkKid8x2, 8, 2, 0),
+		talkGrid:       loadJerNPCSheet(renderer, jerArtAntiqueKidTalk, 8, 1, jerFbkKid8x2, 8, 2, 0),
+		bounds:         sdl.Rect{X: x, Y: 408, W: 100, H: 190},
+		name:           "Antiques Girl",
+		dialog:         antiqueKidDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.18,
+	}
+	// Optional second idle (dusting variation) — plays as the periodic alt-idle.
+	if f := loadNPCGrid(renderer, jerArtAntiqueKidAlt, 8, 1); len(f) > 0 {
+		n.altIdleGrid = f
+		n.altIdleAfterSec = 5.0
+	}
+	return n
+}
+
+// newAntiquesOldMan (#28): the grandpa dozing on a chair by the antiques stall.
+func newAntiquesOldMan(renderer *sdl.Renderer, x int32) *npc {
+	return &npc{
+		idleGrid:       loadJerNPCSheet(renderer, jerArtOldManIdle, 8, 1, jerFbkGuard6x2, 6, 2, 0),
+		talkGrid:       loadJerNPCSheet(renderer, jerArtOldManTalk, 8, 1, jerFbkGuard6x2, 6, 2, 1),
+		// Seated on a chair, so he reads shorter than a standing vendor.
+		bounds:         sdl.Rect{X: x, Y: 438, W: 120, H: 160},
+		name:           "Old Antiques Man",
+		dialog:         oldManDialog,
+		bobAmount:      0,
+		talkFrameSpeed: 0.16,
+	}
+}
+
 // ---------- Scene builders ----------
 
 func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
@@ -317,7 +408,9 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 		bg:     newPNGBackgroundOr(renderer, jerBgEntrance, jerPlazaBase),
 		npcs:   []*npc{newShimon(renderer, 760), newBagelSeller(renderer, 250)},
 		spawnX: 640,
-		spawnY: 560,
+		// 2026-06-24 (#25): raised the default standing line ~45px (was 560) - PP
+		// was planted too low in the plaza. Walk line + minY/maxY moved with it.
+		spawnY: 515,
 		hotspots: []hotspot{
 			{
 				// LEFT through the arch to the souk.
@@ -334,11 +427,11 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 				arrow:       arrowUp,
 			},
 		},
-		minY: 470,
+		minY: 425,
 		maxY: 600,
-		// Paris-style flat walk line across the plaza (#23).
+		// Paris-style flat walk line across the plaza (#23). Raised to 515 (#25).
 		walkSegments: []walkSegment{
-			{x1: 150, y1: 560, x2: 1150, y2: 560},
+			{x1: 150, y1: 515, x2: 1150, y2: 515},
 		},
 	}
 	for i := 0; i < 10; i++ {
@@ -359,20 +452,29 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 		entrance.ambientSprites = append(entrance.ambientSprites,
 			newAmbientWorshippers(renderer, float64(940+i*70), 470, 0.40+rand.Float64()*0.12))
 	}
-	// Separation-fence prop Shimon stands by (user 2026-06-21). Static 1-frame
-	// overlay; no-ops until props/fence.png lands (§JERUSALEM). Placed at the
-	// plaza ground beside Shimon (x≈760) - F3-tune its x/y/scale to the art.
-	entrance.ambientSprites = append(entrance.ambientSprites,
-		newAmbientSway(renderer, jerArtFence, 1, 700, 600, 1.0, 1.0))
+	// Separation-barrier fence across the plaza foreground. fence.png is ONE
+	// transparent barrier section, so: (a) load it RAW (newAmbientProp) - the
+	// old white-key load left a box ("placed without bg"); and (b) space the
+	// copies by ~the barrier's visible width so they sit end-to-end as a
+	// continuous fence instead of piling up (the old 85px spacing on a ~480px
+	// sprite stacked 8 of them). F3-tune x/y/scale to the plaza ground.
+	for _, fx := range []float64{300, 740, 1180} {
+		entrance.ambientSprites = append(entrance.ambientSprites,
+			newAmbientProp(renderer, jerArtFence, fx, 620, 0.42))
+	}
 	sm.scenes["jerusalem_entrance"] = entrance
 
 	// ===== Up at the Western Wall =====
 	wall := &scene{
 		name:           "jerusalem_wall",
 		bg:             newPNGBackgroundOr(renderer, jerBgWall, jerWallBase),
-		npcs:           []*npc{newPrayingMan(renderer, 470), newWallKid(renderer, 760), newWallKid(renderer, 980)},
+		npcs:           []*npc{newPrayingMan(renderer, 470), newWallKid(renderer, 880)},
 		spawnX:         220,
-		spawnY:         640,
+		// 2026-06-24: PP must stand DOWN at the foot of the Wall, on the same line
+		// as the praying man (foot ~700) and the worshippers (~660), not floating
+		// above them. Lowered the standing band to ~660. (Dropped the duplicate
+		// wall kid earlier; one kid remains for the bar-mitzvah beat.)
+		spawnY:         660,
 		characterScale: 0.85,
 		hotspots: []hotspot{
 			{
@@ -388,16 +490,30 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 				name:   "A crack in the Wall",
 			},
 		},
-		minY: 600,
-		maxY: 690,
+		minY: 620,
+		maxY: 700,
 		walkSegments: []walkSegment{
-			{x1: 150, y1: 640, x2: 1150, y2: 640},
+			{x1: 150, y1: 660, x2: 1150, y2: 660},
 		},
 	}
-	// #22: multiplied worshippers swaying at the foot of the Wall.
-	for i := 0; i < 5; i++ {
+	// #33: a DISTINCT group of worshippers at the foot of the Wall, not the
+	// entrance crowd. Spread them unevenly and vary scale so the same frame
+	// doesn't read as "the same person" repeated in a row. A dedicated wall
+	// prayers sheet is queued in EXTRA_PROMPTS.md to replace the shared fallback.
+	// Use the user's new 4-frame worshipper sheets (praying_man / praying_man2),
+	// alternating, so the wall group is distinct from the entrance crowd. They
+	// fall back to nothing if absent. NOTE: these sheets carry a baked limestone
+	// background, so they read best parked at the foot of the Wall - F3-tune x/y/
+	// scale, and if a tan rectangle shows, re-export them with a transparent bg.
+	wallPrayerSheets := []string{jerArtWallPrayer1, jerArtWallPrayer2}
+	wallPrayerSpots := []struct {
+		x, scale float64
+	}{
+		{200, 0.80}, {420, 0.88}, {720, 0.84}, {980, 0.80},
+	}
+	for i, sp := range wallPrayerSpots {
 		wall.ambientSprites = append(wall.ambientSprites,
-			newAmbientWorshippers(renderer, float64(150+i*230), 700, 0.6+rand.Float64()*0.15))
+			newAmbientSway(renderer, wallPrayerSheets[i%2], 4, sp.x, 660, sp.scale, 0.5))
 	}
 	wall.glows = []glowEffect{
 		{x: 0, y: 0, w: engine.ScreenWidth, h: 300, r: 255, g: 235, b: 180, alpha: 10, pulse: 0.2},
@@ -422,7 +538,9 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 	market := &scene{
 		name:           "jerusalem_market",
 		bg:             newPNGBackgroundOr(renderer, jerBgMarket, jerMarketBase),
-		npcs:           []*npc{newSpiceSeller(renderer, 200), newCoffeeSeller(renderer, 510)},
+		// #28: antiques stall on the RIGHT - the girl minding it for her grandpa,
+		// who dozes on a chair beside her.
+		npcs:           []*npc{newSpiceSeller(renderer, 249), newCoffeeSeller(renderer, 510), newAntiquesKid(renderer, 900), newAntiquesOldMan(renderer, 1040)},
 		spawnX:         760,
 		spawnY:         306,
 		characterScale: 0.9,
@@ -437,8 +555,11 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 		},
 		minY: 171,
 		maxY: 463,
+		// 2026-06-24 (#27): widened the bottom walk line (was 319→970) so PP can
+		// reach the spice seller on the LEFT (x≈249) and the right side of the
+		// souk without getting stuck on the middle strip.
 		walkSegments: []walkSegment{
-			{x1: 319, y1: 598, x2: 970, y2: 598},
+			{x1: 150, y1: 598, x2: 1180, y2: 598},
 			{x1: 659, y1: 306, x2: 859, y2: 306},
 		},
 	}
@@ -503,24 +624,21 @@ func (g *Game) setupJerusalemCallbacks() {
 				}
 				shimon.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					// Stage 3: note placed → give the Coin (Jake's anchor).
-					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && !game.inv.hasItem("Coin") {
+					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && game.inv.hasItem("Pen") && !game.inv.hasItem("Coin") {
 						return shimonCoinDialog, func() {
-							shimon.playOneShotAnim("give", 1.2)
-							game.player.playOneShot("receive_item", 1.2, nil)
+							game.inv.removeItem("Pen")
 							give("coin", "Coin")
 							shimon.dialog = shimonDoneDialog
 							shimon.altDialogFunc = nil
-						}, nil
+						}, &handOff{item: "Pen", returnItem: "Coin", npcGiveAnim: "give_coin"}
 					}
 					// Stage 2: PP has the note paper but no pen → give the Pen.
 					if !gavePen && game.inv.hasItem("Note Paper") && !game.inv.hasItem("Pen") {
 						return shimonPenDialog, func() {
-							shimon.playOneShotAnim("give", 1.2)
-							game.player.playOneShot("receive_item", 1.2, nil)
 							give("pen", "Pen")
 							gavePen = true
 							shimon.dialog = shimonWaitDialog
-						}, nil
+						}, &handOff{returnItem: "Pen", npcGiveAnim: "give_pen"}
 					}
 					return nil, nil, nil
 				}
@@ -536,14 +654,12 @@ func (g *Game) setupJerusalemCallbacks() {
 					}
 					return bagelTradeDialog, func() {
 						game.inv.giveItemTo("Coffee", "bagel_seller")
-						bagel.playOneShotAnim("give", 1.2)
-						game.player.playOneShot("receive_item", 1.2, nil)
 						give("bagel", "Bagel")
 						bagel.dialog = bagelPostDialog
 						bagel.altDialogFunc = nil
 						bagel.altDialogRequiresHeld = false
 						bagel.altDialogRequiresItem = ""
-					}, &handOff{item: "Coffee", npcAnim: "receive_item"}
+					}, &handOff{item: "Coffee", returnItem: "Bagel"}
 				}
 			}
 		}
@@ -558,8 +674,9 @@ func (g *Game) setupJerusalemCallbacks() {
 				spice.onDialogEnd = func() {
 					if !game.inv.hasItem("Cardamom") && !game.inv.hasItem("Coffee") {
 						give("cardamom", "Cardamom")
-						spice.playOneShotAnim("give", 1.2)
-						game.player.playOneShot("receive_item", 1.0, nil)
+						spice.playOneShotAnimThen("give", 1.2, func() {
+							game.player.playReceive("item", false, 1.0, nil)
+						})
 						game.dialog.queueDialog([]dialogEntry{
 							{speaker: "Pink Panther", text: "A pinch of cardamom. Off to the coffee stall, then."},
 						})
@@ -578,16 +695,29 @@ func (g *Game) setupJerusalemCallbacks() {
 					}
 					return coffeeTradeDialog, func() {
 						game.inv.giveItemTo("Cardamom", "coffee_seller")
-						coffee.playOneShotAnim("give", 1.2)
-						game.player.playOneShot("receive_item", 1.2, nil)
 						give("jerusalem_coffee", "Coffee")
 						coffee.dialog = coffeePostDialog
 						coffee.altDialogFunc = nil
 						coffee.altDialogRequiresHeld = false
 						coffee.altDialogRequiresItem = ""
-					}, &handOff{item: "Cardamom", npcAnim: "receive_item"}
+					}, &handOff{item: "Cardamom", returnItem: "Coffee"}
 				}
 			}
+		}
+		// 2026-06-24 (#31): leaving the souk back to the plaza should feel like
+		// stepping OUT of an enclosed space - PP recedes/shrinks up through the
+		// exit instead of just walking straight up. Mirrors the cabin-door recede.
+		for i := range market.hotspots {
+			if market.hotspots[i].targetScene != "jerusalem_entrance" {
+				continue
+			}
+			market.hotspots[i].onInteract = func() bool {
+				game.player.playRecede(0.9, 0.45, 70, func() {
+					game.sceneMgr.transitionTo("jerusalem_entrance", game.player)
+				})
+				return true
+			}
+			break
 		}
 	}
 
@@ -613,14 +743,12 @@ func (g *Game) setupJerusalemCallbacks() {
 					}
 					return prayingBagelDialog, func() {
 						game.inv.giveItemTo("Bagel", "praying_man")
-						pray.playOneShotAnim("give", 1.2)
-						game.player.playOneShot("receive_item", 1.2, nil)
 						give("note_paper", "Note Paper")
 						pray.dialog = prayingPostDialog
 						pray.altDialogFunc = nil
 						pray.altDialogRequiresHeld = false
 						pray.altDialogRequiresItem = ""
-					}, &handOff{item: "Bagel", npcAnim: "receive_item"}
+					}, &handOff{item: "Bagel", returnItem: "Note Paper", npcGiveAnim: "give_paper"}
 				}
 			case "Kid":
 				kid := n
@@ -646,14 +774,19 @@ func (g *Game) setupJerusalemCallbacks() {
 					game.dialog.startDialog(wallCrackBlockedDialog)
 					return true
 				}
-				// Write, then place.
-				game.player.playOneShot("write_note", 1.4, func() {
-					game.player.playOneShot("put_note", 1.4, func() {
-						game.inv.removeItem("Note Paper")
-						game.vars.SetBool(ScopeGame, VarJerNotePlaced, true)
-						game.dialog.startDialog([]dialogEntry{
-							{speaker: "Pink Panther", text: "There. Jake's fear, named and left in the Wall."},
-							{speaker: "Pink Panther", text: "Shimon said the Wall always answers - I should go see him."},
+				// 2026-06-24 (#36): walk PP up to the foot of the Wall directly
+				// under the crack FIRST, so the write/put-note one-shots play on
+				// the same line as the stones. Crack centre ≈ x670; wall line y660.
+				game.player.walkToAndDo(670, 660, func() {
+					// Write, then place.
+					game.player.playOneShot("write_note", 1.4, func() {
+						game.player.playOneShot("put_note", 1.4, func() {
+							game.inv.removeItem("Note Paper")
+							game.vars.SetBool(ScopeGame, VarJerNotePlaced, true)
+							game.dialog.startDialog([]dialogEntry{
+								{speaker: "Pink Panther", text: "There. Jake's fear, named and left in the Wall."},
+								{speaker: "Pink Panther", text: "Shimon said the Wall always answers - I should go see him."},
+							})
 						})
 					})
 				})

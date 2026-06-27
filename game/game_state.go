@@ -39,6 +39,14 @@ const (
 	VarMonologueLouvre   = "monologue_louvre_played" // museum first-arrival beat (#28)
 	VarParisDone         = "paris_done"              // postcard obtained → camp return unlocked (#32)
 	VarJerNotePlaced     = "jer_note_placed"         // Jerusalem: note tucked in the Wall → return flight + coin (#26)
+	// Japan/Kyoto chapter opening (Lily's arc).
+	VarLilyArcStarted   = "lily_arc_started"   // sad Lily revealed at the lake (post-Jake-heal)
+	VarLilyLakeMet      = "lily_lake_met"      // PP has talked to Lily at the lake
+	VarHigginsRudeDone  = "higgins_rude_done"  // the rude-Higgins + camera aside played → Tokyo unlocks
+	VarJpGroveRevealed  = "jp_grove_revealed"  // Oba-chan said "follow me" → the hidden sakura grove exit opens
+	VarJpRamenOpen      = "jp_ramen_open"      // PP gave Hiro his fire-striker → stall opens, the waiting line sits
+	VarJpTeaLearned     = "jp_tea_learned"     // Kiku the geisha taught PP the tea ceremony → the matcha/bowl shelves unlock
+	VarJpTeaDone        = "jp_tea_done"        // PP shared the matcha ceremony with the tea master → grove entry allowed
 
 	// "chapter" scope: resets when a chapter ends (via ResetChapter)
 	VarMetKids        = "met_kids" // How many kids PP has talked to on Day 1

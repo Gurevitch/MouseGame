@@ -86,6 +86,12 @@ type player struct {
 	talkSideFrames  []spriteFrame
 	grabFrames      []spriteFrame
 	useItemFrames   []spriteFrame
+	// seated mode (Japan tea ceremony): while `seated`, idle/talk render the
+	// kneeling poses instead of the standing ones. Set after the spin-and-sit
+	// entry one-shot, cleared when PP stands again.
+	seatedIdle []spriteFrame
+	seatedTalk []spriteFrame
+	seated     bool
 	examineFrames   []spriteFrame
 	reactFrames     []spriteFrame
 	showInvFrames   []spriteFrame
@@ -325,6 +331,34 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	p.talkFrames = gridFrames(renderer, "assets/images/player/PP talk front.png", 8, 2)
 	p.talkSideFrames = gridFrames(renderer, "assets/images/player/PP talk side.png", 8, 2)
 
+	// Seated poses for the Japan tea ceremony (kneeling idle + talk). Optional -
+	// guarded so a missing sheet isn't re-opened every startup; while seated with
+	// no art, currentIdle/TalkFrames fall back to the standing poses (§JP-TEA-SIT).
+	for _, ns := range []struct {
+		dst   *[]spriteFrame
+		cands []string
+	}{
+		{&p.seatedIdle, []string{"assets/images/player/PP_sit_idle.png", "assets/images/player/PP_seated_idle.png"}},
+		{&p.seatedTalk, []string{"assets/images/player/PP_sit_talk.png", "assets/images/player/PP_seated_talk.png"}},
+	} {
+		if path := firstExisting(ns.cands...); path != "" {
+			*ns.dst = gridFrames(renderer, path, 8, 1)
+		}
+	}
+	// The spin→sit TRANSFORM: PP standing → fast spin into the tea clothes →
+	// drops into a kneel (ends seated). Its own one-shot ("tea_sit"); accepts
+	// whichever filename the art lands under. No-op (no visible transform) until
+	// it lands - that's why nothing currently plays.
+	if path := firstExisting(
+		"assets/images/player/PP_spin_to_sit.png",
+		"assets/images/player/PP_tea_ceremony.png",
+		"assets/images/player/PP_sit_down.png",
+	); path != "" {
+		if f := gridFramesConnected(renderer, path, 8, 1); len(f) > 0 {
+			p.oneShotAnims["tea_sit"] = f
+		}
+	}
+
 	// User 2026-05-12: swapped from "PP grab flower.png" (square 128×128
 	// cells) to the canonical "PP grab.png" (portrait 172×384 cells). The
 	// square cells made the grab anim render shorter than idle inside the
@@ -456,6 +490,25 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			p.oneShotAnims[ns.key] = p.grabFrames
 		}
 	}
+	// 2026-06-24: PP's back-facing hand-off sheets at Poulain's counter (#11/#7).
+	// These are ITEM-SPECIFIC (user: PP takes the actual baguette/coffee, no
+	// generic back sprite): the rolling pin he hands over and the baguette +
+	// coffee he takes back, all drawn from behind. Guarded with os.Stat; until
+	// each lands the trade falls back to the front sheet for that item.
+	for _, ns := range []struct{ key, path string }{
+		{"give_rolling_pin_back", "assets/images/player/PP_give_rolling_pin_back.png"},
+		{"get_baguette_back", "assets/images/player/PP_get_baguette_back.png"},
+		{"receive_cafe_au_lait_back", "assets/images/player/PP_get_coffee_back.png"},
+		// Japan: the dresser-geisha gag - PP spins, ends up in a kimono, spins
+		// again, back to normal. One continuous one-shot (no persistent state).
+		{"kimono_spin", "assets/images/player/PP_kimono_spin.png"},
+	} {
+		if _, err := os.Stat(ns.path); err == nil {
+			if f := gridFramesConnected(renderer, ns.path, 8, 1); len(f) > 0 {
+				p.oneShotAnims[ns.key] = f
+			}
+		}
+	}
 
 	p.dir = dirDown
 
@@ -507,26 +560,59 @@ func (p *player) playHandOff(target *npc, ho *handOff, then func()) {
 		}
 		return
 	}
-	key := giveAnimKeyForItem(ho.item)
-	// PR#17/#19: 0.8s over 8 frames read as a fast jump ("give is broken /
-	// too fast"). 1.3s lets the hand-over actually animate. Per-give override
-	// via ho.giveDur.
+	// Stage 2: after PP hands his item over (or immediately, for an NPC-only
+	// give) the NPC reaches into frame and hands `returnItem` back, then PP
+	// plays his receive beat. Folded into a closure so the one-way path (no
+	// returnItem) just calls `then` directly.
+	stageReturn := func() {
+		if ho.returnItem == "" {
+			then()
+			return
+		}
+		rkey := giveAnimKeyForItem(ho.returnItem)
+		// The NPC gives the return item: prefer an explicit give one-shot, then
+		// give_<key>, then the NPC's generic "give" reach.
+		nanim := ho.npcGiveAnim
+		if nanim == "" {
+			nanim = "give_" + rkey
+		}
+		// Fall back to the NPC's generic "give" reach until the per-item give
+		// sheet (give_paper, give_pen, give_coin...) lands, so the hand-back
+		// still animates instead of snapping.
+		if !target.hasOneShotAnim(nanim) {
+			nanim = "give"
+		}
+		recvDur := ho.ppReceiveDur
+		if recvDur <= 0 {
+			recvDur = 1.3
+		}
+		target.playOneShotAnimThen(nanim, recvDur, func() {
+			p.playReceive(rkey, ho.back, recvDur, then)
+		})
+	}
+
 	giveDur := ho.giveDur
 	if giveDur <= 0 {
 		giveDur = 1.3
 	}
-	p.playGive(key, giveDur, func() {
+	// Stage 1: PP hands his item over and the NPC takes it. When ho.item is
+	// empty this is a pure NPC->PP give, so skip straight to stage 2.
+	if ho.item == "" {
+		stageReturn()
+		return
+	}
+	key := giveAnimKeyForItem(ho.item)
+	p.playGiveFacing(key, ho.back, giveDur, func() {
 		anim := ho.npcAnim
 		if anim == "" {
 			anim = "receive_" + key
 			if !target.hasOneShotAnim(anim) {
 				anim = "receive_item"
 			}
-			// 2026-06-15 #11/#17: Pierre & Margaux register only a "give"
-			// reaching one-shot (no receive_*/receive_item), so the NPC half of
-			// the hand-over was an instant no-op - the trade looked "broken"
-			// (PP mimed handing over but the NPC never moved). Fall back to the
-			// NPC's own "give" reach so they visibly take the item.
+			// 2026-06-15 #11/#17: some NPCs register only a "give" reaching
+			// one-shot (no receive_*/receive_item), so the NPC half of the
+			// hand-over was an instant no-op. Fall back to the NPC's own "give"
+			// reach so they visibly take the item.
 			if !target.hasOneShotAnim(anim) && target.hasOneShotAnim("give") {
 				anim = "give"
 			}
@@ -535,8 +621,43 @@ func (p *player) playHandOff(target *npc, ho *handOff, then func()) {
 		if dur <= 0 {
 			dur = 1.3
 		}
-		target.playOneShotAnimThen(anim, dur, then)
+		target.playOneShotAnimThen(anim, dur, stageReturn)
 	})
+}
+
+// playReceive plays PP taking `itemKey` into his paw: tries receive_<key>
+// (and its _back variant when PP faces away), then the generic receive_item.
+func (p *player) playReceive(itemKey string, back bool, dur float64, onDone func()) {
+	name := p.resolveOneShot("receive_"+itemKey, back, "receive_item")
+	if dur <= 0 {
+		dur = 1.3
+	}
+	p.playOneShot(name, dur, onDone)
+}
+
+// playGiveFacing is playGive with a back-facing variant preference (counter /
+// Wall trades where PP is shown from behind).
+func (p *player) playGiveFacing(itemKey string, back bool, dur float64, onDone func()) {
+	if !back {
+		p.playGive(itemKey, dur, onDone)
+		return
+	}
+	name := p.resolveOneShot("give_"+itemKey, true, "give_item")
+	p.playOneShot(name, dur, onDone)
+}
+
+// resolveOneShot picks the best registered one-shot for a base key: the
+// "_back" variant when `back` and it exists, then the bare key, then a
+// fallback key. Used so back-facing trades degrade to the front sheets until
+// the dedicated back art lands.
+func (p *player) resolveOneShot(base string, back bool, fallback string) string {
+	if back && p.hasOneShot(base+"_back") {
+		return base + "_back"
+	}
+	if p.hasOneShot(base) {
+		return base
+	}
+	return fallback
 }
 
 // playGive plays the ITEM-SPECIFIC give one-shot ("give_<key>") when its
@@ -606,6 +727,9 @@ func (p *player) currentWalkFrames() []spriteFrame {
 }
 
 func (p *player) currentIdleFrames() []spriteFrame {
+	if p.seated && len(p.seatedIdle) > 0 {
+		return p.seatedIdle
+	}
 	switch p.dir {
 	case dirUp:
 		return p.idleBackFrames
@@ -617,6 +741,9 @@ func (p *player) currentIdleFrames() []spriteFrame {
 }
 
 func (p *player) currentTalkFrames() []spriteFrame {
+	if p.seated && len(p.seatedTalk) > 0 {
+		return p.seatedTalk
+	}
 	switch p.dir {
 	case dirLeft, dirRight:
 		return p.talkSideFrames
@@ -774,6 +901,10 @@ func (p *player) talkApproachPos(target *npc) (float64, float64) {
 	// aisle between Poulain's counter and the tables instead of below them).
 	if target.approachYOverride > 0 {
 		ty = float64(target.approachYOverride)
+	}
+	// 2026-06-24 (#11/#14): pin PP's foot-center x to an exact mark when set.
+	if target.approachXOverride > 0 {
+		tx = engine.Clamp(float64(target.approachXOverride)-playerDstW/2, playerMinX, playerMaxX)
 	}
 	return tx, engine.Clamp(ty, p.minY(), p.maxY())
 }

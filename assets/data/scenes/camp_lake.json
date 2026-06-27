@@ -7,7 +7,7 @@
   "maxY": 560,
   "musicPath": "assets/audio/music/camp.mp3",
   "_comment": "#10: PP can walk out along the deck (walkSegments). Big blocker removed so the deck is reachable; the walk path keeps him on the planks. A 'Lake' look-hotspot (wired in game.go) gives the 'not in the mood to swim' line. Tune the deck Y in-game.",
-  "npcs": [],
+  "npcs": ["lily_lake"],
   "hotspots": [
     {
       "bounds": {"x": 0, "y": 200, "w": 100, "h": 400},
@@ -17,9 +17,9 @@
     }
   ],
   "blockers": [],
-  "_comment_walk": "2026-06-20 #2 (round 2): still a touch low - raised another ~40px. CENTER lines (foot = y+135): far end y=393 → foot 528, near y=466 → foot 601. F3-verify the foot sits on the planks as the dock recedes to the boat.",
+  "_comment_walk": "2026-06-24 #4: first segment (375,466→613,433) reads correct; raised the FAR end of the second segment a little higher (393→374) so the dots keep tracking the planks as the dock recedes. CENTER lines (foot = y+135). F3-verify against the boat end.",
   "walkSegments": [
     {"x1": 375, "y1": 466, "x2": 613, "y2": 433},
-    {"x1": 613, "y1": 433, "x2": 844, "y2": 393}
+    {"x1": 613, "y1": 433, "x2": 844, "y2": 374}
   ]
 }

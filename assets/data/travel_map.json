@@ -52,7 +52,7 @@
     {
       "id": "tokyo",
       "name": "Tokyo",
-      "scene": "tokyo_street",
+      "scene": "tokyo_torii",
       "pinX": 1164, "pinY": 328,
       "unlocked": false,
       "facts": [

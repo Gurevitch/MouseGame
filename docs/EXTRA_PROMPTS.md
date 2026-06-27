@@ -136,6 +136,215 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
 All prompts below still need a PNG generated. When one lands, move its row
 into the **Done log** at the bottom and delete the body.
 
+### 2026-06-24 bug-sweep — new give/receive beats + scene art
+
+All code below is already wired with graceful fallbacks (missing sheet = the
+generic give/grab reach, never a deadlock), so the game runs today; each PNG
+that lands auto-upgrades the matching beat. Feed the global style/standing
+rules above once per session. All grids are tall cells, no separators, one
+figure per cell, PP design-locked to the reference sheets, output ONLY the grid.
+
+**Match-the-item rule (user 2026-06-24).** When a hand-over sprite shows an
+object being given/taken, that object MUST look like the inventory item the
+player actually receives. Attach the matching item PNG from
+`assets/images/items/` as a reference and copy its shape/colour exactly:
+- coffee → `assets/images/items/cafe_au_lait.png`
+- Camille's sketch → `assets/images/items/camille_sketch.png`
+- press pass → `assets/images/items/press_pass.png`
+(and likewise for any other handed item).
+
+**One-character-per-prompt rule (user 2026-06-24).** Each prompt below is for
+ONE character only. A character's idle and talk sheets must be the SAME person
+(same face/clothes/proportions) — never let a sheet drift into a different-looking
+NPC. Where two NPCs share a stall they get fully separate prompt blocks.
+
+**Separate idle + talk per NPC (user 2026-06-24 — now a standing rule).** EVERY
+speaking NPC gets TWO sheets: a `*_idle.png` (resting loop) and a `*_talk.png`
+(mouth/gesture loop), same character/size/anchor across both. Do NOT pack idle
+on row 0 and talk on row 1 of one sheet — author them as two separate 8×1 files.
+The loaders already look for the talk sheet and fall back to the idle until it
+lands. (This rule is also captured in the `sprite-check` skill.)
+
+#### §M16b — REGEN `npc_pierre_get_jam.png` — ghost second hand (user 2026-06-24) · NEEDED
+The current sheet has a frame where Pierre has **TWO hands instead of one** (a
+detached "ghost" duplicate hand — a motion-trail artefact). Regenerate the SAME
+animation, same `assets/images/locations/paris/npc/outside/npc_pierre_get_jam.png`
+path, 8×1 tall cells, fixing that frame. Emphasise the ghost-limb + one-figure
+rules (see the rules at the top of this file):
+
+> Pierre (beret, paint-smock, at his easel) reaches out, takes a small jam jar
+> from the viewer, and brings it in toward himself — 8 frames, one continuous
+> motion. EXACTLY ONE pair of hands in EVERY frame: ONE left hand and ONE right
+> hand, both connected to his body. NEVER paint a detached or duplicate hand, a
+> second right hand, or a motion-trail arm anywhere in any cell. The jam jar
+> should match the `confiture` inventory item. Bone `#EDE5D3` for any white;
+> pure `#FFFFFF` only as the cell background.
+
+#### §BG-OFFICE — Higgins office mid-dark + dark (FIXME #22) · NEEDED (2 BGs)
+The camp darkens by mood level; the office needs matching variants (the loader
+falls back to day1 until these exist). Save:
+- `assets/images/locations/camp/background/day2/camp_office.png` — same office, dusk/uneasy lighting (mid-dark).
+- `assets/images/locations/camp/background/day3/camp_office.png` — same office, night/wrong lighting (fully dark).
+
+> Repaint the existing day1 camp_office background under [dusk | night] mood:
+> cooler shadows, dimmer warm lamp, same composition and furniture. Full scene
+> background (not a sprite), no characters, pure scene art.
+
+#### §H5 — Higgins office talk blink (FIXME #5) · SPRITE-CHECK FIRST
+Not necessarily new art: the office talk sheet "blinks" on some frames. Run the
+`sprite-check` skill on `assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png`
+(declared 6×2). If a cell is blank/half-cut, regen that sheet as a clean 6×2 with
+the separator + one-figure-per-cell rules above; otherwise correct the talkGrid.
+
+### 2026-06-24 Japan / Kyoto chapter (Batch 2)
+
+The 3 scenes (torii → ramen → grove), dresser-geisha gag, Danny's call and the
+lake heal are wired; the landed art is in the Done log. Remaining art below
+upgrades it (all run on idle/placeholder until they land):
+
+#### §JP-LILY-TALK — sad Lily TALK sheet · NEEDED
+Her idle landed; she needs a matching TALK sheet (until then she stays in the
+sad idle while speaking). Save: `assets/images/locations/camp/npc/kids/lily/npc_lily_sad_talk.png` (8×1).
+
+> Same sad Lily as `npc_lily_sad_idle.png` — seated at the dock end, seen from
+> BEHIND hugging her knees — but now gently speaking: small shoulder/head moves
+> as if murmuring, still facing away. Same size/anchor as the idle sheet.
+
+#### §JP-HIGGINS-RUDE — rude Higgins TALK + WALK · NEEDED (2 sheets)
+For the grounds intercept (he comes halfway, is curt, then leaves). Save under
+`assets/images/locations/camp/npc/higgins/`, 8×1 (or 8×2 to match his other sheets):
+- `npc_director_higgins_rude_talk.png` — Higgins talking but dismissive/impatient: arms crossed, waving PP off, glancing at his watch.
+- `npc_director_higgins_walk_front.png` — Higgins walking toward the camera/PP (front-facing walk), to "come half the way" down the path.
+
+#### §JP-TOURIST — Gary's upside-down-book gag · NEEDED (4 sheets)
+User flow: Gary STARTS holding his guidebook UPSIDE-DOWN; when PP talks to him he
+FLIPS it the right way and KEEPS it that way afterward. So he needs a before
+state, the flip, and an after state. Save under `assets/images/locations/japan/npc/`,
+all 8×1, same tourist character:
+- `npc_gary_idle.png` — idle, guidebook held **UPSIDE-DOWN** (the start state; re-roll the current idle so the book is clearly inverted).
+- `npc_gary_talk.png` — talking, book still upside-down (this plays during the chat, before the flip).
+- `npc_gary_flip.png` — one-shot: he turns the book end-for-end the right way up, ending pleased (one continuous motion).
+- `npc_gary_idle_flipped.png` + `npc_gary_talk_flipped.png` — idle + talk with the book now held CORRECTLY (the after state the code swaps to once he's flipped it).
+
+#### §JP-LEAVES — falling leaves over the ramen-store tree · NEEDED
+A live falling-leaf loop (user: the tree should drop leaves). Save:
+`assets/images/locations/japan/props/leaf_fall.png` (**3 frames**, one row).
+
+> THREE frames of a single small autumn/sakura leaf fluttering as it falls:
+> frame 1 tilted left, frame 2 flat/spinning, frame 3 tilted right — a loop that
+> reads as a leaf twirling down. Transparent (or pure-white) background; the leaf
+> warm orange-pink, no pure white on the leaf itself.
+
+#### §JP-DRESSER — Kiku the dresser TALK (idle landed) · NEEDED
+`drawer.png` (idle) landed. Add her talk sheet. Save:
+`assets/images/locations/japan/npc/drawer_talk.png` (8×1).
+
+> Same geisha-styled kimono dresser as `drawer.png`, now talking with bright,
+> bossy gestures (beckoning, measuring PP with her eyes, holding up silk). Same
+> character/size/anchor as the idle.
+
+#### §JP-KIMONO — PP spins into a kimono · NEEDED (the dresser gag)
+Save: `assets/images/player/PP_kimono_spin.png` (8×1, PP design-locked).
+
+> 8-frame one-shot of Pink Panther doing a fast spin-change: frames 1-2 he spins
+> (motion-blur swirl), frames 3-6 he's mid-spin now wearing a **MEN'S kimono**
+> (see the men's-kimono note below), frames 7-8 he spins again and ends back in
+> his normal look, striking a tiny pose. One continuous spin; plain pink paws,
+> no gloves; no pure white.
+
+> **Men's-kimono rule (PP's outfit, user 2026-06-24):** PP is male, so every
+> sprite where he wears a kimono (this gag + the tea-ceremony sheets) uses a
+> MEN'S kimono — subdued colour (navy / charcoal / deep plum-brown), NARROW
+> sleeves sewn to the body (NOT the long flowing furisole sleeves), a thin obi
+> tied LOW on the hips, optionally a short *haori* jacket. NOT a bright,
+> long-sleeved, big-bow women's/geisha kimono.
+
+#### §JP-NPC-TALK — talk sheet for the ramen cook · NEEDED
+Per the separate idle/talk rule, Hiro still needs his talk sheet (idle landed).
+Save `assets/images/locations/japan/npc/npc_hiro_talk.png` (8×1, same Hiro):
+Hiro talking, ladle gestures over the pot. (Gary's talk sheets are in §JP-TOURIST.)
+
+#### §JP-GAPS — Japan idle-sheet cut check · RESOLVED 2026-06-24
+The earlier gap-fallback sheets are now fixed: `npc_hiro_idle`, `npc_obachan_idle`
+and `npc_kenji_idle` were re-rolled and gap-detect cleanly at 8×1; `npc_gary_idle`
+turned out to be drawn **6×2** (12 frames, two rows) and is now loaded at that
+grid (gap-detects clean). No Japan NPC sheet currently mis-cuts. (Separate
+pre-existing issue, not Japan: `PP put note in wall.png` still falls back at 6×1.)
+
+#### §JP-RAMEN-STALL — dynamic stall: closed ↔ open prop · NEEDED (2 states)
+The ramen stall opens when PP returns Hiro's fire-striker. Wired as a prop over
+the stall whose frame swaps on `jp_ramen_open`. Save under `assets/images/locations/japan/props/`:
+- `ramen_closed.png` — the stall shuttered/dim: noren curtain furled, window
+  boarded or dark, no steam.
+- `ramen_open.png` — the SAME stall lit and open: noren hung, lantern glowing,
+  steam rising, bowls out. Same size/position as the closed version so the swap
+  is in-place. (Single frame each, or a short loop for the open steam.)
+
+#### §JP-QUEUE — waiting line that sits when the stall opens · NEEDED (2 sheets)
+A static line of customers outside that SITS at the counter when Hiro opens.
+Save under `assets/images/locations/japan/npc/`:
+- `customer_wait.png` — a Kyoto local standing patiently in line (1 figure; a
+  4-frame idle sway is fine). Make 1-2 visual variants if easy so they're not clones.
+- `customer_sit.png` — the same kind of local SEATED on a counter stool, slurping
+  ramen. Same scale; this is what each queue figure swaps to on opening.
+
+#### §JP-ITEMS — Kyoto quest item icons · NEEDED (4 icons)
+Inventory icons (small, centered, transparent/pure-white bg). Save under `assets/images/items/`:
+- `well_water.png` — a simple cup/ladle of water.
+- `voice_charm.png` — a paper o-mamori charm brushed with the kanji for "voice".
+- `fire_striker.png` — a flint-and-steel fire-striker (hiuchi).
+- `offering_bowl.png` — a steaming ramen bowl (the blessed offering).
+
+#### §JP-MATCHA — matcha ceremony (temple tea-house: BG + tea master + items + PP sit) · NEEDED
+A required sub-quest gating the grove (`jp_tea_done`): grab matcha + a random
+bowl in the flower store, whisk it at the street well, then climb UP to the
+**temple tea-house** (new 5th scene) and share a bowl with the tea master.
+- `assets/images/locations/japan/background/teahouse.png` — a quiet temple
+  tea-house: tatami floor, low table, hanging scroll, shoji screens, soft light.
+  Full scene BG, no characters. (Authentic: the tea ceremony grew out of Zen
+  temple tea rooms.) Falls back to a flat tatami colour until it lands.
+- `assets/images/locations/japan/npc/npc_tea_master_idle.png` + `..._talk.png` (8×1) — a serene
+  old tea master, seiza/kneeling at the tatami, whisk in hand (separate idle + talk).
+- **`assets/images/player/PP_spin_to_sit.png` (8×1) — THE TRANSFORM (the one
+  you're missing).** PP goes from STANDING-NORMAL to SEATED-IN-KIMONO via a fast
+  spin, in 8 frames, one continuous motion:
+  - f1: standing normal, front.
+  - f2-3: a fast spin — motion-blur swirl, body blurred mid-turn (like the
+    Kiku kimono-spin gag).
+  - f4-5: spin resolves and he's now wearing the **men's kimono** (subdued, narrow
+    sleeves, low thin obi — see the men's-kimono rule under §JP-KIMONO), still upright.
+  - f6-7: he folds his legs and lowers down.
+  - f8: settled SEATED (seiza/kneeling) in the kimono — this final pose must
+    match the seated idle below so the hand-off is seamless.
+  (Code key `tea_sit`; also accepts `PP_tea_ceremony.png` / `PP_sit_down.png`.)
+- `assets/images/player/PP_sit_idle.png` (8×1) — PP kneeling in the kimono, calm
+  seated idle (slow breath, hands on knees). Same seated pose as `PP_spin_to_sit`
+  frame 8.
+- `assets/images/player/PP_sit_talk.png` (8×1) — PP kneeling, gently talking/
+  sipping while seated — shown during the seated ceremony dialog.
+- Item icons under `assets/images/items/`: `matcha.png` (tin of green powder),
+  `tea_bowl.png` (an empty chawan), `matcha_bowl.png` (frothy whisked matcha).
+
+#### §JP-SAKURA-BG — hidden sakura grove (4th scene, NEW) · DONE
+The "follow me" payoff: Oba-chan opens a path from the flower store into a deep
+pink cherry-blossom grove where PP picks the blossom himself at the old tree.
+Wired as scene `tokyo_sakura` (right exit from `tokyo_temple`, gated on talking
+to Oba-chan); runs on a flat-pink fallback until the BG lands. Save:
+`assets/images/locations/japan/background/sakura_grove.png` (full scene, no characters).
+
+> A secluded grove of old cherry trees in full bloom - a tunnel/clearing of deep
+> pink sakura, petals drifting, soft dappled light, a mossy path. One especially
+> large, ancient gnarled cherry tree as the centrepiece (right-of-centre, ~x560-880)
+> where PP will pick a blossom. Warm pinks and greens, no pure white where PP stands.
+
+#### §JP-BG-EDGES — connect the 3 Kyoto backgrounds · DONE (re-export)
+User: each scene's left/right edge should "show what we can get" — a peek of the
+adjacent scene so the exits read. Re-export the 3 BGs so:
+- `start_of_tori` RIGHT edge hints the ramen street (a lantern/awning corner).
+- `ramen-store` LEFT edge hints the torii gates; RIGHT edge hints the pink grove.
+- `flower_store_near_forest` LEFT edge hints the ramen street.
+Keep them full-scene, same size; only the edges change.
+
 ### 2026-06-15 playtest — background / chroma-key re-rolls
 
 Two sheets read with a leftover "background" in-game. Both are the
@@ -791,6 +1000,34 @@ Paste once per sheet, swapping the [CHARACTER] line.
 
 Headers moved here once the PNG landed or the prompt was superseded; bodies
 deleted (recover from git history if ever needed).
+
+**2026-06-24 Japan chapter batch (user) — landed, wired (under `locations/japan/`):**
+
+- §JP-LILY (idle) — `camp/npc/kids/lily/npc_lily_sad_idle.png` · DONE (talk still open, §JP-LILY-TALK).
+- §JP-KYOTO-BG — `background/tokyo_tori.png` + `tokyo_street.png` + `tokyo_temple.png` · DONE
+  (wired via candidate-path resolution; edge-continuity re-export completed in §JP-BG-EDGES).
+- §JP-NPCS — `npc/npc_hiro_idle.png`, `npc_gary_idle.png`, `npc_obachan_idle.png` +
+  `npc_obachan_talk.png`, `npc_kenji_idle.png` · DONE landing (had a `.png.png`
+  double-extension on 4, renamed). Talk/flip/dresser sheets still open above; 4
+  idles need a gap re-roll (§JP-GAPS).
+
+**2026-06-24 bug-sweep batch (user) — landed, wired, sprite-checked (8×1 unless noted):**
+
+- §M8 — Madame Margaux idle re-roll · DONE (npc_pigeon_lady_idle.png).
+- §M19 — Camille draw-then-present · DONE (npc_camille_sketching_portrait.png).
+- §M13 — Madame Poulain hands a coffee · DONE (npc_madame_poulain_give_coffee.png).
+- §M16 — Pierre take-baguette + give-pass · DONE (npc_pierre_get_baguette.png,
+  npc_pierre_give_pass.png). [Pierre's get_jam re-roll still open — see §M16b.]
+- §J28a/§J28b — antiques girl + grandpa · DONE (kid_antique_idle/idle_alter/speak.png,
+  grandpa_idle.png).
+- §J33 — distinct wall worshippers · DONE (praying_man.png + praying_man2.png,
+  4-frame sway, wired via newAmbientSway). Caveat: baked limestone bg — re-export
+  transparent if a rectangle shows in-game.
+- §J34/§J35/§J37 — praying-man give-paper, Shimon give-pen/give-coin · DONE
+  (all standing; give_paper confirmed standing, fixing the seated mismatch).
+- §J39 — Jake falls asleep · DONE (npc_jake_falling_sleep.png + npc_jake_sleeping.png).
+- §PP-BACK — back-facing PP at the counter · DONE (PP_give_rolling_pin_back.png,
+  PP_get_baguette_back.png, PP_get_coffee_back.png).
 
 **2026-06-10 generation batch (user) — landed, wired, audit-verified clean:**
 

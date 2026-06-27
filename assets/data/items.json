@@ -173,7 +173,50 @@
       "id": "coin",
       "name": "Coin",
       "texture": "assets/images/items/coin.png",
+      "iconScale": 0.55,
       "description": "An old coin Shimon pressed into your paw after you left your note in the Wall. A memory of this place - and exactly the face from Jake's dream."
+    },
+    {
+      "id": "well_water",
+      "name": "Well-Water",
+      "texture": "assets/images/items/well_water.png",
+      "description": "A cup of cool water drawn from the temple well in the Kyoto street. Kenji needs it to wet his dried ink."
+    },
+    {
+      "id": "voice_charm",
+      "name": "Voice Charm",
+      "texture": "assets/images/items/voice_charm.png",
+      "description": "A little paper charm Kenji brushed with the kanji for 'voice'. He said a quiet heart should carry one."
+    },
+    {
+      "id": "fire_striker",
+      "name": "Fire-Striker",
+      "texture": "assets/images/items/fire_striker.png",
+      "description": "Hiro's flint fire-striker - a crow stole it and dropped it in Oba-chan's eaves. The ramen hearth is cold without it."
+    },
+    {
+      "id": "offering_bowl",
+      "name": "Offering Bowl",
+      "texture": "assets/images/items/offering_bowl.png",
+      "description": "A bowl blessed at Hiro's hearth, still warm. An offering for the old cherry tree in the grove."
+    },
+    {
+      "id": "matcha",
+      "name": "Matcha",
+      "texture": "assets/images/items/matcha.png",
+      "description": "A tin of bright-green matcha powder from the flower store's tea shelf. The tea master will want this."
+    },
+    {
+      "id": "tea_bowl",
+      "name": "Tea Bowl",
+      "texture": "assets/images/items/tea_bowl.png",
+      "description": "A chawan picked from the shelf - never the same one twice. Empty, for now."
+    },
+    {
+      "id": "matcha_bowl",
+      "name": "Matcha Bowl",
+      "texture": "assets/images/items/matcha_bowl.png",
+      "description": "Matcha whisked with cool well-water into a froth. Ready to share with the tea master."
     }
   ]
 }

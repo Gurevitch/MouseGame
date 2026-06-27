@@ -3,9 +3,10 @@
   "background": "assets/images/locations/paris/background/paris_street.png",
   "_comment": "User 2026-05-31 (#17): PP on air. minY/maxY were 0 → engine defaulted to 265-395 (foot 535-665), floating above the cobblestones. walkSegments are at y=510, so clamp PP's top so his foot lands ~720-790: minY=450, maxY=520.",
   "spawnX": 200,
-  "spawnY": 510,
-  "minY": 450,
-  "maxY": 520,
+  "_comment_y2": "2026-06-24 #17: lowered PP's walk line ~50px (510→560) so his feet sit further down the cobblestones, not high up the street. minY/maxY clamp moved with it.",
+  "spawnY": 560,
+  "minY": 500,
+  "maxY": 575,
   "musicPath": "assets/audio/music/paris.mp3",
   "_comment_scale": "Retro plan #3 (2026-06-12): PTP reference frames show PP at ~35-40% of screen height; ours rendered ~26%. characterScale 1.15 lifts PP to ~243px and every NPC with him (relative sizes preserved, feet stay planted). Experiment on this scene only - roll out per scene if it reads right.",
   "characterScale": 1.15,
@@ -28,7 +29,7 @@
     {"x": 0, "y": 0, "w": 180, "h": 200}
   ],
   "walkSegments": [
-    {"x1": 100,  "y1": 510, "x2": 700,  "y2": 510},
-    {"x1": 700,  "y1": 510, "x2": 1300, "y2": 510}
+    {"x1": 100,  "y1": 560, "x2": 700,  "y2": 560},
+    {"x1": 700,  "y1": 560, "x2": 1300, "y2": 560}
   ]
 }

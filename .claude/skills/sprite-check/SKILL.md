@@ -76,6 +76,12 @@ Point the user at `docs/EXTRA_PROMPTS.md` — paste-ready prompts live there
 (§JIT batch for known re-rolls). Every prompt must carry the standing rules,
 which exist because each one fixes a bug we actually shipped:
 
+- **Separate idle + talk sheets per NPC** (user 2026-06-24, firm rule): every
+  speaking NPC ships TWO files — `<name>_idle.png` and `<name>_talk.png` — same
+  character/size/anchor across both. NEVER pack idle on row 0 + talk on row 1 of
+  one sheet; author them as two separate single-row strips. Loaders look for the
+  talk sheet and fall back to the idle until it lands, so a missing talk sheet is
+  a queued prompt, not a bug.
 - **One character per cell, ≥15px empty gaps** between figures and to sheet
   edges — gaps are what the engine cuts at; clear gaps = uncuttable frames.
   No ghost/duplicate limbs, no figures straddling cells.

@@ -577,14 +577,88 @@ Moved up to its own chapter section above (**JERUSALEM — Jake's Anchor**). Sce
 NPCs and the trivial heal path are built; the full retro task chain is designed in
 `docs/JERUSALEM_TASKS.md`, not yet wired.
 
-### Tokyo (Lily's visions — glowing garden, temple bells)
-- [ ] Lily goes strange: arranging petals in symbols, hearing bells
-- [ ] Travel to Tokyo
-- [ ] Visit Senso-ji temple
-- [ ] Explore cherry blossom garden
-- [ ] Learn about temples, cherry blossoms, torii gates
-- [ ] Find anchor object: pressed flower or charm card
-- [ ] Return to camp, give to Lily
+### Tokyo / Kyoto (Lily's visions) — OPENING BUILT (Batch 2, 2026-06-24)
+
+**Build status (2026-06-24):** the chapter is wired and playable end-to-end on
+placeholder/landed art. Built:
+- Sad Lily revealed at the lake after Jake's heal (seen from behind); healed
+  there with the Pressed Sakura (→ `lily_healed`, unlocks Tommy / Rio+BA).
+- The rude-Higgins intercept (he strides halfway in via `npc_director_front_walk`)
+  + PP's camera aside, which unlocks Tokyo.
+- **Five Kyoto scenes:** `tokyo_torii` (arrival, Gary — his ramen tip opens the
+  stall) → `tokyo_street` (ramen — Hiro + Kenji, falling leaves, the well) →
+  `tokyo_temple` (flower store — Oba-chan + Kiku the dresser-geisha; matcha/bowl
+  shelves) → `tokyo_teahouse` (UP from the store — the temple tea-house where the
+  Tea Master hosts the matcha ceremony) → `tokyo_sakura` (hidden grove).
+- **8-step offering chain + matcha gate** (see docs/JAPAN_TASKS.md): Gary →
+  Hiro (needs his crow-stolen fire-striker for the blessed bowl) → Kenji (needs
+  well-water) → well → Kenji (Voice Charm + clue) → Oba-chan (fire-striker) →
+  Hiro (blessed Offering Bowl) → matcha ceremony (`jp_tea_done`) → Oba-chan
+  "follow me" (`jp_grove_revealed`) → grove.
+- **Grove payoff:** PP places the offering (+ Voice Charm) at the old tree →
+  it blooms → **picks the Pressed Sakura** → Danny's foreshadowing phone call.
+- All Kyoto items are consumed in-place (nothing lingers in the bag).
+
+Still open (art only): the sakura-grove BG (`§JP-SAKURA-BG`), several talk
+sheets, gap re-rolls, and BG edge-continuity — see EXTRA_PROMPTS §2026-06-24 Japan.
+
+
+Lily's arc. Built after the Batch-1 bug sweep lands & playtests. Mirrors the
+Paris/Jerusalem chapter pattern (chapter wiring in `game/tokyo.go` — a stub +
+the Pressed Sakura heal handoff already exist in `game.go`; scenes in
+`assets/data/scenes/`; NPCs in `assets/data/npc/`; items in `items.json`;
+save-safe VarStore flags). All art ships behind graceful fallbacks; prompts go
+to `docs/EXTRA_PROMPTS.md`.
+
+**Opening — find Lily at the lake (not her cabin).**
+- In `camp_lake`, Lily sits at the end of the dock seen from **behind, hugging
+  her knees**, sad. (The old "strange Lily" art is retired.) New prompt:
+  Lily-sad-from-behind idle.
+- Talking to her starts her strange beat (petals, distant bells, "everything's
+  the wrong colour").
+
+**Higgins gets rude + the camera aside.**
+- When PP heads to Higgins, Higgins walks **halfway down the line** to meet PP
+  and is curt — the Lily conversation goes nowhere, he brushes PP off.
+- After the dialog, PP turns to the **camera** (new aside beat): something like
+  *"She did say she loves flowers… and it's the best season for them in Japan."*
+  — the player's nudge toward Kyoto.
+
+**Kyoto — three backgrounds** (prompts; pink/orange palettes, no pure white):
+- **Torii path** — the orange wooden gate corridor (Fushimi-Inari style).
+- **Kyoto city** — a machiya street.
+- **Sakura grove** — pink cherry-blossom woods (revealed later, when a local
+  lady tells PP to pick a blossom).
+
+**Quest:** a Kyoto lady directs PP to the sakura grove to pick a single
+blossom → that **Pressed Sakura** is Lily's anchor object (heals her back at
+camp, kid-repair formula; the heal handoff `&handOff{item: "Pressed Sakura"}`
+is already stubbed in `game.go`).
+
+**Danny's phone call (sets up the NEXT destination).** Near the end, before
+flying home, PP gets a call from Danny. Danny is NOT calling *from* a city — he
+**wants an item / mentions something** that makes it make sense to head
+somewhere immediately, teeing up the next chapter. PP joke:
+*"I didn't know you guys have phones in the camp."*
+
+**Return + heal Lily** at camp (give Pressed Sakura → `set_strange(false)` +
+`lily_healed`), unlocking the next chapter.
+
+### Kid → city map (locked 2026-06-24)
+
+| Kid | City | Notes |
+|-----|------|-------|
+| Marcus | Paris | done |
+| Jake | Jerusalem | done |
+| Lily | Tokyo / Kyoto | Batch 2 (this chapter) |
+| Tommy | **Rio** | confirmed |
+| Danny | **Rome** | likely the **final** city — leave Danny's chapter for last |
+
+### Endgame seed (far-off forward note, not built)
+
+After the last kid, the **whole camp goes crazy** at once; PP calls on an old
+friend for help — the **young magician from *Hokus Pokus Pink*** (confirm his
+name). Capture only; not designed yet.
 
 ### Rome (Danny's visions — arena, gold paths, ruins)
 - [ ] Danny goes strange: mapping camp like ruins, digging holes
@@ -646,7 +720,7 @@ Each kid follows the same pattern:
 | Camp Chilly Wa Wa | — | Always unlocked |
 | Paris | Marcus | Unlocked after Day 2 Marcus dialog |
 | Jerusalem | Jake | Scenes + NPCs built; trivial heal live; full task chain designed (`docs/JERUSALEM_TASKS.md`), not yet wired |
-| Tokyo | Lily | Not yet implemented |
+| Tokyo / Kyoto | Lily | Designed (Batch 2, 2026-06-24); see the Tokyo/Kyoto chapter above |
 | Rome | Danny | Not yet implemented |
 | Rio de Janeiro | Tommy | Not yet implemented |
 | Buenos Aires | Tommy | Not yet implemented |

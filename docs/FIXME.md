@@ -14,6 +14,79 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### Resolved (2026-06-24 — Batch-1 bug sweep: trades, positions, camp/Marcus/Jake)
+
+Code/data all landed and the build + tests pass; the listed NEW sprites are
+queued in `EXTRA_PROMPTS.md §2026-06-24` and ship behind graceful fallbacks
+(the game runs now; each PNG auto-upgrades its beat). Numbers are the user's
+PR list.
+
+- [x] **#1/#2** PP now strolls in from off-screen-left to his mark at the camp
+  ENTRANCE (entryWalkPending on the landing→entrance hop); spawn nudged right
+  (580→660). FIXED in game.go + camp_entrance.json.
+- [x] **#3** Five camp kids made a little bigger (feet kept planted). kids.json.
+- [x] **#4** Lake deck far end raised (393→374) so the dots track the planks. camp_lake.json.
+- [ ] **#5** Higgins office talk "blink" — needs a `sprite-check` pass on
+  `npc_director_higgins_office_talk.png` (queued §H5); no code fix yet.
+- [x] **#7** Colette: PP stands a little lower than her (approachYOverride). npc.go.
+- [ ] **#8** Margaux idle re-roll — art queued (§M8); loader ready.
+- [x] **#9** PP renders at Pierre-size when talking to Margaux (recede restored). game.go.
+- [x] **#10** Bakery walkable trimmed to a front lane so PP can't walk over the
+  seated patrons. paris_bakery.json.
+- [x] **#11** Poulain: PP shown from behind, pinned at ~(741,556)
+  (approachXOverride/YOverride + back-facing handoff). Back PP sprites queued (§PP-BACK).
+- [x] **#12/#13/#15/#16** Paris trades re-choreographed (no more parallel
+  give+receive double-fire): rolling-pin→baguette+coffee sequenced; Pierre hands
+  back the ticket via the two-stage handOff. New give sheets queued (§M13/§M16).
+- [x] **#14** Yvette: PP stands a little right (approachXOverride) so he's off the table.
+- [x] **#17** paris_street walk line lowered (510→560). paris_street.json.
+- [x] **#18** Camille: PP stands to her LEFT for the right/left café grouping.
+- [x] **#19** Camille draw-THEN-present — art queued (§M19); plays as a one-shot.
+- [x] **#20** Marcus heal now requires an intentional HELD-postcard hand
+  (altDialogRequiresHeld); room stays in its dark mood BG on sleep (no day swap).
+- [x] **#21** Sleeping NPCs keep their pose in dialog (new `lockIdleInDialog`). npc.go.
+- [x] **#22** Cabin-enter hotspots enlarged/raised + two degenerate walk-up stubs
+  fixed; camp_office mid-dark/dark BGs queued (§BG-OFFICE, moodBG fallback ready).
+- [x] **#24** Plaza fence: small section tiled along the line (was one big panel).
+- [x] **#25** Jerusalem entrance spawn/line raised ~45px.
+- [x] **#26** Spice seller planted at ~(319,598) (leg jitter = sheet baseline, queued for sprite-check).
+- [x] **#27** Market bottom walk line widened (150→1180) so the sides are reachable.
+- [x] **#28** Antiques stall added: a girl + her dozing grandpa (idle/talk + dialog); art queued (§J28).
+- [x] **#29/#32/#34/#35/#37** Jerusalem give/receive trades rebuilt on the
+  two-stage handOff (coffee, bagel, praying-man-gives-paper, Shimon pen, Shimon
+  takes the pen back & gives the coin — fixes the "pen stayed in the bag" bug).
+- [x] **#30** Coffee seller "sit with us" → PP asks for it to-go (expanded dialog).
+- [x] **#31** Market→entrance now recedes/shrinks like leaving a room.
+- [x] **#33** Wall: distinct prayer group (spread + varied scale), dropped the
+  duplicate wall kid, raised PP's wall standing line; distinct sheet queued (§J33).
+- [x] **#36** Note ritual: PP walks under the crack first so write/put plays on the wall's line.
+- [x] **#38** Coin inventory icon shrunk (`iconScale: 0.55`). items.json.
+- [x] **#39** Jake falls asleep on heal (sleep one-shot + locked sleeping pose),
+  keeping the BG, mirroring Marcus; art queued (§J39).
+
+#### Sprites landed & wired (2026-06-24) — sprite-check pass
+
+The user's generated PNGs are now on disk and wired (loaders repointed to the
+actual filenames, e.g. `kid_antique_*`, `grandpa_idle`, `npc_pierre_get_*`,
+`npc_pierre_give_pass`, `npc_camille_sketching_portrait`, `PP_get_*_back`,
+`PP_give_rolling_pin_back`, `npc_jake_falling_sleep`). All registered in the
+`engine/grid_content_test.go` + `tools/jitter_audit` manifests. Cut check:
+
+- [x] All 8×1 give/receive/idle/sleep sheets **GAP-DETECTED** cleanly. Their
+  ghost/cross audit warnings are the handed props (paper, coin, pen, cup, jam,
+  sketchpad) — the engine cuts at the gaps, so they render correctly.
+- [x] `npc_praying_man_give_paper.png` confirmed **STANDING** (visually) — fixes
+  the seated/standing mismatch from the earlier feedback.
+- [x] `praying_man.png` / `praying_man2.png` are 4-frame wall-worshipper sway
+  loops (seen from behind) — wired into the wall ambient group at 4×1 (distinct
+  from the entrance crowd, #33). GAP-DETECTED 1×4.
+- [ ] **`npc_pierre_get_jam.png`** — audit + user confirm a **ghost second hand**
+  in frame 4. Re-roll queued at EXTRA_PROMPTS §M16b (same path, 8×1).
+- [ ] **Wall worshippers (`praying_man*.png`)** carry a **baked limestone
+  background**, so they read best parked at the foot of the Wall; if a tan
+  rectangle shows in-game, re-export them with a transparent background. Placement
+  x/y/scale is F3-tunable in `game/jerusalem.go`.
+
 ### Reported (2026-06-21 — biker/pigeon/worshippers white-box bg, REAL fix)
 
 - [x] Earlier diagnosis was WRONG: `biker.png`, `npc_pierre_pigeon_lands.png` and

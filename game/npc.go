@@ -74,6 +74,10 @@ type npc struct {
 	// approachYOverride, when >0, pins PP's stand row (top-left Y) for this
 	// NPC instead of foot-aligning to its bounds (bakery patrons; 2026-06-11 #25).
 	approachYOverride int32
+	// approachXOverride, when >0, pins PP's stand FOOT-CENTER x for this NPC
+	// (overrides the auto side-pick), so PP plants on an exact mark - e.g.
+	// centered in front of Poulain's counter (2026-06-24 #11/#14).
+	approachXOverride int32
 	// approachGapX, when >0, is the horizontal gap (px) PP leaves between his
 	// body edge and the NPC when standing to talk (default 10). Office Higgins
 	// uses a large gap so PP stops clear of the trash bin (2026-06-20 #3).
@@ -201,7 +205,12 @@ type npc struct {
 	// swaps his idleGrid to this looping sleeping pose (empty = keep normal
 	// idle until the art lands). The go-to-sleep beat is the "sleep" one-shot.
 	sleepIdleGrid []npcFrame
-	isStrange     bool
+	// lockIdleInDialog (#21): when true, starting a dialog does NOT swap the NPC
+	// to its talk sheet - it keeps its current idle/sleep pose. Set after a
+	// sleeping heal (Marcus, Jake) so chatting with the sleeper doesn't snap him
+	// back to a talking animation.
+	lockIdleInDialog bool
+	isStrange        bool
 	// strangeTalkFrameSpeed slows the talk animation while the NPC is in
 	// strange state (Marcus's freakout looked too flickery at the default
 	// 0.10 s/frame). 0 = inherit talkFrameSpeed unchanged.
@@ -556,6 +565,22 @@ var higginsPostWorriedDialog = []dialogEntry{
 	{speaker: "Director Higgins", text: "Marcus is in the camp grounds. Start there."},
 }
 
+// Japan opening (#8): Higgins intercepts PP in the grounds and is curt about
+// Lily, then leaves. PP turns to the camera and connects the dots himself.
+var higginsRudeDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Director Higgins! It's Lily - she's down by the lake, she won't move, she keeps talking about orange gates and bells-"},
+	{speaker: "Director Higgins", text: "Counselor. I have a budget meeting, a leaking canoe, and forty other children. Lily is FINE. Children sit by lakes. It's a CAMP."},
+	{speaker: "Pink Panther", text: "But she said-"},
+	{speaker: "Director Higgins", text: "She SAID, she said. Let her mope. If she's not better by supper, give her a juice box. Now if you'll excuse me, the canoe waits for no man."},
+}
+
+var higginsRudeAsideDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "...Well. He's a peach."},
+	{speaker: "Pink Panther", text: "(turning to you) But Lily DID tell me something. Flowers. She loves flowers more than anything - she said it the first day."},
+	{speaker: "Pink Panther", text: "Orange gates, far-off bells, the exact right pink... and it's cherry-blossom season right about now in Japan."},
+	{speaker: "Pink Panther", text: "Kyoto. That's where she's been in her head all along. Let's go pick a flower."},
+}
+
 // higginsPostMarcusHealedDialog plays after Marcus has been healed by the
 // Louvre postcard. It is the narrative BRIDGE into Jake's chapter (Jerusalem):
 // Marcus's heal wakes Jake into the strange state and lights up Jerusalem on
@@ -712,6 +737,17 @@ func newGroundsHiggins(renderer *sdl.Renderer) *npc {
 		}
 		h.oneShotAnims["shout"] = shoutFrames
 	}
+	// Japan opening (#8): front-facing walk so Higgins can stride halfway down
+	// the path toward PP for the rude intercept. Optional - no-op until art lands.
+	if p := firstExisting("assets/images/locations/camp/npc/higgins/npc_director_front_walk.png",
+		"assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_front.png"); p != "" {
+		if f := loadNPCGridConnected(renderer, p, 8, 1); len(f) > 0 {
+			if h.oneShotAnims == nil {
+				h.oneShotAnims = map[string][]npcFrame{}
+			}
+			h.oneShotAnims["walk_front"] = f
+		}
+	}
 	return h
 }
 
@@ -736,12 +772,56 @@ func newRoomJake(renderer *sdl.Renderer) *npc {
 	// 200 (feet kept at y=680) so he reads clearly shorter than PP.
 	n.bounds = sdl.Rect{X: 760, Y: 480, W: 162, H: 200}
 	n.silent = true
+	// #39 (2026-06-24): Jake goes to sleep after the coin heal, like Marcus.
+	// "sleep" = the go-to-sleep one-shot; sleepIdleGrid = the looping sleeping
+	// pose the heal swaps his idle to. Both optional (no-op until art lands).
+	const jakeBase = "assets/images/locations/camp/npc/kids/jake/"
+	if f := loadNPCGridConnected(renderer, jakeBase+"npc_jake_falling_sleep.png", 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["sleep"] = f
+	}
+	n.sleepIdleGrid = loadNPCGridConnected(renderer, jakeBase+"npc_jake_sleeping.png", 8, 1)
 	return n
 }
 
 func newRoomLily(renderer *sdl.Renderer) *npc {
 	n := newLily(renderer)
 	n.bounds = sdl.Rect{X: 666, Y: 476, W: 162, H: 245}
+	n.silent = true
+	return n
+}
+
+// newLakeLily (Japan chapter opening): Lily found sitting at the end of the
+// dock, seen from BEHIND hugging her knees, sad. Hidden until Jake is healed
+// (revealed in the Jake-heal callback). Stays in the sad pose even while
+// talking (lockIdleInDialog). Prefers the dedicated lake sheet; falls back to
+// her normal idle until the art lands.
+func newLakeLily(renderer *sdl.Renderer) *npc {
+	n := newLily(renderer)
+	const sad = "assets/images/locations/camp/npc/kids/lily/npc_lily_sad_idle.png"
+	const sadTalk = "assets/images/locations/camp/npc/kids/lily/npc_lily_sad_talk.png"
+	if _, err := os.Stat(sad); err == nil {
+		if f := loadNPCGridConnected(renderer, sad, 8, 1); len(f) > 0 {
+			n.idleGrid = f
+			n.talkGrid = f // talk falls back to the sad idle until its own sheet lands
+		}
+	}
+	// Separate sad-talk sheet (§JP-LILY-TALK). When present she has a real talk
+	// pose, so we DON'T lock her to the idle during dialog; until then she stays
+	// in the sad-from-behind idle even while talking.
+	hasSadTalk := false
+	if _, err := os.Stat(sadTalk); err == nil {
+		if f := loadNPCGridConnected(renderer, sadTalk, 8, 1); len(f) > 0 {
+			n.talkGrid = f
+			hasSadTalk = true
+		}
+	}
+	// Seated at the dock end (foot ~450); shorter box since she's hugging knees.
+	n.bounds = sdl.Rect{X: 770, Y: 300, W: 120, H: 150}
+	n.lockIdleInDialog = !hasSadTalk
+	n.hidden = true
 	n.silent = true
 	return n
 }
@@ -1215,6 +1295,11 @@ const (
 )
 
 func (n *npc) setAnimState(state int) {
+	// #21: a sleeping (or otherwise idle-locked) NPC stays on its idle/sleep
+	// pose - ignore requests to switch it into the talk animation.
+	if n.lockIdleInDialog && state == npcAnimTalk {
+		state = npcAnimIdle
+	}
 	if n.animState == state {
 		return
 	}
@@ -1230,10 +1315,25 @@ func (n *npc) setAnimState(state int) {
 // when empty the beat tries "receive_<key>" then "receive_item", and skips
 // silently if the NPC has neither.
 type handOff struct {
-	item       string  // inventory item name PP hands over
+	item       string  // inventory item name PP hands over ("" = NPC-only give)
 	npcAnim    string  // optional explicit NPC receive one-shot
 	npcAnimDur float64 // seconds for npcAnim; 0 = default
 	giveDur    float64 // seconds for PP's give one-shot; 0 = default (1.3)
+
+	// Two-stage trade (user 2026-06-24): after PP hands `item` over and the NPC
+	// takes it, the NPC hands `returnItem` back and PP plays his receive beat.
+	// Leaving returnItem empty keeps the old one-way behaviour. This replaces the
+	// old pattern of firing npc.playOneShotAnim("give") + player.playOneShot(
+	// "receive_item") manually in parallel (which double-animated and read as
+	// "broken").
+	returnItem   string  // item the NPC hands back ("" = one-way give to NPC)
+	npcGiveAnim  string  // NPC's give one-shot for returnItem; "" tries give_<key>/give
+	ppReceiveDur float64 // seconds for PP's receive beat; 0 = default (1.3)
+
+	// back = PP is shown from behind at this trade (counter / Wall). The give and
+	// receive beats prefer the "_back" sheet variants, falling back to the front
+	// sheets until the back art lands.
+	back bool
 }
 
 // playOneShotAnim starts a named non-looping animation registered under
@@ -1293,6 +1393,17 @@ func (n *npc) playOneShotAnimThen(name string, duration float64, onDone func()) 
 func (n *npc) hasOneShotAnim(name string) bool {
 	_, ok := n.oneShotAnims[name]
 	return ok
+}
+
+// giveAnimOr returns `name` when that one-shot is registered, else the NPC's
+// generic "give" reach. Lets per-item give sheets (give_coffee, give_ticket,
+// give_paper...) auto-upgrade a trade once their art lands while still
+// animating the hand-over with the generic reach until then.
+func (n *npc) giveAnimOr(name string) string {
+	if n.hasOneShotAnim(name) {
+		return name
+	}
+	return "give"
 }
 
 func (n *npc) endOneShotAnim() {
@@ -1899,9 +2010,11 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 		flipped:        false, // sheet draws her facing right already
-		// 2026-06-20 #10: she's behind the back counter (above PP), so face PP to
-		// the CAMERA for her dialog/receive instead of up (which showed his back).
-		ppFacePlayer: true,
+		// 2026-06-24 (#11): user wants PP shown from BEHIND at the counter (he's
+		// reaching up over it), standing at ~(741,556). Drop ppFacePlayer so PP
+		// faces UP/away, and pin his stand mark. foot 556 → top-left ≈ 556-270.
+		approachXOverride: 741,
+		approachYOverride: 286,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/bakery_woman") {
 		// User 2026-05-31 (#19): use Madame Poulain's dedicated new sheets
@@ -1941,6 +2054,15 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 			n.oneShotAnims = map[string][]npcFrame{}
 		}
 		n.oneShotAnims["give"] = f
+	}
+	// 2026-06-24 #13: dedicated "hands a coffee cup" one-shot. Optional - the
+	// coffee trades use giveAnimOr("give_coffee"), which falls back to her
+	// generic "give" reach until this sheet lands.
+	if f := loadNPCGridConnected(renderer, "assets/images/locations/paris/npc/coffee/npc_madame_poulain_give_coffee.png", 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["give_coffee"] = f
 	}
 	return n
 }
@@ -2039,6 +2161,9 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 		// 2026-06-20 #7: user wants the OTHER side - approach from her LEFT. She's
 		// not fixedFacing, so startNPCDialog flips her to FACE PP from the new side.
 		approachLeft: true,
+		// 2026-06-24 (#7): PP stood ON her spot - drop his stand row a little so he
+		// reads as standing slightly LOWER (closer to camera) than Colette. F3-tune.
+		approachYOverride: 560,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/french_guide") {
 		// User 2026-05-31 (#18): use Colette's dedicated new sheets
@@ -2207,12 +2332,27 @@ func newPierreArtist(renderer *sdl.Renderer) *npc {
 			n.talkGrid = loadNPCGridRowConnected(renderer, sheet, 8, 2, 1)
 		}
 	}
-	// 2026-06-20 #14: Pierre no longer registers a "give" one-shot. The
-	// shoo-the-pigeon role moved to Madame Margaux, and `npc_pierre_give.png`
-	// (Pierre presenting his painting/portrait) was being used by playHandOff
-	// as his "take the item" fallback - so handing Pierre the baguette played
-	// the portrait-display sprite instead of a take. With no "give" anim the
-	// hand-off NPC half is a clean no-op and PP's give anim carries the beat.
+	// 2026-06-20 #14: Pierre no longer registers a generic "give" one-shot (the
+	// old portrait sheet was wrongly used as his "take" fallback).
+	// 2026-06-24 #16: but he DOES now get dedicated per-beat sheets when they
+	// land - two "takes" (baguette, confiture) and one "give" (the press pass /
+	// ticket). All optional; the two-stage hand-off falls back to PP's give anim
+	// until each lands. Keys match the handOff npcAnim/npcGiveAnim in game.go.
+	for _, ns := range []struct{ key, path string }{
+		// The user's sheets are named get_* (Pierre "gets"/takes the item).
+		{"receive_baguette", "assets/images/locations/paris/npc/outside/npc_pierre_get_baguette.png"},
+		{"receive_confiture", "assets/images/locations/paris/npc/outside/npc_pierre_get_jam.png"},
+		{"give_ticket", "assets/images/locations/paris/npc/outside/npc_pierre_give_pass.png"},
+	} {
+		if _, err := os.Stat(ns.path); err == nil {
+			if f := loadNPCGridConnected(renderer, ns.path, 8, 1); len(f) > 0 {
+				if n.oneShotAnims == nil {
+					n.oneShotAnims = map[string][]npcFrame{}
+				}
+				n.oneShotAnims[ns.key] = f
+			}
+		}
+	}
 	return n
 }
 
@@ -2413,6 +2553,10 @@ func newCafePatronYvette(renderer *sdl.Renderer) *npc {
 		bobAmount:         0,
 		talkFrameSpeed:    0.20, // PR#15: 0.10 strobed against the text reveal
 		approachYOverride: 210,  // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		// 2026-06-24 (#14): she's the leftmost patron, so the auto side-pick
+		// clamped PP to the far-left edge, standing him over the table. Pin his
+		// foot-center to the aisle a little to her RIGHT. F3-tune.
+		approachXOverride: 250,
 	}
 }
 
@@ -2500,10 +2644,19 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 		bobAmount:         0,
 		talkFrameSpeed:    0.22, // PR#14: 0.10 raced ahead of the text reveal
 		approachYOverride: 210,  // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		// 2026-06-24 (#18): PP stands to Camille's LEFT so the cafe reads as two
+		// groups: right line = Henri + Lucien, left line = Camille + Bernard +
+		// Yvette.
+		approachLeft: true,
 	}
-	// Sketching one-shot (EXTRA_PROMPTS §T): ends with Camille turning the
-	// sketchpad toward the camera, revealing the drawing of PP.
-	if f := loadNPCGrid(renderer, "assets/images/locations/paris/npc/coffee/npc_camille_sketching.png", 8, 1); len(f) > 0 {
+	// Sketching one-shot (#19): draw → present, ending with Camille holding the
+	// finished portrait toward the camera (it matches the sketch item she gives).
+	// Prefer the new draw-then-present sheet; fall back to the older reveal-only.
+	sketchSheet := "assets/images/locations/paris/npc/coffee/npc_camille_sketching_portrait.png"
+	if _, err := os.Stat(sketchSheet); err != nil {
+		sketchSheet = "assets/images/locations/paris/npc/coffee/npc_camille_sketching.png"
+	}
+	if f := loadNPCGrid(renderer, sketchSheet, 8, 1); len(f) > 0 {
 		n.oneShotAnims = map[string][]npcFrame{"sketch": f}
 	}
 	// PR#23: her "oh non, my lost pencil!" dismay loop (§CAM2). Plays when she

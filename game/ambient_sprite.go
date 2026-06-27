@@ -24,6 +24,7 @@ const (
 	ambientSway                      // stays put, just cycles frames in place (worshippers)
 	ambientPerch                     // flies in -> perches -> holds -> flies off -> repeats (crow)
 	ambientFlyOff                    // starts at (x,y), flaps, drifts up+away, self-clears (PR#29 pot pigeon)
+	ambientFall                      // drifts DOWN (+ gentle sideways), wraps to the top - a live falling loop (sakura/leaves)
 )
 
 type ambientSprite struct {
@@ -191,6 +192,21 @@ func newAmbientSway(renderer *sdl.Renderer, sheet string, cols int, x, y, scale,
 	}
 }
 
+// newAmbientProp is a STATIC single-frame decoration that ships with a
+// TRANSPARENT background (real alpha) - so it loads RAW. The white-key loader
+// would punch holes in light art and leaves a visible box on an already-
+// transparent PNG (the Jerusalem barrier fence). No animation.
+func newAmbientProp(renderer *sdl.Renderer, sheet string, x, y, scale float64) *ambientSprite {
+	return &ambientSprite{
+		frames:   loadAmbientStrip(renderer, sheet, 1),
+		kind:     ambientSway,
+		x:        x,
+		y:        y,
+		scale:    scale,
+		frameSec: 999,
+	}
+}
+
 // newAmbientCrow is the camp crow that flaps in, lands on the camp sign, sits
 // a beat, then flaps away - and repeats. Art is pending (assets/images/ambient/
 // crow.png, 8-frame: 0-5 flap, 6-7 perched). No-ops until the PNG lands.
@@ -255,6 +271,37 @@ func (a *ambientSprite) update(dt float64) {
 		if a.y < -140 || a.x > float64(engine.ScreenWidth)+140 {
 			a.frames = nil
 		}
+	case ambientFall:
+		// vyUp carries the DOWNWARD speed here; vx the sideways drift. Wraps back
+		// to the top (and across) so the leaf keeps falling forever.
+		a.y += a.vyUp * dt
+		a.x += a.vx * dt
+		if a.y > float64(engine.ScreenHeight)+a.wrapPad {
+			a.y = -a.wrapPad
+		}
+		if a.x > float64(engine.ScreenWidth)+a.wrapPad {
+			a.x = -a.wrapPad
+		} else if a.x < -a.wrapPad {
+			a.x = float64(engine.ScreenWidth) + a.wrapPad
+		}
+		a.advanceFrame(dt, 0, loopHi)
+	}
+}
+
+// newAmbientLeafFall is a sprite leaf/petal that drifts down the screen and
+// wraps back to the top - a "live" falling loop (Japan ramen-store tree). The
+// sheet is a short N-frame flutter cycle; missing art no-ops (nil frames).
+func newAmbientLeafFall(renderer *sdl.Renderer, sheet string, cols int, x, y, scale, fallSpeed, driftX, frameSec float64) *ambientSprite {
+	return &ambientSprite{
+		frames:   loadAmbientStripKeyed(renderer, sheet, cols),
+		kind:     ambientFall,
+		x:        x,
+		y:        y,
+		scale:    scale,
+		vyUp:     fallSpeed,
+		vx:       driftX,
+		wrapPad:  90,
+		frameSec: frameSec,
 	}
 }
 

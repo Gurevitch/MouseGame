@@ -1,8 +1,18 @@
-# Jerusalem chapter — task design (plan only, not built)
+# Jerusalem chapter — task design
 
-Status: **design notes.** The chapter currently works the trivial way (walk up to
-Miriam, she hands over the Coin Rubbing on first talk). This doc is the plan for
-turning it into a proper retro daisy-chain like Paris. We refine it here, then build.
+Status: **BUILT, then polished.** The full daisy-chain (Shimon → spice → coffee →
+bagel → praying-man → note ritual → coin) is wired in `game/jerusalem.go` (the
+trivial "Miriam hands the rubbing" stub is gone). The design notes below are kept
+for reference; the live chapter diverges from the original sardine/cat/jar draft.
+
+**2026-06-24 bug-sweep (see FIXME.md §2026-06-24):** the give/receive beats were
+rebuilt on the two-stage `handOff` (no more parallel give+receive double-fire);
+the praying man now GIVES the paper, Shimon takes the pen BACK before giving the
+coin (fixing the "pen stayed in the bag" bug); fence tiled; entrance/wall standing
+lines raised; spice seller planted; market sides walkable; antiques stall (girl +
+grandpa) added; note ritual walks PP under the crack; market→plaza recede added;
+coin icon shrunk. New per-item give sprites are queued in EXTRA_PROMPTS.md (§J28/
+§J33/§J34/§J35/§J37) behind graceful fallbacks.
 
 ## Theme
 

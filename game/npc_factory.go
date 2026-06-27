@@ -31,6 +31,7 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"room_lily":   newRoomLily,
 	"room_tommy":  newRoomTommy,
 	"room_danny":  newRoomDanny,
+	"lily_lake":   newLakeLily,
 	// Paris NPCs
 	"french_guide":       newFrenchGuide,
 	"museum_curator":     newMuseumCurator,

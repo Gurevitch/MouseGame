@@ -29,10 +29,8 @@
   "blockers": [
     {"x": 0, "y": 0, "w": 1400, "h": 280}
   ],
-  "_comment_walk": "2026-06-20 #9: user-specified lines (read off F3). A bottom line across the floor + two mid aisles up toward the counter/tables. NOTE: segments are CENTER lines (PP foot = y+135) and minY 290/maxY 520 clamp the top-left, so the y752 bottom clamps PP's foot to ~790; F3-verify PP's foot lands on the floor (if it reads 135px low, author these as foot-135).",
+  "_comment_walk": "2026-06-24 #10: the free-roam floor is now a SINGLE front lane that stays clear of the seated patrons - PP can no longer wander up among/over the tables. (Talking to a patron still positions PP via the per-NPC talk-approach, which bypasses these segments, so every NPC stays reachable.) Left end trimmed to 330 so PP can't stroll over the left table cluster (Yvette/Bernard). Segments are CENTER lines (foot = y+135); F3-verify.",
   "walkSegments": [
-    {"x1": 41, "y1": 752, "x2": 1250, "y2": 752},
-    {"x1": 736, "y1": 756, "x2": 744, "y2": 561},
-    {"x1": 362, "y1": 752, "x2": 368, "y2": 752}
+    {"x1": 330, "y1": 752, "x2": 1250, "y2": 752}
   ]
 }
