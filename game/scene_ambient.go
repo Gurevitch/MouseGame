@@ -66,20 +66,19 @@ func decorateParisStreetSprites(s *scene, renderer *sdl.Renderer) {
 	if s == nil {
 		return
 	}
-	// 2026-06-11 #16 (user choice: interactive crossing): the biker rides
-	// along the MAIN street PP stands on at near-character scale. He's
-	// clickable - setupParisCallbacks wires the click to the bump encounter.
-	// 2026-06-12 #12: faster (120 -> 190) and lane nudged down (735 -> 755).
-	// 2026-06-15 #4: user - biker "not in the right place as was before."
-	// Restore the prior lane (755 -> 735); speed kept.
-	// 2026-06-20 #9: user - biker rides over the air; drop the lane to y=750.
-	s.ambientSprites = append(s.ambientSprites,
-		newAmbientBiker(renderer, -200, 750, 190, 0.85),
-	)
+	// 2026-06-30 (user): the biker is REMOVED. biker.png ships with an opaque
+	// near-white background that the color-key can't fully strip, so it rendered
+	// as a glaring white blob on the cobbles. Rather than keep fighting the
+	// sheet, drop the ambient entirely (the bump encounter no longer fires).
+	// (Was: newAmbientBiker(renderer, -200, 750, 190, 0.85).)
 	// 2026-06-12: the street-density flavor ambients (accordion player + crumb
 	// lady) were dropped - the screen was getting crowded, and the pigeon lady
 	// is now a real quest NPC (Madame Margaux, who lures the pot pigeon for the
 	// heel) rather than background filler. See npc.go newPigeonLady.
+	//
+	// 2026-07-15 (user #8): the accordion player is OUT again — the street is
+	// done and needs no new figure. §AMB5 wiring + PNG removed; the 2026-06-12
+	// drop decision above stands.
 }
 
 // decorateParisLouvre adds the museum mood: dust motes swirling in the
@@ -248,10 +247,10 @@ func decorateCampLanding(s *scene, renderer *sdl.Renderer) {
 	s.glows = append(s.glows, glowEffect{
 		x: 200, y: 0, w: 900, h: 320, r: 255, g: 245, b: 205, alpha: 10, pulse: 0.22,
 	})
-	// Crow perches on top of the "CAMP CHILLY WA WA AIR" sign (center-ish).
-	s.ambientSprites = append(s.ambientSprites,
-		newAmbientCrow(renderer, 650, 300),
-	)
+	// The #34 sign crow is NOT added here: decorators run at game build, so it
+	// was hatching on the very first screen (the game opens on camp_landing).
+	// applyCampMood adds it once the camp turns (post-first-city), matching
+	// the "return-from-city arrival mood" intent. (user 2026-07-15)
 }
 
 // decorateCampOffice adds the lamp-lit indoor mood: a warm central glow from

@@ -86,15 +86,47 @@ type npc struct {
 	// auto-turning to face PP. For seated NPCs (office Higgins) who must hold a
 	// fixed orientation behind a desk (#16).
 	fixedFacing bool
+	// ppTalkFlip inverts PP's auto-computed side facing for THIS NPC's dialog
+	// (2026-07-15 user #9: Madame Margaux — PP read as talking the other way).
+	ppTalkFlip bool
 	// fixedFootAnchor (#2): anchor by content center-X + content BOTTOM instead
 	// of the per-frame detected feet. For seated/bust NPCs (office Higgins) whose
 	// foot detection is unreliable and makes the talk loop jitter/blink.
 	fixedFootAnchor bool
+	// fixedHeadAnchor (2026-06-29, item 3): anchor a bust by content center-X +
+	// content TOP (pinned at bounds.Y) instead of the bottom. For talking busts
+	// (office Higgins) whose gesturing poses have wildly different content
+	// BOTTOMS (arm raised vs arms crossed) — bottom-anchoring made his head
+	// bounce ~34px between frames. Top-anchoring keeps the head dead still while
+	// the arms move below it (hidden by the desk). Applies to idle/talk only;
+	// one-shots (give_map throw) fall back to fixedFootAnchor.
+	fixedHeadAnchor bool
+	// anchorRefH (item 3): when >0, used as the opaque-height scale reference for
+	// EVERY state instead of each grid's own tallest pose. Set to max(idle,talk)
+	// so a bust's idle and talk render the head at the SAME size — no size pop
+	// when dialog starts.
+	anchorRefH int32
+	// anchorRefHOneShots (#15/#16): also apply anchorRefH to ONE-SHOT animations
+	// (give/receive), not just idle/talk. Seated stall NPCs (spice/coffee seller)
+	// have a full-body give sheet whose taller opaque box normalised TINY against
+	// their idle; pinning every state to the idle's scale keeps the give at the
+	// same size (the overflowing lower body is hidden by the stall art). Do NOT
+	// set this on NPCs whose one-shot is a genuine full-body action that should
+	// fill the bounds (e.g. Higgins's give_map throw).
+	anchorRefHOneShots bool
+	// headAnchorOffsetY (item 3): pixels to push the head-anchored content DOWN
+	// from bounds.Y, so a bust sits at the right height in its window instead of
+	// pinned to the very top.
+	headAnchorOffsetY int32
 	// ppFacePlayer (#10): PP faces the camera (front) during this NPC's dialog
 	// instead of left/right. For NPCs behind a back-of-scene counter (Poulain)
 	// who sit above PP, where side-facing reads as PP showing his back.
 	ppFacePlayer bool
-	silent       bool
+	// ppFaceBack (2026-06-30): opposite of ppFacePlayer - PP talks UP toward a
+	// counter-height NPC with his BACK to the camera (Madame Poulain). Uses the
+	// back talk/idle sheet. Takes precedence over ppFacePlayer in startNPCDialog.
+	ppFaceBack bool
+	silent     bool
 	// hidden skips the draw pass for this NPC. Used for story-timed
 	// arrivals (e.g. Higgins appearing next to Lily only after her shy
 	// dialog) so the NPC can sit in the scene list from load without
@@ -320,6 +352,16 @@ func (n *npc) setStrangeVariant(night bool) {
 // from leaking into the NPC idle/talk animations.
 const npcSpriteInset = 3
 
+// higginsOfficeInset / higginsOfficeTol: office Higgins's 12 bust poses are
+// drawn touching (no ≥15px gap), JOINED by a faint near-background bridge. At
+// the old tol 4 that bridge survived the colour-key, so each equal cell's
+// opaque box spanned into its neighbour ("tiny parts from the frame to his
+// left"). tol 24 breaks the bridge so each pose stands alone; his shirt/skin/
+// hair sit far enough from the white bg that the connected key leaves them
+// intact (verified in the sprite gallery). A small inset then suffices.
+const higginsOfficeInset = 4
+const higginsOfficeTol = 24
+
 // framesFromGrid flattens a rows x cols GridFrame matrix into an
 // npcFrame list and trims trailing frames whose texture is nil (loader
 // bailed on a missing cell). We do not attempt to trim "empty" frames
@@ -447,6 +489,16 @@ func loadNPCGridConnected(renderer *sdl.Renderer, path string, cols, rows int) [
 // ("lose color in his hand", 2026-06-12 - tol 8→4 measured +12k opaque px).
 func loadNPCGridConnectedTol(renderer *sdl.Renderer, path string, cols, rows int, tol uint8) []npcFrame {
 	grid := engine.SpriteGridFromPNGCleanConnectedTol(renderer, path, cols, rows, npcSpriteInset, tol)
+	return framesFromGrid(grid, cols, rows, path)
+}
+
+// loadNPCGridEqualConnectedTol forces an even grid (no content-gap split). For
+// sheets whose poses touch and mis-gap-detect into sliver/double cells (office
+// Higgins talk — the "blink"). Equal cells separate the touching poses cleanly.
+// inset trims each cell edge — bump it when neighbouring poses bleed a sliver of
+// themselves into this cell at the even boundary.
+func loadNPCGridEqualConnectedTol(renderer *sdl.Renderer, path string, cols, rows, inset int, tol uint8) []npcFrame {
+	grid := engine.SpriteGridFromPNGCleanConnectedTolEqual(renderer, path, cols, rows, inset, tol)
 	return framesFromGrid(grid, cols, rows, path)
 }
 
@@ -591,9 +643,9 @@ var higginsPostMarcusHealedDialog = []dialogEntry{
 	{speaker: "Director Higgins", text: "Marcus is finally sleeping soundly. Whatever you brought back from Paris, it worked. Good work, Panther."},
 	{speaker: "Director Higgins", text: "But I'm afraid it's not over. The moment Marcus settled... Jake started up."},
 	{speaker: "Pink Panther", text: "Jake? The tough kid who never says much?"},
-	{speaker: "Director Higgins", text: "That's the one. Now he won't stop. Muttering about ancient tunnels, a great stone wall, coins buried under the city."},
+	{speaker: "Director Higgins", text: "That's the one. He won't stop muttering about an ancient face on a coin, a great wall, people praying."},
 	{speaker: "Director Higgins", text: "He keeps scratching the same symbol into the dirt. I've never seen anything like it. I don't understand any of this, Panther."},
-	{speaker: "Pink Panther", text: "A wall, old coins, tunnels under a city... that sounds like Jerusalem."},
+	{speaker: "Pink Panther", text: "An ancient wall, old coins, people praying in front of it... that sounds like Jerusalem."},
 	{speaker: "Director Higgins", text: "Then that's where you're headed. The travel map lit up Jerusalem on its own - same as it did Paris for Marcus."},
 	{speaker: "Director Higgins", text: "Go talk to Jake first, in his cabin - see what he's fixated on. Then take the map and find whatever he's missing. The kids are counting on us."},
 }
@@ -641,8 +693,14 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// tol-8 band, so the edge flood still bled into them through the
 		// outline ("lose color in his hand"). Tol 4 recovers ~12k px while
 		// the pure-white background still keys away.
-		idleGrid: loadNPCGridRowConnectedTol(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2, 0, 4),
-		talkGrid: loadNPCGridConnectedTol(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2, 4),
+		// 2026-06-29 (item 3, take 2): both office sheets are 12 bust poses in a
+		// 6×2 grid, but the poses TOUCH — so the content-gap detector mis-cut the
+		// TALK sheet into a 26px sliver (Higgins vanishes = the "blink") and a
+		// 504px double (two Higginses). Load with the EQUAL-cell loader so each
+		// pose gets its own clean 248×504 cell. Combined with fixedHeadAnchor +
+		// anchorRefH below, the talk loop is now rock-steady.
+		idleGrid: loadNPCGridEqualConnectedTol(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_idle.png", 6, 2, higginsOfficeInset, higginsOfficeTol),
+		talkGrid: loadNPCGridEqualConnectedTol(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_office_talk.png", 6, 2, higginsOfficeInset, higginsOfficeTol),
 		// User spec 2026-04-17: office Higgins top-left at (1062, 357),
 		// sitting behind the desk. Sized so head lands at ~y=357 and feet
 		// rest on the desk chair around y=640. 2026-05-12 (revised after
@@ -680,11 +738,13 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// orientation -> back to unflipped sheets. The give-map throw stays at
 		// its previous (flipped) orientation via oneShotFlip below ("map is in
 		// good side"). fixedFacing keeps startNPCDialog from re-flipping him.
-		flipped:         false,
-		fixedFacing:     true,
-		fixedFootAnchor: true, // #2: bust NPC - stop the talk-loop jitter/blink
-		oneShotFlip:     map[string]bool{"give_map": true},
-		silent:          true,
+		flipped:           false,
+		fixedFacing:       true,
+		fixedFootAnchor:   true, // give_map one-shot (throw) keeps the foot anchor
+		fixedHeadAnchor:   true, // item 3: idle/talk busts pin the HEAD, not the bottom
+		headAnchorOffsetY: 40, // 2026-07-15 (user #6): talk sat too high over the desk — down ~10% of H (22 -> 40; idle+talk share this anchor)
+		oneShotFlip:       map[string]bool{"give_map": true},
+		silent:            true,
 		// 2026-06-20 #3: PP stood at the default 10px gap (foot ~x750), right on
 		// the trash bin (~x715-840). A big gap stops him clear of the bin, to the
 		// left, facing right to talk.
@@ -698,6 +758,16 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	giveFrames := loadNPCGridConnectedTol(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 6, 2, 4)
 	if len(giveFrames) > 0 {
 		n.oneShotAnims = map[string][]npcFrame{"give_map": giveFrames}
+	}
+	// item 3: one shared height reference so idle and talk render the head at
+	// the SAME size (no pop when dialog starts). Use the taller of the two so
+	// the bust still fills his bounds.
+	idleRefH := maxOpaqueH(n.idleGrid)
+	talkRefH := maxOpaqueH(n.talkGrid)
+	if talkRefH > idleRefH {
+		n.anchorRefH = talkRefH
+	} else {
+		n.anchorRefH = idleRefH
 	}
 	return n
 }
@@ -748,6 +818,33 @@ func newGroundsHiggins(renderer *sdl.Renderer) *npc {
 			h.oneShotAnims["walk_front"] = f
 		}
 	}
+	// #23: a SIDE walk so the rude-intercept stride reads correctly when Higgins
+	// moves left toward PP (and right back to his office) instead of the
+	// moonwalking front sheet. Sheet draws facing right; flip to face left.
+	if f := loadNPCGridConnected(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_walk.png", 8, 1); len(f) > 0 {
+		if h.oneShotAnims == nil {
+			h.oneShotAnims = map[string][]npcFrame{}
+		}
+		h.oneShotAnims["walk_side"] = f
+	}
+	// Rude-intercept sheets: dismissive talk + arms-crossed idle. Wire them so
+	// playHigginsRudeBeat can swap to them.
+	rudeTalk := loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_rude_talk.png", 8, 1)
+	if len(rudeTalk) > 0 {
+		if h.oneShotAnims == nil {
+			h.oneShotAnims = map[string][]npcFrame{}
+		}
+		h.oneShotAnims["rude_talk"] = rudeTalk
+		h.oneShotAnims["rude_idle"] = rudeTalk // fallback until the dedicated idle loads below
+	}
+	// Dedicated arms-crossed rude idle (§HIGGINS-GRUMPY). Overrides the talk-sheet
+	// fallback when present.
+	if rudeIdle := loadNPCGridClean(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_rude_idle.png", 8, 1); len(rudeIdle) > 0 {
+		if h.oneShotAnims == nil {
+			h.oneShotAnims = map[string][]npcFrame{}
+		}
+		h.oneShotAnims["rude_idle"] = rudeIdle
+	}
 	return h
 }
 
@@ -782,6 +879,18 @@ func newRoomJake(renderer *sdl.Renderer) *npc {
 		}
 		n.oneShotAnims["sleep"] = f
 	}
+	// E1: dedicated "takes the coin + stares at it" one-shot. The coin heal's
+	// handOff{item:"Coin"} auto-derives receive_coin, so registering it here
+	// upgrades the beat from the generic receive_item reach. The dropped art is
+	// named npc_jake_get_coin.png; accept that and the canonical name.
+	if p := firstExisting(jakeBase+"npc_jake_receive_coin.png", jakeBase+"npc_jake_get_coin.png"); p != "" {
+		if f := loadNPCGridConnected(renderer, p, 8, 1); len(f) > 0 {
+			if n.oneShotAnims == nil {
+				n.oneShotAnims = map[string][]npcFrame{}
+			}
+			n.oneShotAnims["receive_coin"] = f
+		}
+	}
 	n.sleepIdleGrid = loadNPCGridConnected(renderer, jakeBase+"npc_jake_sleeping.png", 8, 1)
 	return n
 }
@@ -802,24 +911,40 @@ func newLakeLily(renderer *sdl.Renderer) *npc {
 	n := newLily(renderer)
 	const sad = "assets/images/locations/camp/npc/kids/lily/npc_lily_sad_idle.png"
 	const sadTalk = "assets/images/locations/camp/npc/kids/lily/npc_lily_sad_talk.png"
+	var sadIdle, sadTalkFrames []npcFrame
 	if _, err := os.Stat(sad); err == nil {
 		if f := loadNPCGridConnected(renderer, sad, 8, 1); len(f) > 0 {
-			n.idleGrid = f
-			n.talkGrid = f // talk falls back to the sad idle until its own sheet lands
+			sadIdle = f
 		}
 	}
 	// Separate sad-talk sheet (§JP-LILY-TALK). When present she has a real talk
-	// pose, so we DON'T lock her to the idle during dialog; until then she stays
-	// in the sad-from-behind idle even while talking.
+	// pose; until then she stays in the sad-from-behind idle even while talking.
 	hasSadTalk := false
 	if _, err := os.Stat(sadTalk); err == nil {
 		if f := loadNPCGridConnected(renderer, sadTalk, 8, 1); len(f) > 0 {
-			n.talkGrid = f
+			sadTalkFrames = f
 			hasSadTalk = true
 		}
 	}
-	// Seated at the dock end (foot ~450); shorter box since she's hugging knees.
-	n.bounds = sdl.Rect{X: 770, Y: 300, W: 120, H: 150}
+	if len(sadIdle) > 0 {
+		n.idleGrid = sadIdle
+		n.talkGrid = sadIdle
+		if hasSadTalk {
+			n.talkGrid = sadTalkFrames
+		}
+		// #42: the lake Lily is revealed via the Jake-heal `setStrange(true)`.
+		// Point her STRANGE grids at the sad-sit too, so setStrange can't swap
+		// her back to the retired strange standing sheet (which the user deleted).
+		// The sad-from-behind sit IS her strange state at the lake.
+		n.strangeIdle = sadIdle
+		n.strangeTalk = n.talkGrid
+		n.normalIdle = sadIdle
+		n.normalTalk = n.talkGrid
+	}
+	// 2026-06-27: foot centre 814,481. #21 (2026-06-30): too big — shrink
+	// 120x150 -> 102x126 and nudge DOWN a touch (foot 481 -> ~496). Keep the
+	// foot-centre x at 814 (X = 814 - 102/2 = 763).
+	n.bounds = sdl.Rect{X: 763, Y: 370, W: 102, H: 126}
 	n.lockIdleInDialog = !hasSadTalk
 	n.hidden = true
 	n.silent = true
@@ -982,7 +1107,7 @@ func newTommy(renderer *sdl.Renderer) *npc {
 	// clicks miss. 145 wide gives a forgiving target while still hugging
 	// the visible character.
 	n := &npc{
-		bounds:         sdl.Rect{X: 130, Y: 465, W: 145, H: 120}, // #5: kids ~55% of PP (feet kept at y=585)
+		bounds:         sdl.Rect{X: 125, Y: 445, W: 155, H: 140}, // 2026-07-15: kids a touch bigger (feet kept at y=585)
 		name:           "Tommy",
 		dialog:         tommyDialog,
 		bobAmount:      0,
@@ -1023,7 +1148,7 @@ var jakeDialog = []dialogEntry{
 	{speaker: "Jake", text: "Jake. I'm the toughest kid at camp. Don't forget it."},
 	{speaker: "Jake", text: "I collect stuff. Rocks, coins, anything shiny. Check out this coin my dad brought from Israel."},
 	{speaker: "Pink Panther", text: "That's a beautiful coin. Where exactly is it from?"},
-	{speaker: "Jake", text: "Some old city with tunnels underneath. Jerusalem, I think. Dad said the tunnels are ANCIENT."},
+	{speaker: "Jake", text: "Jerusalem. Dad brought it back from the market there. See this face? It's really old."},
 	{speaker: "Pink Panther", text: "Fascinating collection you've got there."},
 }
 
@@ -1035,24 +1160,24 @@ var jakePostDialog = []dialogEntry{
 var jakeStrangeDialog = []dialogEntry{
 	{speaker: "Jake", text: "Something's happening to my coins..."},
 	{speaker: "Pink Panther", text: "What do you mean?"},
-	{speaker: "Jake", text: "I keep hearing echoes. Like tunnels underground. Voices bouncing off stone walls."},
-	{speaker: "Jake", text: "And I can't stop rubbing every metal surface for symbols. Look at this bench - I KNOW there's something underneath!"},
-	{speaker: "Pink Panther", text: "Jake, that's just a wooden bench."},
-	{speaker: "Jake", text: "NO! There are tunnels! Old ones! Under an ancient city! I can FEEL them!"},
+	{speaker: "Jake", text: "I keep seeing a face. On every coin I touch. An old face, carved in stone. It stares back at me."},
+	{speaker: "Jake", text: "And there's a WALL. Massive. Ancient. People are standing in front of it, rocking, and I can't look away."},
+	{speaker: "Pink Panther", text: "Jake, are you alright?"},
+	{speaker: "Jake", text: "That face won't leave me alone. Ancient coins, an ancient wall... somewhere far away."},
 }
 
 var jakePostStrangeDialog = []dialogEntry{
-	{speaker: "Jake", text: "The echoes won't stop... tunnels under old stone walls..."},
-	{speaker: "Jake", text: "It's like I can see a huge wall... and something hidden behind it."},
+	{speaker: "Jake", text: "The face on the coin... the wall... I can't think about anything else."},
+	{speaker: "Jake", text: "It's like the whole place is calling me. An old city. Huge stones. A face."},
 }
 
 func newJake(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
-		bounds:         sdl.Rect{X: 395, Y: 460, W: 145, H: 120}, // #5: kids ~55% of PP (feet kept at y=580)
-		name:           "Jake",
-		dialog:         jakeDialog,
-		bobAmount:      0,
+		bounds:    sdl.Rect{X: 390, Y: 440, W: 155, H: 140}, // 2026-07-15: kids a touch bigger (feet kept at y=580)
+		name:      "Jake",
+		dialog:    jakeDialog,
+		bobAmount: 0,
 		// 2026-06-20 #1: 0.10 strobed far faster than the ~20-char/s text
 		// reveal. 0.18 matches the other slowed talkers. (newRoomJake inherits.)
 		talkFrameSpeed: 0.18,
@@ -1113,8 +1238,15 @@ var lilyStrangeDialog = []dialogEntry{
 	{speaker: "Lily", text: "I keep arranging petals into shapes... symbols I don't understand..."},
 	{speaker: "Lily", text: "And I hear bells. Temple bells. Very old ones."},
 	{speaker: "Lily", text: "There's a red gate... and cherry blossoms falling everywhere..."},
-	{speaker: "Pink Panther", text: "That sounds like Japan, Lily. Have you ever been there?"},
-	{speaker: "Lily", text: "...never... but I can see it when I close my eyes..."},
+	// #22: PP does NOT name the place yet — he only pieces "Kyoto" together later,
+	// in the camera aside after Higgins brushes him off. Here he's still puzzled.
+	{speaker: "Pink Panther", text: "A red gate, far-off bells, blossoms... I have no idea where that is. But something's really wrong here."},
+	{speaker: "Lily", text: "...please. It's so loud inside my head."},
+}
+
+// #22: on a SECOND click the lake Lily just wants to be left alone.
+var lilyLeaveMeAloneDialog = []dialogEntry{
+	{speaker: "Lily", text: "...just leave me alone, okay? Please."},
 }
 
 var lilyPostStrangeDialog = []dialogEntry{
@@ -1126,7 +1258,7 @@ func newLily(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
 		// 2026-06-11 #3: nudged up a little (Y 440 -> 425).
-		bounds:         sdl.Rect{X: 600, Y: 425, W: 145, H: 120},
+		bounds:         sdl.Rect{X: 595, Y: 405, W: 155, H: 140}, // 2026-07-15: kids a touch bigger (feet kept at y=545)
 		name:           "Lily",
 		dialog:         lilyShyDialog,
 		bobAmount:      0,
@@ -1196,7 +1328,7 @@ var marcusPostStrangeDialog = []dialogEntry{
 func newMarcus(renderer *sdl.Renderer) *npc {
 	// User 2026-05-23: reverted to 145-wide (see Tommy comment).
 	n := &npc{
-		bounds:         sdl.Rect{X: 890, Y: 455, W: 145, H: 120}, // #5: kids ~55% of PP (feet kept at y=575)
+		bounds:         sdl.Rect{X: 885, Y: 435, W: 155, H: 140}, // 2026-07-15: kids a touch bigger (feet kept at y=575)
 		name:           "Marcus",
 		dialog:         marcusDialog,
 		bobAmount:      0,
@@ -1260,7 +1392,7 @@ func newDanny(renderer *sdl.Renderer) *npc {
 	// dialog wins over both Lily-cabin (1017-1137) and Danny-cabin
 	// (1183-1303) when click lands in the overlap zone.
 	n := &npc{
-		bounds:         sdl.Rect{X: 1110, Y: 460, W: 160, H: 120}, // #5/#7: smaller; shifted right (1110-1270) to clear Marcus so PP doesn't stand on him
+		bounds:         sdl.Rect{X: 1105, Y: 440, W: 170, H: 140}, // 2026-07-15: a touch bigger (feet y=580); shifted right (1105-1275) to clear Marcus
 		name:           "Danny",
 		dialog:         dannyDialog,
 		bobAmount:      0,
@@ -1334,6 +1466,19 @@ type handOff struct {
 	// receive beats prefer the "_back" sheet variants, falling back to the front
 	// sheets until the back art lands.
 	back bool
+
+	// dialogFirst (#18/#19): play the DIALOG before the give beat instead of the
+	// default give-then-talk. For "PP asks → NPC gives" exchanges (Shimon's pen /
+	// coin) where giving first reads as the NPC handing the item before PP even
+	// asks. startNPCDialog runs the hand-off inside the dialog's end callback.
+	dialogFirst bool
+
+	// skipNPCTake (#10): when PP hands `item` over, do NOT play the NPC's take
+	// reach. Used by Beaumont's sketch→postcard trade, where the NPC only has a
+	// "give" one-shot — the take-reach fell back to that "give" sheet and played
+	// the postcard-give a SECOND time (the callback plays it too). Skipping the
+	// take leaves a single, clean give.
+	skipNPCTake bool
 }
 
 // playOneShotAnim starts a named non-looping animation registered under
@@ -1741,6 +1886,13 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		if refH <= 0 {
 			refH = frame.oh
 		}
+		// item 3: a shared height reference (max of idle+talk) keeps a bust's
+		// idle and talk at one scale, so the head doesn't resize when dialog
+		// starts. #15/#16: when anchorRefHOneShots is set it also covers give/
+		// receive one-shots so a full-body give sheet doesn't render tiny.
+		if n.anchorRefH > 0 && (n.activeOneShot == "" || n.anchorRefHOneShots) {
+			refH = n.anchorRefH
+		}
 		scale := float64(n.bounds.H) * charScale / float64(refH)
 		base := sdl.Rect{X: 0, Y: 0, W: frame.w, H: frame.h}
 		if frame.src != nil {
@@ -1770,7 +1922,15 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		// "blinks"/bobs. fixedFootAnchor ignores the detected fcx/fry and pins
 		// the CONTENT center-X + content BOTTOM at the bounds, so every frame
 		// sits still (head bobs up from a fixed waist line).
-		if n.fixedFootAnchor {
+		// item 3: head-top anchoring for talking busts. Applies to idle/talk
+		// (not one-shots, so the give_map throw keeps its foot anchor).
+		headAnchored := n.fixedHeadAnchor && n.activeOneShot == ""
+		if headAnchored {
+			// Pin the CELL center (equal cells → frame.w/2 is constant), not the
+			// content center: a gesturing arm widens the opaque box and would
+			// swing a content-center anchor side to side (horizontal blink).
+			fcx = frame.w / 2
+		} else if n.fixedFootAnchor {
 			fcx = frame.ox + frame.ow/2
 			fry = frame.oy + frame.oh
 		}
@@ -1783,7 +1943,14 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 			dstX = int32(anchorX - colFromLeft)
 		}
 		footLine := n.bounds.Y + n.bounds.H + bobOffset
-		dstY = footLine - int32((float64(fry)-float64(frame.oy))*scale)
+		if headAnchored {
+			// Pin the content TOP (head) at bounds.Y (+ offset); the body/arms
+			// extend down variably (the desk art covers the bottom). Head stays
+			// dead still.
+			dstY = n.bounds.Y + n.headAnchorOffsetY + bobOffset
+		} else {
+			dstY = footLine - int32((float64(fry)-float64(frame.oy))*scale)
+		}
 		// Seated crop (2026-06-12 #16): show only the TOP fraction of the
 		// CONTENT (head + torso; the BG table art covers where the legs
 		// would be), anchored by its TOP at bounds.Y. bounds.H keeps
@@ -2010,9 +2177,11 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.10,
 		flipped:        false, // sheet draws her facing right already
-		// 2026-06-24 (#11): user wants PP shown from BEHIND at the counter (he's
-		// reaching up over it), standing at ~(741,556). Drop ppFacePlayer so PP
-		// faces UP/away, and pin his stand mark. foot 556 → top-left ≈ 556-270.
+		// 2026-06-30 (#3, rev2): user wants PP's BACK at the counter (he's talking
+		// UP to Poulain behind it), with a proper back TALK sprite. ppFaceBack →
+		// PP faces dirUp using the back talk sheet (falls back to back idle until
+		// "PP talk back.png" lands - see EXTRA_PROMPTS §PP-TALK-BACK).
+		ppFaceBack:        true,
 		approachXOverride: 741,
 		approachYOverride: 286,
 	}
@@ -2063,6 +2232,15 @@ func newBakeryWoman(renderer *sdl.Renderer) *npc {
 			n.oneShotAnims = map[string][]npcFrame{}
 		}
 		n.oneShotAnims["give_coffee"] = f
+	}
+	// C3: dedicated "takes the rolling pin + clutches it" one-shot. The rolling-pin
+	// handOff (back: true) looks for receive_rolling_pin first, so registering it
+	// here auto-upgrades the trade from her generic "give" reach.
+	if f := loadNPCGridConnected(renderer, "assets/images/locations/paris/npc/coffee/npc_bakery_woman_receive_rolling_pin.png", 8, 1); len(f) > 0 {
+		if n.oneShotAnims == nil {
+			n.oneShotAnims = map[string][]npcFrame{}
+		}
+		n.oneShotAnims["receive_rolling_pin"] = f
 	}
 	return n
 }
@@ -2161,9 +2339,9 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 		// 2026-06-20 #7: user wants the OTHER side - approach from her LEFT. She's
 		// not fixedFacing, so startNPCDialog flips her to FACE PP from the new side.
 		approachLeft: true,
-		// 2026-06-24 (#7): PP stood ON her spot - drop his stand row a little so he
-		// reads as standing slightly LOWER (closer to camera) than Colette. F3-tune.
-		approachYOverride: 560,
+		// 2026-06-27: approachYOverride is top-left Y; 560 pushed PP's foot off screen.
+		// 420 → foot at ~690, on the street cobblestones in front of her.
+		approachYOverride: 420,
 	}
 	if !applyNPCAtlas(renderer, n, "paris/french_guide") {
 		// User 2026-05-31 (#18): use Colette's dedicated new sheets
@@ -2173,13 +2351,14 @@ func newFrenchGuide(renderer *sdl.Renderer) *npc {
 		// User playtest 2026-06-05: Colette's sheets moved to the outside/ folder.
 		coletteIdle := "assets/images/locations/paris/npc/outside/npc_madame_colette_idle.png"
 		coletteTalk := "assets/images/locations/paris/npc/outside/npc_madame_colette_talk.png"
+		// 2026-06-29 (item 1): the old generic npc_french_guide_{idle,talk}.png
+		// sheets were deleted (replaced by npc_madame_colette_*). Dropped the
+		// dead else-fallback that loaded them; Colette loads from her own sheets
+		// (guarded, so a missing sheet just leaves her invisible-but-clickable).
 		if _, err := os.Stat(coletteIdle); err == nil {
 			n.idleGrid = loadNPCGridConnected(renderer, coletteIdle, 8, 2)
 			// JIT regen restored Colette's talk sheet to a clean 8x2 grid.
 			n.talkGrid = loadNPCGridConnected(renderer, coletteTalk, 8, 2)
-		} else {
-			n.idleGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png", 8, 2)
-			n.talkGrid = loadNPCGrid(renderer, "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png", 8, 2)
 		}
 	}
 	return n
@@ -2389,10 +2568,13 @@ func newPigeonLady(renderer *sdl.Renderer) *npc {
 		// with W=78 → X=520; bottom 593 with H=145 → Y=448.
 		// 2026-06-20 #7: user dot - her FOOT must sit at (656,639). Bottom-centre
 		// 656 with W=78 → X=617; foot 639 with H=145 → Y=494.
-		bounds:         sdl.Rect{X: 617, Y: 494, W: 78, H: 145},
-		name:           "Madame Margaux",
-		dialog:         pigeonLadyDialog,
-		bobAmount:      0,
+		bounds:    sdl.Rect{X: 617, Y: 494, W: 78, H: 145},
+		name:      "Madame Margaux",
+		dialog:    pigeonLadyDialog,
+		bobAmount: 0,
+		// 2026-07-15 (user #9): PP spoke facing away from her — invert his
+		// side facing for this dialog.
+		ppTalkFlip: true,
 		// 2026-06-20 #10: 0.13 cycled too fast for her speech; match the slowed
 		// talkers at 0.22.
 		talkFrameSpeed: 0.22,
@@ -2547,12 +2729,13 @@ func newCafePatronYvette(renderer *sdl.Renderer) *npc {
 		// standing-NPC head scale, waist cut anchored (bounds.Y+H) just
 		// into the left table's cloth-top edge (~y490) so the flat art
 		// edge hides against the rim.
-		bounds:            sdl.Rect{X: 80, Y: 355, W: 110, H: 135},
+		// 2026-07-15 (user #12): raised ~5% of H (355 -> 348).
+		bounds:            sdl.Rect{X: 80, Y: 348, W: 110, H: 135},
 		name:              "Madame Yvette",
 		dialog:            yvetteDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.20, // PR#15: 0.10 strobed against the text reveal
-		approachYOverride: 210,  // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		approachYOverride: 293, // 2026-07-15 (user #14): stand mark foot (330,563) — close to the table for the trades (was 490/foot 760, too far).
 		// 2026-06-24 (#14): she's the leftmost patron, so the auto side-pick
 		// clamped PP to the far-left edge, standing him over the table. Pin his
 		// foot-center to the aisle a little to her RIGHT. F3-tune.
@@ -2579,7 +2762,8 @@ func newCafePatronBernard(renderer *sdl.Renderer) *npc {
 		dialog:            bernardDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.20, // PR#15: 0.10 strobed against the text reveal
-		approachYOverride: 210,  // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		approachYOverride: 293, // 2026-07-15 (user #14): stand mark foot (330,563) — close to the table for the pencil/sketch trades (was 490/foot 760, too far).
+		approachXOverride: 330, // 2026-07-15 (user #14): foot-center x mark
 	}
 }
 
@@ -2643,7 +2827,8 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 		dialog:            camilleFlavorDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.22, // PR#14: 0.10 raced ahead of the text reveal
-		approachYOverride: 210,  // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		approachYOverride: 490, // #4 (2026-06-30): foot ~760 — PP stands in the front lane, BELOW the seated patron busts (y360-480) so he no longer overlaps/covers them (was 210 -> foot 480, inside the bust band). F3-verify.  // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		approachXOverride: 330, // 2026-07-15 (user #14): foot-center x mark (shared with Bernard)
 		// 2026-06-24 (#18): PP stands to Camille's LEFT so the cafe reads as two
 		// groups: right line = Henri + Lucien, left line = Camille + Bernard +
 		// Yvette.
@@ -2666,6 +2851,35 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 			n.oneShotAnims = map[string][]npcFrame{}
 		}
 		n.oneShotAnims["lost_pencil"] = f
+	}
+	// C6: give_sketch one-shot — Camille holds the finished sketch toward PP
+	// before he takes it. The dropped art is named cafe_patron_camille_give_sktach.png
+	// (note the spelling); accept both that and the canonical name.
+	if p := firstExisting(
+		"assets/images/locations/paris/npc/coffee/npc_camille_give_sketch.png",
+		"assets/images/locations/paris/npc/coffee/cafe_patron_camille_give_sktach.png",
+	); p != "" {
+		if f := loadNPCGrid(renderer, p, 8, 1); len(f) > 0 {
+			if n.oneShotAnims == nil {
+				n.oneShotAnims = map[string][]npcFrame{}
+			}
+			n.oneShotAnims["give_sketch"] = f
+		}
+	}
+	// sketch_room7: the Room 7 replica drawing (§CAM-ROOM7) — distinct from the
+	// first-visit portrait sketch so the two beats look different. Falls back to
+	// the generic sketch sheet until the dedicated art lands.
+	{
+		room7Sheet := "assets/images/locations/paris/npc/coffee/npc_camille_sketching_room7.png"
+		if _, err := os.Stat(room7Sheet); err != nil {
+			room7Sheet = sketchSheet // reuse portrait sheet as graceful fallback
+		}
+		if f := loadNPCGrid(renderer, room7Sheet, 8, 1); len(f) > 0 {
+			if n.oneShotAnims == nil {
+				n.oneShotAnims = map[string][]npcFrame{}
+			}
+			n.oneShotAnims["sketch_room7"] = f
+		}
 	}
 	return n
 }
@@ -2708,7 +2922,8 @@ func newCafePatronHenri(renderer *sdl.Renderer) *npc {
 		bobAmount: 0,
 		// 2026-06-11 #27: 0.10 was too fast against the text reveal.
 		talkFrameSpeed:    0.20,
-		approachYOverride: 210, // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		approachYOverride: 293, // 2026-07-15 (user #14): stand mark foot (735,563) — close to the table so the coffee/jam hand-offs read (was 490/foot 760, too far).
+		approachXOverride: 735, // 2026-07-15 (user #14): foot-center x mark in front of Henri
 	}
 	// #25: Henri hands PP the jam - 6-frame give-jam one-shot.
 	if f := loadNPCGrid(renderer, "assets/images/locations/paris/npc/coffee/npc_henri_give_jam.png", 6, 1); len(f) > 0 {
@@ -2736,7 +2951,8 @@ func newCafePatronLucien(renderer *sdl.Renderer) *npc {
 		dialog:            lucienDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.10,
-		approachYOverride: 210, // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		approachYOverride: 490, // #4 (2026-06-30): foot ~760 — PP stands in the front lane, BELOW the seated patron busts (y360-480) so he no longer overlaps/covers them (was 210 -> foot 480, inside the bust band). F3-verify. // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		approachXOverride: 970, // C1: stand in front of Lucien at the right table
 	}
 }
 

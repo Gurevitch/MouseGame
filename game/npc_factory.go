@@ -48,6 +48,23 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"cafe_patron_henri":   newCafePatronHenri,
 	"cafe_patron_lucien":  newCafePatronLucien,
 	"cafe_patron_elise":   newCafePatronElise,
+	// Jerusalem NPCs — positions baked into the closures so the factory
+	// signature stays func(*sdl.Renderer)*npc (no x param).
+	"jer_shimon":            func(r *sdl.Renderer) *npc { return newShimon(r, 760) },
+	"jer_bagel_seller":      func(r *sdl.Renderer) *npc { return newBagelSeller(r, 250) },
+	"jer_praying_man":       func(r *sdl.Renderer) *npc { return newPrayingMan(r, 470) },
+	"jer_wall_kid":          func(r *sdl.Renderer) *npc { return newWallKid(r, 880) },
+	"jer_spice_seller":      func(r *sdl.Renderer) *npc { return newSpiceSeller(r, 249) },
+	"jer_coffee_seller":     func(r *sdl.Renderer) *npc { return newCoffeeSeller(r, 510) },
+	"jer_antiques_kid":      func(r *sdl.Renderer) *npc { return newAntiquesKid(r, 900) },
+	"jer_antiques_old_man":  func(r *sdl.Renderer) *npc { return newAntiquesOldMan(r, 1040) },
+	// Japan / Kyoto NPCs
+	"jp_gary":       newTouristTokyo,
+	"jp_hiro":       newRamenSeller,
+	"jp_kenji":      newKenjiStudent,
+	"jp_obachan":    newObachan,
+	"jp_kiku":       newDresser,
+	"jp_tea_master": newTeaMaster,
 }
 
 // registerNPCFactory lets modules (paris.go / jerusalem.go / ...) add their

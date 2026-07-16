@@ -47,12 +47,12 @@
       ],
       "landmark": "assets/images/ui/landmarks/landmark_western_wall.png",
       "audio": "",
-      "relevantWhen": "vars.game.jerusalem_unlocked == 1 && vars.game.jake_healed == 0"
+      "relevantWhen": "vars.game.jerusalem_unlocked == 1 && vars.game.jake_healed == 0 && vars.game.jer_note_placed == 0"
     },
     {
       "id": "tokyo",
       "name": "Tokyo",
-      "scene": "tokyo_torii",
+      "scene": "tokyo_street",
       "pinX": 1164, "pinY": 328,
       "unlocked": false,
       "facts": [

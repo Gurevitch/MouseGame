@@ -1,0 +1,19 @@
+{
+  "name": "jerusalem_wall",
+  "background": "assets/images/locations/jerusalem/background/wall_close.png",
+  "spawnX": 220,
+  "_comment_spawn": "2026-06-29 (item 5): spawnY/minY/maxY are PP's TOP-LEFT; foot = topLeft+270, and a floor CLICK lands foot = clickY+135. The old spawnY 660 put his foot at 930 (130px below the 800px screen) and the old minY 620 forced every walk-foot to >=890 — PP was always off-screen-low. Tuned to the BG: the plaza tiles at the Wall base run from foot y~640 downward. spawn 435 -> foot 705 (on the tiles); band 392-485 -> foot 662-755; walk line 580 -> foot ~715. Matches camp_entrance.",
+  "spawnY": 435,
+  "minY": 392,
+  "maxY": 485,
+  "characterScale": 0.85,
+  "npcs": ["jer_praying_man", "jer_wall_kid"],
+  "hotspots": [
+    {"bounds": {"x": 0,   "y": 250, "w": 110, "h": 420}, "targetScene": "jerusalem_entrance", "name": "Back to the Plaza",    "arrow": "left"},
+    {"bounds": {"x": 560, "y": 180, "w": 220, "h": 320},                                       "name": "A crack in the Wall", "arrow": ""}
+  ],
+  "blockers": [],
+  "walkSegments": [
+    {"x1": 150, "y1": 580, "x2": 1150, "y2": 580}
+  ]
+}

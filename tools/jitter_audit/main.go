@@ -25,8 +25,8 @@ type sheet struct {
 var sheets = []sheet{
 	// ---- Player (game/player.go) ----
 	{"PP walk side", "assets/images/player/PP walk left.png", 8, 1, -1},
-	{"PP walk front (row0)", "assets/images/player/PP walk front.png", 8, 2, 0},
-	{"PP walk back", "assets/images/player/PP walk back.png", 8, 2, -1},
+	{"PP walk front", "assets/images/player/PP walk front.png", 6, 2, -1},
+	{"PP walk back", "assets/images/player/PP walk back.png", 6, 2, -1},
 	{"PP idle front", "assets/images/player/PP idle front.png", 8, 2, -1},
 	{"PP idle side", "assets/images/player/PP idle side.png", 8, 2, -1},
 	{"PP idle back", "assets/images/player/PP idle back.png", 8, 2, -1},
@@ -53,6 +53,10 @@ var sheets = []sheet{
 	{"PP give postcard", "assets/images/player/PP give postcard.png", 8, 1, -1},
 	{"PP jump back", "assets/images/player/PP jump back.png", 8, 1, -1},
 	{"PP pull map", "assets/images/player/PP pull map.png", 8, 1, -1},
+
+	// ---- Camp scene props ----
+	{"Campfire small", "assets/images/locations/camp/campfire_small.png", 6, 1, -1},
+	{"Campfire smoke", "assets/images/locations/camp/campfire_smoke.png", 6, 1, -1},
 
 	// ---- Higgins (grids per game/npc.go — JSON grids are NOT used) ----
 	{"Higgins idle entrance (6x1)", "assets/images/locations/camp/npc/higgins/npc_director_higgins_idle.png", 6, 1, -1},
@@ -102,7 +106,6 @@ var sheets = []sheet{
 	{"Nicolas talk (row1)", "assets/images/locations/paris/npc/outside/npc_press_photographer.png", 8, 2, 1},
 	{"Nicolas idle split", "assets/images/locations/paris/npc/outside/npc_press_photographer_idle.png", 8, 1, -1},
 	{"Paris biker", "assets/images/locations/paris/npc/outside/biker.png", 8, 1, -1},
-	{"Ambient accordion player", "assets/images/locations/paris/npc/outside/ambient_accordion_player.png", 8, 1, -1},
 	{"Ambient crumb lady", "assets/images/locations/paris/npc/outside/ambient_crumb_lady.png", 8, 1, -1},
 
 	// ---- Paris bakery ----
@@ -111,6 +114,7 @@ var sheets = []sheet{
 	{"Poulain give", "assets/images/locations/paris/npc/coffee/npc_madame_poulain_give.png", 8, 1, -1},
 	{"Poulain work (alt-idle 8x2)", "assets/images/locations/paris/npc/coffee/npc_madame_poulain_work.png", 8, 2, -1},
 	{"Poulain bring baguette", "assets/images/locations/paris/npc/coffee/npc_madame_poulain_bring_bagguette.png", 8, 1, -1},
+	{"Poulain receive rolling pin", "assets/images/locations/paris/npc/coffee/npc_bakery_woman_receive_rolling_pin.png", 8, 1, -1},
 	{"Pierre give", "assets/images/locations/paris/npc/outside/npc_pierre_give.png", 8, 1, -1},
 	{"Pierre pigeon lands", "assets/images/locations/paris/npc/outside/npc_pierre_pigeon_lands.png", 8, 1, -1},
 	{"Beaumont give", "assets/images/locations/paris/npc/museum/npc_beaumont_give.png", 8, 1, -1},
@@ -127,6 +131,7 @@ var sheets = []sheet{
 	{"Patron Lucien talking", "assets/images/locations/paris/npc/coffee/cafe_patron_lucien_talking.png", 8, 1, -1},
 	{"Camille sketching", "assets/images/locations/paris/npc/coffee/npc_camille_sketching.png", 8, 1, -1},
 	{"Camille lost pencil", "assets/images/locations/paris/npc/coffee/cafe_patron_camille_lostpencil.png", 8, 1, -1},
+	{"Camille give sketch", "assets/images/locations/paris/npc/coffee/cafe_patron_camille_give_sktach.png", 8, 1, -1},
 
 	// ---- Louvre (npc.go:1549 loads both as 8x1 strips) ----
 	{"Curator idle (8x1)", "assets/images/locations/paris/npc/museum/npc_museum_curator_idle.png", 8, 1, -1},
@@ -139,7 +144,16 @@ var sheets = []sheet{
 	{"Antiques kid alt idle", "assets/images/locations/jerusalem/npc/market/kid_antique_idle_alter.png", 8, 1, -1},
 	{"Antiques kid speak", "assets/images/locations/jerusalem/npc/market/kid_antique_speak.png", 8, 1, -1},
 	{"Antiques grandpa idle", "assets/images/locations/jerusalem/npc/market/grandpa_idle.png", 8, 1, -1},
+	{"Praying man idle", "assets/images/locations/jerusalem/npc/wall/npc_praying_man_idle.png", 8, 2, -1},
+	{"Praying man talk", "assets/images/locations/jerusalem/npc/wall/npc_praying_man_talk.png", 8, 1, -1},
+	{"Praying man give", "assets/images/locations/jerusalem/npc/wall/npc_praying_man_give.png", 8, 1, -1},
 	{"Praying man give paper", "assets/images/locations/jerusalem/npc/wall/npc_praying_man_give_paper.png", 8, 1, -1},
+	{"Spice seller idle", "assets/images/locations/jerusalem/npc/market/npc_spice_seller_idle.png", 8, 1, -1},
+	{"Spice seller talk", "assets/images/locations/jerusalem/npc/market/npc_spice_seller_talk.png", 8, 1, -1},
+	{"Spice seller give", "assets/images/locations/jerusalem/npc/market/npc_spice_seller_give.png", 8, 1, -1},
+	{"Coffee seller idle", "assets/images/locations/jerusalem/npc/market/npc_coffee_seller_idle.png", 8, 1, -1},
+	{"Coffee seller talk", "assets/images/locations/jerusalem/npc/market/npc_coffee_seller_talk.png", 8, 1, -1},
+	{"Coffee seller give", "assets/images/locations/jerusalem/npc/market/npc_coffee_seller_give.png", 8, 1, -1},
 	{"Shimon give coin", "assets/images/locations/jerusalem/npc/wall/npc_shimon_give_coin.png", 8, 1, -1},
 	{"Shimon give pen", "assets/images/locations/jerusalem/npc/wall/npc_shimon_give_pen.png", 8, 1, -1},
 	{"Wall worshipper 1 (4f sway)", "assets/images/locations/jerusalem/npc/wall/praying_man.png", 4, 1, -1},
@@ -152,6 +166,19 @@ var sheets = []sheet{
 	{"PP get baguette back", "assets/images/player/PP_get_baguette_back.png", 8, 1, -1},
 	{"PP get coffee back", "assets/images/player/PP_get_coffee_back.png", 8, 1, -1},
 	{"PP give rolling pin back", "assets/images/player/PP_give_rolling_pin_back.png", 8, 1, -1},
+	{"PP receive press pass", "assets/images/player/pp_get_card.png", 8, 1, -1},
+	{"Marcus receive postcard", "assets/images/locations/camp/npc/kids/marcus/npc_marcus_postcard.png", 8, 1, -1},
+
+	// ---- 2026-07-14 drop ----
+	{"Camp crow (perch)", "assets/images/ambient/crow.png", 8, 1, -1},
+	{"Higgins walk front (new)", "assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_front.png", 8, 1, -1},
+	{"Lily sad talk", "assets/images/locations/camp/npc/kids/lily/npc_lily_sad_talk.png", 8, 1, -1},
+	{"Coffee seller give coffee", "assets/images/locations/jerusalem/npc/market/npc_coffee_seller_give_coffee.png", 8, 1, -1},
+	{"Spice seller talk side", "assets/images/locations/jerusalem/npc/market/npc_spice_seller_talk_side.png", 8, 1, -1},
+	{"Camille sketching room7", "assets/images/locations/paris/npc/coffee/npc_camille_sketching_room7.png", 8, 1, -1},
+	{"Nicolas talk split", "assets/images/locations/paris/npc/outside/npc_press_photographer_talk.png", 8, 1, -1},
+	{"PP receive sketch", "assets/images/player/PP receive sketch.png", 8, 1, -1},
+	{"PP talk back", "assets/images/player/PP talk back.png", 8, 2, -1},
 
 	// ---- Japan chapter (NPCs 8x1; leaf 3x1) ----
 	{"Lily sad idle", "assets/images/locations/camp/npc/kids/lily/npc_lily_sad_idle.png", 8, 1, -1},

@@ -1,0 +1,16 @@
+{
+  "name": "tokyo_torii",
+  "background": "assets/images/locations/japan/background/tokyo_tori.png",
+  "spawnX": 220,
+  "spawnY": 470,
+  "minY": 400,
+  "maxY": 600,
+  "npcs": ["jp_gary"],
+  "hotspots": [
+    {"bounds": {"x": 1300, "y": 180, "w": 100, "h": 460}, "targetScene": "tokyo_street", "name": "Down to the ramen street", "arrow": "right"}
+  ],
+  "blockers": [],
+  "walkSegments": [
+    {"x1": 120, "y1": 520, "x2": 1280, "y2": 520}
+  ]
+}

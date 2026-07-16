@@ -1,0 +1,17 @@
+{
+  "name": "tokyo_sakura",
+  "background": "assets/images/locations/japan/background/sakura_grove.png",
+  "spawnX": 200,
+  "spawnY": 470,
+  "minY": 400,
+  "maxY": 620,
+  "npcs": [],
+  "hotspots": [
+    {"bounds": {"x": 0, "y": 180, "w": 100, "h": 460}, "targetScene": "tokyo_temple", "name": "Back to the flower store", "arrow": "left"},
+    {"bounds": {"x": 560, "y": 120, "w": 320, "h": 420}, "name": "The oldest cherry tree", "arrow": ""}
+  ],
+  "blockers": [],
+  "walkSegments": [
+    {"x1": 110, "y1": 520, "x2": 1290, "y2": 520}
+  ]
+}

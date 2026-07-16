@@ -1,7 +1,6 @@
 package game
 
 import (
-	"image/color"
 	"math/rand"
 	"os"
 
@@ -35,12 +34,6 @@ const (
 
 	// Generic fallback row if an NPC's idle sheet is missing entirely.
 	jpFbkVendor8x2 = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
-)
-
-var (
-	tokToriiBase  = color.NRGBA{R: 232, G: 120, B: 96, A: 255}
-	tokStreetBase = color.NRGBA{R: 255, G: 196, B: 208, A: 255}
-	tokTempleBase = color.NRGBA{R: 235, G: 170, B: 195, A: 255}
 )
 
 // firstExisting returns the first candidate path that exists on disk, or "" if
@@ -85,7 +78,7 @@ var garyTokyoDialog = []dialogEntry{
 	{speaker: "Gary", text: "PINK PANTHER! Can you BELIEVE it - KYOTO! I have dreamed of zis since I was a boy. Ze temples, ze gardens, ze cherry blossoms..."},
 	{speaker: "Gary", text: "I read EVERYTHING about zis place - every shrine, every festival, every bowl of noodles. It is ALL here in my guidebook!"},
 	{speaker: "Pink Panther", text: "...Gary. You're holding the book upside down."},
-	{speaker: "Gary", text: "WHAT? ...Oh. Oh my. (he flips it the right way up) ...Ahh. MUCH better. Now it makes far more sense!"},
+	{speaker: "Gary", text: "WHAT? ...Oh. Oh my. ...Ahh. MUCH better. Now it makes far more sense!"},
 	{speaker: "Gary", text: "Right - rule one of any guidebook: you MUST taste ze ramen at ze little stall down ze street. Go, go - tell zem Gary sent you, zey'll open right up!"},
 	{speaker: "Pink Panther", text: "Ramen it is. Thanks, Gary."},
 }
@@ -97,7 +90,7 @@ var garyTokyoPostDialog = []dialogEntry{
 // --- Hiro (street): OPEN for business (Gary's tip), but the SACRED hearth for
 // the blessed offering bowl still needs his crow-stolen fire-striker ---
 var hiroRamenDialog = []dialogEntry{
-	{speaker: "Hiro", text: "Irasshaimase! Gary sent you? Hah - sit, sit, ze whole street eats tonight!"},
+	{speaker: "Hiro", text: "Irasshaimase, panther-san! You have ze look of a hungry traveller - but my stall is dark today, I am afraid."},
 	{speaker: "Pink Panther", text: "Actually, I need an OFFERING bowl - one blessed at your hearth, for the old cherry tree."},
 	{speaker: "Hiro", text: "Ahh, ze Whispering Cherry. For zat I must light ze SACRED hearth - but my fire-striker, ze flint, a CROW stole it zis morning!"},
 	{speaker: "Hiro", text: "Bring me my striker and I will bless your offering bowl in ze first flame."},
@@ -228,7 +221,10 @@ func newRamenSeller(renderer *sdl.Renderer) *npc {
 		[]string{jpNPCDir + "npc_hiro_talk.png", jpNPCDir + "ramen_seller_talk.png"})
 	return &npc{
 		idleGrid: idle, talkGrid: talk,
-		bounds:         sdl.Rect{X: 300, Y: 360, W: 150, H: 250},
+		// 2026-07-14: stood at the LEFT edge of his stall (the prop now sits at
+		// screen 471-818); once the stall opens he moves behind the counter
+		// (openRamenStall + §JP-HIRO-COUNTER upper-body sheets).
+		bounds:         sdl.Rect{X: 470, Y: 360, W: 150, H: 250},
 		name:           "Hiro",
 		dialog:         hiroRamenDialog,
 		talkFrameSpeed: 0.12,
@@ -239,9 +235,21 @@ func newTouristTokyo(renderer *sdl.Renderer) *npc {
 	// START state: Gary holds the guidebook UPSIDE-DOWN (the "opposite book"
 	// sheets). After he flips it (onDialogEnd) the callback swaps him to the
 	// plain npc_gary_idle (book correct).
-	idle, talk := loadJapanNPC(renderer,
-		[]string{jpNPCDir + "npc_gary_idle_oposite_book.png", jpNPCDir + "npc_tourist.png"},
-		[]string{jpNPCDir + "npc_gary_talk_oposite_book.png", jpNPCDir + "npc_tourist_talk.png"})
+	// Gary has light-coloured eyes — use connected-edge key so the engine
+	// doesn't erase them when colour-keying white.
+	var idle, talk []npcFrame
+	if p := firstExisting(jpNPCDir+"npc_gary_idle_oposite_book.png", jpNPCDir+"npc_tourist.png"); p != "" {
+		idle = loadNPCGridConnected(renderer, p, 8, 1)
+	}
+	if len(idle) == 0 {
+		idle = loadNPCGridRow(renderer, jpFbkVendor8x2, 8, 2, 0)
+	}
+	if p := firstExisting(jpNPCDir+"npc_gary_talk_oposite_book.png", jpNPCDir+"npc_tourist_talk.png"); p != "" {
+		talk = loadNPCGridConnected(renderer, p, 8, 1)
+	}
+	if len(talk) == 0 {
+		talk = idle
+	}
 	n := &npc{
 		idleGrid: idle, talkGrid: talk,
 		// Placed at the torii arrival now (was the ramen street).
@@ -273,8 +281,11 @@ func newKenjiStudent(renderer *sdl.Renderer) *npc {
 }
 
 func newTeaMaster(renderer *sdl.Renderer) *npc {
+	// The tea master is a woman. npc_tea_master_talk.png is the canonical
+	// (female, flat-cartoon) sheet. Prefer a matching female idle when present;
+	// fall back to the talk sheet for the idle until the regen lands (§TEA-MASTER-IDLE).
 	idle, talk := loadJapanNPC(renderer,
-		[]string{jpNPCDir + "npc_tea_master_idle.png"},
+		[]string{jpNPCDir + "npc_tea_master_idle.png", jpNPCDir + "npc_tea_master_idle_f.png", jpNPCDir + "npc_tea_master_talk.png"},
 		[]string{jpNPCDir + "npc_tea_master_talk.png"})
 	return &npc{
 		idleGrid: idle, talkGrid: talk,
@@ -304,144 +315,71 @@ func newDresser(renderer *sdl.Renderer) *npc {
 		[]string{jpNPCDir + "npc_geisha_talk.png", jpNPCDir + "npc_dresser_talk.png", jpNPCDir + "drawer_talk.png"})
 	return &npc{
 		idleGrid: idle, talkGrid: talk,
-		bounds:         sdl.Rect{X: 880, Y: 360, W: 150, H: 250},
+		bounds:         sdl.Rect{X: 980, Y: 360, W: 150, H: 250},
 		name:           "Kiku",
 		dialog:         dresserDialog,
-		talkFrameSpeed: 0.12,
+		talkFrameSpeed: 0.20,
 	}
 }
 
 // ---------- Scene builders ----------
 
+// addTokyoScenes decorates the 5 Japan/Kyoto scenes with particles, glows, and
+// ambient leaf sprites. The static scene data (bg, spawn, hotspots, NPCs,
+// walkSegments) is loaded from JSON before this function runs.
 func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
-	bgTorii := firstExisting(jpBGDir+"tokyo_tori.png", jpBGDir+"tokyo_torii.png", jpBGDir+"start_of_tori.png")
-	bgStreet := firstExisting(jpBGDir+"tokyo_street.png", jpBGDir+"ramen-store.png")
-	bgGrove := firstExisting(jpBGDir+"tokyo_temple.png", jpBGDir+"flower_store_near_forest.png")
-	bgSakura := firstExisting(jpBGDir+"sakura_grove.png", jpBGDir+"tokyo_sakura.png", jpBGDir+"secret_grove.png")
+	if torii, ok := sm.scenes["tokyo_torii"]; ok {
+		for i := 0; i < 16; i++ {
+			torii.particles = append(torii.particles, particle{
+				x: rand.Float64() * float64(engine.ScreenWidth), y: rand.Float64() * float64(engine.ScreenHeight),
+				vx: (rand.Float64() - 0.4) * 18, vy: 14 + rand.Float64()*10,
+				alpha: uint8(rand.Intn(30) + 50), size: int32(rand.Intn(3) + 2), r: 255, g: 180, b: 200,
+			})
+		}
+	}
 
-	// ===== Torii arrival =====
-	torii := &scene{
-		name:   "tokyo_torii",
-		bg:     newPNGBackgroundOr(renderer, bgTorii, tokToriiBase),
-		npcs:   []*npc{newTouristTokyo(renderer)}, // Gary greets PP at the gates
-		spawnX: 220, spawnY: 470,
-		hotspots: []hotspot{
-			{bounds: sdl.Rect{X: 1300, Y: 180, W: 100, H: 460}, targetScene: "tokyo_street", name: "Down to the ramen street", arrow: arrowRight},
-		},
-		minY: 400, maxY: 600,
-		walkSegments: []walkSegment{{x1: 120, y1: 520, x2: 1280, y2: 520}},
-	}
-	for i := 0; i < 16; i++ {
-		torii.particles = append(torii.particles, particle{
-			x: rand.Float64() * float64(engine.ScreenWidth), y: rand.Float64() * float64(engine.ScreenHeight),
-			vx: (rand.Float64() - 0.4) * 18, vy: 14 + rand.Float64()*10,
-			alpha: uint8(rand.Intn(30) + 50), size: int32(rand.Intn(3) + 2), r: 255, g: 180, b: 200,
-		})
-	}
-	sm.scenes["tokyo_torii"] = torii
-
-	// ===== Ramen street (Hiro + Gary; the tree drops leaves) =====
-	street := &scene{
-		name:   "tokyo_street",
-		bg:     newPNGBackgroundOr(renderer, bgStreet, tokStreetBase),
-		npcs:   []*npc{newRamenSeller(renderer), newKenjiStudent(renderer)},
-		spawnX: 200, spawnY: 470,
-		hotspots: []hotspot{
-			{bounds: sdl.Rect{X: 0, Y: 180, W: 100, H: 460}, targetScene: "tokyo_torii", name: "Back to the gates", arrow: arrowLeft},
-			{bounds: sdl.Rect{X: 1300, Y: 180, W: 100, H: 460}, targetScene: "tokyo_temple", name: "On to the flower store", arrow: arrowRight},
-		},
-		minY: 400, maxY: 620,
-		walkSegments: []walkSegment{{x1: 110, y1: 520, x2: 1290, y2: 520}},
-	}
 	// Live falling leaves over the tree (user: "leaves fall like a live
-	// animation"). A few drift down at different speeds/scales; no-ops until the
-	// leaf sheet lands (§JP-LEAVES).
-	leafSpots := []struct{ x, y, scale, speed, drift, sec float64 }{
-		{420, -40, 0.7, 55, 14, 0.18}, {560, -160, 0.55, 42, -10, 0.22},
-		{700, -90, 0.8, 64, 8, 0.16}, {300, -200, 0.5, 48, 18, 0.2},
+	// animation"). No-ops until the leaf sheet lands (§JP-LEAVES).
+	if street, ok := sm.scenes["tokyo_street"]; ok {
+		leafSpots := []struct{ x, y, scale, speed, drift, sec float64 }{
+			{420, -40, 0.35, 55, 14, 0.18}, {560, -160, 0.28, 42, -10, 0.22},
+			{700, -90, 0.40, 64, 8, 0.16}, {300, -200, 0.25, 48, 18, 0.2},
+		}
+		for _, l := range leafSpots {
+			street.ambientSprites = append(street.ambientSprites,
+				newAmbientLeafFall(renderer, jpLeafFall, 3, l.x, l.y, l.scale, l.speed, l.drift, l.sec))
+		}
 	}
-	for _, l := range leafSpots {
-		street.ambientSprites = append(street.ambientSprites,
-			newAmbientLeafFall(renderer, jpLeafFall, 3, l.x, l.y, l.scale, l.speed, l.drift, l.sec))
-	}
-	sm.scenes["tokyo_street"] = street
 
-	// ===== Flower grove (Oba-chan + Kiku the dresser) =====
-	grove := &scene{
-		name:           "tokyo_temple",
-		bg:             newPNGBackgroundOr(renderer, bgGrove, tokTempleBase),
-		npcs:           []*npc{newObachan(renderer), newDresser(renderer)},
-		spawnX:         200, spawnY: 470,
-		characterScale: 0.95,
-		hotspots: []hotspot{
-			{bounds: sdl.Rect{X: 0, Y: 180, W: 100, H: 460}, targetScene: "tokyo_street", name: "Back to the ramen street", arrow: arrowLeft},
-			// Up to the temple tea-house (the matcha ceremony with the tea master).
-			{bounds: sdl.Rect{X: 540, Y: 110, W: 300, H: 210}, targetScene: "tokyo_teahouse", name: "To the temple tea-house", arrow: arrowUp},
-		},
-		minY: 400, maxY: 620,
-		walkSegments: []walkSegment{{x1: 110, y1: 520, x2: 1290, y2: 520}},
+	if grove, ok := sm.scenes["tokyo_temple"]; ok {
+		grove.glows = []glowEffect{{x: 200, y: 100, w: 600, h: 320, r: 255, g: 220, b: 230, alpha: 12, pulse: 0.3}}
+		for i := 0; i < 14; i++ {
+			grove.particles = append(grove.particles, particle{
+				x: rand.Float64() * float64(engine.ScreenWidth), y: rand.Float64() * 420,
+				vx: (rand.Float64() - 0.4) * 10, vy: 10 + rand.Float64()*8,
+				alpha: uint8(rand.Intn(20) + 40), size: int32(rand.Intn(2) + 2), r: 255, g: 180, b: 200,
+			})
+		}
 	}
-	grove.glows = []glowEffect{{x: 200, y: 100, w: 600, h: 320, r: 255, g: 220, b: 230, alpha: 12, pulse: 0.3}}
-	for i := 0; i < 14; i++ {
-		grove.particles = append(grove.particles, particle{
-			x: rand.Float64() * float64(engine.ScreenWidth), y: rand.Float64() * 420,
-			vx: (rand.Float64() - 0.4) * 10, vy: 10 + rand.Float64()*8,
-			alpha: uint8(rand.Intn(20) + 40), size: int32(rand.Intn(2) + 2), r: 255, g: 180, b: 200,
-		})
-	}
-	sm.scenes["tokyo_temple"] = grove
 
-	// ===== Hidden sakura grove (the "follow me" payoff; pick the blossom) =====
-	// Reached from the flower grove once Oba-chan opens the path. PP picks the
-	// blossom himself at the old tree (the "Sakura Tree" hotspot, wired in
-	// setupTokyoCallbacks). Deep pink cherry-blossom woods.
-	sakura := &scene{
-		name:   "tokyo_sakura",
-		bg:     newPNGBackgroundOr(renderer, bgSakura, color.NRGBA{R: 248, G: 168, B: 196, A: 255}),
-		npcs:   []*npc{},
-		spawnX: 200, spawnY: 470,
-		hotspots: []hotspot{
-			{bounds: sdl.Rect{X: 0, Y: 180, W: 100, H: 460}, targetScene: "tokyo_temple", name: "Back to the flower store", arrow: arrowLeft},
-			// The old cherry tree - pick the blossom (onInteract wired in callbacks).
-			{bounds: sdl.Rect{X: 560, Y: 120, W: 320, H: 420}, name: "The oldest cherry tree"},
-		},
-		minY: 400, maxY: 620,
-		walkSegments: []walkSegment{{x1: 110, y1: 520, x2: 1290, y2: 520}},
+	if sakura, ok := sm.scenes["tokyo_sakura"]; ok {
+		sakura.glows = []glowEffect{{x: 300, y: 80, w: 700, h: 360, r: 255, g: 200, b: 220, alpha: 14, pulse: 0.25}}
+		for i := 0; i < 26; i++ {
+			sakura.particles = append(sakura.particles, particle{
+				x: rand.Float64() * float64(engine.ScreenWidth), y: rand.Float64() * float64(engine.ScreenHeight),
+				vx: (rand.Float64() - 0.4) * 16, vy: 16 + rand.Float64()*12,
+				alpha: uint8(rand.Intn(30) + 55), size: int32(rand.Intn(3) + 2), r: 255, g: 175, b: 200,
+			})
+		}
+		for _, l := range []struct{ x, y, scale, speed, drift, sec float64 }{{500, -60, 0.7, 50, 12, 0.18}, {820, -180, 0.6, 60, -8, 0.2}} {
+			sakura.ambientSprites = append(sakura.ambientSprites,
+				newAmbientLeafFall(renderer, jpLeafFall, 3, l.x, l.y, l.scale, l.speed, l.drift, l.sec))
+		}
 	}
-	sakura.glows = []glowEffect{{x: 300, y: 80, w: 700, h: 360, r: 255, g: 200, b: 220, alpha: 14, pulse: 0.25}}
-	// Heavier blossom fall than the grove.
-	for i := 0; i < 26; i++ {
-		sakura.particles = append(sakura.particles, particle{
-			x: rand.Float64() * float64(engine.ScreenWidth), y: rand.Float64() * float64(engine.ScreenHeight),
-			vx: (rand.Float64() - 0.4) * 16, vy: 16 + rand.Float64()*12,
-			alpha: uint8(rand.Intn(30) + 55), size: int32(rand.Intn(3) + 2), r: 255, g: 175, b: 200,
-		})
-	}
-	// Sprite leaves/petals drifting too (if the leaf sheet lands).
-	for _, l := range []struct{ x, y, scale, speed, drift, sec float64 }{{500, -60, 0.7, 50, 12, 0.18}, {820, -180, 0.6, 60, -8, 0.2}} {
-		sakura.ambientSprites = append(sakura.ambientSprites,
-			newAmbientLeafFall(renderer, jpLeafFall, 3, l.x, l.y, l.scale, l.speed, l.drift, l.sec))
-	}
-	sm.scenes["tokyo_sakura"] = sakura
 
-	// ===== Temple tea-house (the matcha ceremony; reached UP from the flower
-	// store). Authentic: the tea ceremony grew out of Zen temple tea rooms. =====
-	bgTeahouse := firstExisting(jpBGDir+"teahouse.png", jpBGDir+"tea_house.png",
-		jpBGDir+"tokyo_teahouse.png", jpBGDir+"temple_teahouse.png")
-	teahouse := &scene{
-		name:           "tokyo_teahouse",
-		bg:             newPNGBackgroundOr(renderer, bgTeahouse, color.NRGBA{R: 196, G: 170, B: 132, A: 255}),
-		npcs:           []*npc{newTeaMaster(renderer)},
-		spawnX:         220, spawnY: 470,
-		characterScale: 0.95,
-		hotspots: []hotspot{
-			{bounds: sdl.Rect{X: 0, Y: 180, W: 100, H: 460}, targetScene: "tokyo_temple", name: "Back to the flower store", arrow: arrowLeft},
-		},
-		minY: 400, maxY: 620,
-		walkSegments: []walkSegment{{x1: 110, y1: 520, x2: 1290, y2: 520}},
+	if teahouse, ok := sm.scenes["tokyo_teahouse"]; ok {
+		teahouse.glows = []glowEffect{{x: 250, y: 120, w: 600, h: 300, r: 245, g: 225, b: 190, alpha: 10, pulse: 0.2}}
 	}
-	teahouse.glows = []glowEffect{{x: 250, y: 120, w: 600, h: 300, r: 245, g: 225, b: 190, alpha: 10, pulse: 0.2}}
-	sm.scenes["tokyo_teahouse"] = teahouse
 }
 
 // openRamenStall swaps the stall prop to its "open" frame and seats the waiting
@@ -451,6 +389,11 @@ func (g *Game) openRamenStall() {
 	if g.ramenStoreProp != nil && len(g.ramenOpenFrames) > 0 {
 		g.ramenStoreProp.frames = g.ramenOpenFrames
 	}
+	// The open prop's stools sit at screen x≈570/621/682/733, ground y≈530
+	// (prop at 645/530 scale 0.30). Seat the two queue members on stools 1 and
+	// 3, shrunk to the stall's mid-ground depth (their sit sheet includes the
+	// stool, so they anchor on the same ground line as the prop).
+	stoolX := []float64{570, 682}
 	for i, c := range g.ramenQueue {
 		if c == nil {
 			continue
@@ -458,8 +401,44 @@ func (g *Game) openRamenStall() {
 		if len(g.ramenSitFrames) > 0 {
 			c.frames = g.ramenSitFrames
 		}
-		c.x = float64(430 + i*120) // shuffle onto the counter stools
-		c.y = 560
+		if i < len(stoolX) {
+			c.x = stoolX[i]
+		} else {
+			c.x = 733
+		}
+		c.y = 530
+		c.scale = 0.23
+	}
+	// Hiro takes his place BEHIND the counter, upper body only (user
+	// 2026-07-14). Graceful: until the §JP-HIRO-COUNTER sheets land he keeps
+	// standing beside the stall with his full-body art.
+	if street, ok := g.sceneMgr.scenes["tokyo_street"]; ok {
+		for _, n := range street.npcs {
+			if n.name != "Hiro" {
+				continue
+			}
+			counterIdle := firstExisting(jpNPCDir + "npc_hiro_counter_idle.png")
+			if counterIdle == "" {
+				break
+			}
+			idle := loadNPCGridConnected(g.renderer, counterIdle, 8, 1)
+			if len(idle) == 0 {
+				break
+			}
+			n.idleGrid = idle
+			n.talkGrid = idle
+			if p := firstExisting(jpNPCDir + "npc_hiro_counter_talk.png"); p != "" {
+				if talk := loadNPCGridConnected(g.renderer, p, 8, 1); len(talk) > 0 {
+					n.talkGrid = talk
+				}
+			}
+			// Waist-cut sprite in the counter window: bottom edge lands on the
+			// counter top (screen y≈428) so the counter occludes him naturally.
+			n.bounds = sdl.Rect{X: 600, Y: 353, W: 95, H: 75}
+			n.approachXOverride = 645
+			n.approachYOverride = 385 // PP stays on the street walk line
+			break
+		}
 	}
 	g.vars.SetBool(ScopeGame, VarJpRamenOpen, true)
 }
@@ -473,10 +452,7 @@ func (g *Game) setupTokyoCallbacks() {
 	}
 
 	if torii, ok := g.sceneMgr.scenes["tokyo_torii"]; ok {
-		torii.hotspots = append(torii.hotspots, hotspot{
-			bounds: sdl.Rect{X: 0, Y: 180, W: 90, H: 460}, name: "Travel Map", arrow: arrowLeft,
-			onInteract: func() bool { game.openTravelMap("tokyo_torii"); return true },
-		})
+		// No travel-map hotspot here — torii is a walk-through gate, not a hub.
 		// Gary greets PP at the gates. He starts holding the guidebook
 		// UPSIDE-DOWN; when PP talks to him he flips it and KEEPS it right-way-up
 		// (swap idle+talk to the "book correct" sheets after the flip one-shot).
@@ -487,16 +463,15 @@ func (g *Game) setupTokyoCallbacks() {
 			}
 			gary := n
 			var garyFlipIdle, garyFlipTalk []npcFrame
-			// After the flip, the plain npc_gary_idle is the "book correct" pose.
-			// It was drawn 6×2 (12 frames, two rows), unlike the other 8×1 Gary
-			// sheets - load it at its real grid so it cuts cleanly.
-			if p := firstExisting(jpNPCDir + "npc_gary_idle.png"); p != "" {
-				garyFlipIdle = loadNPCGrid(game.renderer, p, 6, 2)
-			} else if p := firstExisting(jpNPCDir + "npc_gary_idle_flipped.png"); p != "" {
-				garyFlipIdle = loadNPCGrid(game.renderer, p, 8, 1)
+			// G2: after the flip Gary holds the book RIGHT-WAY-UP. The
+			// npc_gary_idle_normal_book_idle/_talk sheets are the correct-book
+			// poses (8×1). The old npc_gary_idle.png actually showed the book
+			// UPSIDE-DOWN (6×2), which is why he "reverted to flipped" after a chat.
+			if p := firstExisting(jpNPCDir+"npc_gary_idle_normal_book_idle.png", jpNPCDir+"npc_gary_idle_flipped.png"); p != "" {
+				garyFlipIdle = loadNPCGridConnected(game.renderer, p, 8, 1)
 			}
-			if p := firstExisting(jpNPCDir+"npc_gary_talk_flipped.png", jpNPCDir+"npc_gary_talk.png"); p != "" {
-				garyFlipTalk = loadNPCGrid(game.renderer, p, 8, 1)
+			if p := firstExisting(jpNPCDir+"npc_gary_idle_normal_book_talk.png", jpNPCDir+"npc_gary_talk_flipped.png", jpNPCDir+"npc_gary_talk.png"); p != "" {
+				garyFlipTalk = loadNPCGridConnected(game.renderer, p, 8, 1)
 			}
 			gary.onDialogEnd = func() {
 				gary.playOneShotAnim("flip", 1.0)
@@ -522,12 +497,35 @@ func (g *Game) setupTokyoCallbacks() {
 		// opens (openRamenStall). Art pending → invisible until it lands; state
 		// restored on load.
 		jpProp := "assets/images/locations/japan/props/"
-		g.ramenStoreProp = newAmbientSway(g.renderer, firstExisting(jpProp+"ramen_closed.png"), 1, 360, 300, 1.0, 0.4)
+		// Art landed 2026-07-14 (1536×1024, content ~1158×885 after the baked
+		// checkerboard is keyed): bottom-center anchored over the painted-in BG
+		// stall (BG px 555-875 → screen ~506-798, ground ≈527), scale 0.30 so the
+		// prop covers it edge to edge.
+		g.ramenStoreProp = newAmbientSway(g.renderer, firstExisting(jpProp+"ramen_closed.png"), 1, 645, 530, 0.30, 0.4)
 		street.ambientSprites = append(street.ambientSprites, g.ramenStoreProp)
 		g.ramenOpenFrames = loadAmbientStripKeyed(g.renderer, firstExisting(jpProp+"ramen_open.png"), 1)
-		g.ramenSitFrames = loadAmbientStripKeyed(g.renderer, firstExisting(jpNPCDir+"customer_sit.png"), 1)
-		for i := 0; i < 4; i++ {
-			c := newAmbientSway(g.renderer, firstExisting(jpNPCDir+"customer_wait.png"), 1, float64(560+i*70), 600, 0.9, 0.5)
+		// customer_sit.png is a 4-frame eating loop (stool included in-frame) —
+		// loading it as 8 cols split every figure in half (2026-07-14 fix).
+		g.ramenSitFrames = loadAmbientStripKeyed(g.renderer, firstExisting(jpNPCDir+"customer_sit.png"), 4)
+		// Two distinct queue members (different art) so the line doesn't look
+		// like clones. #25: spaced ~180px apart (was 80 -> they overlapped into a
+		// clone-pile) and stood in front of the shuttered stall (Hiro waits at
+		// its left edge, x470), so they read as two people queuing on the
+		// street, not a folder dump.
+		queueEntries := []struct {
+			path  string
+			x, y  float64
+			scale float64
+		}{
+			{firstExisting(jpNPCDir+"npc_ramen_tourist_wait.png", jpNPCDir+"customer_wait.png"), 520, 590, 0.62},
+			{firstExisting(jpNPCDir+"npc_ramen_local_wait.png", jpNPCDir+"customer_wait.png"), 700, 590, 0.62},
+		}
+		for _, q := range queueEntries {
+			// #25: the wait sheets are an 8-FRAME sway of ONE person. Loading them
+			// as 1 column drew the entire 8-figure strip as a single sprite — that
+			// was the "crowd of identical men". Load 8×1 so each entry is ONE
+			// animated person (the engine cuts + cycles the 8 poses).
+			c := newAmbientSway(g.renderer, q.path, 8, q.x, q.y, q.scale, 0.5)
 			street.ambientSprites = append(street.ambientSprites, c)
 			g.ramenQueue = append(g.ramenQueue, c)
 		}
@@ -703,6 +701,20 @@ func (g *Game) setupTokyoCallbacks() {
 				return true
 			},
 		})
+		// G9: the path UP to the temple tea-house should recede (shrink + drift
+		// up) instead of marching PP off the top of the screen.
+		for i := range grove.hotspots {
+			if grove.hotspots[i].targetScene != "tokyo_teahouse" {
+				continue
+			}
+			grove.hotspots[i].onInteract = func() bool {
+				game.player.playRecede(1.0, 0.5, 80, func() {
+					game.sceneMgr.transitionTo("tokyo_teahouse", game.player)
+				})
+				return true
+			}
+			break
+		}
 	}
 
 	// Temple tea-house: share the whisked Matcha Bowl with the tea master →

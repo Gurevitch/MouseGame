@@ -222,8 +222,8 @@ func jumpParisBakery(g *Game) {
 
 func jumpParisPressPass(g *Game) {
 	jumpParisStreet(g)
-	if !g.inv.hasItem("Press Pass") {
-		if item := g.items.createItem("press_pass"); item != nil {
+	if !g.inv.hasItem("Card") {
+		if item := g.items.createItem("card"); item != nil {
 			g.inv.addItem(item)
 		}
 	}

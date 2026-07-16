@@ -97,10 +97,14 @@ type Game struct {
 	ramenQueue      []*ambientSprite
 	ramenOpenFrames []npcFrame
 	ramenSitFrames  []npcFrame
-	font           *engine.BitmapFont
-	lastScene      string
-	mouseX         int32
-	mouseY         int32
+	// #34 airstrip sign crow: added by applyCampMood once the camp turns
+	// (never on the day-1 opening screen). Not persisted — re-added on load
+	// by the restore-path applyCampMood call.
+	crowAdded bool
+	font      *engine.BitmapFont
+	lastScene string
+	mouseX    int32
+	mouseY    int32
 
 	// Story progression
 	monologuePlayed bool
@@ -126,6 +130,12 @@ type Game struct {
 	campfireFrames   []npcFrame
 	campfireFrameIdx int
 	campfireTimer    float64
+	// Morning smoke: when PP wakes (wakingPhase >= 1) the fire has burned out
+	// overnight, so the flame is replaced by a thin column of smoke rising from
+	// the pit. Optional art (graceful no-op until campfire_smoke.png lands).
+	smokeFrames   []npcFrame
+	smokeFrameIdx int
+	smokeTimer    float64
 	// nightHidePlayer suppresses PP rendering during phase 3 (inside
 	// Marcus's cabin) so the cutscene shows only Marcus freaking out,
 	// even though PP is technically "present" in the marcus_room scene.
@@ -242,6 +252,15 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 			g.campfireFrames = append(g.campfireFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
 		}
 	}
+	// Morning smoke from the dead fire (shown once PP wakes). Optional 6×1 sheet;
+	// no-op until §CAMPFIRE-SMOKE lands. Same clean+key treatment as the flame.
+	smokeGrid := engine.SpriteGridFromPNGCleanAggressive(renderer, "assets/images/locations/camp/campfire_smoke.png", 6, 1, 4)
+	if len(smokeGrid) > 0 {
+		for c := 0; c < len(smokeGrid[0]); c++ {
+			gf := smokeGrid[0][c]
+			g.smokeFrames = append(g.smokeFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H})
+		}
+	}
 
 	g.flight = &flightCutscene{frames: loadAirplaneFrames(renderer)}
 
@@ -346,6 +365,12 @@ func (g *Game) setupCampCallbacks() {
 				jake.onDialogEnd = func() {
 					jake.dialog = jakePostStrangeDialog
 				}
+				// #20: the heal must be an INTENTIONAL give — PP has to be holding
+				// the Coin, not merely have it in the bag. A plain click without the
+				// held coin falls through to Jake's strange dialog instead of
+				// auto-healing.
+				jake.altDialogRequiresHeld = true
+				jake.altDialogRequiresItem = "Coin"
 				jake.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					// #26: Jake's anchor is now the COIN from Jerusalem (was the
 					// old "Coin Rubbing" stub).
@@ -353,10 +378,10 @@ func (g *Game) setupCampCallbacks() {
 						return nil, nil, nil
 					}
 					return []dialogEntry{
-							{speaker: "Pink Panther", text: "Jake. I went to Jerusalem. I found your wall, your tunnels."},
-							{speaker: "Jake", text: "The... the wall? You were THERE?"},
-							{speaker: "Pink Panther", text: "Here - an old coin from the gate. Look at the face on it."},
-							{speaker: "Jake", text: "That's HIM. That's the face in my head. It was REAL the whole time!"},
+							{speaker: "Pink Panther", text: "Jake. I went to Jerusalem. I stood right in front of the Western Wall."},
+							{speaker: "Jake", text: "The... the Wall? You were THERE?"},
+							{speaker: "Pink Panther", text: "Here - an old coin from the market, stamped with that face you keep seeing."},
+							{speaker: "Jake", text: "That's HIM. That's the face from my dreams. It was REAL the whole time!"},
 							{speaker: "Jake", text: "The echoes... they're... quieter. Like someone closed a door in my skull."},
 							{speaker: "Pink Panther", text: "Rest easy, tough guy. Two down."},
 						}, func() {
@@ -390,9 +415,17 @@ func (g *Game) setupCampCallbacks() {
 							if lk, ok := game.sceneMgr.scenes["camp_lake"]; ok {
 								for _, n := range lk.npcs {
 									if n.name == "Lily" {
-										n.hidden = false
-										n.silent = false
-										n.setStrange(true)
+										lakeLily := n
+										lakeLily.hidden = false
+										lakeLily.silent = false
+										lakeLily.setStrange(true)
+										// #22: first click = the strange foreshadow (no
+										// destination named); on every click after, she
+										// just wants to be left alone.
+										lakeLily.dialog = lilyStrangeDialog
+										lakeLily.onDialogEnd = func() {
+											lakeLily.dialog = lilyLeaveMeAloneDialog
+										}
 										break
 									}
 								}
@@ -559,6 +592,9 @@ func (g *Game) setupCampCallbacks() {
 		for _, n := range marcusRoom.npcs {
 			if n.name == "Marcus" {
 				marcus := n
+				// A6: PP faces Marcus (approaches from Marcus's left so PP ends
+				// up to his left and turns right to face him).
+				marcus.approachLeft = true
 				// 2026-06-24 (#20a): the postcard heal must be an intentional
 				// hand-over - PP has to SELECT/hold the Postcard and click Marcus,
 				// not have it fire just from owning it on scene entry. Gate the
@@ -646,7 +682,7 @@ func (g *Game) setupCampCallbacks() {
 								}
 							}
 							game.dialog.queueDialog([]dialogEntry{
-								{speaker: "Pink Panther", text: "One down. Jake's next - he keeps muttering about tunnels and a wall."},
+								{speaker: "Pink Panther", text: "One down. Jake's next - he keeps muttering about an old face in the stones of a wall."},
 								{speaker: "Pink Panther", text: "The travel map just lit up Jerusalem. That can't be a coincidence."},
 							})
 							// #22: Marcus visibly takes/looks at the postcard during the
@@ -904,6 +940,20 @@ func (g *Game) setupCampCallbacks() {
 		}
 		lake.floorItems = append(lake.floorItems, flower)
 
+		// A1 fix: when PP walks back from the lake to camp_grounds, set
+		// entryWalkPending so he strolls in from the left edge (matching the
+		// Higgins-rude-beat dramatic return). Override the JSON hotspot.
+		for i := range lake.hotspots {
+			if lake.hotspots[i].targetScene == "camp_grounds" {
+				lake.hotspots[i].onInteract = func() bool {
+					game.sceneMgr.entryWalkPending = true
+					game.sceneMgr.transitionTo("camp_grounds", game.player)
+					return true
+				}
+				break
+			}
+		}
+
 		// #10: clicking the water gives a flavour line instead of nothing. PP
 		// walks to the deck edge (the hotspot centre, snapped to the deck path)
 		// then declines to swim. Bounds cover the lake surface above the deck;
@@ -912,8 +962,14 @@ func (g *Game) setupCampCallbacks() {
 			bounds: sdl.Rect{X: 360, Y: 250, W: 700, H: 210},
 			name:   "Lake",
 			onInteract: func() bool {
-				game.dialog.startDialog([]dialogEntry{
+				// 2026-07-15 (user #4): play the decline in the TALK SIDE pose
+				// (he's addressing the water), not the idle.
+				game.player.state = stateTalking
+				game.player.dir = dirRight
+				game.dialog.startDialogWithCallback([]dialogEntry{
 					{speaker: "Pink Panther", text: "Cool, clear water... but I'm not really in the mood for a swim right now."},
+				}, func() {
+					game.player.state = stateIdle
 				})
 				return true
 			},
@@ -1011,13 +1067,27 @@ func (g *Game) playHigginsRudeBeat() {
 	higgins.bounds.X = 1180
 	higgins.bounds.Y = 540
 	higgins.dialog = higginsRudeDialog
-	higgins.swapIdleForOneShot("walk_front") // loop the walk while he approaches
+	// #23: stride in with the SIDE walk facing LEFT (toward PP) instead of the
+	// front-facing sheet that read as moonwalking. Fall back to walk_front.
+	if higgins.hasOneShotAnim("walk_side") {
+		higgins.flipped = true // sheet faces right; flip to face left
+		higgins.swapIdleForOneShot("walk_side")
+	} else {
+		higgins.swapIdleForOneShot("walk_front")
+	}
 	// PP comes up a little to meet him.
 	g.player.walkToAndDo(620, float64(higgins.bounds.Y+higgins.bounds.H)-float64(playerDstH)/2, nil)
 	g.higginsWalk = &higginsWalkState{
 		n: higgins, fromX: 1180, toX: 800, dur: 1.6,
 		onArrive: func() {
 			higgins.restoreSwappedIdle()
+			// Swap to the dismissive talk/idle sheets for the curt exchange.
+			if f, ok := higgins.oneShotAnims["rude_talk"]; ok {
+				higgins.talkGrid = f
+			}
+			if f, ok := higgins.oneShotAnims["rude_idle"]; ok {
+				higgins.idleGrid = f
+			}
 			g.dialog.startDialogWithCallback(higginsRudeDialog, func() {
 				g.finishHigginsRude()
 			})
@@ -1038,20 +1108,37 @@ type higginsWalkState struct {
 
 // finishHigginsRude plays PP's camera aside, hides Higgins, and unlocks Tokyo.
 func (g *Game) finishHigginsRude() {
-	g.player.dir = dirDown
-	g.player.facingLeft = false
+	g.vars.SetBool(ScopeGame, VarHigginsRudeDone, true)
+	g.travelMap.setUnlocked("tokyo_street", true)
+	g.vars.SetBool(ScopeGame, VarTokyoUnlocked, true)
+	// #23: instead of vanishing on the spot, Higgins strolls BACK to his office
+	// (right edge) while PP delivers the aside, then hides once he's there. The
+	// x-lerp runs from Update even during the dialog, so he doesn't freeze.
 	if grounds, ok := g.sceneMgr.scenes["camp_grounds"]; ok {
 		for _, n := range grounds.npcs {
 			if n.name == "Director Higgins" {
-				n.hidden = true
-				n.silent = true
+				hg := n
+				if hg.hasOneShotAnim("walk_side") {
+					hg.flipped = false // face right, heading back to the office
+					hg.swapIdleForOneShot("walk_side")
+				} else {
+					hg.swapIdleForOneShot("walk_back")
+				}
+				g.higginsWalk = &higginsWalkState{
+					n: hg, fromX: float64(hg.bounds.X), toX: 1180, dur: 1.6,
+					onArrive: func() {
+						hg.restoreSwappedIdle()
+						hg.hidden = true
+						hg.silent = true
+					},
+				}
 				break
 			}
 		}
 	}
-	g.vars.SetBool(ScopeGame, VarHigginsRudeDone, true)
-	g.travelMap.setUnlocked("tokyo_torii", true)
-	g.vars.SetBool(ScopeGame, VarTokyoUnlocked, true)
+	// PP turns to the camera and connects the dots (Kyoto).
+	g.player.dir = dirDown
+	g.player.facingLeft = false
 	g.dialog.startDialog(higginsRudeAsideDialog)
 }
 
@@ -1351,7 +1438,7 @@ func (g *Game) setupParisCallbacks() {
 								// Pierre's press pass is now handed back via the
 								// two-stage handOff below (#16), not a parallel receive.
 								game.inv.giveItemTo("Confiture", "pierre")
-								if item := game.items.createItem("press_pass"); item != nil {
+								if item := game.items.createItem("card"); item != nil {
 									game.inv.addItem(item)
 								}
 								pierre.hintState = 2
@@ -1462,19 +1549,19 @@ func (g *Game) setupParisCallbacks() {
 					claude.dialog = gendarmePostDialog
 				}
 				claude.altDialogRequiresHeld = true
-				claude.altDialogRequiresItem = "Press Pass"
+				claude.altDialogRequiresItem = "Card"
 				claude.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
-					if louvreUnlocked || !(game.inv.heldItem != nil && game.inv.heldItem.name == "Press Pass") {
+					if louvreUnlocked || !(game.inv.heldItem != nil && game.inv.heldItem.name == "Card") {
 						return nil, nil, nil
 					}
 					return claudePressPassDialog, func() {
-						game.inv.giveItemTo("Press Pass", "claude") // consumed at the door
+						game.inv.giveItemTo("Card", "claude") // consumed at the door
 						louvreUnlocked = true
 						claude.dialog = gendarmePostDialog
 						claude.altDialogFunc = nil
 						claude.altDialogRequiresHeld = false
 						claude.altDialogRequiresItem = ""
-					}, &handOff{item: "Press Pass"}
+					}, &handOff{item: "Card"}
 				}
 			}
 		}
@@ -1552,6 +1639,10 @@ func (g *Game) setupParisCallbacks() {
 							// §PR3: the sketch hand-over plays pre-dialog (PR#1).
 							// After Beaumont's lines he visibly hands the postcard
 							// back, PP takes it, then the homeward monologue plays.
+							// #10: face the curator toward PP (PP stands to his right
+							// at ~799) so the postcard hands TO PP, not off-screen.
+							ppCenter := game.player.x + float64(playerDstW)/2
+							curator.flipped = ppCenter < float64(curator.bounds.X+curator.bounds.W/2)
 							curator.playOneShotAnimThen(curator.giveAnimOr("give_postcard"), 1.0, func() {
 								game.player.playReceive("postcard", false, 1.0, func() {
 									game.dialog.startDialog([]dialogEntry{
@@ -1560,7 +1651,7 @@ func (g *Game) setupParisCallbacks() {
 									})
 								})
 							})
-						}, &handOff{item: "Camille's Sketch"}
+						}, &handOff{item: "Camille's Sketch", skipNPCTake: true}
 					}
 					// Grandson souvenir loop: once Poulain has asked, Beaumont
 					// signs a second postcard (the new prints have arrived).
@@ -1842,19 +1933,25 @@ func (g *Game) setupParisCallbacks() {
 				// here - accept the pencil as soon as anyone asked for it).
 				if holdingPencil && (sketchAsked || camilleAsked) && !sketchDone {
 					return camilleSketchTradeDialog, func() {
-						// §8b: the pencil hand-over plays pre-dialog (PR#1). Her
-						// "watch zis" lines play, then the sketching one-shot is
-						// the give-back and PP takes the page.
-						// PR#14: slower (2.6s) + hold the reveal 1.2s so the
-						// finished sketch is readable before she reverts to idle.
-						camille.playOneShotAnimHold("sketch", 2.6, 1.2)
-						game.player.playOneShot("receive_item", 1.0, nil)
+						// Pencil hand-off via handOff (pre-dialog). After that:
+						// 1. Camille sketches (full duration + hold the reveal).
+						// 2. Camille plays give_sketch one-shot → PP receives.
+						// 3. Sketch added to inventory, quest flag set.
 						game.inv.giveItemTo("Charcoal Pencil", "camille")
-						if item := game.items.createItem("camille_sketch"); item != nil {
-							game.inv.addItem(item)
-						}
 						sketchDone = true
 						camille.dialog = camillePostSketchDialog
+						// sketch_room7 = Room 7 replica drawing (distinct from
+						// first-visit portrait); give_sketch = Camille holds it
+						// out; receive_sketch = PP takes it and pockets it.
+						camille.playOneShotAnimThen("sketch_room7", 2.6, func() {
+							camille.playOneShotAnimThen("give_sketch", 1.0, func() {
+								game.player.playOneShot("receive_sketch", 1.0, func() {
+									if item := game.items.createItem("camille_sketch"); item != nil {
+										game.inv.addItem(item)
+									}
+								})
+							})
+						})
 					}, &handOff{item: "Charcoal Pencil"}
 				}
 				// Holding the pencil before the quest is active - never silent.
@@ -2453,8 +2550,15 @@ func (g *Game) HandleClick(x, y int32) {
 			if tgt == "camp_entrance" {
 				sm.entryWalkPending = true
 			}
+			// Walk PP up the dirt road to the camp gate/sign, then RECEDE
+			// (shrink + drift up) so he reads as stepping through the gate into
+			// the distance, instead of just walking right and cutting away.
+			// The recede is cleared on the next transition (clearRecede), so he
+			// arrives full-size and strolls in via entryWalkPending.
 			plr.walkToAndDo(820, 540, func() {
-				plr.walkToAndDo(1160, 440, onArrival)
+				plr.walkToAndDo(1160, 440, func() {
+					plr.playRecede(1.4, 0.4, 80, onArrival)
+				})
 			})
 			return
 		}
@@ -2494,15 +2598,9 @@ func (g *Game) HandleKey(scancode sdl.Scancode) {
 		}
 		return
 	}
-	// F2 toggles the click probe - a dev diagnostic that, while active,
-	// turns clicks into alpha-channel hit-tests on NPC sprites and drops
-	// a green/red marker at the click point. See click_probe.go.
-	if scancode == sdl.SCANCODE_F2 {
-		if g.clickProbe != nil {
-			g.clickProbe.toggle()
-		}
-		return
-	}
+	// F2 click-probe toggle removed (2026-06-29, user): the on-screen "no NPC"
+	// markers were intrusive. The probe code stays dormant (default off, no
+	// activation path) in case it's wanted again; F2 is now a no-op.
 	// F3 toggles the walk-debug overlay - draws walkSegments, PP's foot
 	// point and the last snapped click target with live coordinates, so the
 	// painted-path tuning is done with exact numbers (2026-06-12 #2).
@@ -2687,7 +2785,8 @@ func (g *Game) Update(dt float64, mx, my int32) {
 	// walk-in path, scene.go), so this block only waits for that walk to
 	// finish and plays the monologue once.
 	if !g.vars.GetBool(ScopeGame, VarMonologueLouvre) && g.sceneMgr.currentName == "paris_louvre" &&
-		!g.sceneMgr.transitioning && !g.player.moving && !g.dialog.active {
+		!g.sceneMgr.transitioning && !g.player.moving && !g.player.walkInActive &&
+		!g.sceneMgr.entryWalkPending && !g.dialog.active {
 		g.vars.SetBool(ScopeGame, VarMonologueLouvre, true)
 		g.player.state = stateTalking
 		// 2026-06-20 #14: PP faces FRONT for the arrival monologue (he's taking in
@@ -2722,12 +2821,24 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		}
 	}
 
-	// Animate campfire
+	// Animate the campfire — it burns the WHOLE night, all through PP's sleep
+	// and his wake-up (camp_night scene), so the night never shows a dead pit.
 	if g.sceneMgr.currentName == "camp_night" && len(g.campfireFrames) > 0 {
 		g.campfireTimer += dt
 		if g.campfireTimer >= 0.12 {
 			g.campfireTimer -= 0.12
 			g.campfireFrameIdx = (g.campfireFrameIdx + 1) % len(g.campfireFrames)
+		}
+	}
+	// Animate the morning smoke. It belongs to the BRIGHT MORNING OF DAY 2 —
+	// after PP wakes and can roam to Marcus / Higgins, while the camp is still
+	// in its normal DAY mood (campMoodLevel 0, pre-Paris). NOT the night scene,
+	// and NOT once the camp darkens to mid-dark/dark on later legs.
+	if g.sceneMgr.currentName == "camp_grounds" && g.day >= 2 && g.campMoodLevel() == 0 && len(g.smokeFrames) > 0 {
+		g.smokeTimer += dt
+		if g.smokeTimer >= 0.22 {
+			g.smokeTimer -= 0.22
+			g.smokeFrameIdx = (g.smokeFrameIdx + 1) % len(g.smokeFrames)
 		}
 	}
 
@@ -2836,6 +2947,9 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	// 2.5 → 1.5 (fire was reading way too large vs the camp bg), anchor
 	// (622, 573) → (646, 598) - slight shift right + down so the fire
 	// sits on the actual fire-pit position in the camp_night.png art.
+	// Night campfire: burns the whole night (PP sleeping AND waking up), anchored
+	// on the pit in camp_night.png at (646, 615). No smoke here — the fire is
+	// alive all night.
 	if g.sceneMgr.currentName == "camp_night" && len(g.campfireFrames) > 0 {
 		f := g.campfireFrames[g.campfireFrameIdx%len(g.campfireFrames)]
 		if f.tex != nil {
@@ -2845,6 +2959,24 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 			fireX := int32(646) - dstW/2
 			fireY := int32(615) - dstH
 			renderer.Copy(f.tex, nil, &sdl.Rect{X: fireX, Y: fireY, W: dstW, H: dstH})
+		}
+	}
+	// Morning smoke: the BRIGHT MORNING OF DAY 2. The fire died overnight, so the
+	// cold pit smoulders. Anchored on the camp_grounds fire ring (~648, 525).
+	// Gated on day>=2 AND the normal DAY mood (campMoodLevel 0) so it shows in
+	// the daylight grounds, never over the mid-dark / dark later-leg grounds.
+	if g.sceneMgr.currentName == "camp_grounds" && g.day >= 2 && g.campMoodLevel() == 0 && len(g.smokeFrames) > 0 {
+		f := g.smokeFrames[g.smokeFrameIdx%len(g.smokeFrames)]
+		if f.tex != nil {
+			smokeScale := 1.5
+			dstW := int32(float64(f.w) * smokeScale)
+			dstH := int32(float64(f.h) * smokeScale)
+			// 2026-06-30 (user): sit the smoke on the EXACT pit spot the night
+			// fire uses (646,615) — the day grounds' stone ring is at the same
+			// place. Was (648,525), ~90px too high, so it rose from mid-air.
+			smokeX := int32(646) - dstW/2
+			smokeY := int32(615) - dstH
+			renderer.Copy(f.tex, nil, &sdl.Rect{X: smokeX, Y: smokeY, W: dstW, H: dstH})
 		}
 	}
 

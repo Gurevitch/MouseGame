@@ -42,16 +42,28 @@ const (
 	// rose above the cabin doorways. Pulled back to H=270, which keeps PP
 	// the tallest on screen (still > all NPCs) without overwhelming the
 	// background composition. Width 200 keeps the same cell aspect.
-	playerDstW      = 200
-	playerDstH      = 270
-	playerMinX      = 10.0
-	playerMaxX      = engine.ScreenWidth - playerDstW - 10.0
-	playerMinY      = 265.0
-	playerMaxY      = 395.0
-	walkFrameTime   = 0.08
-	talkFrameTime   = 0.07
-	actionFrameTime = 0.10
+	playerDstW    = 200
+	playerDstH    = 270
+	playerMinX    = 10.0
+	playerMaxX    = engine.ScreenWidth - playerDstW - 10.0
+	playerMinY    = 265.0
+	playerMaxY    = 395.0
+	walkFrameTime = 0.08
+	// 2026-07-15 (user): the front/back walk sheets read too fast at the side
+	// cadence — tick them slower.
+	walkFrameTimeFrontBack = 0.10
+	talkFrameTime          = 0.07
+	actionFrameTime        = 0.10
 )
+
+// walkFrameSecs is the per-frame cadence for the ACTIVE walk sheet: front/back
+// walks cycle slower than the side walk (user 2026-07-15).
+func (p *player) walkFrameSecs() float64 {
+	if p.dir == dirUp || p.dir == dirDown {
+		return walkFrameTimeFrontBack
+	}
+	return walkFrameTime
+}
 
 type playerState int
 
@@ -84,21 +96,26 @@ type player struct {
 	idleBackFrames  []spriteFrame
 	talkFrames      []spriteFrame
 	talkSideFrames  []spriteFrame
+	talkBackFrames  []spriteFrame
 	grabFrames      []spriteFrame
 	useItemFrames   []spriteFrame
 	// seated mode (Japan tea ceremony): while `seated`, idle/talk render the
 	// kneeling poses instead of the standing ones. Set after the spin-and-sit
 	// entry one-shot, cleared when PP stands again.
-	seatedIdle []spriteFrame
-	seatedTalk []spriteFrame
-	seated     bool
-	examineFrames   []spriteFrame
-	reactFrames     []spriteFrame
-	showInvFrames   []spriteFrame
+	seatedIdle    []spriteFrame
+	seatedTalk    []spriteFrame
+	seated        bool
+	examineFrames []spriteFrame
+	reactFrames   []spriteFrame
+	showInvFrames []spriteFrame
 
-	x, y           float64
-	targetX        float64
-	targetY        float64
+	x, y    float64
+	targetX float64
+	targetY float64
+	// lWalkApproach (2026-07-15 user #13, paris_bakery): NPC talk approaches
+	// walk the horizontal leg along the aisle FIRST, then the vertical leg at
+	// the target x — instead of an oblique beeline across the tables.
+	lWalkApproach  bool
 	moving         bool
 	allowOffscreen bool
 	facingLeft     bool
@@ -320,8 +337,9 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		walkSideCols = 8
 	}
 	p.walkSideFrames = gridFrames(renderer, "assets/images/player/PP walk left.png", walkSideCols, 1)
-	p.walkDownFrames = gridFramesRow(renderer, "assets/images/player/PP walk front.png", 8, 2, 0)
-	p.walkUpFrames = gridFrames(renderer, "assets/images/player/PP walk back.png", 8, 2)
+	// 2026-07-15: front/back walks are now 12-frame 6x2 cycles, played row-major.
+	p.walkDownFrames = gridFrames(renderer, "assets/images/player/PP walk front.png", 6, 2)
+	p.walkUpFrames = gridFrames(renderer, "assets/images/player/PP walk back.png", 6, 2)
 
 	// Idle images - use all frames for animated idle
 	p.idleFrontFrames = gridFrames(renderer, "assets/images/player/PP idle front.png", 8, 2)
@@ -330,6 +348,15 @@ func newPlayer(renderer *sdl.Renderer) *player {
 
 	p.talkFrames = gridFrames(renderer, "assets/images/player/PP talk front.png", 8, 2)
 	p.talkSideFrames = gridFrames(renderer, "assets/images/player/PP talk side.png", 8, 2)
+	// Back-facing talk sheet (PP seen from behind, talking up toward a
+	// counter-height NPC like Madame Poulain). Optional - guarded with
+	// firstExisting so a missing file isn't re-opened every startup; until the
+	// art lands, currentTalkFrames falls back to the back IDLE so PP still
+	// shows his back (not his face) during a ppFaceBack dialog. See
+	// EXTRA_PROMPTS §PP-TALK-BACK.
+	if path := firstExisting("assets/images/player/PP talk back.png", "assets/images/player/PP_talk_back.png"); path != "" {
+		p.talkBackFrames = gridFrames(renderer, path, 8, 2)
+	}
 
 	// Seated poses for the Japan tea ceremony (kneeling idle + talk). Optional -
 	// guarded so a missing sheet isn't re-opened every startup; while seated with
@@ -345,20 +372,6 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			*ns.dst = gridFrames(renderer, path, 8, 1)
 		}
 	}
-	// The spin→sit TRANSFORM: PP standing → fast spin into the tea clothes →
-	// drops into a kneel (ends seated). Its own one-shot ("tea_sit"); accepts
-	// whichever filename the art lands under. No-op (no visible transform) until
-	// it lands - that's why nothing currently plays.
-	if path := firstExisting(
-		"assets/images/player/PP_spin_to_sit.png",
-		"assets/images/player/PP_tea_ceremony.png",
-		"assets/images/player/PP_sit_down.png",
-	); path != "" {
-		if f := gridFramesConnected(renderer, path, 8, 1); len(f) > 0 {
-			p.oneShotAnims["tea_sit"] = f
-		}
-	}
-
 	// User 2026-05-12: swapped from "PP grab flower.png" (square 128×128
 	// cells) to the canonical "PP grab.png" (portrait 172×384 cells). The
 	// square cells made the grab anim render shorter than idle inside the
@@ -381,6 +394,17 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// flower floor item at the lake is picked up (and re-used when handing
 	// it over to Lily).
 	p.oneShotAnims = map[string][]spriteFrame{}
+	// The spin→sit TRANSFORM: PP standing → fast spin into the tea clothes →
+	// drops into a kneel (ends seated). No-op until the art lands.
+	if path := firstExisting(
+		"assets/images/player/PP_spin_to_sit.png",
+		"assets/images/player/PP_tea_ceremony.png",
+		"assets/images/player/PP_sit_down.png",
+	); path != "" {
+		if f := gridFramesConnected(renderer, path, 8, 1); len(f) > 0 {
+			p.oneShotAnims["tea_sit"] = f
+		}
+	}
 	// User 2026-05-31 (#15): receive-map sheet is 4×2, not 8×2 - cutting 8×2
 	// split every pose down the middle so PP "blinked" the whole catch.
 	receiveMap := gridFrames(renderer, "assets/images/player/PP receive map.png", 4, 2)
@@ -388,12 +412,10 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		p.oneShotAnims["receive_map"] = receiveMap
 	}
 	// Dedicated six-frame flower pickup strip: neutral, crouch, reach, grab,
-	// stand holding low, stand holding chest-high. Connected key (PR#2): the
-	// daisy's petals are white - the global key punched holes in them.
-	// 2026-06-15 (#1): tol 36 (was the default 8) lifts the soft white halo the
-	// user saw "around him" in-game; interior whites (belly, daisy petals) stay
-	// because the edge flood can't cross PP's dark outline.
-	grabFlower := gridFramesConnectedTol(renderer, "assets/images/player/PP grab flower.png", 6, 1, 36)
+	// stand holding low, stand holding chest-high. The sheet now uses off-white
+	// petals/body details, so the normal global key can remove both the outer
+	// background and the white gap between PP's hand and body.
+	grabFlower := gridFrames(renderer, "assets/images/player/PP grab flower.png", 6, 1)
 	if len(grabFlower) > 0 {
 		p.oneShotAnims["grab_flower"] = grabFlower
 	}
@@ -413,15 +435,34 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if f := gridFramesConnected(renderer, "assets/images/player/PP get jam.png", 8, 1); len(f) > 0 {
 		p.oneShotAnims["get_jam"] = f
 	}
-	// §PR1: generic receive for small flat hand-overs (postcard, sketch,
-	// coffee cup, mini portrait) when no item-specific sheet exists. The
-	// dedicated "PP receive.png" was never generated, so don't re-attempt that
-	// missing-file load on every startup (it warned, and a missing-file open is
-	// slow under on-access AV scanning) - use the grab frames directly so PP
-	// still visibly takes the item.
-	if len(p.grabFrames) > 0 {
-		p.oneShotAnims["receive_item"] = p.grabFrames
+	// #7/#9/#15/#16 (user 2026-06-30): do NOT register a generic "receive_item"
+	// fallback. It used the crouch-and-lift grab frames, which (a) read as the
+	// wrong "get item" pose and (b) normalised TINY. With no generic fallback a
+	// receive with no item-specific sheet simply no-ops (PP stays idle, the item
+	// still lands in the bag). Missing per-item receive sheets are queued as
+	// prompts in docs/EXTRA_PROMPTS.md rather than faked with the grab.
+	// §CAM-RECEIVE: PP takes the Camille sketch and slides it into his pocket.
+	// The dropped art is named pp_get_skatch.png; accept that and the canonical
+	// name. Falls back to grabFrames (generic reach) if neither is present.
+	if rp := firstExisting("assets/images/player/PP receive sketch.png", "assets/images/player/pp_get_skatch.png"); rp != "" {
+		if f := gridFramesConnected(renderer, rp, 8, 1); len(f) > 0 {
+			p.oneShotAnims["receive_sketch"] = f
+		}
 	}
+	// §PP-RECEIVE-PRESSPASS (art landed 2026-06-30, pp_get_press_pass.png): PP
+	// takes a flat card and pockets it. Both the Press Pass (from Pierre) and the
+	// Postcard (from Beaumont) resolve to the "postcard" anim key (see
+	// giveAnimKeyForItem), so registering this under "receive_postcard" upgrades
+	// BOTH flat-card receives from the previous idle no-op. (The postcard/press
+	// pass GIVE still uses "give_postcard".)
+	if rp := firstExisting("assets/images/player/pp_get_card.png",
+		"assets/images/player/pp_get_card.png"); rp != "" {
+		if f := gridFramesConnected(renderer, rp, 8, 1); len(f) > 0 {
+			p.oneShotAnims["receive_postcard"] = f
+		}
+	}
+	// No grab fallback for receive_sketch (#9): if the dedicated sheet is absent
+	// PP just takes it in idle rather than the tiny crouch-grab.
 	// Generic "grab" one-shot (the crouch-and-lift cycle). Floor-item pickups
 	// must run through a ONE-SHOT, never playAction(stateGrabbing): player.update
 	// force-resets any non-talking state to idle every frame while !moving, so a
@@ -447,7 +488,12 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		"sketch":        "assets/images/player/PP give sketch.png",
 		"postcard":      "assets/images/player/PP give postcard.png",
 	} {
-		if f := gridFramesConnected(renderer, path, 8, 1); len(f) > 0 {
+		// #5: tol 24 (was 8) — the give poses touch with a faint near-white
+		// bridge that survived the low-tol key, so the gap-detector mis-cut them
+		// (the office-Higgins bug). tol 24 breaks the bridge for a clean 1×8 cut;
+		// PP's pink/black and the enclosed held item are far from white and
+		// survive.
+		if f := gridFramesConnectedTol(renderer, path, 8, 1, 24); len(f) > 0 {
 			p.oneShotAnims["give_"+key] = f
 		}
 	}
@@ -464,14 +510,10 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if f := gridFramesConnected(renderer, "assets/images/player/PP jump back.png", 8, 1); len(f) > 0 {
 		p.oneShotAnims["jump_back"] = f
 	}
-	// Generic fallback give for any item without its own §PG1 sheet. The
-	// dedicated "PP give.png" was never generated, so skip the missing-file
-	// load (it warned every startup and a missing-file open is slow under
-	// on-access AV) and use the grab frames as the fallback so the give beat
-	// is never silent.
-	if len(p.grabFrames) > 0 {
-		p.oneShotAnims["give_item"] = p.grabFrames
-	}
+	// #7/#16 (user 2026-06-30): no generic "give_item" fallback either — it used
+	// the tiny grab frames and read as "get item". A give with no per-item sheet
+	// no-ops (PP idle); the item still changes hands. Add the per-item give sheet
+	// (above) or queue a prompt instead of faking it with the grab.
 	// Jerusalem (#26): PP writes a note and tucks it in the Wall. Art is
 	// pending (§JW1/§JW2) - guard the load with os.Stat so a missing file isn't
 	// re-opened every startup (slow under on-access AV), and fall back to the
@@ -481,7 +523,9 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		{"put_note", "assets/images/player/PP put note in wall.png"},
 	} {
 		if _, err := os.Stat(ns.path); err == nil {
-			if f := gridFramesConnected(renderer, ns.path, 6, 1); len(f) > 0 {
+			// #5: tol 24 to break touching-pose bridges (put-note fell back to
+			// no clean 6×1 split at the low tol).
+			if f := gridFramesConnectedTol(renderer, ns.path, 6, 1, 24); len(f) > 0 {
 				p.oneShotAnims[ns.key] = f
 				continue
 			}
@@ -502,6 +546,14 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		// Japan: the dresser-geisha gag - PP spins, ends up in a kimono, spins
 		// again, back to normal. One continuous one-shot (no persistent state).
 		{"kimono_spin", "assets/images/player/PP_kimono_spin.png"},
+		// §PP-RUN-JAPAN: four sheets for the kimono gag.
+		// 1) normal sprint off-right, 2) kimono sprint in from right (facing left),
+		// 3) stop centre-stage and show off the kimono (pose beat), 4) kimono
+		// sprint off-right again. Falls back gracefully until art lands.
+		{"run_right", "assets/images/player/PP_run_right.png"},
+		{"run_kimono_left", "assets/images/player/PP_run_kimono_left.png"},
+		{"kimono_pose", "assets/images/player/PP_kimono_pose.png"},
+		{"run_kimono_right", "assets/images/player/PP_run_kimono_right.png"},
 	} {
 		if _, err := os.Stat(ns.path); err == nil {
 			if f := gridFramesConnected(renderer, ns.path, 8, 1); len(f) > 0 {
@@ -538,14 +590,18 @@ func giveAnimKeyForItem(name string) string {
 		return "sketch"
 	case "Postcard", "Signed Postcard":
 		return "postcard"
-	case "Press Pass":
-		// 2026-06-15 #13: had no mapping → fell through to the generic "item"
-		// key, which (no "PP give.png") degraded to the grab frames, so handing
-		// Claude the pass played a "pick" pose. The press pass is a flat card -
-		// reuse the postcard give sheet (also a flat paper hand-over).
-		return "postcard"
+	case "Card":
+		return "card"
 	}
 	return "item"
+}
+
+func receiveAnimKeyForItem(name string) string {
+	switch name {
+	case "Card":
+		return "card"
+	}
+	return giveAnimKeyForItem(name)
 }
 
 // playHandOff runs the physical hand-over beat for an alt dialog (user
@@ -569,7 +625,7 @@ func (p *player) playHandOff(target *npc, ho *handOff, then func()) {
 			then()
 			return
 		}
-		rkey := giveAnimKeyForItem(ho.returnItem)
+		rkey := receiveAnimKeyForItem(ho.returnItem)
 		// The NPC gives the return item: prefer an explicit give one-shot, then
 		// give_<key>, then the NPC's generic "give" reach.
 		nanim := ho.npcGiveAnim
@@ -603,6 +659,13 @@ func (p *player) playHandOff(target *npc, ho *handOff, then func()) {
 	}
 	key := giveAnimKeyForItem(ho.item)
 	p.playGiveFacing(key, ho.back, giveDur, func() {
+		// #10: some trades don't want the NPC's take-reach (it falls back to the
+		// NPC's "give" sheet and double-plays the hand-back). Skip straight to the
+		// return/give stage.
+		if ho.skipNPCTake {
+			stageReturn()
+			return
+		}
 		anim := ho.npcAnim
 		if anim == "" {
 			anim = "receive_" + key
@@ -747,6 +810,17 @@ func (p *player) currentTalkFrames() []spriteFrame {
 	switch p.dir {
 	case dirLeft, dirRight:
 		return p.talkSideFrames
+	case dirUp:
+		// Talking with his back to the camera (ppFaceBack NPCs). Use the
+		// dedicated back-talk sheet once it lands; until then fall back to the
+		// back IDLE so PP keeps facing away rather than snapping to front talk.
+		if len(p.talkBackFrames) > 0 {
+			return p.talkBackFrames
+		}
+		if len(p.idleBackFrames) > 0 {
+			return p.idleBackFrames
+		}
+		return p.talkFrames
 	default:
 		return p.talkFrames
 	}
@@ -936,10 +1010,45 @@ func (p *player) walkToTalkPos(target *npc, onArrive func()) {
 		}
 		return
 	}
+	// user #13: L-shaped approach in aisle scenes.
+	if p.startLWalk(tx, ty, dx, dy, func() { p.onArrival = onArrive }) {
+		return
+	}
 	p.moving = true
 	p.allowOffscreen = false
 	p.state = stateWalking
 	p.onArrival = onArrive
+}
+
+// startLWalk (2026-07-15 user #13, paris_bakery): when approaching a talk
+// mark on a different row, walk the two legs of an L instead of an oblique
+// beeline across the tables — moving UP: horizontal leg along the current
+// (aisle) row first, then straight up at the target x; moving DOWN: straight
+// down into the aisle first, then horizontal. `arm` re-arms the caller's
+// arrival behavior (onArrival / interactTarget) for the second leg. Returns
+// false when the scene doesn't use L-walks or the move is single-axis.
+func (p *player) startLWalk(tx, ty, dx, dy float64, arm func()) bool {
+	if !p.lWalkApproach || dy*dy <= 40*40 || dx*dx <= 40*40 {
+		return false
+	}
+	if dy < 0 {
+		p.targetX = tx
+		p.targetY = p.y
+	} else {
+		p.targetX = p.x
+		p.targetY = ty
+	}
+	p.onArrival = func() {
+		p.targetX = tx
+		p.targetY = ty
+		p.moving = true
+		p.state = stateWalking
+		arm()
+	}
+	p.moving = true
+	p.allowOffscreen = false
+	p.state = stateWalking
+	return true
 }
 
 func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
@@ -969,6 +1078,18 @@ func (p *player) walkToAndInteract(target *npc, ds *dialogSystem) {
 		p.state = stateIdle
 		p.startNPCDialog()
 		return
+	}
+	// user #13: L-shaped approach in aisle scenes — interactTarget must only
+	// arm on the SECOND leg, or the dialog would fire at the corner point.
+	if p.lWalkApproach {
+		p.interactTarget = nil
+		if p.startLWalk(tx, ty, dx, dy, func() {
+			p.interactTarget = target
+			p.dialogSys = ds
+		}) {
+			return
+		}
+		p.interactTarget = target
 	}
 	p.moving = true
 	p.allowOffscreen = false
@@ -1207,8 +1328,8 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 		p.recedeScale = 1.0 - (1.0-p.recedeEndScale)*t
 
 		p.walkTimer += dt
-		if p.walkTimer >= walkFrameTime {
-			p.walkTimer -= walkFrameTime
+		if p.walkTimer >= walkFrameTimeFrontBack {
+			p.walkTimer -= walkFrameTimeFrontBack
 			frames := p.currentWalkFrames()
 			if len(frames) > 0 {
 				p.walkCycleIdx = (p.walkCycleIdx + 1) % len(frames)
@@ -1281,8 +1402,8 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 
 	if p.moving {
 		p.walkTimer += dt
-		if p.walkTimer >= walkFrameTime {
-			p.walkTimer -= walkFrameTime
+		if ft := p.walkFrameSecs(); p.walkTimer >= ft {
+			p.walkTimer -= ft
 			frames := p.currentWalkFrames()
 			if len(frames) > 0 {
 				p.walkCycleIdx = (p.walkCycleIdx + 1) % len(frames)
@@ -1491,6 +1612,11 @@ func (p *player) startNPCDialog() {
 	npcCenter := float64(n.bounds.X + n.bounds.W/2)
 	playerCenter := p.x + playerDstW/2
 	p.facingLeft = playerCenter > npcCenter
+	// 2026-07-15 (user #9): per-NPC override — invert PP's side facing for
+	// this dialog (Madame Margaux read as talking the wrong way).
+	if n.ppTalkFlip {
+		p.facingLeft = !p.facingLeft
+	}
 	if p.facingLeft {
 		p.dir = dirLeft
 	} else {
@@ -1502,6 +1628,13 @@ func (p *player) startNPCDialog() {
 	// see his face instead.
 	if n.ppFacePlayer {
 		p.dir = dirDown
+		p.facingLeft = false
+	}
+	// 2026-06-30: ppFaceBack is the opposite of ppFacePlayer - PP stands below
+	// the NPC and talks UP toward a back-of-scene counter (Madame Poulain), so
+	// we want his BACK to the camera, not his face. Takes precedence.
+	if n.ppFaceBack {
+		p.dir = dirUp
 		p.facingLeft = false
 	}
 
@@ -1561,12 +1694,29 @@ func (p *player) startNPCDialog() {
 				}
 				ds.startDialogWithCallback(entries, wrapCb(cb))
 			}
-			if ho != nil {
+			switch {
+			case ho != nil && ho.dialogFirst:
+				// #18/#19: "PP asks → NPC gives" — play the dialog first, then the
+				// hand-off (and the inventory callback) after the text. The give
+				// runs inside the dialog's end callback so PP doesn't receive the
+				// item before he's even asked.
+				p.state = stateTalking
+				if len(n.talkGrid) > 0 {
+					n.setAnimState(npcAnimTalk)
+				}
+				ds.startDialogWithCallback(entries, wrapCb(func() {
+					p.playHandOff(n, ho, func() {
+						if cb != nil {
+							cb()
+						}
+					})
+				}))
+			case ho != nil:
 				if len(n.talkGrid) > 0 {
 					n.setAnimState(npcAnimIdle)
 				}
 				p.playHandOff(n, ho, start)
-			} else {
+			default:
 				start()
 			}
 			p.interactTarget = nil
@@ -1738,6 +1888,13 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 			flip = sdl.FLIP_HORIZONTAL
 		}
 	} else if p.dir == dirLeft {
+		// 2026-07-15 (user: "flip him by default"): the CURRENT regenerated
+		// idle/talk SIDE sheets (PP idle side.png / PP talk side.png) are
+		// drawn FACING RIGHT — verified visually (muzzle, whiskers and the
+		// pointing paw all aim right). So mirror when PP faces LEFT and show
+		// as-is when he faces right. (This inverts the 2026-06-30 rule, which
+		// was written for the older left-facing art and made PP turn his back
+		// on every NPC he talked to — Higgins included.)
 		flip = sdl.FLIP_HORIZONTAL
 	}
 
@@ -1783,11 +1940,14 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	if p.activeOneShot == "grab_flower" {
 		dstY -= 38
 	}
-	// PR#16: drop the rolling-pin grab pose so PP's reach lands in the bike
-	// basket instead of above it. 2026-06-15 #9: user wants PP dropped further
-	// down on this pickup (30→60).
+	// PR#16: nudge the rolling-pin grab pose down so PP's reach meets the bike
+	// basket. 2026-06-30 (#2): the old +60 (tuned for the lower spawn band)
+	// shoved PP's legs under the bottom of the screen. 2026-07-15 (user #10):
+	// +12 read as "picking from the air" over the basket (PP stands taller
+	// than the bike) — dropped to +45 so the crouch reach lands IN the basket
+	// (top y≈614) while the feet stay on-screen. F3-tune.
 	if p.activeOneShot == "grab_rolling_pin" {
-		dstY += 60
+		dstY += 45
 	}
 
 	switch p.state {

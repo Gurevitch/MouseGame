@@ -1,11 +1,11 @@
 {
   "name": "camp_entrance",
   "background": "assets/images/locations/camp/background/day1/camp_entrance.png",
-  "_comment": "User 2026-05-31 (#1): PP was standing on air. Walkable foot band ~x8..x1354 at foot y≈672-791 (walk line ~728). minY/maxY clamp PP's top-left so his foot (top+270) stays in that band: minY=672-270=402, maxY=791-270=521. spawnY=458 → foot ~728.",
+  "_comment": "2026-06-29 (item 5): spawnY is PP's TOP-LEFT, foot = topLeft+270. A floor CLICK lands foot = clickY+135 (setTarget subtracts 135 then the draw adds 270). NOTE the old _comment_walk 'footWalk=true' was wrong — there is no footWalk field, so the walkSegments are click-points, not foot-lines; that mismatch is why PP kept landing too low. Tuned to the BG: the dirt clearing in front of the fence sits at foot y≈665-760. spawn 435 → foot 705 (standing in the clearing); band 392-485 → foot 662-755.",
   "spawnX": 660,
-  "spawnY": 458,
-  "minY": 402,
-  "maxY": 521,
+  "spawnY": 435,
+  "minY": 392,
+  "maxY": 485,
   "musicPath": "assets/audio/music/camp.mp3",
   "npcs": ["director_higgins"],
   "hotspots": [
@@ -18,9 +18,9 @@
   "blockers": [
     {"x": 0, "y": 0, "w": 120, "h": 800}
   ],
-  "_comment_walk": "FOOT lines (footWalk=true): these are where PP's FEET walk, so the F3 yellow line and the green foot crosshair now coincide and a click lands his feet on the line. Line 1 = the clearing in front of the fence (foot y=735). Line 2 = the dirt path running UP to the gate opening, ending at the threshold the user pointed at: (778,546). Click up the path and PP's feet climb to the gate. Entrance Higgins moved off this line (npc.go: X 760 -> 820) so he greets beside the gate, not on the path.",
+  "_comment_walk": "Click-point lines (foot = clickY+135). Line 1 = the clearing in front of the fence: clickY 580 -> foot ~715. Line 2 = the dirt path running UP toward the gate, top end clickY 546 -> foot ~681 (PP recedes up the path). Both are clamped into the minY/maxY band so PP's feet stay in the clearing.",
   "walkSegments": [
-    {"x1": 150, "y1": 735, "x2": 1350, "y2": 735},
-    {"x1": 750, "y1": 735, "x2": 778, "y2": 546}
+    {"x1": 150, "y1": 580, "x2": 1350, "y2": 580},
+    {"x1": 790, "y1": 580, "x2": 778, "y2": 546}
   ]
 }

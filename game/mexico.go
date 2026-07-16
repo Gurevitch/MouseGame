@@ -23,9 +23,9 @@ const (
 	mxArtMariachi       = "assets/images/locations/mexico/npc/npc_mariachi_idle.png"
 	mxArtMariachiBack   = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
 	mxArtAbuelaIdle     = "assets/images/locations/mexico/npc/npc_abuela_idle.png"
-	mxArtAbuelaIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
+	mxArtAbuelaIdleBack = "assets/images/locations/paris/npc/outside/npc_madame_colette_idle.png"
 	mxArtAbuelaTalk     = "assets/images/locations/mexico/npc/npc_abuela_talk.png"
-	mxArtAbuelaTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
+	mxArtAbuelaTalkBack = "assets/images/locations/paris/npc/outside/npc_madame_colette_talk.png"
 	mxArtVendor         = "assets/images/locations/mexico/npc/npc_vendor_idle.png"
 	mxArtVendorBack     = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 )

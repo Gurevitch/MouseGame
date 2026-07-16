@@ -25,9 +25,9 @@ const (
 	romeBgColosseum = "assets/images/locations/rome/background/rome_colosseum.png"
 
 	romeArtNonnaIdle     = "assets/images/locations/rome/npc/npc_nonna_idle.png"
-	romeArtNonnaIdleBack = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
+	romeArtNonnaIdleBack = "assets/images/locations/paris/npc/outside/npc_madame_colette_idle.png"
 	romeArtNonnaTalk     = "assets/images/locations/rome/npc/npc_nonna_talk.png"
-	romeArtNonnaTalkBack = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
+	romeArtNonnaTalkBack = "assets/images/locations/paris/npc/outside/npc_madame_colette_talk.png"
 
 	romeArtLucaIdle     = "assets/images/locations/rome/npc/npc_luca_idle.png"
 	romeArtLucaIdleBack = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"

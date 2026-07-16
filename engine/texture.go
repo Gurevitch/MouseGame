@@ -1142,6 +1142,38 @@ func SpriteGridFromPNGCleanConnectedTol(renderer *sdl.Renderer, filename string,
 	return grid
 }
 
+// SpriteGridFromPNGCleanConnectedTolEqual is like SpriteGridFromPNGCleanConnectedTol
+// but FORCES an even (cols×rows) grid, never the content-gap split. Use it for
+// sheets whose poses TOUCH (no ≥15px gaps), where contentGridRects mis-cuts —
+// merging two touching poses into one double-wide cell and inventing a sliver
+// cell from a stray gap (office Higgins's talk sheet did exactly this, which
+// made the talk loop "blink": a near-empty sliver frame + a squished double).
+// The poses still sit on the even grid, so equal cells separate them cleanly.
+func SpriteGridFromPNGCleanConnectedTolEqual(renderer *sdl.Renderer, filename string, cols, rows, inset int, tol uint8) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
+	}
+	applyColorKeyConnectedTol(img, tol)
+	eraseGridLines(img, cols, rows)
+
+	bounds := img.Bounds()
+	grid := make([][]GridFrame, rows)
+	for r := 0; r < rows; r++ {
+		grid[r] = make([]GridFrame, cols)
+		for c := 0; c < cols; c++ {
+			cellRect := gridCellRect(bounds, cols, rows, c, r, inset)
+			tex, w, h := nrgbaToTexture(renderer, img, cellRect)
+			ox, oy, ow, oh := opaqueLocal(img, cellRect)
+			fcx := footCenterLocal(img, cellRect, ox, oy, ow, oh)
+			fry := footRowLocal(img, cellRect, ox, oy, ow, oh)
+			grid[r][c] = GridFrame{Tex: tex, W: w, H: h, OX: ox, OY: oy, OW: ow, OH: oh, FCX: fcx, FRY: fry}
+		}
+	}
+	return grid
+}
+
 // SpriteGridFromPNGCleanKids sits between the default (tol=8) and the
 // aggressive (tol=32) variants. Tol=16 is wide enough to clear the
 // soft-gradient backgrounds that kid sheets were authored with (cream,

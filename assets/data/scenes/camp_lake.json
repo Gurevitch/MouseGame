@@ -17,9 +17,9 @@
     }
   ],
   "blockers": [],
-  "_comment_walk": "2026-06-24 #4: first segment (375,466→613,433) reads correct; raised the FAR end of the second segment a little higher (393→374) so the dots keep tracking the planks as the dock recedes. CENTER lines (foot = y+135). F3-verify against the boat end.",
+  "_comment_walk": "2026-06-29 v3: raised the dock line further per user F3 read — right end set EXACTLY to (687,341) so PP stops well back on the planks (not out at the boat) and higher up the receding dock. Shore raised to match. foot = clickY+135 (so the far end's foot ~476).",
   "walkSegments": [
-    {"x1": 375, "y1": 466, "x2": 613, "y2": 433},
-    {"x1": 613, "y1": 433, "x2": 844, "y2": 374}
+    {"x1": 375, "y1": 395, "x2": 540, "y2": 368},
+    {"x1": 540, "y1": 368, "x2": 687, "y2": 341}
   ]
 }

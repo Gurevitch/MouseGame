@@ -85,9 +85,9 @@
       "description": "A crusty Parisian baguette, still warm. Smells incredible."
     },
     {
-      "id": "press_pass",
-      "name": "Press Pass",
-      "texture": "assets/images/items/press_pass.png",
+      "id": "card",
+      "name": "Card",
+      "texture": "assets/images/items/card.png",
       "description": "A photographer's press pass. Should grant museum access."
     },
     {

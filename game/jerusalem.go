@@ -91,8 +91,8 @@ const (
 	// Placeholder fallbacks (existing Paris/camp sheets).
 	jerFbkGuard6x2     = "assets/images/locations/paris/npc/outside/npc_security_guard.png"
 	jerFbkVendor8x2    = "assets/images/locations/paris/npc/outside/npc_art_vendor.png"
-	jerFbkGuideIdle8x2 = "assets/images/locations/paris/npc/outside/npc_french_guide_idle.png"
-	jerFbkGuideTalk8x1 = "assets/images/locations/paris/npc/outside/npc_french_guide_talk.png"
+	jerFbkGuideIdle8x2 = "assets/images/locations/paris/npc/outside/npc_madame_colette_idle.png"
+	jerFbkGuideTalk8x1 = "assets/images/locations/paris/npc/outside/npc_madame_colette_talk.png"
 	jerFbkKid8x2       = "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png"
 	// A DIFFERENT placeholder for the coffee seller so he doesn't look identical
 	// to the spice seller (both used the art-vendor sheet) until his art lands.
@@ -151,7 +151,7 @@ var (
 
 var shimonIntroDialog = []dialogEntry{
 	{speaker: "Shimon", text: "Shalom, friend. First time at the Kotel - the Western Wall?"},
-	{speaker: "Pink Panther", text: "I'm chasing a boy's nightmare. A face in old stones. Tunnels."},
+	{speaker: "Pink Panther", text: "I'm chasing a boy's nightmare. A face staring out of the old stones."},
 	{speaker: "Shimon", text: "Then you've come to the right place. The Wall is just to my right - take the path up."},
 	{speaker: "Shimon", text: "But mind your manners. You don't take from the Wall without leaving something behind."},
 	{speaker: "Shimon", text: "The market's through the arch to the left, if you need... fortification. The souk coffee is famous."},
@@ -162,9 +162,9 @@ var shimonWaitDialog = []dialogEntry{
 }
 
 var shimonPenDialog = []dialogEntry{
-	{speaker: "Shimon", text: "A note for the Wall? Here - take my pen. Everyone deserves a pen for a wish."},
+	{speaker: "Shimon", text: "A note for the Wall? Then you will need this - my pen. Write what is in your heart."},
 	{speaker: "Pink Panther", text: "Thank you, Shimon."},
-	{speaker: "Shimon", text: "Write it true. Then tuck it deep in the stones."},
+	{speaker: "Shimon", text: "No thanks needed. Tuck it deep in the stones - the Wall keeps everything."},
 }
 
 var shimonCoinDialog = []dialogEntry{
@@ -198,7 +198,7 @@ var coffeeTradeDialog = []dialogEntry{
 	{speaker: "Pink Panther", text: "Any chance I could take it to go? One coffee, to travel?"},
 	{speaker: "Coffee Seller", text: "A panther in a hurry! Of course, of course. A paper cup, then - but you must still hear one thing while I pour."},
 	{speaker: "Coffee Seller", text: "You feel that quiet? Three thousand years of people sitting exactly here. Romans, pilgrims, traders."},
-	{speaker: "Coffee Seller", text: "The boy in your story - the face he draws is on an old coin from the tunnels. The Wall keeps such things."},
+	{speaker: "Coffee Seller", text: "The boy in your story - the face he draws is on an old coin from the Wall's own stones. The Wall keeps such things."},
 	{speaker: "Pink Panther", text: "So the nightmare is really a memory."},
 	{speaker: "Coffee Seller", text: "Just so. Here - your cup for the road. And a tip: the ka'ak seller in the plaza trades bread for good coffee."},
 }
@@ -222,33 +222,33 @@ var bagelPostDialog = []dialogEntry{
 }
 
 var prayingIntroDialog = []dialogEntry{
-	{speaker: "Praying Man", text: "(he turns from the stones)  ...Shalom. You stand at the oldest mailbox in the world, you know."},
+	{speaker: "Avi", text: "Shalom, friend. You stand at the oldest mailbox in the world, you know."},
 	{speaker: "Pink Panther", text: "Mailbox?"},
-	{speaker: "Praying Man", text: "People write what's in their hearts and tuck it in the cracks. Wishes. Fears. The Wall holds them all."},
-	{speaker: "Praying Man", text: "If you carry someone's fear, leave it here. But first - has the bread man been by? I am faint with hunger."},
+	{speaker: "Avi", text: "People write what's in their hearts and tuck it in the cracks. Wishes. Fears. The Wall holds them all."},
+	{speaker: "Avi", text: "If you carry someone's fear, leave it here. But first - has the bread man been by? I am faint with hunger."},
 }
 
 var prayingBagelDialog = []dialogEntry{
-	{speaker: "Praying Man", text: "Ah, a warm ka'ak! Bless you, bless you. Now sit a moment."},
-	{speaker: "Praying Man", text: "Here is a slip of paper. Write the boy's fear on it - name it - and place it in the Wall."},
-	{speaker: "Praying Man", text: "Naming a fear is the first courage. The rest follows."},
+	{speaker: "Avi", text: "Ah, a warm ka'ak! Bless you, bless you. Now sit a moment."},
+	{speaker: "Avi", text: "Here is a slip of paper. Write the boy's fear on it - name it - and place it in the Wall."},
+	{speaker: "Avi", text: "Naming a fear is the first courage. The rest follows."},
 	{speaker: "Pink Panther", text: "I'll need something to write with."},
-	{speaker: "Praying Man", text: "Shimon by the gate always has a pen. Ask him."},
+	{speaker: "Avi", text: "Shimon by the gate always has a pen. Ask him."},
 }
 
 var prayingPostDialog = []dialogEntry{
-	{speaker: "Praying Man", text: "Write the boy's fear, then leave it in the stones. Shimon has a pen."},
+	{speaker: "Avi", text: "Write the boy's fear, then leave it in the stones. Shimon has a pen."},
 }
 
 var kidPrepDialog = []dialogEntry{
-	{speaker: "Kid", text: "I'm practicing for my bar mitzvah. I have to read in front of EVERYONE next week."},
+	{speaker: "Noam", text: "I'm practicing for my bar mitzvah. I have to read in front of EVERYONE next week."},
 	{speaker: "Pink Panther", text: "Nervous?"},
-	{speaker: "Kid", text: "Terrified! But Saba says - you write the scary thing down, leave it in the Wall, and walk away lighter."},
-	{speaker: "Kid", text: "I left mine yesterday. I feel a little braver already. You should try it."},
+	{speaker: "Noam", text: "Terrified! But Saba says - you write the scary thing down, leave it in the Wall, and walk away lighter."},
+	{speaker: "Noam", text: "I left mine yesterday. I feel a little braver already. You should try it."},
 }
 
 var kidPostDialog = []dialogEntry{
-	{speaker: "Kid", text: "Write it down. Leave it in the Wall. Walk away lighter."},
+	{speaker: "Noam", text: "Write it down. Leave it in the Wall. Walk away lighter."},
 }
 
 var wallCrackBlockedDialog = []dialogEntry{
@@ -291,8 +291,10 @@ func newShimon(renderer *sdl.Renderer, x int32) *npc {
 func newSpiceSeller(renderer *sdl.Renderer, x int32) *npc {
 	n := &npc{
 		// SEPARATE idle/talk sheets, FULL BODY (#user 2026-06-21).
+		// §SPICE-SIDE (landed 2026-07-14): when talking he turns RIGHT toward
+		// the market centre (stall table baked into the sheet, same as idle).
 		idleGrid:       loadJerNPCSheet(renderer, jerArtSpiceIdle, 8, 1, jerFbkVendor8x2, 8, 2, 0),
-		talkGrid:       loadJerNPCSheet(renderer, jerArtSpiceTalk, 8, 1, jerFbkVendor8x2, 8, 2, 1),
+		talkGrid:       loadJerNPCSheet(renderer, firstExisting(jerNPCMarket+"npc_spice_seller_talk_side.png", jerArtSpiceTalk), 8, 1, jerFbkVendor8x2, 8, 2, 1),
 		// 2026-06-24 (#26): feet on the market floor (~598) at x≈319, not floating
 		// mid-scene. Y = 598 - H. (Leg "jitter" between idle/talk is a sheet
 		// baseline issue queued for sprite-check.)
@@ -301,17 +303,29 @@ func newSpiceSeller(renderer *sdl.Renderer, x int32) *npc {
 		dialog:         spiceIntroDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.18,
+		// D5: spice seller is on the left wall — keep him facing right (toward
+		// the market centre) rather than flipping to face PP every time.
+		fixedFacing: true,
+		flipped:     false,
 	}
 	registerJerGive(renderer, n, jerArtSpiceGive)
+	// #15: pin talk + the give one-shot to the idle's scale so the spice seller
+	// doesn't shrink when he talks or hands over the cardamom.
+	n.anchorRefH = maxOpaqueH(n.idleGrid)
+	n.anchorRefHOneShots = true
+	// #14: 3D depth — the spice seller is at the FRONT of the souk, so render him
+	// a touch bigger than the farther coffee seller (kept modest, not huge).
+	n.extraScale = 1.08
 	return n
 }
 
 func newCoffeeSeller(renderer *sdl.Renderer, x int32) *npc {
+	// The talk sheet (npc_coffee_seller_talk.png) is half-body (bust only).
+	// Load the full-body idle for both until a full-body talk sheet replaces it.
+	idle := loadJerNPCSheet(renderer, jerArtCoffeeIdle, 8, 1, jerFbkPhotog8x2, 8, 2, 0)
 	n := &npc{
-		// SEPARATE idle/talk sheets, FULL BODY (#user 2026-06-21). Distinct
-		// placeholder from the spice seller (was identical art-vendor) until art lands.
-		idleGrid:       loadJerNPCSheet(renderer, jerArtCoffeeIdle, 8, 1, jerFbkPhotog8x2, 8, 2, 0),
-		talkGrid:       loadJerNPCSheet(renderer, jerArtCoffeeTalk, 8, 1, jerFbkPhotog8x2, 8, 2, 1),
+		idleGrid:       idle,
+		talkGrid:       idle,
 		bounds:         sdl.Rect{X: x, Y: 250, W: 140, H: 230},
 		name:           "Coffee Seller",
 		dialog:         coffeeNeedCardamomDialog,
@@ -319,7 +333,16 @@ func newCoffeeSeller(renderer *sdl.Renderer, x int32) *npc {
 		talkFrameSpeed: 0.18,
 		ppFacePlayer:   true,
 	}
-	registerJerGive(renderer, n, jerArtCoffeeGive)
+	// §COFFEE-GIVE (landed 2026-07-14): the dedicated pour-and-offer sheet;
+	// the older generic give stays as fallback.
+	registerJerGive(renderer, n, firstExisting(jerNPCMarket+"npc_coffee_seller_give_coffee.png", jerArtCoffeeGive))
+	// #15/#16: pin the give one-shot to the idle's scale so the coffee seller
+	// doesn't shrink when he pours/hands the coffee.
+	n.anchorRefH = maxOpaqueH(n.idleGrid)
+	n.anchorRefHOneShots = true
+	// #14: 3D depth — the coffee seller sits FARTHER back than the spice seller,
+	// so render him smaller for the perspective.
+	n.extraScale = 0.78
 	return n
 }
 
@@ -342,7 +365,7 @@ func newPrayingMan(renderer *sdl.Renderer, x int32) *npc {
 		idleGrid:       loadNPCGridPath(renderer, jerArtPrayIdle, jerFbkGuideIdle8x2, 8, 2),
 		talkGrid:       loadNPCGridPath(renderer, jerArtPrayTalk, jerFbkGuideTalk8x1, 8, 1),
 		bounds:         sdl.Rect{X: x, Y: 470, W: 130, H: 230},
-		name:           "Praying Man",
+		name:           "Avi",
 		dialog:         prayingIntroDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.2,
@@ -358,7 +381,7 @@ func newWallKid(renderer *sdl.Renderer, x int32) *npc {
 		idleGrid:       loadJerNPCSheet(renderer, jerArtKidIdle, 8, 1, jerFbkKid8x2, 8, 2, 0),
 		talkGrid:       loadJerNPCSheet(renderer, jerArtKidTalk, 8, 1, jerFbkKid8x2, 8, 2, 0),
 		bounds:         sdl.Rect{X: x, Y: 500, W: 100, H: 200},
-		name:           "Kid",
+		name:           "Noam",
 		dialog:         kidPrepDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.18,
@@ -398,44 +421,15 @@ func newAntiquesOldMan(renderer *sdl.Renderer, x int32) *npc {
 	}
 }
 
-// ---------- Scene builders ----------
+// ---------- Scene decorators ----------
+// Static scene data (background, spawn, walk-segments, hotspots, NPCs) now
+// lives in assets/data/scenes/jerusalem_*.json. These functions add the
+// procedural layer (particles, glows, ambient sprites) that JSON can't express.
 
-func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
-	// ===== Entrance plaza (hub - PP lands here) =====
-	// Shimon at the separation fence (centre-right), bagel seller on the left.
-	entrance := &scene{
-		name:   "jerusalem_entrance",
-		bg:     newPNGBackgroundOr(renderer, jerBgEntrance, jerPlazaBase),
-		npcs:   []*npc{newShimon(renderer, 760), newBagelSeller(renderer, 250)},
-		spawnX: 640,
-		// 2026-06-24 (#25): raised the default standing line ~45px (was 560) - PP
-		// was planted too low in the plaza. Walk line + minY/maxY moved with it.
-		spawnY: 515,
-		hotspots: []hotspot{
-			{
-				// LEFT through the arch to the souk.
-				bounds:      sdl.Rect{X: 20, Y: 330, W: 180, H: 260},
-				targetScene: "jerusalem_market",
-				name:        "To the Market",
-				arrow:       arrowLeft,
-			},
-			{
-				// To Shimon's RIGHT, UP the path to the Wall (#24).
-				bounds:      sdl.Rect{X: 980, Y: 120, W: 320, H: 300},
-				targetScene: "jerusalem_wall",
-				name:        "To the Wall",
-				arrow:       arrowUp,
-			},
-		},
-		minY: 425,
-		maxY: 600,
-		// Paris-style flat walk line across the plaza (#23). Raised to 515 (#25).
-		walkSegments: []walkSegment{
-			{x1: 150, y1: 515, x2: 1150, y2: 515},
-		},
-	}
+func decorateJerusalemEntrance(s *scene, renderer *sdl.Renderer) {
+	// Warm dusty-light haze rising off the stones.
 	for i := 0; i < 10; i++ {
-		entrance.particles = append(entrance.particles, particle{
+		s.particles = append(s.particles, particle{
 			x:     rand.Float64() * float64(engine.ScreenWidth),
 			y:     rand.Float64() * 500,
 			vx:    (rand.Float64() - 0.5) * 4,
@@ -444,82 +438,36 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 			size:  int32(rand.Intn(2) + 1),
 		})
 	}
-	entrance.glows = []glowEffect{
+	s.glows = []glowEffect{
 		{x: 0, y: 0, w: 1400, h: 280, r: 255, g: 240, b: 200, alpha: 10, pulse: 0.25},
 	}
-	// #22: a CROWD of worshippers at the wall in the mid-distance (multiplied).
+	// Distant worshippers at the wall in the mid-ground.
+	// #13 (2026-06-30): moved DOWN (470 -> 525) so the praying group sits lower
+	// against the wall in the BG, as asked.
 	for i := 0; i < 4; i++ {
-		entrance.ambientSprites = append(entrance.ambientSprites,
-			newAmbientWorshippers(renderer, float64(940+i*70), 470, 0.40+rand.Float64()*0.12))
+		s.ambientSprites = append(s.ambientSprites,
+			newAmbientWorshippers(renderer, float64(940+i*70), 525, 0.40+rand.Float64()*0.12))
 	}
-	// Separation-barrier fence across the plaza foreground. fence.png is ONE
-	// transparent barrier section, so: (a) load it RAW (newAmbientProp) - the
-	// old white-key load left a box ("placed without bg"); and (b) space the
-	// copies by ~the barrier's visible width so they sit end-to-end as a
-	// continuous fence instead of piling up (the old 85px spacing on a ~480px
-	// sprite stacked 8 of them). F3-tune x/y/scale to the plaza ground.
+	// Separation fence: three keyed sections end-to-end across the foreground.
+	// D4: connected-key (tol=40) strips the baked limestone bg without eating
+	// the fence geometry.
+	// #12 (2026-06-30): smaller (0.42 -> 0.32). The white BETWEEN the iron bars is
+	// enclosed background the edge key can't reach — queued for a no-pure-white
+	// fence regen in EXTRA_PROMPTS.
 	for _, fx := range []float64{300, 740, 1180} {
-		entrance.ambientSprites = append(entrance.ambientSprites,
-			newAmbientProp(renderer, jerArtFence, fx, 620, 0.42))
+		s.ambientSprites = append(s.ambientSprites,
+			newAmbientPropKeyed(renderer, jerArtFence, fx, 620, 0.32, 40))
 	}
-	sm.scenes["jerusalem_entrance"] = entrance
+}
 
-	// ===== Up at the Western Wall =====
-	wall := &scene{
-		name:           "jerusalem_wall",
-		bg:             newPNGBackgroundOr(renderer, jerBgWall, jerWallBase),
-		npcs:           []*npc{newPrayingMan(renderer, 470), newWallKid(renderer, 880)},
-		spawnX:         220,
-		// 2026-06-24: PP must stand DOWN at the foot of the Wall, on the same line
-		// as the praying man (foot ~700) and the worshippers (~660), not floating
-		// above them. Lowered the standing band to ~660. (Dropped the duplicate
-		// wall kid earlier; one kid remains for the bar-mitzvah beat.)
-		spawnY:         660,
-		characterScale: 0.85,
-		hotspots: []hotspot{
-			{
-				bounds:      sdl.Rect{X: 0, Y: 250, W: 110, H: 420},
-				targetScene: "jerusalem_entrance",
-				name:        "Back to the Plaza",
-				arrow:       arrowLeft,
-			},
-			{
-				// The crack in the Wall where notes are placed (wired in
-				// setupJerusalemCallbacks onInteract).
-				bounds: sdl.Rect{X: 560, Y: 180, W: 220, H: 320},
-				name:   "A crack in the Wall",
-			},
-		},
-		minY: 620,
-		maxY: 700,
-		walkSegments: []walkSegment{
-			{x1: 150, y1: 660, x2: 1150, y2: 660},
-		},
-	}
-	// #33: a DISTINCT group of worshippers at the foot of the Wall, not the
-	// entrance crowd. Spread them unevenly and vary scale so the same frame
-	// doesn't read as "the same person" repeated in a row. A dedicated wall
-	// prayers sheet is queued in EXTRA_PROMPTS.md to replace the shared fallback.
-	// Use the user's new 4-frame worshipper sheets (praying_man / praying_man2),
-	// alternating, so the wall group is distinct from the entrance crowd. They
-	// fall back to nothing if absent. NOTE: these sheets carry a baked limestone
-	// background, so they read best parked at the foot of the Wall - F3-tune x/y/
-	// scale, and if a tan rectangle shows, re-export them with a transparent bg.
-	wallPrayerSheets := []string{jerArtWallPrayer1, jerArtWallPrayer2}
-	wallPrayerSpots := []struct {
-		x, scale float64
-	}{
-		{200, 0.80}, {420, 0.88}, {720, 0.84}, {980, 0.80},
-	}
-	for i, sp := range wallPrayerSpots {
-		wall.ambientSprites = append(wall.ambientSprites,
-			newAmbientSway(renderer, wallPrayerSheets[i%2], 4, sp.x, 660, sp.scale, 0.5))
-	}
-	wall.glows = []glowEffect{
+func decorateJerusalemWall(s *scene, renderer *sdl.Renderer) {
+	// Warm golden glow across the top of the Wall.
+	s.glows = []glowEffect{
 		{x: 0, y: 0, w: engine.ScreenWidth, h: 300, r: 255, g: 235, b: 180, alpha: 10, pulse: 0.2},
 	}
+	// Dust motes drifting upward in the sacred light.
 	for i := 0; i < 6; i++ {
-		wall.particles = append(wall.particles, particle{
+		s.particles = append(s.particles, particle{
 			x:     rand.Float64() * float64(engine.ScreenWidth),
 			y:     rand.Float64() * 400,
 			vx:    (rand.Float64() - 0.5) * 3,
@@ -528,48 +476,24 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 			size:  int32(rand.Intn(2) + 1),
 		})
 	}
-	sm.scenes["jerusalem_wall"] = wall
-
-	// ===== Old City market (souk tunnel) =====
-	// User #25: enter from the far centre, walk down to the centre; the exit
-	// back to the plaza is an UP square. Coffee seller at the centre (578,455),
-	// spice seller on the left. Walk lines authored as foot-135 (CENTER) of the
-	// user's foot coords: bottom foot 733 -> 598, top foot 441 -> 306.
-	market := &scene{
-		name:           "jerusalem_market",
-		bg:             newPNGBackgroundOr(renderer, jerBgMarket, jerMarketBase),
-		// #28: antiques stall on the RIGHT - the girl minding it for her grandpa,
-		// who dozes on a chair beside her.
-		npcs:           []*npc{newSpiceSeller(renderer, 249), newCoffeeSeller(renderer, 510), newAntiquesKid(renderer, 900), newAntiquesOldMan(renderer, 1040)},
-		spawnX:         760,
-		spawnY:         306,
-		characterScale: 0.9,
-		hotspots: []hotspot{
-			{
-				// #25: UP square back to the plaza (780,270)-(780,417).
-				bounds:      sdl.Rect{X: 700, Y: 270, W: 160, H: 150},
-				targetScene: "jerusalem_entrance",
-				name:        "Back to the Plaza",
-				arrow:       arrowUp,
-			},
-		},
-		minY: 171,
-		maxY: 463,
-		// 2026-06-24 (#27): widened the bottom walk line (was 319→970) so PP can
-		// reach the spice seller on the LEFT (x≈249) and the right side of the
-		// souk without getting stuck on the middle strip.
-		walkSegments: []walkSegment{
-			{x1: 150, y1: 598, x2: 1180, y2: 598},
-			{x1: 659, y1: 306, x2: 859, y2: 306},
-		},
+	// Two distinct worshipper figures at the foot of the Wall (D11: was 4).
+	wallPrayerSheets := []string{jerArtWallPrayer1, jerArtWallPrayer2}
+	for i, sp := range []struct{ x, scale float64 }{{280, 0.62}, {820, 0.65}} {
+		s.ambientSprites = append(s.ambientSprites,
+			newAmbientSway(renderer, wallPrayerSheets[i%2], 4, sp.x, 660, sp.scale, 0.5))
 	}
-	market.glows = []glowEffect{
+}
+
+func decorateJerusalemMarket(s *scene) {
+	// Warm lantern glows: left stall, right stall, centre shaft of light.
+	s.glows = []glowEffect{
 		{x: 100, y: 50, w: 300, h: 250, r: 255, g: 190, b: 110, alpha: 12, pulse: 1.4},
 		{x: 980, y: 50, w: 300, h: 250, r: 255, g: 180, b: 100, alpha: 10, pulse: 1.0},
 		{x: 560, y: 120, w: 256, h: 300, r: 255, g: 240, b: 200, alpha: 8, pulse: 0.3},
 	}
+	// Spice dust drifting through the souk.
 	for i := 0; i < 8; i++ {
-		market.particles = append(market.particles, particle{
+		s.particles = append(s.particles, particle{
 			x:     200 + rand.Float64()*1000,
 			y:     rand.Float64() * 450,
 			vx:    (rand.Float64() - 0.5) * 2,
@@ -578,7 +502,21 @@ func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
 			size:  int32(rand.Intn(2) + 1),
 		})
 	}
-	sm.scenes["jerusalem_market"] = market
+}
+
+// addJerusalemScenes is called from newSceneManager after the JSON scenes have
+// been loaded and registered. It applies the procedural decorators; the static
+// data (spawn, walk-segs, hotspots, NPCs) now lives in the JSON files.
+func addJerusalemScenes(sm *sceneManager, renderer *sdl.Renderer) {
+	if s, ok := sm.scenes["jerusalem_entrance"]; ok {
+		decorateJerusalemEntrance(s, renderer)
+	}
+	if s, ok := sm.scenes["jerusalem_wall"]; ok {
+		decorateJerusalemWall(s, renderer)
+	}
+	if s, ok := sm.scenes["jerusalem_market"]; ok {
+		decorateJerusalemMarket(s)
+	}
 }
 
 // setupJerusalemCallbacks wires the full Jerusalem daisy-chain. Called after
@@ -608,37 +546,56 @@ func (g *Game) setupJerusalemCallbacks() {
 				return true
 			},
 		})
+		// D9: the path UP to the Wall reads as walking into the distance, not
+		// marching off the top of the screen. Recede (shrink + drift up) then
+		// transition, same as the market→plaza step-out.
+		for i := range entrance.hotspots {
+			if entrance.hotspots[i].targetScene != "jerusalem_wall" {
+				continue
+			}
+			entrance.hotspots[i].onInteract = func() bool {
+				game.player.playRecede(1.0, 0.5, 80, func() {
+					game.sceneMgr.transitionTo("jerusalem_wall", game.player)
+				})
+				return true
+			}
+			break
+		}
 		for _, n := range entrance.npcs {
 			switch n.name {
 			case "Shimon":
 				shimon := n
-				gavePen := false
+				penGiven := func() bool { return game.vars.GetBool(ScopeGame, VarJerPenGiven) }
 				shimon.onDialogEnd = func() {
 					if shimon.dialog == nil {
 						return
 					}
 					// First chat → switch to the short "go on" reminder.
-					if !gavePen && !game.vars.GetBool(ScopeGame, VarJerNotePlaced) {
+					if !penGiven() && !game.vars.GetBool(ScopeGame, VarJerNotePlaced) {
 						shimon.dialog = shimonWaitDialog
 					}
 				}
 				shimon.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+					// Guard: coin already given → nothing more to do.
+					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && penGiven() && !game.inv.hasItem("Pen") && !game.inv.hasItem("Coin") {
+						return nil, nil, nil
+					}
 					// Stage 3: note placed → give the Coin (Jake's anchor).
-					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && game.inv.hasItem("Pen") && !game.inv.hasItem("Coin") {
+					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && game.inv.hasItem("Pen") {
 						return shimonCoinDialog, func() {
 							game.inv.removeItem("Pen")
 							give("coin", "Coin")
 							shimon.dialog = shimonDoneDialog
 							shimon.altDialogFunc = nil
-						}, &handOff{item: "Pen", returnItem: "Coin", npcGiveAnim: "give_coin"}
+						}, &handOff{item: "Pen", returnItem: "Coin", npcGiveAnim: "give_coin", dialogFirst: true}
 					}
-					// Stage 2: PP has the note paper but no pen → give the Pen.
-					if !gavePen && game.inv.hasItem("Note Paper") && !game.inv.hasItem("Pen") {
+					// Stage 2: PP has the note paper but no pen → give the Pen (once).
+					if !penGiven() && game.inv.hasItem("Note Paper") && !game.inv.hasItem("Pen") {
 						return shimonPenDialog, func() {
 							give("pen", "Pen")
-							gavePen = true
+							game.vars.SetBool(ScopeGame, VarJerPenGiven, true)
 							shimon.dialog = shimonWaitDialog
-						}, &handOff{returnItem: "Pen", npcGiveAnim: "give_pen"}
+						}, &handOff{returnItem: "Pen", npcGiveAnim: "give_pen", dialogFirst: true}
 					}
 					return nil, nil, nil
 				}
@@ -674,8 +631,11 @@ func (g *Game) setupJerusalemCallbacks() {
 				spice.onDialogEnd = func() {
 					if !game.inv.hasItem("Cardamom") && !game.inv.hasItem("Coffee") {
 						give("cardamom", "Cardamom")
-						spice.playOneShotAnimThen("give", 1.2, func() {
-							game.player.playReceive("item", false, 1.0, nil)
+						// #34: the spice seller hands the cardamom over (his give
+						// reach), then PP takes it with the item-specific receive
+						// (was hardcoded "item" → generic grab).
+						spice.playOneShotAnimThen(spice.giveAnimOr("give_cardamom"), 1.2, func() {
+							game.player.playReceive("cardamom", false, 1.0, nil)
 						})
 						game.dialog.queueDialog([]dialogEntry{
 							{speaker: "Pink Panther", text: "A pinch of cardamom. Off to the coffee stall, then."},
@@ -725,7 +685,7 @@ func (g *Game) setupJerusalemCallbacks() {
 	if wall, ok := g.sceneMgr.scenes["jerusalem_wall"]; ok {
 		for _, n := range wall.npcs {
 			switch n.name {
-			case "Praying Man":
+			case "Avi":
 				pray := n
 				pray.altDialogRequiresHeld = true
 				pray.altDialogRequiresItem = "Bagel"
@@ -750,7 +710,7 @@ func (g *Game) setupJerusalemCallbacks() {
 						pray.altDialogRequiresItem = ""
 					}, &handOff{item: "Bagel", returnItem: "Note Paper", npcGiveAnim: "give_paper"}
 				}
-			case "Kid":
+			case "Noam":
 				kid := n
 				kid.onDialogEnd = func() { kid.dialog = kidPostDialog }
 			}

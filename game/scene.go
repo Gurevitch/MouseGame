@@ -369,8 +369,22 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		sm.scenes["airplane_flight"] = s
 	}
 
-	// --- Extra city chapters (defined in their own files) ---
+	// ===== Jerusalem: Entrance + Wall + Market (JSON-driven) =====
+	for _, name := range []string{"jerusalem_entrance", "jerusalem_wall", "jerusalem_market"} {
+		if s := sm.loadSceneFromJSON(renderer, sceneDefs, name); s != nil {
+			sm.scenes[name] = s
+		}
+	}
+
+	// --- Extra city chapters: procedural decorators layered on the JSON scenes ---
 	addJerusalemScenes(sm, renderer)
+
+	// ===== Japan/Kyoto: 5 scenes (JSON-driven) =====
+	for _, name := range []string{"tokyo_torii", "tokyo_street", "tokyo_temple", "tokyo_sakura", "tokyo_teahouse"} {
+		if s := sm.loadSceneFromJSON(renderer, sceneDefs, name); s != nil {
+			sm.scenes[name] = s
+		}
+	}
 	addTokyoScenes(sm, renderer)
 	addRioScenes(sm, renderer)
 	addRomeScenes(sm, renderer)
@@ -426,6 +440,10 @@ func (sm *sceneManager) update(dt float64) {
 				// scene's range (not the previous scene's).
 				sm.transPlayer.sceneMinY = s.minY
 				sm.transPlayer.sceneMaxY = s.maxY
+				// 2026-07-15 (user #13): in the bakery PP must approach NPCs
+				// in an L along the aisle (horizontal leg first), not cut an
+				// oblique line across the tables.
+				sm.transPlayer.lWalkApproach = sm.currentName == "paris_bakery"
 				// User 2026-05-12: clamp spawnY to the player's max Y range
 				// so a scene whose authored spawnY drifted past the new
 				// (post-rebalance) playerMaxY doesn't drop PP below-screen.
@@ -457,15 +475,26 @@ func (sm *sceneManager) update(dt float64) {
 				if sm.entryWalkPending {
 					sm.entryWalkPending = false
 					p := sm.transPlayer
-					p.x = playerMinX - float64(playerDstW)
-					p.targetX = engine.Clamp(s.spawnX, playerMinX, playerMaxX)
-					p.targetY = p.y
-					p.moving = true
-					p.allowOffscreen = true
-					p.state = stateWalking
-					p.dir = dirRight
-					p.facingLeft = false
-					p.onArrival = func() { p.allowOffscreen = false }
+					// Walk PP in from off-screen-left to his spawn using the same
+					// robust tween as the camp_landing arrival (playWalkIn) — it
+					// writes x directly and is immune to the clamp/blocker/setTarget
+					// machinery. The old target-chase approach stalled when the
+					// walk-in path crossed a scene blocker (player.go blocker check
+					// sets moving=false), leaving PP stuck off-screen until the
+					// player clicked somewhere to re-issue movement.
+					startX := playerMinX - float64(playerDstW)
+					endX := engine.Clamp(s.spawnX, playerMinX, playerMaxX)
+					// 2026-06-29 (item 2): the fixed 2.3s duration made PP cover the
+					// long off-screen→spawn distance (~850px) at ~370px/s — much
+					// faster than his normal 250px/s walk, so the stroll-in looked
+					// rushed. Derive the duration from the distance so the walk-in
+					// plays at the SAME speed as ordinary walking (playerBaseSpeed),
+					// with a 1.2s floor so a short entrance still reads as a stroll.
+					dur := (endX - startX) / playerBaseSpeed
+					if dur < 1.2 {
+						dur = 1.2
+					}
+					p.playWalkIn(startX, endX, p.y, dur, nil)
 				}
 			}
 		}

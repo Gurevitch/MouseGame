@@ -1,0 +1,18 @@
+{
+  "name": "jerusalem_market",
+  "background": "assets/images/locations/jerusalem/background/market.png",
+  "spawnX": 760,
+  "spawnY": 306,
+  "minY": 171,
+  "maxY": 463,
+  "characterScale": 0.9,
+  "npcs": ["jer_spice_seller", "jer_coffee_seller", "jer_antiques_kid", "jer_antiques_old_man"],
+  "hotspots": [
+    {"bounds": {"x": 700, "y": 270, "w": 160, "h": 150}, "targetScene": "jerusalem_entrance", "name": "Back to the Plaza", "arrow": "up"}
+  ],
+  "blockers": [],
+  "walkSegments": [
+    {"x1": 150, "y1": 598, "x2": 1180, "y2": 598},
+    {"x1": 659, "y1": 306, "x2": 859,  "y2": 306}
+  ]
+}

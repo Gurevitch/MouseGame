@@ -207,14 +207,30 @@ func newAmbientProp(renderer *sdl.Renderer, sheet string, x, y, scale float64) *
 	}
 }
 
+// newAmbientPropKeyed is newAmbientProp with a connected-edge colour key
+// (tolerance tol). Use for props exported with a baked background so the
+// bg is stripped without eating enclosed geometry.
+func newAmbientPropKeyed(renderer *sdl.Renderer, sheet string, x, y, scale float64, tol uint8) *ambientSprite {
+	return &ambientSprite{
+		frames:   loadAmbientStripKeyedTol(renderer, sheet, 1, tol),
+		kind:     ambientSway,
+		x:        x,
+		y:        y,
+		scale:    scale,
+		frameSec: 999,
+	}
+}
+
 // newAmbientCrow is the camp crow that flaps in, lands on the camp sign, sits
-// a beat, then flaps away - and repeats. Art is pending (assets/images/ambient/
-// crow.png, 8-frame: 0-5 flap, 6-7 perched). No-ops until the PNG lands.
+// a beat, then flaps away - and repeats. Art landed 2026-07-14 (8-frame:
+// 0-5 flap, 6-7 perched) with a BAKED-IN checkerboard background, so it must
+// go through the KEYED loader (the checker squares are near-white and
+// edge-connected — same treatment as the ramen stall props).
 func newAmbientCrow(renderer *sdl.Renderer, perchX, perchY float64) *ambientSprite {
 	startX := -120.0
 	startY := perchY - 160
 	return &ambientSprite{
-		frames:    loadAmbientStrip(renderer, "assets/images/ambient/crow.png", 8),
+		frames:    loadAmbientStripKeyed(renderer, "assets/images/ambient/crow.png", 8),
 		kind:      ambientPerch,
 		scale:     0.5,
 		x:         startX,

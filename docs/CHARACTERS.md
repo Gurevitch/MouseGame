@@ -48,10 +48,18 @@ kids at ~65%.
 - Frame speed `talkFrameSpeed = 0.18` (idle cycles at 0.18 × 2.5 =
   0.45 s/frame). Bumped from 0.25 so the 7-frame idle reads smoothly
   rather than snapping between long-held poses.
-- Palette: safari hat `#8B5A2B`, shirt `#A47148`, shorts `#C79A5A`,
-  belt `#5A3A1E`, mustache `#2B1B10`.
-- Props: clipboard in talk/shout frames; sits behind desk in
-  `_office_*` sheets.
+- Palette (sampled from `npc_director_higgins_idle.png` / `_talk.png` —
+  canonical): tall lean older man; **short neat grey hair** (slightly
+  receding), **round glasses**, subtle grey mustache; **dark forest-green
+  short-sleeve ranger/park button-up shirt** with collar, button placket,
+  and **two flap chest pockets**; **lanyard with a small green ID badge**;
+  **brown leather crossbody satchel/messenger bag** worn across the chest
+  to the left hip; **khaki/tan CARGO trousers** (thigh side-pockets);
+  **brown hiking boots**. No hat.
+- Props: clipboard held in one or both hands in idle/talk/shout frames;
+  sits behind desk in `_office_*` sheets.
+- Rude/grumpy state: arms crossed or waving PP off — reference
+  `npc_director_higgins_rude_talk.png` for exact look.
 
 ### Marcus (know-it-all)
 
@@ -72,17 +80,26 @@ kids at ~65%.
 ### Jake (tough kid)
 
 - Draw size: **145 x 175** on `camp_grounds`. Room: **162 x 245**.
-- Palette: red cap `#C4412A`, freckles `#B06A3A`, navy t-shirt
-  `#2B3A5C`, jeans `#4A5A78`, arms crossed or hands in pockets.
+- Palette (sampled from live sheets — `npc_jake_idle.png` is canonical):
+  **light/tan skin** (NOT dark), **very short buzz-cut** light-brown
+  stubble hair, **dark forest-green "CAMP" t-shirt** (CAMP printed in
+  black), **dark-green/olive shorts** (NOT black), **green & white
+  low-top sneakers**. Chubby/stocky King-of-the-Hill build, round head,
+  slightly grumpy expression; arms often crossed (tough-kid default).
+  (Earlier doc said red cap/freckles/navy-jeans — wrong old design.)
 - Strange state: gripping a coin or rubbing something metallic; eyes
-  fixed on an off-camera horizon.
+  fixed on an off-camera horizon; same green shirt + olive shorts.
 
 ### Lily (shy girl)
 
 - Draw size: **145 x 175** on `camp_grounds`. Room: **162 x 245**.
-- Palette: long brown hair `#7B4A2E`, mint-green sleeveless dress
-  `#9FC9E8`-tinted-pale-mint, brown ankle boots, holds a small bouquet
-  at chest height.
+- Palette (sampled from `npc_lily_idle.png`): long medium-brown hair
+  (middle-parted, past the shoulders), **pale mint-green sleeveless
+  dress with a coral/peach V-shaped front panel** down the chest, brown
+  ankle boots, fair skin with rosy cheeks. Holds a small bouquet at
+  chest height.
+- Sad-at-the-lake pose (`npc_lily_sad_idle.png`): seen FROM BEHIND,
+  sitting hugging her knees, hair down her back, same mint dress.
 - Receives-flower pose: hands cupped at chest height to receive the
   daisy. Used in the give-item animation (`receive_flower` one-shot).
 - Strange state: petals scattered at her feet, distant stare, same
@@ -91,9 +108,13 @@ kids at ~65%.
 ### Tommy (storyteller)
 
 - Draw size: **145 x 175** on `camp_grounds`. Room: **162 x 245**.
-- Palette: small backpack `#3A5A7A`, blue t-shirt `#4A7AA8`, brown
-  shorts `#8B5A2B`, floppy hair `#D8B47A`.
-- Strange state: hand cupped to ear (listening), mouth agape.
+- Palette (sampled from live sheets): **green t-shirt** (with subtle
+  darker graphic/print), **blue jeans**, **brown messy floppy hair**.
+  Chubby/round cartoon proportions. No backpack visible in idle.
+  (Earlier doc said blue shirt + brown shorts — that was wrong; use
+  the live `npc_tommy_idle.png` as the canonical reference.)
+- Strange state: hand cupped to ear (listening), mouth agape; same
+  green shirt + blue jeans.
 
 ### Danny (prankster)
 

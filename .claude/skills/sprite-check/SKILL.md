@@ -32,7 +32,15 @@ and the two real problems are easy to spot.
 ```
 go test ./engine -v -run ContentGrid    # which sheets gap-detect vs fall back
 go run ./tools/jitter_audit .           # ghosts, cross-border, drift, empty cells
+SPRITE_SCAN=1 go test ./engine -run TestSpriteScan -v   # pure-WHITE-on-character + leak report
 ```
+
+`TestSpriteScan` reads every registered sheet once (no duplicate images) and
+lists sheets with pure-white-on-character (the chroma-key punches those into
+holes) and full-width "leak" frames. NOTE: it flags INTENDED whites too
+(a white prop, eye sclera that should already be off-white) — eyeball the top
+hits; the fix is almost always an art regen with the no-pure-white rule, not a
+code change.
 
 When a NEW sheet lands on disk, add it to BOTH manifests first:
 `engine/grid_content_test.go` (the cases list) and
@@ -89,8 +97,12 @@ which exist because each one fixes a bug we actually shipped:
   column, same size every frame; limbs/tail animate around the anchor.
 - **Storyboard the motion** (frame-by-frame beats) and say "every frame must
   be CLEARLY different" — otherwise generators output one frozen pose ×16.
-- **No pure white on characters** (cream `#E5DDC8` for fabric, ivory
-  `#F2EFE5` for PP's belly) — pure white gets chroma-keyed into holes.
+- **NO pure white `#FFFFFF` ANYWHERE on a sprite** (hard rule, user
+  2026-06-30) — not on characters, props, painter canvases, aprons/smocks,
+  paper, teeth, or **eye sclera**. Pure white gets chroma-keyed into holes /
+  renders as white spots. Use cream `#E5DDC8` for fabric/canvas, ivory
+  `#F2EFE5` for PP's belly, pale-grey `#C4C4C4` for eyes/steam. Only the
+  scene-cell BACKGROUND stays pure white. Verify with `TestSpriteScan` above.
 - **PP specifics**: plain pink paws, NO gloves; every pickup ends with PP
   pocketing the item into his invisible hip pocket.
 - Seated/behind-counter characters (office Higgins, Poulain): upper body

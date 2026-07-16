@@ -1,0 +1,18 @@
+{
+  "name": "jerusalem_entrance",
+  "background": "assets/images/locations/jerusalem/background/wall_enterence.png",
+  "spawnX": 640,
+  "spawnY": 515,
+  "minY": 425,
+  "maxY": 600,
+  "characterScale": 1.0,
+  "npcs": ["jer_shimon", "jer_bagel_seller"],
+  "hotspots": [
+    {"bounds": {"x": 20,  "y": 330, "w": 180, "h": 260}, "targetScene": "jerusalem_market", "name": "To the Market", "arrow": "left"},
+    {"bounds": {"x": 980, "y": 120, "w": 320, "h": 300}, "targetScene": "jerusalem_wall",   "name": "To the Wall",   "arrow": "up"}
+  ],
+  "blockers": [],
+  "walkSegments": [
+    {"x1": 150, "y1": 515, "x2": 1150, "y2": 515}
+  ]
+}

@@ -39,6 +39,7 @@ const (
 	VarMonologueLouvre   = "monologue_louvre_played" // museum first-arrival beat (#28)
 	VarParisDone         = "paris_done"              // postcard obtained → camp return unlocked (#32)
 	VarJerNotePlaced     = "jer_note_placed"         // Jerusalem: note tucked in the Wall → return flight + coin (#26)
+	VarJerPenGiven       = "jer_pen_given"            // Jerusalem: Shimon gave PP the pen (D15: save-safe replaces local gavePen)
 	// Japan/Kyoto chapter opening (Lily's arc).
 	VarLilyArcStarted   = "lily_arc_started"   // sad Lily revealed at the lake (post-Jake-heal)
 	VarLilyLakeMet      = "lily_lake_met"      // PP has talked to Lily at the lake
@@ -204,6 +205,20 @@ func (g *Game) applyCampMood() {
 	}
 	if landing, ok := g.sceneMgr.scenes["camp_landing"]; ok && landing != nil {
 		landing.bg = g.moodBG(level, "camp_landing.png")
+	}
+	// Higgins' office darkens with the camp too (day2 dusk / day3 night art
+	// landed 2026-07-14).
+	if office, ok := g.sceneMgr.scenes["camp_office"]; ok && office != nil {
+		office.bg = g.moodBG(level, "camp_office.png")
+	}
+	// #34: the sign crow joins the airstrip once PP has been out in the world
+	// — it must NOT hatch on the opening screen (the game boots into
+	// camp_landing), so it's added here instead of decorateCampLanding.
+	if level > 0 && !g.crowAdded {
+		if landing, ok := g.sceneMgr.scenes["camp_landing"]; ok && landing != nil {
+			landing.ambientSprites = append(landing.ambientSprites, newAmbientCrow(g.renderer, 650, 300))
+			g.crowAdded = true
+		}
 	}
 	for _, room := range []string{"jake_room", "lily_room", "tommy_room", "danny_room"} {
 		if s, ok := g.sceneMgr.scenes[room]; ok && s != nil {
