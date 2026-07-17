@@ -154,6 +154,81 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
 All prompts below still need a PNG generated. When one lands, move its row
 into the **Done log** at the bottom and delete the body.
 
+### 2026-07-15 — PR batch (34-item sweep) · LANDED 2026-07-15
+
+All sheets below were generated and verified. The touching-figures problem
+is now handled ENGINE-side (texture.go waist-split threshold 35% → 60%), so
+every sheet gap-detects — no more blob re-rolls. Outcomes: gives (coffee/
+sketch/postcard/bagel), receives (card/pen/postcard), note-in-wall, basket
+grab (v2 above), bagel-seller give, spice redesign (talk facing fix above),
+grandpa talk, day-2 rooms (light fix above) + lake — all wired.
+Caveat (playtest): `pp_get_pen.png` resolved with one sliver cell — if the
+pen receive blinks, re-roll that one sheet.
+
+**RE-ROLLS — figures TOUCH on the current sheets** (4-figure blobs, no gaps —
+the cutter cannot split them, which is the "duplicate sprite running" bug).
+Regenerate each at 1536×1024, **8×1** (cells 192×1024), one figure per cell,
+**≥15px clear background between figures and to the sheet edges** (this is
+the rule the current sheets break), anchor-locked feet/centerline, pure white
+bg, nothing pure white ON PP (ivory belly `#F2EFE5`):
+
+- **§PP-GIVE-COFFEE-v2** — `PP give coffee.png`: idle → pulls the paper
+  coffee cup from his hip pocket → extends it out to the right → empty paw
+  back → idle.
+- **§PP-GIVE-SKETCH-v2** — `PP give sketch.png`: same beat with Camille's
+  rolled sketch page.
+- **§PP-GIVE-POSTCARD-v2** — `PP give postcard.png`: same beat with a small
+  postcard.
+- **§PP-GET-CARD-v2** — `pp_get_card.png`: PP receives a flat card from
+  off-screen, looks at it, pockets it at his hip (two figures touch on the
+  current sheet).
+- **§BAGEL-GIVE-v2** — `npc_bagel_seller_give.png`: the bagel seller lifts a
+  ka'ak bagel from his tray and holds it out (same design as
+  `npc_bagel_seller.png`).
+- **§PP-NOTE-WALL-v2** — `PP put note in wall.png`, **6×1** (cells 256×1024):
+  PP reaches up, tucks the folded note into a crack, pats the stone, steps
+  back. The current sheet has detached note slivers + touching figures.
+
+**NEW PP sheets (wired, currently no-op):**
+
+- **§PP-GIVE-BAGEL** — `PP give bagel.png` (8×1): PP hands the bagel out to
+  the right, ends empty-pawed.
+- **§PP-GET-PEN** — `pp_get_pen.png` (8×1): PP receives a pen, twirls it
+  once, pockets it (user #27).
+- **§PP-GET-POSTCARD** — `PP get postcard.png` (8×1): PP receives the Louvre
+  postcard, admires it, pockets it (the press-pass card sheet no longer
+  doubles for it; register under "receive_postcard" when it lands).
+- **§PP-GRAB-BASKET** — `PP grab basket.png` (6×1, user #4): PP leans over a
+  waist-high wicker bicycle basket to his LEFT, fishes the rolling pin out,
+  pockets it. (Replaces the ground-crouch grab for the bike-basket pickup;
+  register as "grab_rolling_pin" when it lands.)
+
+**NEW NPC art:**
+
+- **§SPICE-REDESIGN** — `npc_spice_seller_idle.png` + `_talk.png` (8×1 each,
+  user #21 wants a NEW design): a wiry, cheerful spice merchant — olive
+  skirt-apron over a striped galabiya, rolled sleeves, small white knit cap,
+  short grey-flecked beard, big expressive hands. Standing behind his low
+  spice table (baskets of red/orange/yellow powder). Idle: weighs spices
+  with a small brass scale, scoops, sniffs a pinch. Talk: same framing,
+  gesturing with the scoop. Cream `#E5DDC8` for fabric, no pure white.
+- **§GRANDPA-TALK** — `grandpa_idle_talk.png` (8×1, user #22): the SAME
+  dozing grandpa design as `grandpa_idle.png` (same chair, same clothes,
+  SAME left-right orientation — the chair must not mirror): he half-wakes,
+  turns only his HEAD toward the viewer, talks slowly with one raised
+  finger, drifts back to sleep.
+
+**Backgrounds (day-2 camp mood — drop into
+`assets/images/locations/camp/background/day2/`):**
+
+- **§ROOM-DOORS** — `jake_room.png`, `tommy_room.png`, `danny_room.png`
+  (user #30): the SAME rooms as the day1 versions but with the cabin door
+  standing OPEN (warm light spilling in) and the mid-dark day-2 grading.
+  Marcus + Lily rooms are NOT needed.
+- **§LAKE-DAY2** — `camp_lake.png` (user #32): the day1 lake redrawn in the
+  mid-dark day-2 grading — dimmer sky, muted water, long shadows (matches
+  day2/camp_grounds.png). Wired: the lake now darkens via applyCampMood.
+
 ### 2026-07-15 — PP full 12-frame walk cycles (front + back, 2×6)
 
 User request: replace the near-static front/back walks with REAL 12-frame
@@ -1428,6 +1503,11 @@ Verify: `go test ./engine -run ContentGrid` (clean cut) and
 
 ## Done log
 
+- **2026-07-17 — round-2 art corrections:** §PP-GRAB-BASKET-v2 landed with
+  no baked-in basket and its enclosed chroma-key whites repaired;
+  §SPICE-TALK-RIGHT now faces and gestures toward viewer's right; and
+  §ROOM-DOORS-LIGHT re-graded Jake/Tommy/Danny's open doors to the dusky
+  day-2 camp palette. Both sprite sheets gap-detect; visual checks passed.
 - **2026-06-30 — interim Pierre repair:** Current `npc_pierre_idle.png`,
   `npc_pierre_talk.png`, `npc_pierre_give_pass.png`, `npc_pierre_get_baguette.png`,
   and `npc_pierre_get_jam.png` were repaired/verified against the no-pure-white

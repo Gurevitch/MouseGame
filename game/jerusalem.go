@@ -64,8 +64,8 @@ const (
 	// at the Wall). Used by the ambient sway system, NOT as NPC idle/talk.
 	jerArtWallPrayer1 = jerNPCWall + "praying_man.png"
 	jerArtWallPrayer2 = jerNPCWall + "praying_man2.png"
-	jerArtKidIdle    = jerNPCWall + "npc_wall_kid_idle.png" // #separate idle + talk
-	jerArtKidTalk    = jerNPCWall + "npc_wall_kid_talk.png"
+	jerArtKidIdle     = jerNPCWall + "npc_wall_kid_idle.png" // #separate idle + talk
+	jerArtKidTalk     = jerNPCWall + "npc_wall_kid_talk.png"
 
 	// --- market (souk): full body, SEPARATE idle/talk per the user ---
 	jerArtSpiceIdle  = jerNPCMarket + "npc_spice_seller_idle.png"
@@ -81,9 +81,9 @@ const (
 	jerArtAntiqueKidIdle = jerNPCMarket + "kid_antique_idle.png"
 	jerArtAntiqueKidTalk = jerNPCMarket + "kid_antique_speak.png"
 	jerArtAntiqueKidAlt  = jerNPCMarket + "kid_antique_idle_alter.png"
-	// Grandpa has a single idle sheet (he dozes); talk reuses it.
+	// Grandpa's talk sheet preserves the same seated chair orientation.
 	jerArtOldManIdle = jerNPCMarket + "grandpa_idle.png"
-	jerArtOldManTalk = jerNPCMarket + "grandpa_idle.png"
+	jerArtOldManTalk = jerNPCMarket + "grandpa_idle_talk.png"
 
 	// Separation-fence prop in the plaza (static overlay; keyed load).
 	jerArtFence = "assets/images/locations/jerusalem/props/fence.png"
@@ -162,6 +162,8 @@ var shimonWaitDialog = []dialogEntry{
 }
 
 var shimonPenDialog = []dialogEntry{
+	// 2026-07-15 (user #26): PP ASKS to borrow the pen first.
+	{speaker: "Pink Panther", text: "Shimon - I have paper for a note, but nothing to write with. Could I borrow a pen?"},
 	{speaker: "Shimon", text: "A note for the Wall? Then you will need this - my pen. Write what is in your heart."},
 	{speaker: "Pink Panther", text: "Thank you, Shimon."},
 	{speaker: "Shimon", text: "No thanks needed. Tuck it deep in the stones - the Wall keeps everything."},
@@ -189,6 +191,8 @@ var spicePostDialog = []dialogEntry{
 }
 
 var coffeeNeedCardamomDialog = []dialogEntry{
+	// 2026-07-15 (user #20): PP asks for the cup FIRST — the request is his.
+	{speaker: "Pink Panther", text: "Shalom! One coffee, please. Your smallest, strongest cup."},
 	{speaker: "Coffee Seller", text: "Coffee? Of course - but a proper one needs cardamom. Get a pinch from the spice stall and come sit with me."},
 }
 
@@ -293,8 +297,10 @@ func newSpiceSeller(renderer *sdl.Renderer, x int32) *npc {
 		// SEPARATE idle/talk sheets, FULL BODY (#user 2026-06-21).
 		// §SPICE-SIDE (landed 2026-07-14): when talking he turns RIGHT toward
 		// the market centre (stall table baked into the sheet, same as idle).
-		idleGrid:       loadJerNPCSheet(renderer, jerArtSpiceIdle, 8, 1, jerFbkVendor8x2, 8, 2, 0),
-		talkGrid:       loadJerNPCSheet(renderer, firstExisting(jerNPCMarket+"npc_spice_seller_talk_side.png", jerArtSpiceTalk), 8, 1, jerFbkVendor8x2, 8, 2, 1),
+		idleGrid: loadJerNPCSheet(renderer, jerArtSpiceIdle, 8, 1, jerFbkVendor8x2, 8, 2, 0),
+		// 2026-07-15 (user): the REDESIGNED talk sheet wins; the old side-talk
+		// (previous design) stays as fallback only.
+		talkGrid: loadJerNPCSheet(renderer, firstExisting(jerArtSpiceTalk, jerNPCMarket+"npc_spice_seller_talk_side.png"), 8, 1, jerFbkVendor8x2, 8, 2, 1),
 		// 2026-06-24 (#26): feet on the market floor (~598) at x≈319, not floating
 		// mid-scene. Y = 598 - H. (Leg "jitter" between idle/talk is a sheet
 		// baseline issue queued for sprite-check.)
@@ -331,7 +337,9 @@ func newCoffeeSeller(renderer *sdl.Renderer, x int32) *npc {
 		dialog:         coffeeNeedCardamomDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.18,
-		ppFacePlayer:   true,
+		// 2026-07-15 (user #20): PP stands to his RIGHT and talks facing
+		// LEFT (was ppFacePlayer/front). Seller centre ≈ x+70 → mark at +180.
+		approachXOverride: x + 180,
 	}
 	// §COFFEE-GIVE (landed 2026-07-14): the dedicated pour-and-offer sheet;
 	// the older generic give stays as fallback.
@@ -410,14 +418,18 @@ func newAntiquesKid(renderer *sdl.Renderer, x int32) *npc {
 // newAntiquesOldMan (#28): the grandpa dozing on a chair by the antiques stall.
 func newAntiquesOldMan(renderer *sdl.Renderer, x int32) *npc {
 	return &npc{
-		idleGrid:       loadJerNPCSheet(renderer, jerArtOldManIdle, 8, 1, jerFbkGuard6x2, 6, 2, 0),
-		talkGrid:       loadJerNPCSheet(renderer, jerArtOldManTalk, 8, 1, jerFbkGuard6x2, 6, 2, 1),
+		idleGrid: loadJerNPCSheet(renderer, jerArtOldManIdle, 8, 1, jerFbkGuard6x2, 6, 2, 0),
+		talkGrid: loadJerNPCSheet(renderer, jerArtOldManTalk, 8, 1, jerFbkGuard6x2, 6, 2, 1),
 		// Seated on a chair, so he reads shorter than a standing vendor.
 		bounds:         sdl.Rect{X: x, Y: 438, W: 120, H: 160},
 		name:           "Old Antiques Man",
 		dialog:         oldManDialog,
 		bobAmount:      0,
 		talkFrameSpeed: 0.16,
+		// 2026-07-15 (user #22): mirroring him mirrored the CHAIR too — hold
+		// the authored facing; a dedicated talk sheet is queued (§GRANDPA-TALK).
+		fixedFacing: true,
+		flipped:     false,
 	}
 }
 
@@ -456,7 +468,7 @@ func decorateJerusalemEntrance(s *scene, renderer *sdl.Renderer) {
 	// fence regen in EXTRA_PROMPTS.
 	for _, fx := range []float64{300, 740, 1180} {
 		s.ambientSprites = append(s.ambientSprites,
-			newAmbientPropKeyed(renderer, jerArtFence, fx, 620, 0.32, 40))
+			newAmbientPropKeyed(renderer, jerArtFence, fx, 620, 0.26, 40)) // user #19: smaller
 	}
 }
 
@@ -477,7 +489,9 @@ func decorateJerusalemWall(s *scene, renderer *sdl.Renderer) {
 		})
 	}
 	// Two distinct worshipper figures at the foot of the Wall (D11: was 4).
-	wallPrayerSheets := []string{jerArtWallPrayer1, jerArtWallPrayer2}
+	// 2026-07-15 (user #24): the two sheets read as the SAME man — the right
+	// worshipper now uses the distinct praying_man3 sway (4×1, from-behind).
+	wallPrayerSheets := []string{jerArtWallPrayer1, jerNPCWall + "praying_man3.png"}
 	for i, sp := range []struct{ x, scale float64 }{{280, 0.62}, {820, 0.65}} {
 		s.ambientSprites = append(s.ambientSprites,
 			newAmbientSway(renderer, wallPrayerSheets[i%2], 4, sp.x, 660, sp.scale, 0.5))
@@ -575,13 +589,18 @@ func (g *Game) setupJerusalemCallbacks() {
 						shimon.dialog = shimonWaitDialog
 					}
 				}
+				// 2026-07-15 (user #29): latch each stage the moment it's
+				// SELECTED — a re-click during the pen/coin beat re-entered
+				// stage 3 and replayed the whole throw-pen/throw-coin chain.
+				coinStarted := false
 				shimon.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					// Guard: coin already given → nothing more to do.
-					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && penGiven() && !game.inv.hasItem("Pen") && !game.inv.hasItem("Coin") {
+					if coinStarted || (game.vars.GetBool(ScopeGame, VarJerNotePlaced) && penGiven() && !game.inv.hasItem("Pen") && !game.inv.hasItem("Coin")) {
 						return nil, nil, nil
 					}
 					// Stage 3: note placed → give the Coin (Jake's anchor).
 					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && game.inv.hasItem("Pen") {
+						coinStarted = true
 						return shimonCoinDialog, func() {
 							game.inv.removeItem("Pen")
 							give("coin", "Coin")

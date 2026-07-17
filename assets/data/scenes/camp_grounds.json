@@ -3,7 +3,7 @@
   "background": "assets/images/locations/camp/background/day1/camp_grounds.png",
   "spawnX": 210,
   "spawnY": 483,
-  "minY": 300,
+  "minY": 263,
   "maxY": 560,
   "musicPath": "assets/audio/music/camp.mp3",
   "npcs": ["tommy", "jake", "lily", "marcus", "danny", "grounds_higgins_hidden"],

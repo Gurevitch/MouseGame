@@ -206,17 +206,40 @@ func (g *Game) applyCampMood() {
 	if landing, ok := g.sceneMgr.scenes["camp_landing"]; ok && landing != nil {
 		landing.bg = g.moodBG(level, "camp_landing.png")
 	}
+	// The lake darkens with the camp too (user #32; day2 art queued
+	// §LAKE-DAY2 — falls back to day1 until it lands).
+	if lakeScene, ok := g.sceneMgr.scenes["camp_lake"]; ok && lakeScene != nil {
+		lakeScene.bg = g.moodBG(level, "camp_lake.png")
+	}
 	// Higgins' office darkens with the camp too (day2 dusk / day3 night art
 	// landed 2026-07-14).
 	if office, ok := g.sceneMgr.scenes["camp_office"]; ok && office != nil {
 		office.bg = g.moodBG(level, "camp_office.png")
+		// 2026-07-15 (user #33): the day2/day3 office art draws the desk a
+		// touch higher than day1, so Higgins needs a deeper head anchor to
+		// stay seated behind it — WITHOUT touching his day-1 position.
+		// Post-Lily (arc started, not yet healed) he is also short-tempered.
+		for _, n := range office.npcs {
+			if n.name != "Director Higgins" {
+				continue
+			}
+			if level > 0 {
+				n.headAnchorOffsetY = 40
+			} else {
+				n.headAnchorOffsetY = 22
+			}
+			if g.vars.GetBool(ScopeGame, VarLilyArcStarted) && !g.vars.GetBool(ScopeGame, VarLilyHealed) {
+				n.dialog = higginsAngryShortDialog
+			}
+			break
+		}
 	}
 	// #34: the sign crow joins the airstrip once PP has been out in the world
 	// — it must NOT hatch on the opening screen (the game boots into
 	// camp_landing), so it's added here instead of decorateCampLanding.
 	if level > 0 && !g.crowAdded {
 		if landing, ok := g.sceneMgr.scenes["camp_landing"]; ok && landing != nil {
-			landing.ambientSprites = append(landing.ambientSprites, newAmbientCrow(g.renderer, 650, 300))
+			landing.ambientSprites = append(landing.ambientSprites, newAmbientCrow(g.renderer, 705, 300)) // user #15: onto the sign, not the air
 			g.crowAdded = true
 		}
 	}

@@ -14,6 +14,87 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### 2026-07-15 — round-2 art drop: the touching-figures fix went ENGINE-side
+
+The regenerated batch STILL had touching figures (the generator ignores the
+gap rule), so the fix moved into the engine: the thinnest-waist splitter's
+refusal threshold went 35% → 60% of peak (engine/texture.go). It only runs
+after a clean gap split has already failed, so cutting the best valley
+strictly beats the old proportional fallback that sliced mid-body. RESULT:
+every sheet in the drop now GAP-DETECTS — gives, receives, note-in-wall,
+basket grab, bagel give, spice/grandpa talks. Wired: PP get postcard →
+receive_postcard; new spice talk preferred over the old talk_side; grandpa
+talk landed (fixedFacing already set). Corrections LANDED 2026-07-17:
+§PP-GRAB-BASKET-v2 removes the duplicate baked-in basket,
+§SPICE-TALK-RIGHT faces screen-right, and §ROOM-DOORS-LIGHT matches the
+three open-door rooms to the dusky day-2 grounds palette.
+- [ ] `[P2]` pp_get_pen.png resolved with one sliver cell — if the pen
+  receive blinks in playtest, re-roll just that sheet.
+
+### 2026-07-15 — PR (34-item sweep: camp / paris / bakery / jerusalem / day-2)
+
+ROOT CAUSE of the "duplicate sprite running" gives (#8/#13/#17/#28 + bagel):
+the regenerated sheets have figures that TOUCH (4-figure blobs, no gaps) —
+the cutter can't split them. Re-roll prompts queued (EXTRA_PROMPTS
+§2026-07-15); loaders are correct.
+
+- [ ] `1.` White field between PP's legs (talk front + grab flower) + the
+  fence gaps (#19) — STILL OPEN (2026-07-15): the pockets are off-white
+  (232-246) that the tol-8 global key misses. My alpha-punch of all
+  near-white pixels was REVERTED by the user; next option is a surgical
+  punch of ONLY the enclosed pockets (leave the outer background untouched),
+  or fold the fix into the sheets' next regen (no off-white near the body).
+- [x] `2.` npc_lily_talk_with_flower — art landed into the existing
+  postGiveTalkGrid wiring (8×2 verified); registered in both manifests.
+- [x] `3.` Paris arrival monologue now plays in TALK FRONT pose.
+- [x] `4.` Basket-height rolling-pin grab — §PP-GRAB-BASKET-v2 landed
+  2026-07-17 with no baked-in basket; gap-detect verified.
+- [x] `5.` Margaux facing — REVERTED the ppTalkFlip experiment (the default
+  side-flip fix had already corrected her plain dialog; the flag re-broke
+  it) and added `faceNPC` to the held-item hand-off path (walkToTalkPos),
+  which never set facing at all.
+- [x] `6.` Camille's FIRST chat now plays npc_camille_sketching.png (the
+  portrait sheet no longer fronts the intro).
+- [x] `7.` Bakery exits now L-walk too (setTarget honors lWalkApproach).
+- [x] `9.`+`14.` pp_get_card was registered under receive_postcard — moved
+  to receive_card (the press pass "Card"); postcard receive is a no-op until
+  §PP-GET-POSTCARD lands.
+- [x] `10.` Heel dialog now points at Margaux, not Pierre.
+- [x] `11.` Pencil-pot pickup shrinks PP into the depth (Pierre's recede
+  pattern) before the grab, eases back after.
+- [x] `12.` Heel double-give race — latched at dialog-fire (heelHandedOut).
+- [x] `15.` Crow perch 650 → 705 (onto the sign).
+- [x] `16.` Cabin-door approach: camp_grounds minY 300 → 263 so PP's centre
+  reaches the door row (398) instead of clamping ~32px below it.
+- [x] `20.` Coffee seller: PP asks for the cup FIRST; stands to the seller's
+  right (approachXOverride x+180) so he talks facing LEFT.
+- [x] `21.` Spice seller redesign — final talk sheet landed 2026-07-17,
+  preserving the redesign while facing and gesturing screen-right.
+- [x] `22.` Antiques grandpa no longer mirrors (fixedFacing; his chair was
+  flipping with him); talk sheet queued §GRANDPA-TALK.
+- [x] `23.`/`25.`/`27.` Jerusalem items ("Coffee"/"Bagel"/"Pen"/"Coin") fell
+  to the generic "item" anim key → NO PP animation played. Mapped: Coffee →
+  the Paris cup give sheet; Bagel/Pen/Coin get graceful loads
+  (§PP-GIVE-BAGEL / §PP-GET-PEN prompts queued).
+- [x] `24.` Right wall worshipper now uses praying_man3.png.
+- [x] `26.` Shimon pen beat: PP asks to borrow it first.
+- [x] `29.` Shimon coin beat latched at selection — a re-click during the
+  hand-off no longer replays throw-pen/throw-coin/give-coin.
+- [x] `30.` Open-door day-2 rooms (jake/tommy/danny) — re-graded 2026-07-17
+  to the dusky day-2 grounds palette.
+- [x] `31.` Lake Lily talk slowed (0.24).
+- [x] `32.` camp_lake added to applyCampMood (darkens on day 2); §LAKE-DAY2
+  art queued, falls back to day1 until it lands.
+- [x] `33.` Day-1 office Higgins anchor RESTORED (22); the deeper anchor (40)
+  now applies only at mood level > 0 (the day2/3 art draws the desk higher).
+  Post-Lily (arc started, pre-heal) his office dialog turns curt
+  (higginsAngryShortDialog) — wired sticky through onDialogEnd.
+- [x] `34.` Rude-Higgins intercept never fired: the post-Jake-heal block
+  OVERWROTE lake-Lily's onDialogEnd without setting VarLilyLakeMet. Fixed —
+  the flag is set there now, and applyCampMood runs at arc start.
+- [ ] `[P1]` PLAYTEST: L-walk on plain clicks, minY 263 headroom, the punched
+  sheets, day-2 office seating, and the re-rolled gives once regenerated.
+
 ### 2026-07-15 — new PR (15-item sweep: camp / paris / bakery)
 
 - [x] `1.` Camp kids a little bigger — all five grounds kids H 120 → 140

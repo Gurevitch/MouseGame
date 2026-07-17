@@ -774,9 +774,14 @@ func splitRuns(hist []int, want int) [][2]int {
 				cut, cutVal = i, hist[i]
 			}
 		}
-		// only cut a genuine thin BRIDGE — a waist well below the run's bulk.
-		// A legitimately wide figure has no such waist and we refuse to cut it.
-		if cut < 0 || cutVal > r.peak*35/100 {
+		// only cut a plausible BRIDGE — a waist below the run's bulk. 2026-07-15:
+		// threshold 35% → 60%. The AI-regenerated give sheets keep overlapping
+		// neighbouring figures with full arms (bridges ~40-55% of peak); this
+		// splitter only runs when the sheet ALREADY failed a clean gap split,
+		// and cutting at the best valley beats the proportional fallback that
+		// sliced mid-body ("duplicate sprite running"). Genuinely wide single
+		// figures still refuse (>60%).
+		if cut < 0 || cutVal > r.peak*60/100 {
 			return nil
 		}
 		left, right := mkRun(r.s, cut), mkRun(cut, r.e)

@@ -28,6 +28,19 @@ func TestRepairEnclosedWhite(t *testing.T) {
 		replacement color.NRGBA
 		clearGaps   bool
 	}{
+		{"../assets/images/player/PP give coffee.png", vanilla, false},
+		{"../assets/images/player/PP give sketch.png", vanilla, false},
+		{"../assets/images/player/PP give postcard.png", vanilla, false},
+		{"../assets/images/player/pp_get_card.png", vanilla, false},
+		{"../assets/images/locations/jerusalem/npc/wall/npc_bagel_seller_give.png", vanilla, false},
+		{"../assets/images/player/PP put note in wall.png", vanilla, false},
+		{"../assets/images/player/PP give bagel.png", vanilla, false},
+		{"../assets/images/player/pp_get_pen.png", vanilla, false},
+		{"../assets/images/player/PP get postcard.png", vanilla, false},
+		{"../assets/images/player/PP grab basket.png", vanilla, false},
+		{"../assets/images/locations/jerusalem/npc/market/npc_spice_seller_idle.png", vanilla, false},
+		{"../assets/images/locations/jerusalem/npc/market/npc_spice_seller_talk.png", vanilla, false},
+		{"../assets/images/locations/jerusalem/npc/market/grandpa_idle_talk.png", vanilla, false},
 		{"../assets/images/player/PP walk front.png", vanilla, false},
 		{"../assets/images/player/PP walk back.png", vanilla, false},
 		{"../assets/images/player/PP grab flower.png", vanilla, true},

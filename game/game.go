@@ -412,6 +412,9 @@ func (g *Game) setupCampCallbacks() {
 							// LOCKED until the lake beat + the rude-Higgins exchange
 							// (the camera aside is what lights up the map).
 							game.vars.SetBool(ScopeGame, VarLilyArcStarted, true)
+							// user #33: office Higgins turns curt + reseats for the
+							// darker office art right away.
+							game.applyCampMood()
 							if lk, ok := game.sceneMgr.scenes["camp_lake"]; ok {
 								for _, n := range lk.npcs {
 									if n.name == "Lily" {
@@ -424,6 +427,10 @@ func (g *Game) setupCampCallbacks() {
 										// just wants to be left alone.
 										lakeLily.dialog = lilyStrangeDialog
 										lakeLily.onDialogEnd = func() {
+											// 2026-07-15 (user #34): this overwrite CLOBBERED the
+											// lake-setup onDialogEnd that set VarLilyLakeMet — so
+											// the rude-Higgins intercept never armed. Set it here.
+											game.vars.SetBool(ScopeGame, VarLilyLakeMet, true)
 											lakeLily.dialog = lilyLeaveMeAloneDialog
 										}
 										break
@@ -714,7 +721,10 @@ func (g *Game) setupCampCallbacks() {
 							game.giveMapItem()
 						}
 					}
-					if game.marcusHealed {
+					if game.vars.GetBool(ScopeGame, VarLilyArcStarted) && !game.vars.GetBool(ScopeGame, VarLilyHealed) {
+						// 2026-07-15 (user #33): post-Lily he stays curt.
+						officeHiggins.dialog = higginsAngryShortDialog
+					} else if game.marcusHealed {
 						officeHiggins.dialog = higginsPostMarcusHealedDialog
 					} else {
 						officeHiggins.dialog = higginsPostWorriedDialog
@@ -1274,6 +1284,11 @@ func (g *Game) setupParisCallbacks() {
 		louvreUnlocked bool // Claude took the press pass and waved PP in
 		pigeonsCleared bool // Pierre shooed the flower-pot pigeon with the heel
 		pencilTaken    bool // pencil fished out of the flower pot by the Louvre steps
+		// 2026-07-15 (user #12): latch the heel hand-out the moment the dialog
+		// fires — the old inv.hasItem guard only saw the heel ~3s later (after
+		// the give/receive one-shots), so a quick double-click on Poulain
+		// handed out TWO heels and one stayed in the bag after Margaux's trade.
+		heelHandedOut bool
 		sketchDone     bool // Camille drew the Room 7 replica, sketch in PP's bag
 		souvenirAsked  bool // Poulain asked for the grandson postcard (post-heal)
 		souvenirDone   bool // signed postcard delivered to Poulain
@@ -1763,8 +1778,9 @@ func (g *Game) setupParisCallbacks() {
 				// 2) Day-old heel to shoo the flower-pot pigeon (PR#29). Offered
 				// once Camille has sent PP after the pencil, until Pierre has
 				// shooed the bird.
-				if camilleAsked && !pigeonsCleared && !game.inv.hasItem("Baguette Heel") {
+				if camilleAsked && !pigeonsCleared && !heelHandedOut && !game.inv.hasItem("Baguette Heel") {
 					return bakeryWomanHeelDialog, func() {
+						heelHandedOut = true
 						// SKILL.md §8b: hand-overs are animated on both sides.
 						// Her give sheet + PP's baguette receive are the closest
 						// existing sheets (it IS a baguette end). PR#18: face PP.
@@ -2140,15 +2156,22 @@ func (g *Game) setupParisCallbacks() {
 				// player.update kills before the callback runs, so the pencil was
 				// never added and PP appeared stuck. Use the guaranteed "grab"
 				// one-shot (fires onDone even if art is missing) like the rolling pin.
-				game.player.playOneShot("grab", 1.0, func() {
-					pencilTaken = true
-					if item := game.items.createItem("charcoal_pencil"); item != nil {
-						game.inv.addItem(item)
-					}
-					// §8c: generic pickup line - Camille's own dialog already
-					// nudges where the pencil goes.
-					game.dialog.startDialog(genericPickupDialog(
-						"A charcoal pencil, rescued from the pigeons."))
+				// 2026-07-15 (user #11): the pot sits at the BACK of the street —
+				// PP shrinks into the depth (Pierre's recede pattern) for the
+				// grab instead of picking at full size, then eases back.
+				game.player.playRecede(0.5, 0.8, 15, func() {
+					game.player.holdRecede()
+					game.player.playOneShot("grab", 1.0, func() {
+						pencilTaken = true
+						if item := game.items.createItem("charcoal_pencil"); item != nil {
+							game.inv.addItem(item)
+						}
+						game.player.releaseRecedeSmooth(0.6)
+						// §8c: generic pickup line - Camille's own dialog already
+						// nudges where the pencil goes.
+						game.dialog.startDialog(genericPickupDialog(
+							"A charcoal pencil, rescued from the pigeons."))
+					})
 				})
 			},
 		}
@@ -2740,7 +2763,13 @@ func (g *Game) Update(dt float64, mx, my int32) {
 
 	if !g.parisMonologuePlayed && g.sceneMgr.currentName == "paris_street" && !g.sceneMgr.transitioning {
 		g.parisMonologuePlayed = true
-		g.dialog.startDialog(parisStreetMonologue)
+		// 2026-07-15 (user #3): arrival monologue plays in the TALK FRONT pose
+		// (he's addressing the player), not the idle — same as the Louvre one.
+		g.player.state = stateTalking
+		g.player.dir = dirDown
+		g.dialog.startDialogWithCallback(parisStreetMonologue, func() {
+			g.player.state = stateIdle
+		})
 	}
 
 	// Biker bump encounter (2026-06-12 #12): armed by clicking the biker,

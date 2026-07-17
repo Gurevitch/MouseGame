@@ -248,8 +248,36 @@ func gridFramesConnected(renderer *sdl.Renderer, path string, cols, rows int) []
 // (off-white belly, sclera, held props) - they're enclosed by dark outlines the
 // flood can't cross. 2026-06-15 (#1): the flower-pick read with "white around
 // him" at tol 8, same fringe the biker fixed at tol 40.
+// gridFramesEqualTol cuts EQUAL cells (no gap detection) with a connected
+// key — for sheets whose figures TOUCH (2026-07-15: the regenerated give/
+// receive sheets keep coming back with 4-figure blobs no matter the prompt;
+// the figures still sit on the regular 192px pitch, so equal cells cut them
+// cleanly — the same fix that steadied office Higgins's touching busts).
+func gridFramesEqualTol(renderer *sdl.Renderer, path string, cols, rows int, tol uint8) []spriteFrame {
+	grid := engine.SpriteGridFromPNGCleanConnectedTolEqual(renderer, path, cols, rows, spriteInset, tol)
+	return framesFromGridFrames(grid, cols, rows)
+}
+
 func gridFramesConnectedTol(renderer *sdl.Renderer, path string, cols, rows int, tol uint8) []spriteFrame {
 	grid := engine.SpriteGridFromPNGCleanConnectedTol(renderer, path, cols, rows, spriteInset, tol)
+	var frames []spriteFrame
+	for r := 0; r < rows && r < len(grid); r++ {
+		for c := 0; c < cols && c < len(grid[r]); c++ {
+			gf := grid[r][c]
+			if gf.Tex == nil {
+				continue
+			}
+			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX, footRow: gf.FRY})
+		}
+	}
+	stabilizeFootCX(frames)
+	return frames
+}
+
+// framesFromGridFrames flattens an engine grid into spriteFrames (shared by
+// the gap-detect and equal-cell loaders).
+func framesFromGridFrames(grid [][]engine.GridFrame, cols, rows int) []spriteFrame {
 	var frames []spriteFrame
 	for r := 0; r < rows && r < len(grid); r++ {
 		for c := 0; c < cols && c < len(grid[r]); c++ {
@@ -419,13 +447,15 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if len(grabFlower) > 0 {
 		p.oneShotAnims["grab_flower"] = grabFlower
 	}
-	// User playtest #14/#19: dedicated rolling-pin grab strip (PP reaches into
-	// the bike basket and lifts the pin overhead). The sheet is 6 frames in one
-	// row (counted from the art); loading it as 8 cols sliced the 362px frames
-	// at 271px and made it "blink" across the whole sprite. Load 6×1.
-	grabRollingPin := gridFrames(renderer, "assets/images/player/PP grab rolling pin.png", 6, 1)
-	if len(grabRollingPin) > 0 {
-		p.oneShotAnims["grab_rolling_pin"] = grabRollingPin
+	// User playtest #4/#14/#19: prefer the dedicated waist-high basket pickup;
+	// retain the older ground-reach strip as a graceful fallback.
+	if path := firstExisting(
+		"assets/images/player/PP grab basket.png",
+		"assets/images/player/PP grab rolling pin.png",
+	); path != "" {
+		if f := gridFrames(renderer, path, 6, 1); len(f) > 0 {
+			p.oneShotAnims["grab_rolling_pin"] = f
+		}
 	}
 	// #25: PP receiving the baguette / the jam from the bakery NPCs. 8 frames
 	// in one row each (counted from the art). Played by the trade callbacks.
@@ -449,14 +479,16 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			p.oneShotAnims["receive_sketch"] = f
 		}
 	}
-	// §PP-RECEIVE-PRESSPASS (art landed 2026-06-30, pp_get_press_pass.png): PP
-	// takes a flat card and pockets it. Both the Press Pass (from Pierre) and the
-	// Postcard (from Beaumont) resolve to the "postcard" anim key (see
-	// giveAnimKeyForItem), so registering this under "receive_postcard" upgrades
-	// BOTH flat-card receives from the previous idle no-op. (The postcard/press
-	// pass GIVE still uses "give_postcard".)
-	if rp := firstExisting("assets/images/player/pp_get_card.png",
-		"assets/images/player/pp_get_card.png"); rp != "" {
+	// 2026-07-15 (user #9/#14): pp_get_card.png is the PRESS-PASS ("Card")
+	// receive — register it under "receive_card" so it plays when Pierre hands
+	// the pass over. It must NOT double as the Beaumont postcard receive.
+	if rp := firstExisting("assets/images/player/pp_get_card.png"); rp != "" {
+		if f := gridFramesConnectedTol(renderer, rp, 8, 1, 24); len(f) > 0 {
+			p.oneShotAnims["receive_card"] = f
+		}
+	}
+	// §PP-GET-POSTCARD: dedicated Louvre-postcard receive beat.
+	if rp := firstExisting("assets/images/player/PP get postcard.png"); rp != "" {
 		if f := gridFramesConnected(renderer, rp, 8, 1); len(f) > 0 {
 			p.oneShotAnims["receive_postcard"] = f
 		}
@@ -495,6 +527,27 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		// survive.
 		if f := gridFramesConnectedTol(renderer, path, 8, 1, 24); len(f) > 0 {
 			p.oneShotAnims["give_"+key] = f
+		}
+	}
+	// 2026-07-15 (user #25/#27): Jerusalem per-item sheets — all optional,
+	// no-op until the art lands (§PP-GIVE-BAGEL / §PP-GET-PEN etc.).
+	for key, path := range map[string]string{
+		"give_bagel":    "assets/images/player/PP give bagel.png",
+		"receive_bagel": "assets/images/player/pp_get_bagel.png",
+		"receive_pen":   "assets/images/player/pp_get_pen.png",
+		"receive_coin":  "assets/images/player/pp_get_coin.png",
+		"give_coin":     "assets/images/player/PP give coin.png",
+	} {
+		if _, err := os.Stat(path); err == nil {
+			if f := gridFramesConnectedTol(renderer, path, 8, 1, 24); len(f) > 0 {
+				p.oneShotAnims[key] = f
+			}
+		}
+	}
+	// §PP-GET-POSTCARD (landed 2026-07-15): the postcard has its own receive.
+	if rp := firstExisting("assets/images/player/PP get postcard.png"); rp != "" {
+		if f := gridFramesConnectedTol(renderer, rp, 8, 1, 24); len(f) > 0 {
+			p.oneShotAnims["receive_postcard"] = f
 		}
 	}
 	// §PM1 (2026-06-12): PP pulls the travel map out of his invisible hip
@@ -592,6 +645,17 @@ func giveAnimKeyForItem(name string) string {
 		return "postcard"
 	case "Card":
 		return "card"
+	// 2026-07-15 (user #23/#25/#27): Jerusalem chain items were falling to the
+	// generic "item" key, so their hand-overs played NO PP animation at all.
+	case "Coffee":
+		// The paper cup — the Paris café-au-lait give sheet IS a cup hand-over.
+		return "cafe_au_lait"
+	case "Bagel":
+		return "bagel"
+	case "Pen":
+		return "pen"
+	case "Coin":
+		return "coin"
 	}
 	return "item"
 }
@@ -927,11 +991,16 @@ func (p *player) setTarget(x, y float64) {
 	ty := engine.Clamp(y-playerDstH/2, p.minY(), p.maxY())
 	p.targetX = tx
 	p.targetY = ty
+	p.interactTarget = nil
+	p.onArrival = nil
+	// 2026-07-15 (user #7): plain clicks (incl. the bakery exit) also walk the
+	// aisle L instead of cutting across the tables.
+	if p.startLWalk(tx, ty, tx-p.x, ty-p.y, func() {}) {
+		return
+	}
 	p.moving = true
 	p.allowOffscreen = false
 	p.state = stateWalking
-	p.interactTarget = nil
-	p.onArrival = nil
 }
 
 // talkApproachPos returns the world top-left (tx,ty) PP should stand at to talk
@@ -988,6 +1057,23 @@ func (p *player) talkApproachPos(target *npc) (float64, float64) {
 // held-item hand-off (interactTarget is NOT set), so the give-item beat works at
 // any distance (#10), not only when PP has to walk in. Does not touch
 // interactTarget, so it won't also trigger the normal NPC dialog.
+// faceNPC turns PP toward the NPC he's talking/handing to — one source of
+// truth for the dialog AND the held-item hand-off (2026-07-15 user #5: the
+// hand-off path never set facing, so PP kept his walk direction and gave
+// Margaux the heel facing away).
+func (p *player) faceNPC(n *npc) {
+	npcCenter := float64(n.bounds.X + n.bounds.W/2)
+	p.facingLeft = p.x+playerDstW/2 > npcCenter
+	if n.ppTalkFlip {
+		p.facingLeft = !p.facingLeft
+	}
+	if p.facingLeft {
+		p.dir = dirLeft
+	} else {
+		p.dir = dirRight
+	}
+}
+
 func (p *player) walkToTalkPos(target *npc, onArrive func()) {
 	// 2026-06-15 #13: same as walkToAndInteract - a held-item hand-over to
 	// another NPC (e.g. handing Claude the Press Pass) must release any held
@@ -1005,19 +1091,26 @@ func (p *player) walkToTalkPos(target *npc, onArrive func()) {
 		p.y = ty
 		p.moving = false
 		p.state = stateIdle
+		p.faceNPC(target)
 		if onArrive != nil {
 			onArrive()
 		}
 		return
 	}
+	arrive := func() {
+		p.faceNPC(target)
+		if onArrive != nil {
+			onArrive()
+		}
+	}
 	// user #13: L-shaped approach in aisle scenes.
-	if p.startLWalk(tx, ty, dx, dy, func() { p.onArrival = onArrive }) {
+	if p.startLWalk(tx, ty, dx, dy, func() { p.onArrival = arrive }) {
 		return
 	}
 	p.moving = true
 	p.allowOffscreen = false
 	p.state = stateWalking
-	p.onArrival = onArrive
+	p.onArrival = arrive
 }
 
 // startLWalk (2026-07-15 user #13, paris_bakery): when approaching a talk
@@ -1609,19 +1702,7 @@ func (p *player) startNPCDialog() {
 	p.state = stateTalking
 	p.talkCycleIdx = 0
 	p.talkTimer = 0
-	npcCenter := float64(n.bounds.X + n.bounds.W/2)
-	playerCenter := p.x + playerDstW/2
-	p.facingLeft = playerCenter > npcCenter
-	// 2026-07-15 (user #9): per-NPC override — invert PP's side facing for
-	// this dialog (Madame Margaux read as talking the wrong way).
-	if n.ppTalkFlip {
-		p.facingLeft = !p.facingLeft
-	}
-	if p.facingLeft {
-		p.dir = dirLeft
-	} else {
-		p.dir = dirRight
-	}
+	p.faceNPC(n)
 	// 2026-06-20 #10: NPCs behind a back-of-scene counter (Madame Poulain) sit
 	// ABOVE PP, so the default left/right facing reads as PP showing his back.
 	// ppFacePlayer makes PP face the camera (front) for this NPC's dialog so we
@@ -1646,7 +1727,7 @@ func (p *player) startNPCDialog() {
 	// #16: seated NPCs (office Higgins) hold their authored facing instead of
 	// turning to face PP.
 	if !n.fixedFacing {
-		n.flipped = playerCenter < npcCenter
+		n.flipped = p.x+playerDstW/2 < float64(n.bounds.X+n.bounds.W/2)
 	}
 
 	if len(n.talkGrid) > 0 {

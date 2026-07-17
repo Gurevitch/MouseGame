@@ -27,6 +27,8 @@ var paths = []string{
 	"assets/images/player/PP pull map.png",
 	// 2026-07-15 (user #5): white square between arm and body on the flower grab.
 	"assets/images/player/PP grab flower.png",
+	// 2026-07-17: generated basket pickup contained chroma-key white on PP.
+	"assets/images/player/PP grab basket.png",
 }
 
 func absInt(a int) int {

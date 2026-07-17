@@ -742,7 +742,7 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		fixedFacing:       true,
 		fixedFootAnchor:   true, // give_map one-shot (throw) keeps the foot anchor
 		fixedHeadAnchor:   true, // item 3: idle/talk busts pin the HEAD, not the bottom
-		headAnchorOffsetY: 40, // 2026-07-15 (user #6): talk sat too high over the desk — down ~10% of H (22 -> 40; idle+talk share this anchor)
+		headAnchorOffsetY: 22, // 2026-07-15 (user #33): day-1 anchor RESTORED to 22 (the 40 nudge from #6 belongs to the DAY-2 art only; applyCampMood scopes it)
 		oneShotFlip:       map[string]bool{"give_map": true},
 		silent:            true,
 		// 2026-06-20 #3: PP stood at the default 10px gap (foot ~x750), right on
@@ -770,6 +770,14 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		n.anchorRefH = idleRefH
 	}
 	return n
+}
+
+// higginsAngryShortDialog (2026-07-15 user #33): once Lily's arc has started
+// (post-Jake, pre-heal) Higgins is fed up — office chats go curt until she's
+// healed.
+var higginsAngryShortDialog = []dialogEntry{
+	{speaker: "Director Higgins", text: "What do you want? I'm BUSY."},
+	{speaker: "Director Higgins", text: "Strange drawings, strange coins, now ze flowers... Leave me alone, panther."},
 }
 
 // newGroundsHiggins is the hidden Higgins that appears next to the cabin path
@@ -946,6 +954,9 @@ func newLakeLily(renderer *sdl.Renderer) *npc {
 	// foot-centre x at 814 (X = 814 - 102/2 = 763).
 	n.bounds = sdl.Rect{X: 763, Y: 370, W: 102, H: 126}
 	n.lockIdleInDialog = !hasSadTalk
+	// 2026-07-15 (user #31): her sad-talk loop cycled too fast at the kid
+	// default — slow it to the calm-talker cadence.
+	n.talkFrameSpeed = 0.24
 	n.hidden = true
 	n.silent = true
 	return n
@@ -2125,10 +2136,12 @@ var bakeryWomanCoffeeRefillDialog = []dialogEntry{
 
 // bakeryWomanHeelDialog - Pierre needs crumbs for the pigeon critics; Poulain
 // donates the day-old baguette heel.
+// 2026-07-15 (user #10): the heel goes to Madame MARGAUX (the pigeon lady),
+// not Pierre — the text pointed at the wrong NPC.
 var bakeryWomanHeelDialog = []dialogEntry{
-	{speaker: "Pink Panther", text: "Madame, Pierre needs crumbs. Pigeon business. It's a long story."},
-	{speaker: "Madame Poulain", text: "Pierre and his pigeon critics! (laughs) Here - yesterday's baguette heel."},
-	{speaker: "Madame Poulain", text: "Ze ends are for ze birds anyway. Tell him ze bakery expects a good review."},
+	{speaker: "Pink Panther", text: "Madame, I need crumbs. A pigeon is guarding a flower pot. It's a long story."},
+	{speaker: "Madame Poulain", text: "Ah, zen you want Madame Margaux, ze pigeon lady! (laughs) Here - yesterday's baguette heel."},
+	{speaker: "Madame Poulain", text: "Ze ends are for ze birds anyway. Zey do ANYTHING for her coo-coo."},
 }
 
 // bakeryWomanSouvenirThanksDialog fires when PP hands over the signed
@@ -2572,9 +2585,6 @@ func newPigeonLady(renderer *sdl.Renderer) *npc {
 		name:      "Madame Margaux",
 		dialog:    pigeonLadyDialog,
 		bobAmount: 0,
-		// 2026-07-15 (user #9): PP spoke facing away from her — invert his
-		// side facing for this dialog.
-		ppTalkFlip: true,
 		// 2026-06-20 #10: 0.13 cycled too fast for her speech; match the slowed
 		// talkers at 0.22.
 		talkFrameSpeed: 0.22,
@@ -2837,7 +2847,10 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 	// Sketching one-shot (#19): draw → present, ending with Camille holding the
 	// finished portrait toward the camera (it matches the sketch item she gives).
 	// Prefer the new draw-then-present sheet; fall back to the older reveal-only.
-	sketchSheet := "assets/images/locations/paris/npc/coffee/npc_camille_sketching_portrait.png"
+	// 2026-07-15 (user #6): the FIRST-chat beat is Camille sketching in her pad
+	// (npc_camille_sketching.png) — the portrait-reveal sheet belongs to the
+	// post-pencil beats, not the intro.
+	sketchSheet := "assets/images/locations/paris/npc/coffee/npc_camille_sketching.png"
 	if _, err := os.Stat(sketchSheet); err != nil {
 		sketchSheet = "assets/images/locations/paris/npc/coffee/npc_camille_sketching.png"
 	}
