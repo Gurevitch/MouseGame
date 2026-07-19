@@ -101,6 +101,17 @@ func loadAmbientStripKeyedTol(renderer *sdl.Renderer, path string, frames int, t
 	return framesFromGrid(grid, frames, 1, path)
 }
 
+// loadAmbientStripGlobalKeyed removes the sampled background colour everywhere,
+// including enclosed gaps. Use only when the keyed colour is absent from the
+// foreground art.
+func loadAmbientStripGlobalKeyed(renderer *sdl.Renderer, path string, frames int) []npcFrame {
+	if _, err := os.Stat(path); err != nil {
+		return nil
+	}
+	grid := engine.SpriteGridFromPNGClean(renderer, path, frames, 1, 0)
+	return framesFromGrid(grid, frames, 1, path)
+}
+
 // containsPoint hit-tests the sprite's last drawn rect (clickable ambients).
 func (a *ambientSprite) containsPoint(x, y int32) bool {
 	if a.onClick == nil || a.lastRect.W <= 0 {
@@ -207,12 +218,11 @@ func newAmbientProp(renderer *sdl.Renderer, sheet string, x, y, scale float64) *
 	}
 }
 
-// newAmbientPropKeyed is newAmbientProp with a connected-edge colour key
-// (tolerance tol). Use for props exported with a baked background so the
-// bg is stripped without eating enclosed geometry.
-func newAmbientPropKeyed(renderer *sdl.Renderer, sheet string, x, y, scale float64, tol uint8) *ambientSprite {
+// newAmbientPropKeyed is newAmbientProp with a global sampled colour key.
+// Use for props whose key colour also appears in enclosed background gaps.
+func newAmbientPropKeyed(renderer *sdl.Renderer, sheet string, x, y, scale float64) *ambientSprite {
 	return &ambientSprite{
-		frames:   loadAmbientStripKeyedTol(renderer, sheet, 1, tol),
+		frames:   loadAmbientStripGlobalKeyed(renderer, sheet, 1),
 		kind:     ambientSway,
 		x:        x,
 		y:        y,

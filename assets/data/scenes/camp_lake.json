@@ -1,8 +1,8 @@
 {
   "name": "camp_lake",
   "background": "assets/images/locations/camp/background/day1/camp_lake.png",
-  "spawnX": 200,
-  "spawnY": 365,
+  "spawnX": 618,
+  "spawnY": 398,
   "minY": 300,
   "maxY": 560,
   "musicPath": "assets/audio/music/camp.mp3",

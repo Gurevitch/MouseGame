@@ -211,7 +211,7 @@ func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
 const spriteInset = 3
 
 func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFrame {
-	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, spriteInset)
+	grid := engine.SpriteGridFromPNGCleanNeutral(renderer, path, cols, rows, spriteInset)
 	var frames []spriteFrame
 	for r := 0; r < rows && r < len(grid); r++ {
 		for c := 0; c < cols && c < len(grid[r]); c++ {
@@ -294,7 +294,7 @@ func framesFromGridFrames(grid [][]engine.GridFrame, cols, rows int) []spriteFra
 }
 
 func gridFramesRow(renderer *sdl.Renderer, path string, cols, rows, row int) []spriteFrame {
-	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, spriteInset)
+	grid := engine.SpriteGridFromPNGCleanNeutral(renderer, path, cols, rows, spriteInset)
 	var frames []spriteFrame
 	if row < len(grid) {
 		for c := 0; c < cols && c < len(grid[row]); c++ {
@@ -457,9 +457,10 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			p.oneShotAnims["grab_rolling_pin"] = f
 		}
 	}
-	// #25: PP receiving the baguette / the jam from the bakery NPCs. 8 frames
-	// in one row each (counted from the art). Played by the trade callbacks.
-	if f := gridFramesConnected(renderer, "assets/images/player/PP get bagguette.png", 8, 1); len(f) > 0 {
+	// #25: PP receiving the baguette / the jam from the bakery NPCs. The
+	// baguette receive was re-rolled 6×1 on a sampled blue background; use the
+	// global key so enclosed blue gaps disappear without erasing the cream prop.
+	if f := gridFrames(renderer, "assets/images/player/PP get bagguette.png", 6, 1); len(f) > 0 {
 		p.oneShotAnims["get_baguette"] = f
 	}
 	if f := gridFramesConnected(renderer, "assets/images/player/PP get jam.png", 8, 1); len(f) > 0 {
@@ -489,7 +490,7 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	}
 	// §PP-GET-POSTCARD: dedicated Louvre-postcard receive beat.
 	if rp := firstExisting("assets/images/player/PP get postcard.png"); rp != "" {
-		if f := gridFramesConnected(renderer, rp, 8, 1); len(f) > 0 {
+		if f := gridFrames(renderer, rp, 6, 1); len(f) > 0 {
 			p.oneShotAnims["receive_postcard"] = f
 		}
 	}
@@ -517,8 +518,6 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		"cafe_au_lait":  "assets/images/player/PP give coffee.png",
 		"baguette_heel": "assets/images/player/PP give heel.png",
 		"pencil":        "assets/images/player/PP give pencil.png",
-		"sketch":        "assets/images/player/PP give sketch.png",
-		"postcard":      "assets/images/player/PP give postcard.png",
 	} {
 		// #5: tol 24 (was 8) — the give poses touch with a faint near-white
 		// bridge that survived the low-tol key, so the gap-detector mis-cut them
@@ -529,12 +528,20 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			p.oneShotAnims["give_"+key] = f
 		}
 	}
+	// 2026-07-17: wide-cell give re-rolls use 6×1 and a sampled blue
+	// background. Global keying removes the blue even from enclosed arm gaps.
+	for key, path := range map[string]string{
+		"sketch":   "assets/images/player/PP give sketch.png",
+		"postcard": "assets/images/player/PP give postcard.png",
+	} {
+		if f := gridFrames(renderer, path, 6, 1); len(f) > 0 {
+			p.oneShotAnims["give_"+key] = f
+		}
+	}
 	// 2026-07-15 (user #25/#27): Jerusalem per-item sheets — all optional,
 	// no-op until the art lands (§PP-GIVE-BAGEL / §PP-GET-PEN etc.).
 	for key, path := range map[string]string{
-		"give_bagel":    "assets/images/player/PP give bagel.png",
 		"receive_bagel": "assets/images/player/pp_get_bagel.png",
-		"receive_pen":   "assets/images/player/pp_get_pen.png",
 		"receive_coin":  "assets/images/player/pp_get_coin.png",
 		"give_coin":     "assets/images/player/PP give coin.png",
 	} {
@@ -544,10 +551,18 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			}
 		}
 	}
-	// §PP-GET-POSTCARD (landed 2026-07-15): the postcard has its own receive.
-	if rp := firstExisting("assets/images/player/PP get postcard.png"); rp != "" {
-		if f := gridFramesConnectedTol(renderer, rp, 8, 1, 24); len(f) > 0 {
-			p.oneShotAnims["receive_postcard"] = f
+	// 2026-07-17: blue-background Jerusalem sheets are all wide-cell 6×1.
+	for key, path := range map[string]string{
+		"give_bagel":           "assets/images/player/PP give bagel.png",
+		"receive_pen":          "assets/images/player/pp_get_pen.png",
+		"receive_cardamom":     "assets/images/player/pp_get_cardamom.png",
+		"receive_cafe_au_lait": "assets/images/player/pp_get_coffee.png",
+		"receive_paper":        "assets/images/player/pp_get_paper.png",
+	} {
+		if _, err := os.Stat(path); err == nil {
+			if f := gridFrames(renderer, path, 6, 1); len(f) > 0 {
+				p.oneShotAnims[key] = f
+			}
 		}
 	}
 	// §PM1 (2026-06-12): PP pulls the travel map out of his invisible hip
@@ -573,7 +588,6 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// grab frames so the beat still animates.
 	for _, ns := range []struct{ key, path string }{
 		{"write_note", "assets/images/player/PP write note.png"},
-		{"put_note", "assets/images/player/PP put note in wall.png"},
 	} {
 		if _, err := os.Stat(ns.path); err == nil {
 			// #5: tol 24 to break touching-pose bridges (put-note fell back to
@@ -586,6 +600,12 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		if len(p.grabFrames) > 0 {
 			p.oneShotAnims[ns.key] = p.grabFrames
 		}
+	}
+	// The put-note re-roll uses the 6×1 blue-background convention.
+	if f := gridFrames(renderer, "assets/images/player/PP put note in wall.png", 6, 1); len(f) > 0 {
+		p.oneShotAnims["put_note"] = f
+	} else if len(p.grabFrames) > 0 {
+		p.oneShotAnims["put_note"] = p.grabFrames
 	}
 	// 2026-06-24: PP's back-facing hand-off sheets at Poulain's counter (#11/#7).
 	// These are ITEM-SPECIFIC (user: PP takes the actual baguette/coffee, no
@@ -644,7 +664,9 @@ func giveAnimKeyForItem(name string) string {
 	case "Postcard", "Signed Postcard":
 		return "postcard"
 	case "Card":
-		return "card"
+		// The Press Pass card PP hands Claude — a flat card, same silhouette
+		// as the postcard give sheet (user #13).
+		return "postcard"
 	// 2026-07-15 (user #23/#25/#27): Jerusalem chain items were falling to the
 	// generic "item" key, so their hand-overs played NO PP animation at all.
 	case "Coffee":
@@ -656,13 +678,19 @@ func giveAnimKeyForItem(name string) string {
 		return "pen"
 	case "Coin":
 		return "coin"
+	case "Cardamom":
+		return "cardamom"
+	case "Note Paper":
+		return "paper"
 	}
 	return "item"
 }
 
 func receiveAnimKeyForItem(name string) string {
 	switch name {
-	case "Card":
+	// 2026-07-15 (user #13): the flat-card RECEIVE (pp_get_card.png) plays
+	// both when Pierre hands the "Press Pass" item and for the "Card" item.
+	case "Card", "Press Pass":
 		return "card"
 	}
 	return giveAnimKeyForItem(name)
@@ -742,6 +770,15 @@ func (p *player) playHandOff(target *npc, ho *handOff, then func()) {
 			// reach so they visibly take the item.
 			if !target.hasOneShotAnim(anim) && target.hasOneShotAnim("give") {
 				anim = "give"
+			}
+			// 2026-07-15 (user #25, bagel seller): when there IS a return item
+			// whose give-back will ALSO fall back to the same generic "give"
+			// sheet, playing it here too reads as the NPC handing the item
+			// TWICE. Skip the take-reach and go straight to the hand-back.
+			if anim == "give" && ho.returnItem != "" && ho.npcGiveAnim == "" &&
+				!target.hasOneShotAnim("give_"+receiveAnimKeyForItem(ho.returnItem)) {
+				stageReturn()
+				return
 			}
 		}
 		dur := ho.npcAnimDur
@@ -1351,7 +1388,7 @@ func (p *player) walkToExit(dir arrowDir, action func()) {
 	p.onArrival = action
 }
 
-func (p *player) update(dt float64, blockers []sdl.Rect) {
+func (p *player) update(dt float64, blockers []sdl.Rect, footBlockers []sdl.Rect) {
 	p.breathTimer += dt
 
 	// One-shot named anim (sequence player). Frames advance evenly across
@@ -1618,6 +1655,27 @@ func (p *player) update(dt float64, blockers []sdl.Rect) {
 	} else {
 		p.x = engine.Clamp(nextX, playerMinX, playerMaxX)
 		p.y = engine.Clamp(nextY, p.minY(), p.maxY())
+	}
+
+	// footBlockers (2026-07-15 user #10, bakery tables): tested against PP's
+	// FOOT POINT only, so the tall body box can still overlap tables visually
+	// while his feet are kept off the cloth. Same horizontal-shove resolve as
+	// body blockers.
+	for _, b := range footBlockers {
+		fx := int32(p.x) + playerDstW/2
+		fy := int32(p.y) + playerDstH
+		if fx >= b.X && fx <= b.X+b.W && fy >= b.Y && fy <= b.Y+b.H {
+			blockerCX := float64(b.X) + float64(b.W)/2
+			if p.x+playerDstW/2 < blockerCX {
+				p.x = float64(b.X) - playerDstW/2
+			} else {
+				p.x = float64(b.X+b.W) - playerDstW/2
+			}
+			if p.targetX+playerDstW/2 > float64(b.X) && p.targetX+playerDstW/2 < float64(b.X+b.W) &&
+				p.targetY+playerDstH > float64(b.Y) && p.targetY+playerDstH < float64(b.Y+b.H) {
+				p.moving = false
+			}
+		}
 	}
 
 	for _, b := range blockers {

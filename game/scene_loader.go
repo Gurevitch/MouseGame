@@ -42,6 +42,11 @@ func buildSceneFromDef(renderer *sdl.Renderer, def sceneDef) *scene {
 	for _, b := range def.Blockers {
 		s.blockers = append(s.blockers, sdl.Rect{X: b.X, Y: b.Y, W: b.W, H: b.H})
 	}
+	// footBlockers (2026-07-15 user #10): rects tested against PP's FOOT POINT
+	// only (bakery tables) — a full-box blocker here would wall off the lane.
+	for _, b := range def.FootBlockers {
+		s.footBlockers = append(s.footBlockers, sdl.Rect{X: b.X, Y: b.Y, W: b.W, H: b.H})
+	}
 	for _, w := range def.WalkSegments {
 		s.walkSegments = append(s.walkSegments, walkSegment{
 			x1: w.X1, y1: w.Y1, x2: w.X2, y2: w.Y2,

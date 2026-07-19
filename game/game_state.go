@@ -224,7 +224,7 @@ func (g *Game) applyCampMood() {
 				continue
 			}
 			if level > 0 {
-				n.headAnchorOffsetY = 40
+				n.headAnchorOffsetY = 48 // 2026-07-15 (user #4): a bit lower still on the day-2/3 art
 			} else {
 				n.headAnchorOffsetY = 22
 			}

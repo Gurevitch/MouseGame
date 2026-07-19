@@ -14,6 +14,31 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### 2026-07-17 — PR (31-item sweep, plan humming-stargazing-naur)
+
+Fixed this pass (code): #2 lake spawn mid-deck (618,398); #3 debug log on the
+Lily flower-talk swap (wiring is statically correct — the log pinpoints it in
+playtest); #4 day-2 office anchor 48; #6 rolling-pin grab mirrored; #7
+room-Marcus ppTalkFlip; #8 Poulain rolling-pin trade dialogFirst; #9 Yvette
+back to the 490 stand row; #10 NEW footBlockers (foot-point-only collision;
+scene_config/loader/scene/player + three table rects in paris_bakery.json);
+#13 "Press Pass"→card receive + "Card"→postcard give key maps; #14 Margaux
+stand mark on her right (780) + pencil pickup straight grab facing camera;
+#16 postcard receive mirrored; #19 fences 0.20, tight left line
+[160,420,680], enclosed-white punched surgically; #20 entrance worshippers
+down to 585; #22/23/28 Cardamom/Note-Paper key maps + graceful receive
+loads; #25 playHandOff skips the NPC take-reach when it would replay the
+same generic "give" as the hand-back (+skipNPCTake on bagel/coffee trades);
+#26 praying_man3 scale 0.48; #29/#30 Shimon hover-latch REMOVED (ui.go
+probes altDialogFunc every frame — selectors must be side-effect-free),
+replaced with an in-flight guard; #31 Avi post-note closing dialog. Also:
+surgical enclosed-pocket punch on PP walk front (#1 interim).
+
+Art LANDED 2026-07-17 (EXTRA_PROMPTS round 3): all arm-clip one-shots now
+use exact blue-background 6×1 sheets; §PP-GET-CARDAMOM/COFFEE/PAPER,
+§SPICE-GIVE-v2, §ANTIQUE-GIRL-v2, and the 6×2 §HIGGINS-GIVE-MAP-v2 are
+installed and wired. All 15 sheets GAP-DETECT and add no white/leak scan hits.
+
 ### 2026-07-15 — round-2 art drop: the touching-figures fix went ENGINE-side
 
 The regenerated batch STILL had touching figures (the generator ignores the
@@ -28,15 +53,15 @@ talk landed (fixedFacing already set). Corrections LANDED 2026-07-17:
 §PP-GRAB-BASKET-v2 removes the duplicate baked-in basket,
 §SPICE-TALK-RIGHT faces screen-right, and §ROOM-DOORS-LIGHT matches the
 three open-door rooms to the dusky day-2 grounds palette.
-- [ ] `[P2]` pp_get_pen.png resolved with one sliver cell — if the pen
-  receive blinks in playtest, re-roll just that sheet.
+- [x] `[P2]` pp_get_pen.png re-rolled 6×1 on 2026-07-17; no sliver or
+  frame-leak candidate remains.
 
 ### 2026-07-15 — PR (34-item sweep: camp / paris / bakery / jerusalem / day-2)
 
 ROOT CAUSE of the "duplicate sprite running" gives (#8/#13/#17/#28 + bagel):
-the regenerated sheets have figures that TOUCH (4-figure blobs, no gaps) —
-the cutter can't split them. Re-roll prompts queued (EXTRA_PROMPTS
-§2026-07-15); loaders are correct.
+the old regenerated sheets had figures that touched. RESOLVED 2026-07-17:
+the round-3 sheets use exact blue backgrounds with ≥15px full-height gaps,
+and the affected loaders/manifests now use their 6×1 grids.
 
 - [ ] `1.` White field between PP's legs (talk front + grab flower) + the
   fence gaps (#19) — STILL OPEN (2026-07-15): the pockets are off-white
@@ -57,8 +82,8 @@ the cutter can't split them. Re-roll prompts queued (EXTRA_PROMPTS
   portrait sheet no longer fronts the intro).
 - [x] `7.` Bakery exits now L-walk too (setTarget honors lWalkApproach).
 - [x] `9.`+`14.` pp_get_card was registered under receive_postcard — moved
-  to receive_card (the press pass "Card"); postcard receive is a no-op until
-  §PP-GET-POSTCARD lands.
+  to receive_card (the press pass "Card"); dedicated 6×1 postcard receive
+  landed 2026-07-17.
 - [x] `10.` Heel dialog now points at Margaux, not Pierre.
 - [x] `11.` Pencil-pot pickup shrinks PP into the depth (Pierre's recede
   pattern) before the grab, eases back after.
@@ -74,8 +99,8 @@ the cutter can't split them. Re-roll prompts queued (EXTRA_PROMPTS
   flipping with him); talk sheet queued §GRANDPA-TALK.
 - [x] `23.`/`25.`/`27.` Jerusalem items ("Coffee"/"Bagel"/"Pen"/"Coin") fell
   to the generic "item" anim key → NO PP animation played. Mapped: Coffee →
-  the Paris cup give sheet; Bagel/Pen/Coin get graceful loads
-  (§PP-GIVE-BAGEL / §PP-GET-PEN prompts queued).
+  its dedicated receive; Bagel/Pen/Coin get graceful loads. The 6×1
+  PP give-bagel / receive-pen art landed 2026-07-17.
 - [x] `24.` Right wall worshipper now uses praying_man3.png.
 - [x] `26.` Shimon pen beat: PP asks to borrow it first.
 - [x] `29.` Shimon coin beat latched at selection — a re-click during the
@@ -93,7 +118,7 @@ the cutter can't split them. Re-roll prompts queued (EXTRA_PROMPTS
   OVERWROTE lake-Lily's onDialogEnd without setting VarLilyLakeMet. Fixed —
   the flag is set there now, and applyCampMood runs at arc start.
 - [ ] `[P1]` PLAYTEST: L-walk on plain clicks, minY 263 headroom, the punched
-  sheets, day-2 office seating, and the re-rolled gives once regenerated.
+  sheets, day-2 office seating, and the landed re-rolled gives.
 
 ### 2026-07-15 — new PR (15-item sweep: camp / paris / bakery)
 
@@ -294,7 +319,8 @@ PR list.
 - [x] **#25** Jerusalem entrance spawn/line raised ~45px.
 - [x] **#26** Spice seller planted at ~(319,598) (leg jitter = sheet baseline, queued for sprite-check).
 - [x] **#27** Market bottom walk line widened (150→1180) so the sides are reachable.
-- [x] **#28** Antiques stall added: a girl + her dozing grandpa (idle/talk + dialog); art queued (§J28).
+- [x] **#28** Antiques stall added: a girl + her dozing grandpa (idle/talk +
+      dialog); the girl's no-table 6×1 idle v2 landed 2026-07-17.
 - [x] **#29/#32/#34/#35/#37** Jerusalem give/receive trades rebuilt on the
       two-stage handOff (coffee, bagel, praying-man-gives-paper, Shimon pen, Shimon
       takes the pen back & gives the coin — fixes the "pen stayed in the bag" bug).

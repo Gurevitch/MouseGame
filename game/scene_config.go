@@ -36,6 +36,7 @@ type sceneDef struct {
 	NPCs                   []string          `json:"npcs"`
 	Hotspots               []hotspotJSON     `json:"hotspots"`
 	Blockers               []boundsJSON      `json:"blockers"`
+	FootBlockers           []boundsJSON      `json:"footBlockers"`
 	WalkSegments           []walkSegmentJSON `json:"walkSegments"`
 }
 

@@ -29,6 +29,12 @@
   "blockers": [
     {"x": 0, "y": 0, "w": 1400, "h": 280}
   ],
+  "_comment_footBlockers": "2026-07-15 (user #10): keep PP's FEET off the three cafe tables; rects centred on the user's marks (166,572)/(552,559)/(903,545). The x381/x736 connectors stay clear.",
+  "footBlockers": [
+    {"x": 66,  "y": 542, "w": 200, "h": 55},
+    {"x": 452, "y": 529, "w": 200, "h": 55},
+    {"x": 803, "y": 515, "w": 200, "h": 55}
+  ],
   "_comment_walk": "2026-06-30: a floor click lands PP's foot at clickY+135. Front lane y=634 -> foot 769 (the floor strip in front of the tables, = spawn foot). ADDED a connector UP through the gap between the LEFT and CENTRE tables (x~443) so PP can walk between the tables toward the counter: (443,634)->(443,500), foot 769 -> 635. clickY 500 (ty 365) clamps against minY 290 only if pushed higher. F3-verify the gap x and the top y.",
   "walkSegments": [
     {"x1": 330, "y1": 634, "x2": 1250, "y2": 634},

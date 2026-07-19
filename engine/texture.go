@@ -1071,6 +1071,58 @@ func eraseGridLines(img *image.NRGBA, cols, rows int) {
 //
 // Use inset=2 for typical AI-generated sheets with visible gridlines; inset=0
 // for already-clean sheets.
+// punchNeutralBright makes every NEUTRAL near-white pixel transparent —
+// neutral meaning all three channels within 10 of each other AND the darkest
+// channel >= 234. This kills the enclosed background pockets (between PP's
+// legs, under his arm) that the sampled color key can't reach: they render
+// 238-250 neutral gray-white on white-bg sheets. The character's own light
+// areas are safe BY THE ART RULES — ivory #F2EFE5 (channel spread 13), cream
+// #E5DDC8 (29), bone #EDE5D3 (26), pale-grey #C4C4C4 (too dark) are all
+// tinted or dim, never neutral-bright. PLAYER sheets only (2026-07-17): NPC
+// sheets may legitimately draw neutral eye whites, so their loaders don't run
+// this.
+func punchNeutralBright(img *image.NRGBA) {
+	b := img.Bounds()
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			c := img.NRGBAAt(x, y)
+			if c.A == 0 {
+				continue
+			}
+			lo, hi := c.R, c.R
+			if c.G < lo {
+				lo = c.G
+			}
+			if c.G > hi {
+				hi = c.G
+			}
+			if c.B < lo {
+				lo = c.B
+			}
+			if c.B > hi {
+				hi = c.B
+			}
+			if lo >= 234 && hi-lo <= 10 {
+				img.SetNRGBA(x, y, color.NRGBA{})
+			}
+		}
+	}
+}
+
+// SpriteGridFromPNGCleanNeutral is SpriteGridFromPNGClean plus the
+// neutral-bright punch — the loader for PLAYER sheets (see punchNeutralBright).
+func SpriteGridFromPNGCleanNeutral(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
+	}
+	applyColorKey(img)
+	punchNeutralBright(img)
+	eraseGridLines(img, cols, rows)
+	return gridFromKeyedImage(renderer, img, cols, rows, inset)
+}
+
 func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows, inset int) [][]GridFrame {
 	img, err := loadPNG(filename)
 	if err != nil {
@@ -1079,7 +1131,12 @@ func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows,
 	}
 	applyColorKey(img)
 	eraseGridLines(img, cols, rows)
+	return gridFromKeyedImage(renderer, img, cols, rows, inset)
+}
 
+// gridFromKeyedImage slices an already color-keyed image into content-aware
+// cells (shared by the Clean and CleanNeutral loaders).
+func gridFromKeyedImage(renderer *sdl.Renderer, img *image.NRGBA, cols, rows, inset int) [][]GridFrame {
 	bounds := img.Bounds()
 
 	contentRects := contentGridRects(img, cols, rows)

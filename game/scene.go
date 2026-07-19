@@ -163,6 +163,7 @@ type scene struct {
 	// decorator decides which scenes get them. See ambient_sprite.go.
 	ambientSprites []*ambientSprite
 	blockers       []sdl.Rect
+	footBlockers   []sdl.Rect
 	walkSegments   []walkSegment
 	spawnX         float64
 	spawnY         float64

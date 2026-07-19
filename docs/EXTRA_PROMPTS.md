@@ -26,7 +26,7 @@ so it doesn't violate them on the next prompt:**
 > Hand-drawn 1990s Saturday-morning cartoon, Pink Panther _Hokus Pokus Pink_
 > (1997) / _Passport to Peril_ (1996). Confident black ink linework ~3 px,
 > flat saturated fills, no cross-hatching, no gradients, no airbrush. Two
-> cel tones max per color region. Pure #FFFFFF background, zero scenery.
+> cel tones max per color region. Flat chroma-key background, zero scenery.
 > Every cell is **tall rectangular**, never square.
 
 Canvas dimensions are locked per sheet; do **not** scale down to square.
@@ -48,7 +48,8 @@ ANY sprite — characters, props, painter canvases, aprons/smocks, paper, teeth,
 AND eyes (eye sclera = pale grey `#C4C4C4`, never white).** The engine
 chroma-keys pure white and punches it into holes / white spots. This is why
 Pierre is being recreated (his old canvas + smock + eyes were pure white).
-Only the scene-cell BACKGROUND stays pure white. Verify any new sheet with
+Only a legacy sheet's scene-cell BACKGROUND may stay pure white. New one-shot
+sheets use the blue chroma-key below. Verify any new sheet with
 `SPRITE_SCAN=1 go test ./engine -run TestSpriteScan`.
 
 **No white halo / fringe rule:** anti-aliasing on the sprite itself must NOT use
@@ -56,8 +57,8 @@ pure white or near-white. After the background is removed there must be no tiny
 white rim around the character, eyes, props, flowers, canvas, smock, hands, or
 outline. Use pink/cream/grey edge pixels that match the nearby fill instead
 (for example pale-grey `#C4C4C4` for eye sclera and cream `#E5DDC8` /
-bone `#EDE5D3` for light props). Pure `#FFFFFF` is allowed only in the empty
-cell background.
+bone `#EDE5D3` for light props). Pure `#FFFFFF` is allowed only in a legacy
+sheet's empty cell background.
 
 **Standing rule for ALL characters who need "white" in their design:**
 the engine chroma-keys pure `#FFFFFF` plus a tolerance band. Use these in
@@ -68,9 +69,23 @@ order of preference for fabric / large white areas:
 - **Pale grey `#C4C4C4`** — steam wisps, eye sclera.
 - **Vanilla `#F2EFE5`** — only safe for tiny accents (a tooth, a button).
 
-The **scene background** in the sprite cell still uses pure
-`#FFFFFF` — that IS the chroma key; it's only the character /
-foreground objects that must avoid pure white.
+The **scene background** in a legacy sprite cell may still use pure
+`#FFFFFF`; new one-shots use `#B4D7EE`. Both are sampled chroma keys. The
+character / foreground objects must avoid pure white.
+
+## One-shot sheet canvas rule (2026-07-17)
+
+All new or re-rolled **one-shot** sheets use a perfectly flat light-blue
+background `#B4D7EE` and **6 frames per row**. A single-row sheet is exactly
+1536×1024 (six conceptual 256×1024 cells); multi-row one-shots keep six
+columns (for example Higgins give-map is 6×2 at 1536×1024). Every background
+pixel and every corner must be the same `#B4D7EE`: no vignette, gradient,
+texture, or separator. The engine samples this color and globally keys it,
+so cream paper/props survive while enclosed background gaps disappear.
+
+Keep ≥15px full-height background gaps between figures, lock the anchor and
+scale, and draw one figure per frame. The loader cuts at those gaps; the
+conceptual 256px boundaries are not visible.
 
 ---
 
@@ -86,10 +101,10 @@ verticals between animation frames.
 > The sheet is a **flat grid of cells with NO visible separators**: no
 > drawn borders, no thin lines, no grey/black strips, no shadow gradients
 > between cells. Cell boundaries are conceptual only — neighbouring cells
-> meet directly with pure `#FFFFFF` background pixels on both sides. The
+> meet directly with the sheet's flat chroma-key background on both sides. The
 > exported PNG must look like ONE continuous canvas where each Nth × Mth
 > rectangle happens to hold one frame; if you cropped any cell out you'd
-> see only that frame on pure white, with no edge artefacts.
+> see only that frame on the same flat key color, with no edge artefacts.
 
 If you see a faint vertical/horizontal line in the preview, the generator
 drew a separator — regenerate with the rule above emphasised.
@@ -122,7 +137,7 @@ prompt:
 > Output ONLY the N×M grid of animation frames — nothing else. NO separate
 > large character portrait or "hero" reference image beside or above the grid,
 > NO title text, NO labels, NO watermark, NO colour swatches. Just the frames
-> on pure #FFFFFF.
+> on the required flat chroma-key background.
 
 ## One character per cell / no ghosts rule (applies to EVERY sheet)
 
@@ -153,6 +168,15 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
 
 All prompts below still need a PNG generated. When one lands, move its row
 into the **Done log** at the bottom and delete the body.
+
+### 2026-07-18 — §PP-GRAB-FLOWER-BLUE-v2 — `PP grab flower.png` · NEEDED
+
+The landed blue conversion has TWO FIGURES TOUCHING (one 540px blob
+straddling the 256px cell borders), so the cut fails in-game (user: "pick
+up flower is not cut well"). Regenerate the SAME 6-frame beat (stand by
+flower → crouch → grab → stand with flower → admire → pocket) on flat
+`#B4D7EE`, 1536×1024, 6×1 — one figure per 256px cell, **≥15px clear blue
+between every figure, none touching**.
 
 ### 2026-07-15 — PR batch (34-item sweep) · LANDED 2026-07-15
 
@@ -1503,6 +1527,26 @@ Verify: `go test ./engine -run ContentGrid` (clean cut) and
 
 ## Done log
 
+- **2026-07-18 — antique-girl follow-ups:** §ANTIQUE-GIRL-ALT-v2 and
+  §ANTIQUE-GIRL-TALK-v2 landed as separate 6×1 strips matching her redesigned
+  idle. The alternate dusts a held brass pot with no table; the talk strip
+  keeps the same costume and scale. Both use exact `#B4D7EE` with zero pure
+  white and are wired into the 6-frame loaders and audit manifests.
+- **2026-07-18 — flat-blue conversion batch:** §PP-WALK-FRONT-BLUE,
+  §PP-WALK-BACK-BLUE, §PP-GRAB-FLOWER-BLUE, §PP-GET-COFFEE-v2, and
+  §FENCE-BLUE landed at 1536×1024 with exact `#B4D7EE` keys and zero pure
+  white. The walk and flower frames were preserved; coffee now uses the
+  small patterned finjan and ends pocketed. The fence now uses a global
+  sampled key so blue enclosed between its bars is removed. All four
+  registered player sheets GAP-DETECT and passed the sprite scan.
+- **2026-07-17 — round-3 blue-background one-shots:** Nine existing give /
+  receive sheets were re-rolled at 6×1; §PP-GET-CARDAMOM,
+  §PP-GET-COFFEE, and §PP-GET-PAPER landed and were wired; and
+  §SPICE-GIVE-v2, §ANTIQUE-GIRL-v2, and §HIGGINS-GIVE-MAP-v2 landed with
+  their requested design fixes. All 15 sheets use exact flat `#B4D7EE`,
+  were repacked with ≥15px full-height gaps, GAP-DETECT, and add no
+  pure-white or frame-leak scan candidates. The 6×1/6×2 loader and checker
+  manifests were updated.
 - **2026-07-17 — round-2 art corrections:** §PP-GRAB-BASKET-v2 landed with
   no baked-in basket and its enclosed chroma-key whites repaired;
   §SPICE-TALK-RIGHT now faces and gestures toward viewer's right; and

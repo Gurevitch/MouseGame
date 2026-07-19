@@ -113,10 +113,16 @@ func loadJerNPCSheet(renderer *sdl.Renderer, pref string, prefCols, prefRows int
 // registerJerGive loads an optional NPC give one-shot (no-ops if the art is
 // absent), so the trade callbacks can play it without a missing-file load.
 func registerJerGive(renderer *sdl.Renderer, n *npc, path string) {
+	registerJerGiveGrid(renderer, n, path, 8, 1)
+}
+
+// registerJerGiveGrid is the geometry-aware form used by the 6×1
+// blue-background re-rolls.
+func registerJerGiveGrid(renderer *sdl.Renderer, n *npc, path string, cols, rows int) {
 	if _, err := os.Stat(path); err != nil {
 		return
 	}
-	if f := loadNPCGrid(renderer, path, 8, 1); len(f) > 0 {
+	if f := loadNPCGrid(renderer, path, cols, rows); len(f) > 0 {
 		if n.oneShotAnims == nil {
 			n.oneShotAnims = map[string][]npcFrame{}
 		}
@@ -200,7 +206,7 @@ var coffeeTradeDialog = []dialogEntry{
 	{speaker: "Coffee Seller", text: "Cardamom! Perfect. Sit, sit. Let it brew, and stay a while with us."},
 	{speaker: "Pink Panther", text: "Ahh, I'd love to, truly - but I'm in a bit of a hurry. There's a frightened boy back at camp counting on me."},
 	{speaker: "Pink Panther", text: "Any chance I could take it to go? One coffee, to travel?"},
-	{speaker: "Coffee Seller", text: "A panther in a hurry! Of course, of course. A paper cup, then - but you must still hear one thing while I pour."},
+	{speaker: "Coffee Seller", text: "A panther in a hurry! Of course, of course. A little cup for ze road, zen - but you must still hear one thing while I pour."},
 	{speaker: "Coffee Seller", text: "You feel that quiet? Three thousand years of people sitting exactly here. Romans, pilgrims, traders."},
 	{speaker: "Coffee Seller", text: "The boy in your story - the face he draws is on an old coin from the Wall's own stones. The Wall keeps such things."},
 	{speaker: "Pink Panther", text: "So the nightmare is really a memory."},
@@ -314,7 +320,7 @@ func newSpiceSeller(renderer *sdl.Renderer, x int32) *npc {
 		fixedFacing: true,
 		flipped:     false,
 	}
-	registerJerGive(renderer, n, jerArtSpiceGive)
+	registerJerGiveGrid(renderer, n, jerArtSpiceGive, 6, 1)
 	// #15: pin talk + the give one-shot to the idle's scale so the spice seller
 	// doesn't shrink when he talks or hands over the cardamom.
 	n.anchorRefH = maxOpaqueH(n.idleGrid)
@@ -364,7 +370,7 @@ func newBagelSeller(renderer *sdl.Renderer, x int32) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.18,
 	}
-	registerJerGive(renderer, n, jerArtBagelGive)
+	registerJerGiveGrid(renderer, n, jerArtBagelGive, 6, 1)
 	return n
 }
 
@@ -399,8 +405,8 @@ func newWallKid(renderer *sdl.Renderer, x int32) *npc {
 // newAntiquesKid (#28): a girl minding the family antiques stall in the souk.
 func newAntiquesKid(renderer *sdl.Renderer, x int32) *npc {
 	n := &npc{
-		idleGrid:       loadJerNPCSheet(renderer, jerArtAntiqueKidIdle, 8, 1, jerFbkKid8x2, 8, 2, 0),
-		talkGrid:       loadJerNPCSheet(renderer, jerArtAntiqueKidTalk, 8, 1, jerFbkKid8x2, 8, 2, 0),
+		idleGrid:       loadJerNPCSheet(renderer, jerArtAntiqueKidIdle, 6, 1, jerFbkKid8x2, 8, 2, 0),
+		talkGrid:       loadJerNPCSheet(renderer, jerArtAntiqueKidTalk, 6, 1, jerFbkKid8x2, 8, 2, 0),
 		bounds:         sdl.Rect{X: x, Y: 408, W: 100, H: 190},
 		name:           "Antiques Girl",
 		dialog:         antiqueKidDialog,
@@ -408,7 +414,8 @@ func newAntiquesKid(renderer *sdl.Renderer, x int32) *npc {
 		talkFrameSpeed: 0.18,
 	}
 	// Optional second idle (dusting variation) — plays as the periodic alt-idle.
-	if f := loadNPCGrid(renderer, jerArtAntiqueKidAlt, 8, 1); len(f) > 0 {
+	// The v2 sheet matches the redesigned 6×1 idle and omits the old table.
+	if f := loadNPCGrid(renderer, jerNPCMarket+"kid_antique_idle_alter_v2.png", 6, 1); len(f) > 0 {
 		n.altIdleGrid = f
 		n.altIdleAfterSec = 5.0
 	}
@@ -458,17 +465,18 @@ func decorateJerusalemEntrance(s *scene, renderer *sdl.Renderer) {
 	// against the wall in the BG, as asked.
 	for i := 0; i < 4; i++ {
 		s.ambientSprites = append(s.ambientSprites,
-			newAmbientWorshippers(renderer, float64(940+i*70), 525, 0.40+rand.Float64()*0.12))
+			newAmbientWorshippers(renderer, float64(940+i*70), 585, 0.40+rand.Float64()*0.12)) // user #20: feet on the walk line
 	}
-	// Separation fence: three keyed sections end-to-end across the foreground.
-	// D4: connected-key (tol=40) strips the baked limestone bg without eating
-	// the fence geometry.
+	// Separation fence: three globally-keyed sections end-to-end across the
+	// foreground. The flat blue key is absent from the grey fence, so enclosed
+	// background between its bars is removed safely.
 	// #12 (2026-06-30): smaller (0.42 -> 0.32). The white BETWEEN the iron bars is
-	// enclosed background the edge key can't reach — queued for a no-pure-white
-	// fence regen in EXTRA_PROMPTS.
-	for _, fx := range []float64{300, 740, 1180} {
+	// enclosed background the old edge key could not reach.
+	// 2026-07-15 (user #19): smaller still (0.20) and packed into a tight
+	// line on the left/centre — the RIGHT side stays open for the wall path.
+	for _, fx := range []float64{160, 420, 680} {
 		s.ambientSprites = append(s.ambientSprites,
-			newAmbientPropKeyed(renderer, jerArtFence, fx, 620, 0.26, 40)) // user #19: smaller
+			newAmbientPropKeyed(renderer, jerArtFence, fx, 620, 0.20))
 	}
 }
 
@@ -492,7 +500,7 @@ func decorateJerusalemWall(s *scene, renderer *sdl.Renderer) {
 	// 2026-07-15 (user #24): the two sheets read as the SAME man — the right
 	// worshipper now uses the distinct praying_man3 sway (4×1, from-behind).
 	wallPrayerSheets := []string{jerArtWallPrayer1, jerNPCWall + "praying_man3.png"}
-	for i, sp := range []struct{ x, scale float64 }{{280, 0.62}, {820, 0.65}} {
+	for i, sp := range []struct{ x, scale float64 }{{280, 0.62}, {820, 0.48}} { // user #26: praying_man3 read huge at 0.65
 		s.ambientSprites = append(s.ambientSprites,
 			newAmbientSway(renderer, wallPrayerSheets[i%2], 4, sp.x, 660, sp.scale, 0.5))
 	}
@@ -589,18 +597,24 @@ func (g *Game) setupJerusalemCallbacks() {
 						shimon.dialog = shimonWaitDialog
 					}
 				}
-				// 2026-07-15 (user #29): latch each stage the moment it's
-				// SELECTED — a re-click during the pen/coin beat re-entered
-				// stage 3 and replayed the whole throw-pen/throw-coin chain.
-				coinStarted := false
+				// 2026-07-15 (user #30 REGRESSION FIX): the old coinStarted
+				// latch fired on ui.go's HOVER probe (it calls altDialogFunc
+				// every frame) and permanently blocked the pen→coin trade.
+				// Selectors must be SIDE-EFFECT-FREE; re-click replay (#29) is
+				// prevented by the in-flight guard below instead.
 				shimon.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
-					// Guard: coin already given → nothing more to do.
-					if coinStarted || (game.vars.GetBool(ScopeGame, VarJerNotePlaced) && penGiven() && !game.inv.hasItem("Pen") && !game.inv.hasItem("Coin")) {
+					// In-flight guard: while a dialog/sequence/one-shot is
+					// already playing, don't start another trade beat.
+					if game.dialog.active || game.seqPlayer.IsPlaying() || game.player.activeOneShot != "" {
 						return nil, nil, nil
 					}
-					// Stage 3: note placed → give the Coin (Jake's anchor).
+					// Guard: coin already given → nothing more to do.
+					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && penGiven() && !game.inv.hasItem("Pen") && !game.inv.hasItem("Coin") {
+						return nil, nil, nil
+					}
+					// Stage 3 (user #30): PP GIVES THE PEN BACK — holding it is
+					// the deliberate act that earns the Coin.
 					if game.vars.GetBool(ScopeGame, VarJerNotePlaced) && game.inv.hasItem("Pen") {
-						coinStarted = true
 						return shimonCoinDialog, func() {
 							game.inv.removeItem("Pen")
 							give("coin", "Coin")
@@ -635,7 +649,7 @@ func (g *Game) setupJerusalemCallbacks() {
 						bagel.altDialogFunc = nil
 						bagel.altDialogRequiresHeld = false
 						bagel.altDialogRequiresItem = ""
-					}, &handOff{item: "Coffee", returnItem: "Bagel"}
+					}, &handOff{item: "Coffee", returnItem: "Bagel", skipNPCTake: true} // user #25: his single give sheet must not double as the take
 				}
 			}
 		}
@@ -679,7 +693,7 @@ func (g *Game) setupJerusalemCallbacks() {
 						coffee.altDialogFunc = nil
 						coffee.altDialogRequiresHeld = false
 						coffee.altDialogRequiresItem = ""
-					}, &handOff{item: "Cardamom", returnItem: "Coffee"}
+					}, &handOff{item: "Cardamom", returnItem: "Coffee", skipNPCTake: true} // user #23: same single-give-sheet dedup
 				}
 			}
 		}
@@ -762,6 +776,20 @@ func (g *Game) setupJerusalemCallbacks() {
 						game.player.playOneShot("put_note", 1.4, func() {
 							game.inv.removeItem("Note Paper")
 							game.vars.SetBool(ScopeGame, VarJerNotePlaced, true)
+							// 2026-07-15 (user #31): once the note is in the
+							// stones, Avi's chat closes the beat instead of
+							// re-teaching the custom.
+							if wall, ok := game.sceneMgr.scenes["jerusalem_wall"]; ok {
+								for _, wn := range wall.npcs {
+									if wn.name == "Avi" {
+										wn.dialog = []dialogEntry{
+											{speaker: "Avi", text: "I saw. The Wall holds it now - the fear stays HERE, not with the boy."},
+											{speaker: "Avi", text: "Go home to him, friend. And walk lightly - you leave lighter than you came."},
+										}
+										break
+									}
+								}
+							}
 							game.dialog.startDialog([]dialogEntry{
 								{speaker: "Pink Panther", text: "There. Jake's fear, named and left in the Wall."},
 								{speaker: "Pink Panther", text: "Shimon said the Wall always answers - I should go see him."},

@@ -602,6 +602,9 @@ func (g *Game) setupCampCallbacks() {
 				// A6: PP faces Marcus (approaches from Marcus's left so PP ends
 				// up to his left and turns right to face him).
 				marcus.approachLeft = true
+				// 2026-07-15 (user #7): PP read as talking AWAY from Marcus in
+				// the room — invert his side facing for these dialogs.
+				marcus.ppTalkFlip = true
 				// 2026-06-24 (#20a): the postcard heal must be an intentional
 				// hand-over - PP has to SELECT/hold the Postcard and click Marcus,
 				// not have it fire just from owning it on scene entry. Gate the
@@ -834,6 +837,10 @@ func (g *Game) setupCampCallbacks() {
 						kid.hintState = 2
 						kid.dialog = lilyDialog
 						// #4: from now on she talks holding the daisy.
+						// 2026-07-15 (user #3): reported not showing — log the
+						// swap so the playtest pinpoints whether the grid is
+						// empty or something later overwrites it.
+						fmt.Printf("[LilyFlower] talk-with-flower swap: %d frames\n", len(kid.postGiveTalkGrid))
 						if len(kid.postGiveTalkGrid) > 0 {
 							kid.talkGrid = kid.postGiveTalkGrid
 						}
@@ -1659,6 +1666,9 @@ func (g *Game) setupParisCallbacks() {
 							ppCenter := game.player.x + float64(playerDstW)/2
 							curator.flipped = ppCenter < float64(curator.bounds.X+curator.bounds.W/2)
 							curator.playOneShotAnimThen(curator.giveAnimOr("give_postcard"), 1.0, func() {
+								// 2026-07-15 (user #16): mirror PP for the receive.
+								game.player.facingLeft = !game.player.facingLeft
+								if game.player.facingLeft { game.player.dir = dirLeft } else { game.player.dir = dirRight }
 								game.player.playReceive("postcard", false, 1.0, func() {
 									game.dialog.startDialog([]dialogEntry{
 										{speaker: "Pink Panther", text: "A postcard of the painting... this is what Marcus has been drawing."},
@@ -1866,7 +1876,7 @@ func (g *Game) setupParisCallbacks() {
 						poulain.altDialogRequiresItem = ""
 						poulain.altDialogRequiresHeld = false
 						poulain.altDialogFunc = poulainCounterService
-					}, &handOff{item: "Rolling Pin", back: true}
+					}, &handOff{item: "Rolling Pin", back: true, dialogFirst: true} // user #8: text first, item beat inside the scene
 			}
 			break
 		}
@@ -2094,8 +2104,9 @@ func (g *Game) setupParisCallbacks() {
 				// face LEFT to reach into it - flip 180 from the default. The
 				// grab_rolling_pin draw offset (drawScaled) also drops him down so
 				// the reach lands in the basket.
-				game.player.facingLeft = true
-				game.player.dir = dirLeft
+				// 2026-07-15 (user #6): flipped — the sheet reads better mirrored.
+				game.player.facingLeft = false
+				game.player.dir = dirRight
 				game.player.playOneShot("grab_rolling_pin", 1.0, func() {
 					if item := game.items.createItem("rolling_pin"); item != nil {
 						game.inv.addItem(item)
@@ -2156,22 +2167,20 @@ func (g *Game) setupParisCallbacks() {
 				// player.update kills before the callback runs, so the pencil was
 				// never added and PP appeared stuck. Use the guaranteed "grab"
 				// one-shot (fires onDone even if art is missing) like the rolling pin.
-				// 2026-07-15 (user #11): the pot sits at the BACK of the street —
-				// PP shrinks into the depth (Pierre's recede pattern) for the
-				// grab instead of picking at full size, then eases back.
-				game.player.playRecede(0.5, 0.8, 15, func() {
-					game.player.holdRecede()
-					game.player.playOneShot("grab", 1.0, func() {
-						pencilTaken = true
-						if item := game.items.createItem("charcoal_pencil"); item != nil {
-							game.inv.addItem(item)
-						}
-						game.player.releaseRecedeSmooth(0.6)
-						// §8c: generic pickup line - Camille's own dialog already
-						// nudges where the pencil goes.
-						game.dialog.startDialog(genericPickupDialog(
-							"A charcoal pencil, rescued from the pigeons."))
-					})
+				// 2026-07-15 (user #14): NO recede dance (the shrink/grow read as
+				// glitching) — a straight grab; PP faces the camera for the line
+				// so he doesn't talk with his back to us.
+				game.player.playOneShot("grab", 1.0, func() {
+					pencilTaken = true
+					if item := game.items.createItem("charcoal_pencil"); item != nil {
+						game.inv.addItem(item)
+					}
+					game.player.dir = dirDown
+					game.player.facingLeft = false
+					// §8c: generic pickup line - Camille's own dialog already
+					// nudges where the pencil goes.
+					game.dialog.startDialog(genericPickupDialog(
+						"A charcoal pencil, rescued from the pigeons."))
 				})
 			},
 		}
@@ -2935,7 +2944,7 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		}
 	}
 	if !g.dialog.active && !g.sceneMgr.transitioning {
-		g.player.update(dt, scene.blockers)
+		g.player.update(dt, scene.blockers, scene.footBlockers)
 	}
 	g.dialog.update(dt)
 	g.seqPlayer.Update(dt)

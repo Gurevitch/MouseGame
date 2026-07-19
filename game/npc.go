@@ -742,7 +742,7 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		fixedFacing:       true,
 		fixedFootAnchor:   true, // give_map one-shot (throw) keeps the foot anchor
 		fixedHeadAnchor:   true, // item 3: idle/talk busts pin the HEAD, not the bottom
-		headAnchorOffsetY: 22, // 2026-07-15 (user #33): day-1 anchor RESTORED to 22 (the 40 nudge from #6 belongs to the DAY-2 art only; applyCampMood scopes it)
+		headAnchorOffsetY: 22,   // 2026-07-15 (user #33): day-1 anchor RESTORED to 22 (the 40 nudge from #6 belongs to the DAY-2 art only; applyCampMood scopes it)
 		oneShotFlip:       map[string]bool{"give_map": true},
 		silent:            true,
 		// 2026-06-20 #3: PP stood at the default 10px gap (foot ~x750), right on
@@ -753,9 +753,9 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	// Register the give-map one-shot animation. User 2026-05-31 (#14): the
 	// sheet is a 6×2 grid (detect_grid), not 8×1 - cutting it 8×1 made cellH
 	// span BOTH rows so each frame drew Higgins twice, one above the other.
-	// 2026-06-12: global key → connected tol 4, matching idle/talk so his
-	// hand keeps its color through the map throw too.
-	giveFrames := loadNPCGridConnectedTol(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 6, 2, 4)
+	// 2026-07-17: the re-roll uses a sampled blue background, so global keying
+	// safely removes enclosed background without touching his cream map.
+	giveFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 6, 2)
 	if len(giveFrames) > 0 {
 		n.oneShotAnims = map[string][]npcFrame{"give_map": giveFrames}
 	}
@@ -2585,6 +2585,9 @@ func newPigeonLady(renderer *sdl.Renderer) *npc {
 		name:      "Madame Margaux",
 		dialog:    pigeonLadyDialog,
 		bobAmount: 0,
+		// 2026-07-15 (user #14): PP stands on her RIGHT — the flower pot is
+		// right of her, so after the heel hand-off he only turns around.
+		approachXOverride: 780,
 		// 2026-06-20 #10: 0.13 cycled too fast for her speech; match the slowed
 		// talkers at 0.22.
 		talkFrameSpeed: 0.22,
@@ -2745,7 +2748,7 @@ func newCafePatronYvette(renderer *sdl.Renderer) *npc {
 		dialog:            yvetteDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.20, // PR#15: 0.10 strobed against the text reveal
-		approachYOverride: 293, // 2026-07-15 (user #14): stand mark foot (330,563) — close to the table for the trades (was 490/foot 760, too far).
+		approachYOverride: 490,  // 2026-07-15 (user #9): back to the front lane — the 293 row stood PP ON her table
 		// 2026-06-24 (#14): she's the leftmost patron, so the auto side-pick
 		// clamped PP to the far-left edge, standing him over the table. Pin his
 		// foot-center to the aisle a little to her RIGHT. F3-tune.
@@ -2772,8 +2775,8 @@ func newCafePatronBernard(renderer *sdl.Renderer) *npc {
 		dialog:            bernardDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.20, // PR#15: 0.10 strobed against the text reveal
-		approachYOverride: 293, // 2026-07-15 (user #14): stand mark foot (330,563) — close to the table for the pencil/sketch trades (was 490/foot 760, too far).
-		approachXOverride: 330, // 2026-07-15 (user #14): foot-center x mark
+		approachYOverride: 293,  // 2026-07-15 (user #14): stand mark foot (330,563) — close to the table for the pencil/sketch trades (was 490/foot 760, too far).
+		approachXOverride: 330,  // 2026-07-15 (user #14): foot-center x mark
 	}
 }
 
@@ -2837,8 +2840,8 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 		dialog:            camilleFlavorDialog,
 		bobAmount:         0,
 		talkFrameSpeed:    0.22, // PR#14: 0.10 raced ahead of the text reveal
-		approachYOverride: 490, // #4 (2026-06-30): foot ~760 — PP stands in the front lane, BELOW the seated patron busts (y360-480) so he no longer overlaps/covers them (was 210 -> foot 480, inside the bust band). F3-verify.  // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
-		approachXOverride: 330, // 2026-07-15 (user #14): foot-center x mark (shared with Bernard)
+		approachYOverride: 490,  // #4 (2026-06-30): foot ~760 — PP stands in the front lane, BELOW the seated patron busts (y360-480) so he no longer overlaps/covers them (was 210 -> foot 480, inside the bust band). F3-verify.  // PR#12: top-left Y → foot ~480, aisle BEHIND the front tables (was 405→foot 675, on the cloths). F3-verify.
+		approachXOverride: 330,  // 2026-07-15 (user #14): foot-center x mark (shared with Bernard)
 		// 2026-06-24 (#18): PP stands to Camille's LEFT so the cafe reads as two
 		// groups: right line = Henri + Lucien, left line = Camille + Bernard +
 		// Yvette.
