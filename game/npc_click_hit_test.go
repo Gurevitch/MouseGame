@@ -72,9 +72,8 @@ func npcHitCases() []npcHitCase {
 		{scene: "camp_grounds", name: "Director Higgins (grounds)", bounds: sdl.Rect{X: 1060, Y: 560, W: 180, H: 210}, hidden: true},
 
 		// --- Camp office: Higgins behind desk ---
-		// User 2026-05-23: Y nudged 290→300 (a few px down for natural
-		// head clearance above desk). Also flipped:true so he faces PP.
-		{scene: "camp_office", name: "Director Higgins (office)", bounds: sdl.Rect{X: 990, Y: 280, W: 220, H: 200}},
+		// 2026-07-23 (#4/#22): foot-anchored at the desk line — Y+H = 407.
+		{scene: "camp_office", name: "Director Higgins (office)", bounds: sdl.Rect{X: 990, Y: 222, W: 220, H: 185}},
 
 		// --- Night campfire Higgins ---
 		// Silent + driven by cutscene; never clickable directly.
@@ -109,7 +108,7 @@ func npcHitCases() []npcHitCase {
 		// waist-up bust (no legs), so the srcCropBottomFrac=0.55 clip was
 		// dropped and the whole 135px bust renders, waist cut anchored at
 		// each table's cloth-top edge.
-		{scene: "paris_bakery", name: "Madame Yvette", bounds: sdl.Rect{X: 80, Y: 355, W: 110, H: 135}},
+		{scene: "paris_bakery", name: "Madame Yvette", bounds: sdl.Rect{X: 57, Y: 361, W: 110, H: 135}}, // 2026-07-23 #8: foot (112,496)
 		{scene: "paris_bakery", name: "Monsieur Bernard", bounds: sdl.Rect{X: 195, Y: 355, W: 110, H: 135}},
 		{scene: "paris_bakery", name: "Mademoiselle Camille", bounds: sdl.Rect{X: 470, Y: 360, W: 110, H: 135}}, // #12 up
 		{scene: "paris_bakery", name: "Monsieur Henri", bounds: sdl.Rect{X: 580, Y: 370, W: 110, H: 135}},

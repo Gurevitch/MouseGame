@@ -66,11 +66,12 @@ func decorateParisStreetSprites(s *scene, renderer *sdl.Renderer) {
 	if s == nil {
 		return
 	}
-	// 2026-06-30 (user): the biker is REMOVED. biker.png ships with an opaque
-	// near-white background that the color-key can't fully strip, so it rendered
-	// as a glaring white blob on the cobbles. Rather than keep fighting the
-	// sheet, drop the ambient entirely (the bump encounter no longer fires).
-	// (Was: newAmbientBiker(renderer, -200, 750, 190, 0.85).)
+	// 2026-07-18 (user): the biker is BACK — his 2026-06-30 removal was about
+	// the white-box background, and the tol-40 edge-connected key now strips
+	// it (newAmbientBiker loads keyed). Remaining enclosed white in the wheel
+	// gaps clears for good with the §BIKER-BLUE re-roll.
+	s.ambientSprites = append(s.ambientSprites,
+		newAmbientBiker(renderer, -200, 750, 190, 0.85))
 	// 2026-06-12: the street-density flavor ambients (accordion player + crumb
 	// lady) were dropped - the screen was getting crowded, and the pigeon lady
 	// is now a real quest NPC (Madame Margaux, who lures the pot pigeon for the

@@ -89,7 +89,8 @@
       "Bash(GOTMPDIR=.gotmp go run ./tools/sheet_repair .)",
       "Bash(awk '/func \\\\\\(p \\\\*player\\\\\\) footY/,/^}/' game/player.go)",
       "Bash(awk '/func \\\\\\(p \\\\*player\\\\\\) minY/,/^}/' game/player.go)",
-      "Bash(awk '/func \\\\\\(p \\\\*player\\\\\\) maxY/,/^}/' game/player.go)"
+      "Bash(awk '/func \\\\\\(p \\\\*player\\\\\\) maxY/,/^}/' game/player.go)",
+      "Bash(GOTMPDIR=.gotmp go test ./...)"
     ]
   }
 }

@@ -42,7 +42,7 @@ func newDevMenu() *devMenu {
 		{"Day 2 - Higgins Office (give map)", jumpDay2Office},
 		{"Paris - Street (fresh arrival)", jumpParisStreet},
 		{"Paris - Bakery (rolling pin puzzle)", jumpParisBakery},
-		{"Paris - Holding Press Pass", jumpParisPressPass},
+		{"Paris - Holding Card", jumpParisPressPass},
 		{"Paris - Louvre interior (with ticket)", jumpParisLouvre},
 	}
 	return dm

@@ -14,6 +14,161 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### 2026-07-23 — §2026-07-23 prompt batch landed + verified (sprite-check)
+
+All five re-rolls (Poulain give/give-coffee/work, PP give coffee, people_pray
+v2) GAP-DETECT 1×6, add zero white-scan or frame-leak hits, and were verified
+visually (waist-cut Poulain with no baked counter; cream cup; brick-free
+crowd). Loaders, ABAB crowd alternation, and both checker manifests are wired.
+
+- [x] `[P2]` `npc_madame_poulain_bring_bagguette.png` (20:38 drop) was
+      OFF-SPEC — white bg, baked wooden counter strip, "POULAIN BOULANGERIE"
+      apron text; superseded by the 6×1 give.png from the same batch.
+      FIXED 2026-07-23: deleted (was never wired; audit-manifest entry
+      removed too). If it was meant as a new beat, say the word and I'll
+      queue a compliant re-roll.
+- [x] `[P2]` Cosmetic nits — FIXED 2026-07-23: give.png frame 2's purple
+      arm-edge smudge pixel-healed in place (neighbor-color refill, verified
+      zero cool-tint pixels remain + sheet still gap-detects 1×6);
+      give_coffee's offer→retract order fixed at LOAD (frames 3/4 swapped in
+      newBakeryWoman so the beat builds lift → chest → extend → empty).
+
+### 2026-07-23 — PR (27-item sweep, plan tender-giggling-creek)
+
+Root causes worth remembering: (a) NPC positions/speeds live in the Go
+constructors, NOT scene JSON / assets/data/npc/*.json (dead data) — why the
+earlier Yvette/office-Higgins moves "didn't change"; (b) the talk driver
+animates mouths only while player.state == stateTalking, so dialogs started
+from sequences/pickups played idle; (c) edge-connected keys preserve the
+off-white/off-blue ENCLOSED pockets generators paint in arm gaps — the
+blue/white squares; new GLOBAL tol-24 loaders (gridFramesTol/loadNPCGridTol)
+clear them.
+
+- [x] `1.` Grounds Marcus talk 0.10→0.15 (room Marcus explicitly kept 0.10).
+- [x] `2.` Flower pickup: monologue now plays TALK FRONT (stateTalking);
+      new per-item `standGapX` pulls PP 40px closer to the daisy; Lily gets
+      approachXOverride 810 so PP stands beside her on the hand-off.
+- [x] `3.` Room exits now walk DOWN to the door: new walkToAndDoUnclamped
+      (the walk-band clamp capped the old walk 200px above the door), target
+      nudged clear of the furniture blocker.
+- [x] `4.`+`22.` Office Higgins FOOT-anchored (fixedHeadAnchor dropped) with
+      bounds Y+H = 407 — idle/talk/give-map share the bottom line; map throw
+      fromY 380→350 + arcHeight 200→70; SeqDialog now sets stateTalking so
+      the post-throw chat animates BOTH mouths. Hit-test rect synced.
+- [x] `5.`+`13.`+`15.` Background-pocket sweep: pull_map, the three Poulain
+      _back sheets, PP give baguette → GLOBAL tol-24 key; Pierre's five
+      sheets → loadNPCGridTol 24. `PP give coffee.png` now uses the 6×1
+      global blue-key loader after its cream-cup re-roll landed.
+- [x] `6.`+`17.` Margaux holds the recede again (holdRecede, reverses
+      2026-07-18 #10) — chained Pierre/Margaux chats keep PP small+planted.
+- [x] `7.` Pierre intro rewritten (no pigeon-critic foreshadow of the pencil
+      pot); idleFrameSpeed 0.28→0.40.
+- [x] `8.`+`12.` Yvette foot at (112,496) — IN CODE (npc.go), where it
+      actually lives; PP approach mark moved off the table cloth to
+      (300 foot-center, patron row). Hit-test synced.
+- [x] `9.` Bakery near-horizontal walks (counter row → patron row, |dy|<40)
+      now detour through the front lane when the corridor crosses a table
+      footBlocker (3-leg L-walk) instead of beelining over the cloth.
+- [x] `10.` "(rustles paper)" removed from Bernard.
+- [x] `11.` Camille sketching sheet read 8×1 (was 6×1 on 8-frame art — the
+      mis-cut swipe).
+- [x] `14.` Held-item drops now honor ppFaceBack (Poulain counter trades
+      show PP's back + back-talk sheet). Her give-baguette/give-coffee/work
+      re-rolls landed as waist-cut 6×1 sheets without baked tables.
+- [x] `16.` give card: loader already global; cut verified GAP-DETECT 1×6 —
+      re-check in playtest; §PP-GIVE-CARD-v2 (wider gaps) only if it still
+      bleeds.
+- [x] `18.` Poulain grants (baguette+coffee, heel, refill) land in the bag
+      AT dialog end; the give one-shots are cosmetic only.
+- [x] `19.` Pigeon fly-up sheet — user restored the pigeon-only art
+      themselves; verify in playtest.
+- [x] `20.` Pencil pickup happens AT the pot (standRight + standGapX 15) and
+      the pickup line plays in talk-front.
+- [x] `21.` "Mona Lisa drawn twice": give_sketch now starts at the sheet's
+      tail frames (finished sketch in hand → extend); the drawing frames
+      1-4 are skipped. §CAMILLE-GIVE-SKETCH-v2 only if 4 frames read short.
+- [x] `24.` Entrance-crowd cream blocks were people_pray.png's BAKED
+      limestone panel (not a key bug): both clean figures-only sheets now
+      live under props/, use the GLOBAL blue key, and alternate ABAB.
+- [x] `25.` Spice-seller talk read 8×1 (was 6×1 on 8-frame art — the
+      "frames swiping"). Residual char-vs-table drift is art-side; re-roll
+      only if it still reads wrong.
+- [x] `26.` CARDAMOM SOFT-LOCK: coffee seller's strict-missing-hint returned
+      without running onDialogEnd, so jer_coffee_asked never flipped and the
+      spice gift was unreachable. Hint removed — the no-item click falls
+      through to his base dialog (same text) and the flag sets. Stuck saves
+      recover on the next coffee-seller chat.
+- [x] `27.` Wall sizes normalized to Avi's band: sway worshippers 0.62/0.48
+      → 0.44/0.37 (~195px), kid H150→175 (feet kept at 700).
+- [ ] `[P1]` PLAYTEST: recede-hold chains at Pierre/Margaux (incl. trades —
+      if a trade still regrows PP, the release is inside playHandOff);
+      the 3-leg bakery detour corners; office Higgins foot line + flatter
+      map arc; room down-exits; tol-24 keyed sheets (pull map, Pierre set,
+      back trio, give baguette) for eaten highlights; entrance crowd;
+      spice talk; the cardamom chain from the stuck savegame.json.
+
+### 2026-07-23 — pre-PR sprite-check pass (13 new sheets)
+
+Swept the working tree before the new PR batch. Build + full `go test ./...`
+green. All 13 new sheets (Kenji talk/give-charm, Avi receive-bagel,
+people_pray2, Camille receive-pencil, PP give card/cardamom/fire-striker/
+jerusalem-coffee/matcha-bowl, pp_get well-water/voice-charm/offering-bowl)
+GAP-DETECT with no white or frame-leak hits; every ghost warning is a legit
+handed prop (verified visually). Manifests were already up to date.
+
+- [x] WIRING FIX: `PP give cardamom.png` was on disk + in both checker
+      manifests but missing from the player 6×1 blue loader map, so PP's
+      cardamom hand-over to the coffee seller played no give animation —
+      added `give_cardamom` to game/player.go.
+- [ ] `[P2]` `npc_kenji_idle.png` tops the white-scan (2.29%, worst frame
+      1425 px) — the calligraphy paper is pure white instead of cream. Loads
+      via connected key so no holes; recolor only if it reads wrong in-game.
+
+### 2026-07-18 — biker restored
+
+The Paris biker had been dropped on 2026-06-30 (white-box background era).
+Restored in decorateParisStreetSprites — the tol-40 edge key now strips his
+background, and the bump encounter re-arms automatically. §BIKER-BLUE queued
+to clear the enclosed wheel-gap white for good.
+
+### 2026-07-18 — PR (49-item sweep, plan pr-1-remove-those-stateless-meerkat)
+
+GLOBAL: #1 deleted-sheet warnings gone (react/examine fall back to grab);
+#7 punchNeutralBright REVERTED (it ate PP's neutral muzzle highlights —
+§PP-TALK-FRONT-BLUE is the real fix).
+CAMP: #2 lake spawn foot (359,648) + flower grab shifted 25px left; #3
+room-Marcus ppTalkFlip removed; #4/#20 day-2 office anchor fork DELETED —
+day-1 position always; #5 give-map one-shot 1.0s→2.0s; #19 crow perch 273;
+#21 higginsJakeReminderDialog wired; #23 jake_room walk band fixed
+(350/430, y390, blockers capped); #37 room exits walk to the door first.
+PARIS: #8 Colette row 482; #9/#17 Margaux REAL fix (her onClickOverride
+hardcoded walk x560 + dirRight — now 780 + faceNPC); #10 releaseRecede
+instead of holdRecede after her dialog; #12 Camille mark (380,564) +
+anchorRefH pin; #13 Yvette override removed; #14 new npc.idleFrameSpeed
+(Pierre 0.28); #15 "Press Pass"→"Card" rename sweep (incl. the DEAD Louvre
+gate check) + give/receive "card" keys; #16 table footBlockers h55→h140;
+#18 receive_pencil wired on the Camille handoff; dead npc_pierre_give.png
+deleted.
+JERUSALEM: #26 entrance crowd ABAB (people_pray2 fallback); #27 spice
+seller gifts ONLY after the coffee seller asks (jer_coffee_asked) with new
+intro/gift dialogs; #28 PP opens the trade ("Here it is — cardamom, for
+the coffee"); #29 old man up 12px; #30 "Coffee" → give_jerusalem_coffee
+key (no more Paris-cup cameo); #31 praying_man3 y 705; #32 wall kid
+90×150; #33 Avi explicitly ASKS for the ka'ak + receive→talk→paper order;
+#35 the coin stage now requires CARRYING the pen; #36 Jake anchorRefH (no
+more coin-receive shrink); #38 lake Lily foot 431; #39 talk 0.30; #40/41
+rude beat: PP idles at the meet mark, Higgins strides to x700 over 2.0s.
+JAPAN (#42-48 story rework): the open/closed stall overlay + seated queue
+are REMOVED (never fit the BG, stacked on NPCs) — the painted stall IS the
+stall, Hiro perma-counters when §JP-HIRO-COUNTER lands; ALL Japan dialog
+de-frenchified (ze/zis→the/this); Gary rewritten as the recurring CUSTOMS
+ORACLE (offering custom → dress code → tea etiquette ladder); kimono spin
+4.5s so the kimono holds; Japan items got real anim keys + graceful loads
+(§JP-ITEMS). Tea master fix is art-side (§TEA-MASTER-BLUE-v2 — figures
+fill 30% of cell height today).
+Prompts: EXTRA_PROMPTS trimmed (finished bodies deleted, ~400 lines) + the
+full PR batch queued under §2026-07-18.
+
 ### 2026-07-17 — PR (31-item sweep, plan humming-stargazing-naur)
 
 Fixed this pass (code): #2 lake spawn mid-deck (618,398); #3 debug log on the
@@ -203,7 +358,17 @@ in both checker manifests), wired where needed. Build + tests green.
       (600,353,95×75) + PP approach mark (645/385) are computed from the BG, not
       yet seen in-game.
 - [ ] `[P1]` Generate §JP-HIRO-COUNTER (npc_hiro_counter_idle/talk) — the
-      behind-the-counter upper-body Hiro the user asked for.
+      behind-the-counter upper-body Hiro the user asked for. The 2026-07-20
+      candidates were rejected and removed: `TestSpriteScan` found pure-white
+      character pixels (0.41% idle / 0.28% talk).
+- [ ] `[P1]` Re-roll §TEA-MASTER-BLUE-v2 at the runtime's real 8×1 grid and
+      genuinely large scale. The 2026-07-20 candidates were only 312px/353px
+      median content height on a 1024px sheet, far below the prompt's ≥85%.
+- [ ] `[P2]` Re-roll `PP give rolling pin.png` on blue at the runtime's real
+      8×1 grid. The generated 6-frame candidate was not installed.
+- [ ] `[P2]` Finish §OFFICE-DOOR-OPEN: day2 is open with warm spill; day3 is
+      open but still lacks the requested warm doorway spill, so the pair stays
+      queued.
 
 **Auto-wired by existing loaders (art landed into waiting candidates):**
 

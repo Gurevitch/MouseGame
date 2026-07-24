@@ -31,7 +31,6 @@ type sheet struct {
 var sheets = []sheet{
 	{"assets/images/player/PP talk front.png", 8, 2},
 	{"assets/images/player/PP idle side.png", 8, 2},
-	{"assets/images/player/PP celebrate.png", 8, 2},
 	// Marcus sheets REMOVED from the allowlist (2026-06-12 #4): these are the
 	// restored OLD sheets whose figures stray outside the fixed cells the
 	// cleaner assumes - cleaning erased real body parts (talk frames went

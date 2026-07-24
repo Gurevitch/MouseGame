@@ -1134,6 +1134,24 @@ func SpriteGridFromPNGClean(renderer *sdl.Renderer, filename string, cols, rows,
 	return gridFromKeyedImage(renderer, img, cols, rows, inset)
 }
 
+// SpriteGridFromPNGCleanTol is SpriteGridFromPNGClean with a caller-chosen
+// tolerance (2026-07-23): generators paint the ENCLOSED background pockets
+// (between an arm and the body) a few shades off the sampled corner color, so
+// the tol-8 global key left them as visible blue/white squares. Tol 24 clears
+// them while the standing art-rule colors survive (ivory #F2EFE5 is 26 off
+// pure white; cream props are 49+ off the flat blue). Use only on sheets with
+// no legit background-colored enclosed detail.
+func SpriteGridFromPNGCleanTol(renderer *sdl.Renderer, filename string, cols, rows, inset int, tol uint8) [][]GridFrame {
+	img, err := loadPNG(filename)
+	if err != nil {
+		fmt.Printf("Warning: could not load PNG grid %s: %v\n", filename, err)
+		return emptyGrid(cols, rows)
+	}
+	applyColorKeyTol(img, tol)
+	eraseGridLines(img, cols, rows)
+	return gridFromKeyedImage(renderer, img, cols, rows, inset)
+}
+
 // gridFromKeyedImage slices an already color-keyed image into content-aware
 // cells (shared by the Clean and CleanNeutral loaders).
 func gridFromKeyedImage(renderer *sdl.Renderer, img *image.NRGBA, cols, rows, inset int) [][]GridFrame {

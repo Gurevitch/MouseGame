@@ -67,11 +67,11 @@ func (reg *itemRegistry) createItem(id string) *inventoryItem {
 	cbX, cbY, cbW, cbH := engine.ContentBoxKeyed(def.Texture)
 
 	return &inventoryItem{
-		name:  def.Name,
-		tex:   tex,
-		srcW:  w,
-		srcH:  h,
-		desc:  def.Description,
+		name:      def.Name,
+		tex:       tex,
+		srcW:      w,
+		srcH:      h,
+		desc:      def.Description,
 		owner:     "player",
 		iconScale: def.IconScale,
 		cbX:       cbX, cbY: cbY, cbW: cbW, cbH: cbH,

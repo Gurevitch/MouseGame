@@ -39,15 +39,15 @@ const (
 	VarMonologueLouvre   = "monologue_louvre_played" // museum first-arrival beat (#28)
 	VarParisDone         = "paris_done"              // postcard obtained → camp return unlocked (#32)
 	VarJerNotePlaced     = "jer_note_placed"         // Jerusalem: note tucked in the Wall → return flight + coin (#26)
-	VarJerPenGiven       = "jer_pen_given"            // Jerusalem: Shimon gave PP the pen (D15: save-safe replaces local gavePen)
+	VarJerPenGiven       = "jer_pen_given"           // Jerusalem: Shimon gave PP the pen (D15: save-safe replaces local gavePen)
 	// Japan/Kyoto chapter opening (Lily's arc).
-	VarLilyArcStarted   = "lily_arc_started"   // sad Lily revealed at the lake (post-Jake-heal)
-	VarLilyLakeMet      = "lily_lake_met"      // PP has talked to Lily at the lake
-	VarHigginsRudeDone  = "higgins_rude_done"  // the rude-Higgins + camera aside played → Tokyo unlocks
-	VarJpGroveRevealed  = "jp_grove_revealed"  // Oba-chan said "follow me" → the hidden sakura grove exit opens
-	VarJpRamenOpen      = "jp_ramen_open"      // PP gave Hiro his fire-striker → stall opens, the waiting line sits
-	VarJpTeaLearned     = "jp_tea_learned"     // Kiku the geisha taught PP the tea ceremony → the matcha/bowl shelves unlock
-	VarJpTeaDone        = "jp_tea_done"        // PP shared the matcha ceremony with the tea master → grove entry allowed
+	VarLilyArcStarted  = "lily_arc_started"  // sad Lily revealed at the lake (post-Jake-heal)
+	VarLilyLakeMet     = "lily_lake_met"     // PP has talked to Lily at the lake
+	VarHigginsRudeDone = "higgins_rude_done" // the rude-Higgins + camera aside played → Tokyo unlocks
+	VarJpGroveRevealed = "jp_grove_revealed" // Oba-chan said "follow me" → the hidden sakura grove exit opens
+	VarJpRamenOpen     = "jp_ramen_open"     // PP gave Hiro his fire-striker → stall opens, the waiting line sits
+	VarJpTeaLearned    = "jp_tea_learned"    // Kiku the geisha taught PP the tea ceremony → the matcha/bowl shelves unlock
+	VarJpTeaDone       = "jp_tea_done"       // PP shared the matcha ceremony with the tea master → grove entry allowed
 
 	// "chapter" scope: resets when a chapter ends (via ResetChapter)
 	VarMetKids        = "met_kids" // How many kids PP has talked to on Day 1
@@ -137,9 +137,11 @@ func (g *Game) syncFlagsToVars() {
 }
 
 // campMoodLevel returns the camp's darkness GRADE (2026-06-21 #20/#21):
-//   0 = normal (pre-Paris)
-//   1 = mid-dark (post-Paris, the Marcus affliction arc)
-//   2 = fully dark (deeper - a second kid afflicted; the Jerusalem leg onward)
+//
+//	0 = normal (pre-Paris)
+//	1 = mid-dark (post-Paris, the Marcus affliction arc)
+//	2 = fully dark (deeper - a second kid afflicted; the Jerusalem leg onward)
+//
 // Forward-compatible: widen the level-2 condition as later cities land.
 func (g *Game) campMoodLevel() int {
 	if g == nil || g.vars == nil || !g.vars.GetBool(ScopeGame, VarParisDone) {
@@ -165,9 +167,10 @@ func firstExistingPath(paths ...string) string {
 // day1/day2/day3 folders (2026-06-21 reorg: the same filename lives in each
 // folder). Falls back DOWN to day1 when a grade's art isn't on disk yet, so a
 // missing day2 (mid-dark) / day3 (full dark) degrades gracefully to day1.
-//   level 0 → day1/  (normal)
-//   level 1 → day2/  (mid-dark, then day1)
-//   level 2 → day3/  (full dark, then day2, then day1)
+//
+//	level 0 → day1/  (normal)
+//	level 1 → day2/  (mid-dark, then day1)
+//	level 2 → day3/  (full dark, then day2, then day1)
 func (g *Game) moodBG(level int, file string) *background {
 	const base = "assets/images/locations/camp/background/"
 	var folders []string
@@ -223,11 +226,7 @@ func (g *Game) applyCampMood() {
 			if n.name != "Director Higgins" {
 				continue
 			}
-			if level > 0 {
-				n.headAnchorOffsetY = 48 // 2026-07-15 (user #4): a bit lower still on the day-2/3 art
-			} else {
-				n.headAnchorOffsetY = 22
-			}
+			// 2026-07-18 (user #20): NO day-2 repositioning — day-1 anchor always.
 			if g.vars.GetBool(ScopeGame, VarLilyArcStarted) && !g.vars.GetBool(ScopeGame, VarLilyHealed) {
 				n.dialog = higginsAngryShortDialog
 			}
@@ -239,7 +238,7 @@ func (g *Game) applyCampMood() {
 	// camp_landing), so it's added here instead of decorateCampLanding.
 	if level > 0 && !g.crowAdded {
 		if landing, ok := g.sceneMgr.scenes["camp_landing"]; ok && landing != nil {
-			landing.ambientSprites = append(landing.ambientSprites, newAmbientCrow(g.renderer, 705, 300)) // user #15: onto the sign, not the air
+			landing.ambientSprites = append(landing.ambientSprites, newAmbientCrow(g.renderer, 705, 273)) // user #15: onto the sign, not the air
 			g.crowAdded = true
 		}
 	}

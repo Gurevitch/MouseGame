@@ -143,6 +143,10 @@ type floorItem struct {
 	// anim's reach hand points the other way - e.g. the rolling pin, whose
 	// reach-into-basket hand is on PP's left side.
 	standRight bool
+	// standGapX (2026-07-23 #2/#20): horizontal gap between PP's stand mark
+	// and the item's edge. 0 = the default 80px; smaller values pull PP in so
+	// the grab paw lands on the item (daisy 40, pencil pot 15).
+	standGapX float64
 }
 
 type walkSegment struct {

@@ -1,8 +1,8 @@
 {
   "name": "camp_lake",
   "background": "assets/images/locations/camp/background/day1/camp_lake.png",
-  "spawnX": 618,
-  "spawnY": 398,
+  "spawnX": 259,
+  "spawnY": 378,
   "minY": 300,
   "maxY": 560,
   "musicPath": "assets/audio/music/camp.mp3",
@@ -17,9 +17,9 @@
     }
   ],
   "blockers": [],
-  "_comment_walk": "2026-06-29 v3: raised the dock line further per user F3 read — right end set EXACTLY to (687,341) so PP stops well back on the planks (not out at the boat) and higher up the receding dock. Shore raised to match. foot = clickY+135 (so the far end's foot ~476).",
+  "_comment_walk": "2026-07-23 v4: whole dock line raised another 10px (user: the swim-decline spot sat low; the Lake-hotspot walk snaps to this line via snapToPath, far end = where the line plays). foot = clickY+135 (far end's foot now ~466).",
   "walkSegments": [
-    {"x1": 375, "y1": 395, "x2": 540, "y2": 368},
-    {"x1": 540, "y1": 368, "x2": 687, "y2": 341}
+    {"x1": 375, "y1": 385, "x2": 540, "y2": 358},
+    {"x1": 540, "y1": 358, "x2": 687, "y2": 331}
   ]
 }
