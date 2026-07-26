@@ -29,6 +29,11 @@ type hotspot struct {
 	name        string
 	arrow       arrowDir
 	onInteract  func() bool
+	// walkX/walkY (2026-07-24 #2/#31): optional JSON door-walk anchor (PP
+	// CENTER coords) for scripted exit walks. 0 = unset; walkY 0 with walkX
+	// set keeps PP's current row (right-wall doors).
+	walkX float64
+	walkY float64
 }
 
 type particle struct {
@@ -147,6 +152,15 @@ type floorItem struct {
 	// and the item's edge. 0 = the default 80px; smaller values pull PP in so
 	// the grab paw lands on the item (daisy 40, pencil pot 15).
 	standGapX float64
+	// standXOverride/standYOverride (2026-07-24 #6): explicit stand mark
+	// (PP CENTER coords) replacing the derived beside-the-item mark — the
+	// pencil pot shares Pierre's mid-distance spot on a higher line.
+	standXOverride float64
+	standYOverride float64
+	// recedeDepth (2026-07-24 #6): when > 0, PP shrink-recedes to this scale
+	// at the stand mark before the pickup runs (held after, like the
+	// Pierre/Margaux chats), unless already recede-held.
+	recedeDepth float64
 }
 
 type walkSegment struct {
@@ -339,7 +353,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 		sm.scenes["paris_street"] = s
 	}
 	if s := sm.loadSceneFromJSON(renderer, sceneDefs, "paris_louvre"); s != nil {
-		decorateParisLouvre(s)
+		decorateParisLouvre(s, renderer)
 		sm.scenes["paris_louvre"] = s
 	}
 	// User 2026-04-26: Paris bakery interior. NPC = bakery_woman, floor item
@@ -400,20 +414,6 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 
 func (sm *sceneManager) current() *scene {
 	return sm.scenes[sm.currentName]
-}
-
-func (s *scene) effectiveMinY() float64 {
-	if s.minY > 0 {
-		return s.minY
-	}
-	return playerMinY
-}
-
-func (s *scene) effectiveMaxY() float64 {
-	if s.maxY > 0 {
-		return s.maxY
-	}
-	return playerMaxY
 }
 
 func (sm *sceneManager) transitionTo(sceneName string, plr *player) {

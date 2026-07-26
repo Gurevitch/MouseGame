@@ -7,13 +7,13 @@
       "scene": "camp_office",
       "npc": "Director Higgins",
       "anim": "give_map",
-      "seconds": 1.0
+      "seconds": 2.0
     },
     {
       "type": "tween_item",
       "sprite": "assets/images/items/travel_map_icon.png",
       "fromX": 1100,
-      "fromY": 380,
+      "fromY": 350,
       "x": 440,
       "y": 540,
       "toPlayer": true,

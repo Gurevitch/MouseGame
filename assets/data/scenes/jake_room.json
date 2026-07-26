@@ -2,20 +2,27 @@
   "name": "jake_room",
   "background": "assets/images/locations/camp/background/day1/jake_room.png",
   "spawnX": 900,
-  "spawnY": 360,
-  "minY": 320,
-  "maxY": 400,
+  "spawnY": 390,
+  "minY": 350,
+  "maxY": 430,
   "musicPath": "assets/audio/music/camp_cabin.mp3",
   "characterScale": 1.0,
   "npcs": ["room_jake"],
   "hotspots": [
-    {"bounds": {"x": 900, "y": 100, "w": 500, "h": 660}, "targetScene": "camp_grounds", "name": "Exit Cabin", "arrow": "right"}
+    {
+      "_comment": "2026-07-24 #31: walkX = the door anchor (PP CENTER) - PP walks RIGHT along his row to the door wall, then the scene changes. Without it the exit derived a target from bounds.y=100 (frame top) and PP jammed at the walk band.",
+      "bounds": {"x": 900,"y": 100,"w": 500,"h": 660},
+      "targetScene": "camp_grounds",
+      "name": "Exit Cabin",
+      "arrow": "right",
+      "walkX": 1250
+    }
   ],
   "blockers": [
-    {"x": 0, "y": 0, "w": 450, "h": 420},
-    {"x": 500, "y": 0, "w": 500, "h": 350}
+    {"x": 0,"y": 0,"w": 450,"h": 330},
+    {"x": 500,"y": 0,"w": 500,"h": 330}
   ],
   "walkSegments": [
-    {"x1": 250, "y1": 360, "x2": 1050, "y2": 360}
+    {"x1": 250,"y1": 390,"x2": 1050,"y2": 390}
   ]
 }

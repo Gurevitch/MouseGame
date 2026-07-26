@@ -10,7 +10,15 @@
   "characterScale": 1.0,
   "npcs": ["room_marcus"],
   "hotspots": [
-    {"bounds": {"x": 200, "y": 500, "w": 1000, "h": 260}, "targetScene": "camp_grounds", "name": "Exit Cabin", "arrow": "down"}
+    {
+      "_comment": "2026-07-24 #2: walkX/walkY = door anchor (PP CENTER, foot ~795) - PP walks DOWN ~1.5s to the door before the scene changes. walkX 590 keeps his body box clear of the {700,430,530,270} blocker.",
+      "bounds": {"x": 200,"y": 500,"w": 1000,"h": 260},
+      "targetScene": "camp_grounds",
+      "name": "Exit Cabin",
+      "arrow": "down",
+      "walkX": 590,
+      "walkY": 660
+    }
   ],
   "blockers": [
     {"x": 0, "y": 0, "w": 400, "h": 450},

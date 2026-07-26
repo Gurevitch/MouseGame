@@ -22,7 +22,7 @@ func buildSceneFromDef(renderer *sdl.Renderer, def sceneDef) *scene {
 	s := &scene{
 		name:           def.Name,
 		bg:             buildBackground(renderer, def),
-		npcs:           spawnNPCs(renderer, def.NPCs),
+		npcs:           spawnNPCs(renderer, def.NPCs, def.NPCOverrides),
 		spawnX:         def.SpawnX,
 		spawnY:         def.SpawnY,
 		minY:           def.MinY,
@@ -37,6 +37,8 @@ func buildSceneFromDef(renderer *sdl.Renderer, def sceneDef) *scene {
 			name:        h.Name,
 			targetScene: h.TargetScene,
 			arrow:       parseArrow(h.Arrow),
+			walkX:       h.WalkX,
+			walkY:       h.WalkY,
 		})
 	}
 	for _, b := range def.Blockers {

@@ -29,7 +29,8 @@ Built: Camp, Paris (Marcus), Jerusalem (Jake), Tokyo/Kyoto (Lily). Next: Rome
   chroma-keys white and punches it into holes). Use cream `#E5DDC8` / vanilla
   `#F2EFE5` / pale-grey `#C4C4C4` instead; only the scene-cell background stays
   pure white. `SPRITE_SCAN=1 go test ./engine -run TestSpriteScan` flags any
-  white-on-character. Also: every PP pickup ends with him pocketing the item;
+  white-on-character. Also: every PP pickup ends with him pocketing the item,
+  and every PP GIVE **starts with him pulling it out of that pocket**;
   PP has plain pink paws (no gloves); every speaking NPC gets **separate idle +
   talk** sheets (not one packed sheet); ≥15px gaps between figures so frames
   gap-cut cleanly.

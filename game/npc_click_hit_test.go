@@ -72,8 +72,9 @@ func npcHitCases() []npcHitCase {
 		{scene: "camp_grounds", name: "Director Higgins (grounds)", bounds: sdl.Rect{X: 1060, Y: 560, W: 180, H: 210}, hidden: true},
 
 		// --- Camp office: Higgins behind desk ---
-		// 2026-07-23 (#4/#22): foot-anchored at the desk line — Y+H = 407.
-		{scene: "camp_office", name: "Director Higgins (office)", bounds: sdl.Rect{X: 990, Y: 222, W: 220, H: 185}},
+		// 2026-07-24 (#3/#19): day-1 foot 483 (applyCampMood moves him to
+		// foot 407 on the day-2/3 art).
+		{scene: "camp_office", name: "Director Higgins (office)", bounds: sdl.Rect{X: 990, Y: 298, W: 220, H: 185}},
 
 		// --- Night campfire Higgins ---
 		// Silent + driven by cutscene; never clickable directly.
@@ -108,10 +109,10 @@ func npcHitCases() []npcHitCase {
 		// waist-up bust (no legs), so the srcCropBottomFrac=0.55 clip was
 		// dropped and the whole 135px bust renders, waist cut anchored at
 		// each table's cloth-top edge.
-		{scene: "paris_bakery", name: "Madame Yvette", bounds: sdl.Rect{X: 57, Y: 361, W: 110, H: 135}}, // 2026-07-23 #8: foot (112,496)
-		{scene: "paris_bakery", name: "Monsieur Bernard", bounds: sdl.Rect{X: 195, Y: 355, W: 110, H: 135}},
+		{scene: "paris_bakery", name: "Madame Yvette", bounds: sdl.Rect{X: 57, Y: 366, W: 110, H: 135}}, // 2026-07-24 #7: foot (112,501)
+		{scene: "paris_bakery", name: "Monsieur Bernard", bounds: sdl.Rect{X: 195, Y: 367, W: 110, H: 135}}, // 2026-07-24 #8: foot 502
 		{scene: "paris_bakery", name: "Mademoiselle Camille", bounds: sdl.Rect{X: 470, Y: 360, W: 110, H: 135}}, // #12 up
-		{scene: "paris_bakery", name: "Monsieur Henri", bounds: sdl.Rect{X: 580, Y: 370, W: 110, H: 135}},
+		{scene: "paris_bakery", name: "Monsieur Henri", bounds: sdl.Rect{X: 580, Y: 367, W: 110, H: 135}}, // 2026-07-24 #8: foot 502
 		{scene: "paris_bakery", name: "Lucien", bounds: sdl.Rect{X: 920, Y: 365, W: 110, H: 135}},
 		// Elise: removed from paris_bakery scene's npcs list 2026-05-22
 		// (no 6th chair in the BG). Keeping the test case as a hidden
@@ -119,7 +120,8 @@ func npcHitCases() []npcHitCase {
 		{scene: "paris_bakery", name: "Madame Elise", bounds: sdl.Rect{X: 660, Y: 540, W: 90, H: 160}, hidden: true},
 
 		// --- Paris Louvre (interior) ---
-		{scene: "paris_louvre", name: "Curator Beaumont", bounds: sdl.Rect{X: 520, Y: 490, W: 165, H: 315}},
+		// 2026-07-24 (user #14): mirrored to the right side of the gallery.
+		{scene: "paris_louvre", name: "Curator Beaumont", bounds: sdl.Rect{X: 1060, Y: 490, W: 165, H: 315}},
 	}
 }
 

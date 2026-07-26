@@ -50,14 +50,14 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"cafe_patron_elise":   newCafePatronElise,
 	// Jerusalem NPCs — positions baked into the closures so the factory
 	// signature stays func(*sdl.Renderer)*npc (no x param).
-	"jer_shimon":            func(r *sdl.Renderer) *npc { return newShimon(r, 760) },
-	"jer_bagel_seller":      func(r *sdl.Renderer) *npc { return newBagelSeller(r, 250) },
-	"jer_praying_man":       func(r *sdl.Renderer) *npc { return newPrayingMan(r, 470) },
-	"jer_wall_kid":          func(r *sdl.Renderer) *npc { return newWallKid(r, 880) },
-	"jer_spice_seller":      func(r *sdl.Renderer) *npc { return newSpiceSeller(r, 249) },
-	"jer_coffee_seller":     func(r *sdl.Renderer) *npc { return newCoffeeSeller(r, 510) },
-	"jer_antiques_kid":      func(r *sdl.Renderer) *npc { return newAntiquesKid(r, 900) },
-	"jer_antiques_old_man":  func(r *sdl.Renderer) *npc { return newAntiquesOldMan(r, 1040) },
+	"jer_shimon":           func(r *sdl.Renderer) *npc { return newShimon(r, 760) },
+	"jer_bagel_seller":     func(r *sdl.Renderer) *npc { return newBagelSeller(r, 250) },
+	"jer_praying_man":      func(r *sdl.Renderer) *npc { return newPrayingMan(r, 470) },
+	"jer_wall_kid":         func(r *sdl.Renderer) *npc { return newWallKid(r, 880) },
+	"jer_spice_seller":     func(r *sdl.Renderer) *npc { return newSpiceSeller(r, 249) },
+	"jer_coffee_seller":    func(r *sdl.Renderer) *npc { return newCoffeeSeller(r, 510) },
+	"jer_antiques_kid":     func(r *sdl.Renderer) *npc { return newAntiquesKid(r, 900) },
+	"jer_antiques_old_man": func(r *sdl.Renderer) *npc { return newAntiquesOldMan(r, 1040) },
 	// Japan / Kyoto NPCs
 	"jp_gary":       newTouristTokyo,
 	"jp_hiro":       newRamenSeller,
@@ -67,19 +67,13 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"jp_tea_master": newTeaMaster,
 }
 
-// registerNPCFactory lets modules (paris.go / jerusalem.go / ...) add their
-// NPCs to the registry at package init-time without a central import list.
-func registerNPCFactory(id string, ctor func(*sdl.Renderer) *npc) {
-	npcFactories[id] = ctor
-}
-
 // spawnNPCs builds the NPCs listed in a scene def, skipping unknown ids with
 // a warning so a typo doesn't brick the scene.
 //
 // Callers can set each NPC's back-reference to Game afterwards with
 // attachGameToNPCs; that's not done here because spawnNPCs runs inside
 // newSceneManager before Game is fully constructed.
-func spawnNPCs(renderer *sdl.Renderer, ids []string) []*npc {
+func spawnNPCs(renderer *sdl.Renderer, ids []string, overrides []npcOverrideJSON) []*npc {
 	out := make([]*npc, 0, len(ids))
 	for _, id := range ids {
 		ctor, ok := npcFactories[id]
@@ -88,7 +82,23 @@ func spawnNPCs(renderer *sdl.Renderer, ids []string) []*npc {
 			// haven't been migrated yet. They're looked up elsewhere.
 			continue
 		}
-		out = append(out, ctor(renderer))
+		n := ctor(renderer)
+		// 2026-07-24 (user): scene-JSON placement overrides beat the
+		// constructor defaults — geometry lives with the scene's JSON.
+		for _, ov := range overrides {
+			if ov.ID != id {
+				continue
+			}
+			if ov.FootY > 0 {
+				n.bounds.Y = ov.FootY - n.bounds.H
+				n.footYDay = ov.FootY
+			}
+			if ov.FootYDark > 0 {
+				n.footYDark = ov.FootYDark
+			}
+			break
+		}
+		out = append(out, n)
 	}
 	return out
 }

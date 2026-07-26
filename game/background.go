@@ -11,8 +11,6 @@ import (
 
 type bgLayer struct {
 	tex      *sdl.Texture
-	srcW     int32
-	srcH     int32
 	parallax float64
 }
 

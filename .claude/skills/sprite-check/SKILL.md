@@ -104,7 +104,10 @@ which exist because each one fixes a bug we actually shipped:
   `#F2EFE5` for PP's belly, pale-grey `#C4C4C4` for eyes/steam. Only the
   scene-cell BACKGROUND stays pure white. Verify with `TestSpriteScan` above.
 - **PP specifics**: plain pink paws, NO gloves; every pickup ends with PP
-  pocketing the item into his invisible hip pocket.
+  pocketing the item into his invisible hip pocket, and every GIVE starts
+  with him pulling the item back OUT of that pocket (user 2026-07-24) —
+  frame 1 reaches to the hip, frame 2 the item appears in his paw, then
+  the offer. Never open a give with the item already in hand.
 - Seated/behind-counter characters (office Higgins, Poulain): upper body
   only, no desk/counter in the sprite, all action at chest height, anchor by
   the waist cutoff row.

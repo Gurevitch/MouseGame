@@ -39,6 +39,10 @@ Canvas dimensions are locked per sheet; do **not** scale down to square.
    1-2 frames show the item vanishing into his invisible hip pocket
    (the classic Pink Panther "magic pocket"); PP ends empty-handed in
    a relaxed standing pose with a small secretive smile.
+2b. **Every GIVE sprite STARTS with PP pulling the item OUT of that same
+   hip pocket** (user 2026-07-24) — frame 1 is the reach to his hip,
+   frame 2 the item appearing in his paw, THEN the offer. Never start a
+   give with the item already floating in his hand.
 3. **No pure white anywhere on the panther.** Belly uses ivory
    off-white `#F2EFE5`, eye sclera uses pale grey. Pure white pixels
    on PP get chroma-keyed away by the engine.
@@ -166,17 +170,77 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
 
 ## Open Prompts
 
+### §PP-TALK-SIDE-STUNG-v4 (user 2026-07-25: one more take — the landed v3 is close but the 16 poses read samey and the brows stay neutral)
+
+`assets/images/player/PP talk side scared.png` (OVERWRITE — wiring keys off
+this filename; 8×2, 1536×1024, flat `#B4D7EE`). Attach `PP idle side.png`
+as the design + scale lock (same size/anchor, facing RIGHT). Acting
+reference in one line: a classic cartoon character being unfairly chewed
+out by his boss — the silent "...who, ME?" take. He half-understands
+what's happening and is a little hurt that a friend is using this tone.
+EVERY frame must be clearly different; follow this exact 16-frame
+storyboard. The EYEBROWS carry the emotion — inner ends tilted UP
+(hurt-surprise) — and the eyes stay round and FULLY OPEN in all 16 frames:
+
+Row 1 (getting scolded): 1 upright, ears drop, brows shoot up, small "o"
+mouth · 2 leans back an inch, one paw rising · 3 paw lands flat on his own
+chest, head pulled back ("...me?") · 4 frozen mid-scold, mouth a flat
+line · 5 mouth opens to object, one finger half-raised · 6 the objection
+dies, the finger wilts, brows even higher · 7 both palms turn up at waist
+level ("what did I do?") · 8 a quick glance at the camera, worried mouth.
+
+Row 2 (trying to answer): 9 turns back to the speaker, small pat-the-air
+("okay, okay…") · 10 talking, brows still hurt-tilted · 11 talking, paw
+drifting back to his chest · 12 head tilts, one brow higher than the
+other ("wait — what?") · 13 talking with both paws slightly out ·
+14 swallows, ears at half-mast · 15 one last quiet word, shoulders
+dipped · 16 settles into a deflated but upright stand, tiny mouth.
+
+BANS (each ruined an earlier take): NO half-lidded/sleepy eyes, NO
+head-scratching, NO full shrugs, NO pointing, NO trembling clasped paws,
+NO cowering hunch — the spine stays tall even when the shoulders dip.
+Plain pink paws, ivory belly `#F2EFE5`, zero pure white, ≥15px gaps, no
+separators, no extras.
+
+### §PP-SLEEP-WAKE-BLUE (user 2026-07-25: wake-up still shows white spots — enclosed pockets no key can fix on the white-bg originals)
+
+Two sheets, both 8×1, 1536×1024, flat `#B4D7EE`, PP + his BLUE blanket at
+the same size/anchor as today's sheets (attach `pp_waking.png` as the
+design lock — same blanket, same beats). The old sheets have PURE-WHITE
+muzzle/eye whites AND enclosed white pockets, so neither keying nor
+punching can save them — this re-roll fixes both (muzzle ivory `#F2EFE5`,
+eye sclera pale-grey `#C4C4C4`, zero pure white; the flat blue bg is
+globally keyed so the arm-loop pockets disappear).
+
+- `assets/images/player/pp_sleeping.png` (OVERWRITE): 8-frame breathing
+  loop — PP curled under the blue blanket by the campfire, chest rising
+  and falling gently, one ear twitch, tail tip curl. Loopable.
+- `assets/images/player/pp_waking.png` (OVERWRITE): 1 asleep under the
+  blanket · 2-3 sits up rubbing his eyes with both paws · 4 blinks over
+  the blanket edge · 5 pushes the blanket off · 6 rises to his feet,
+  still droopy · 7 big overhead stretch · 8 standing, awake. Ends in his
+  normal standing pose.
+
+### §MARGAUX-RECEIVE-HEEL (user 2026-07-25)
+
+`assets/images/locations/paris/npc/outside/npc_pigeon_lady_receive_heel.png`
+(NEW, 6×1, 1536×1024, flat `#B4D7EE`). Attach `npc_pigeon_lady_idle.png` as
+the design lock (same size/anchor). Madame Margaux TAKES the day-old
+baguette heel from PP (he stands to her RIGHT): 1 turns right, curious ·
+2 reaches out · 3 takes the heel two-handed (crust tan, never white) ·
+4 inspects it approvingly · 5 tucks it into her apron/bag · 6 back to her
+idle stance. ≥15px gaps, zero pure white, no separators, no extras. Wired
+(`receive_heel` on the heel hand-off) — auto-upgrades on landing.
+
 **Carried over (still open from earlier batches):**
 
-- **§WALL-PRAYER-BG** — `jerusalem/npc/wall/praying_man.png` (+ `_man2`):
+- **§WALL-PRAYER-BG** — `jerusalem/props/praying_man.png` (+ `_man2`,
+  moved from npc/wall/ 2026-07-24):
   the lone Wall worshippers ship a baked limestone background; re-export
   figures-only (flat `#B4D7EE`), shawl cream `#E5DDC8`, keep the 4-frame
   from-behind sway. Low priority — they currently read OK parked at the
   Wall's foot.
 
-- **§PP-GIVE-ROLLING-PIN-BLUE** — `PP give rolling pin.png` (6×1, blue):
-  1 idle holding the pin two-pawed · 2 raises it · 3 extends it right ·
-  4 hold, slight lean · 5 paws return empty · 6 idle.
 - **§TEA-MASTER-BLUE-v2** — `npc_tea_master_idle.png` + `_talk.png` (6×1,
   blue, figures fill ≥85% of the cell height — she renders tiny today):
   idle: 1 kneels at the low table · 2 lifts the whisk · 3 whisks the bowl ·
@@ -188,6 +252,31 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
   nod · 5 slides a bowl forward · 6 rests paws down. talk: 6 talk poses
   with ladle gestures.
 ## Done log
+
+- **2026-07-25 — five-sheet generated batch:** §BAGEL-RECEIVE-COFFEE-v2,
+  all three §PP-KIMONO-SPLIT phases, and §PP-TALK-SIDE-STUNG (v3 — close
+  but poses samey / brows neutral; v4 storyboard take queued above, v3
+  stays wired as the interim) landed at
+  1536×1024 on exact flat `#B4D7EE`. All five GAP-DETECT, have no
+  pure-white or frame-leak hits, and were visually checked after the
+  background normalization. The three new kimono sheets were added to
+  both audit manifests; the bagel and talk entries were already present.
+
+- **2026-07-24 — 17-sheet generated batch:** §PP-TALK-SIDE-SCARED (tone
+  REJECTED twice: v1 too cowering, the BAFFLED v2 read as casual
+  puzzlement — §PP-TALK-SIDE-STUNG v3 queued above with the dual
+  confused + stung-by-the-tone acting; the v2 sheet stays wired as the
+  interim),
+  §PP-GIVE-BAGUETTE-BLUE, §PP-GIVE-CARD-v2, §PP-GET-PENCIL-POT,
+  §PP-GET-BAGEL, §BAGEL-RECEIVE-COFFEE (design REJECTED same day — apron +
+  missing cart, didn't match his idle; sheet deleted, v2 queued above),
+  §BEAUMONT-IDLE-CALM,
+  §BEAUMONT-GET-SKETCH, §KENJI-IDLE-SIT, all three §LOUVRE landscape
+  props, and all five §JP landscape props landed. Beaumont's idle and
+  receive-sketch keep his podium framing, and the received page shows
+  Camille's canonical Mona Lisa replica; Kenji now remains seated. All are
+  1536×1024 on exact `#B4D7EE` with zero pure white, and are wired into
+  their runtime loaders and both audit manifests.
 
 - **2026-07-23 — five-sheet PR prompt batch:** §POULAIN-GIVE-BAGUETTE-v2,
   §POULAIN-GIVE-COFFEE-v2, and §POULAIN-WORK-v2 landed as waist-cut 6×1

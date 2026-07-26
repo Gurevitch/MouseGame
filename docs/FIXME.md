@@ -14,6 +14,122 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### 2026-07-24 — PR (43-item sweep, plan abundant-gathering-cosmos)
+
+Root causes worth remembering: (a) walkToAndDoUnclamped only unclamped the
+TARGET — update() still clamped movement to the walk band every frame, so
+room exits jammed (jake stuck) or fired instantly (marcus); allowOffscreen
+now set + each room JSON carries an explicit walkX/walkY door anchor;
+(b) the global tol-8 key eats white EYE SCLERA — every Japan NPC now loads
+CONNECTED; (c) my 07-23 global-tol-24 switch on the two white-bg baguette
+sheets put PP's ivory belly at the band edge → "blinking" — both reverted
+to connected; (d) Jake's coin-shrink "fix" (07-18 #36) never existed in
+code — anchorRefH + anchorRefHOneShots now actually set.
+
+CAMP: #1 sleep/wake key tol 4→24 (fixed the halo; the REMAINING white
+spots are ENCLOSED pockets + pure-white muzzle on the legacy sheets — a
+surgical punch holed the face, reverted; proper fix queued as
+§PP-SLEEP-WAKE-BLUE re-rolls); #2/#31 room exits walk
+properly (down ~1.5s in marcus/lily, right to the door wall in
+jake/tommy/danny — no more y=160 frame-top target, no more stuck); #3/#19
+office Higgins day-scoped foot (day1 483, day2/3 407 via applyCampMood);
+#4 PARIS GATED on talking to day-2 Marcus (higginsSeeMarcusFirstDialog;
+map flow unchanged once talked; save-load covered); #20 post-heal aside no
+longer names Jake/Jerusalem ("update Higgins... keep my eyes open");
+#33 lake Lily lifted onto the dock (foot ~462) + PP talks from the shore
+(mark ~406, minY 220) + "stay back" opening lines; #34 PP stops +
+stateTalking at the rude dialog (scared side-talk auto-upgrades when
+the landed §PP-TALK-SIDE-SCARED is available); #35 Higgins walks OFF-SCREEN (toX 1450);
+#36 the aside plays standing/talking, not walking-front.
+PARIS: #5/#6 ONE shared recede mark (735,510) for Pierre + Margaux +
+the pencil pot (floorItem standXOverride/recedeDepth) — flip-in-place, no
+regrow between them; #7 Yvette foot 501 + PP mark x180 (off Bernard);
+#8 Bernard/Henri foot 502; #9 Poulain talk 0.16; #10 get-jam tol 24;
+#11 bakery exit walks the lanes (walkToAndDoViaLanes); #12 give-baguette +
+pierre-get-baguette reverted to connected; §PP-GIVE-BAGUETTE-BLUE landed
+and now uses the 6×1 global key; #13 §PP-GIVE-CARD-v2 landed;
+#14 Beaumont mirrored to the RIGHT side (X 1060, faces left, no turning)
++ §BEAUMONT-IDLE-CALM landed with closed-mouth podium framing; #15
+§PP-GET-PENCIL-POT landed + wired; #16 give-pencil → global tol-24
+(blue pockets); #17 §BEAUMONT-GET-SKETCH landed + trade wired
+(npcAnim receive_sketch, conditional skipNPCTake); #18 crow → global key
+(checker pocket between the perched legs); all three Louvre landscape
+props landed (§LOUVRE-VISITOR-PAIR/GUARD/SKETCH-STUDENT → paris/props/).
+JERUSALEM: #22 entrance crowd ×6 ABABAB, smaller (0.30-0.39, x880+62i);
+#23/#28 NEW player oneShotFlip map — receive_jerusalem_coffee +
+receive_paper mirrored; #24 `pp_get_bagel.png` + the bagel seller's
+§BAGEL-RECEIVE-COFFEE finjan take landed and use their wired 6×1 keys;
+#25 Avi intro rewritten
+(hungry, prayed since sunrise); #27 Avi receive_bagel mirrored
+(npc oneShotFlip); #29 Shimon's generic multi-item give RETIRED +
+skipNPCTake on the pen-return (give_coin only); #30 Jake coin-shrink
+FIXED for real (anchorRefH = max(idle, strangeIdle), anchorRefHOneShots);
+#32 praying_man{,2,3} repointed to props/ (loaders firstExisting +
+manifests; praying_man3 added to both manifests); #26 wall characterScale
+0.85→0.88.
+JAPAN: #37/#40 + Kiku/Tea-Master: all Japan NPC sheets load CONNECTED
+(eyes restored); #38 §KENJI-IDLE-SIT landed (idle and talk both sit);
+#39 torii spawn 220→1150 (right side); #41 flower-store exit now an UP
+arrow at ~(1190,396); #42 kimono beat re-timed: spin 1.6s → HOLD the
+kimono pose 1.2s → spin back 1.4s (kimono_pose sheet finally used);
+#43 tea master interim bump H248→280 (foot kept) + connected loader —
+§TEA-MASTER-BLUE-v2 remains the real fix; D7 story/props: the striker
+thief is now a KITE (tobi) in all dialogs (crow belongs to camp) +
+§JP-KITE-SHINY and all four other landscape props landed in their wired
+slots (pilgrims/cat/lantern/kettle → japan/props/).
+Prompts: all 17 from EXTRA_PROMPTS §2026-07-24 landed.
+
+- [x] Pre-PR prop-NPC size check (user): the landed Louvre props drew
+      PP-sized or BIGGER (visitors ~246px, guard ~281px vs PP ~230) —
+      rescaled to BG furniture (~110-150px) and the guard moved off
+      mirrored Beaumont's right-side spot to the left entrance arch. Wall
+      worshippers: left one floated 40px above the standing line and
+      rendered ~232px — both now 0.37 (~195px = Avi) with feet ON the 700
+      line; the right one moved off Noam (x820→1100), so the Wall line
+      reads worshipper 280 · Avi 470 · Noam 880 · worshipper 1100.
+- [x] Dead-code sweep (user, staticcheck U1000): removed 47 unused
+      declarations across engine+game — the 13 legacy procedural
+      item-texture painters (inventory.go, pre-items.json era), the
+      superseded (*npc).draw / (*player).draw, the pre-JSON sequence
+      builder helpers (dialogStep/waitStep/...), dead loaders
+      (loadAmbientStrip, newAmbientWorshippers, newAmbientProp,
+      loadNPCGridRowConnectedTol, stripFrames, gridFramesEqualTol,
+      framesFromGridFrames, gridFramesRow), dead dialogs
+      (lilyPostDialog, bakeryWomanPinTradeDialog,
+      pressPhotographerPostDialog, day2Monologue), dead scene/bg helpers
+      (effectiveMinY/MaxY, bgLayer.srcW/srcH, jerBg*/jerPlazaBase
+      palette), findNightHiggins, itemOwner, registerNPCFactory,
+      blankCornerLogo, and the ORPHANED openRamenStall (the stall-open
+      rework disconnected it — when §JP-HIRO-COUNTER lands, the
+      perma-counter Hiro wires into newRamenSeller instead). KEPT:
+      newNPCStateMachine (npc_states.go — Phase-4 scaffolding per
+      ARCHITECTURE.md). Full build + tests green after the cut.
+- [ ] `[P1]` PLAYTEST: all five room exits (esp. jake); the Marcus→Paris
+      gate incl. a pre-gate save; Higgins day1 (483) vs day2 (407) foot;
+      recede chaining Pierre↔Margaux↔pot; bakery exit lane; Jerusalem
+      crowd ×6 + mirrored receives + Shimon coin beat + Jake heal size;
+      lake Lily far-talk + heal from the far mark; rude beat (stop/scared
+      fallback/walk-off/aside); Japan eyes, torii spawn, up-exit, kimono
+      hold, tea master size; the tol-24 sleep/wake + jam sheets.
+
+### 2026-07-24 — 17-prompt sprite batch landed + verified
+
+All five player sheets, four NPC sheets, three Louvre props, and five Japan
+props were generated, normalized to exact 1536×1024 / `#B4D7EE`, visually
+checked, and registered in both checker manifests. The two new PP grid
+mismatches were corrected in `game/player.go`: give-baguette and receive-bagel
+now load as globally keyed 6×1 strips. Sixteen sheets GAP-DETECT; the paired
+torii pilgrims safely use proportional 6×1 cuts with no content crossing a
+cell boundary. The white scan reports zero pure-white pixels for the batch.
+Fixed-cell leak warnings on the Louvre visitor pair/student are harmless
+because their runtime gap cuts move into the verified empty bands.
+`go test -v ./...` passes.
+
+- [x] `npc_beaumont_receive_sketch.png` showed an unrelated dinosaur drawing.
+      FIXED 2026-07-25: the unrolled frames now show Camille's canonical
+      Mona Lisa / Room 7 replica from `camille_sketch.png`; the sheet remains
+      GAP-DETECTED 6×1 with only renderer-corrected center drift.
+
 ### 2026-07-23 — §2026-07-23 prompt batch landed + verified (sprite-check)
 
 All five re-rolls (Poulain give/give-coffee/work, PP give coffee, people_pray
@@ -120,9 +236,9 @@ handed prop (verified visually). Manifests were already up to date.
       manifests but missing from the player 6×1 blue loader map, so PP's
       cardamom hand-over to the coffee seller played no give animation —
       added `give_cardamom` to game/player.go.
-- [ ] `[P2]` `npc_kenji_idle.png` tops the white-scan (2.29%, worst frame
-      1425 px) — the calligraphy paper is pure white instead of cream. Loads
-      via connected key so no holes; recolor only if it reads wrong in-game.
+- [x] `[P2]` `npc_kenji_idle.png` white-scan/design mismatch — FIXED
+      2026-07-24 by §KENJI-IDLE-SIT: seated 8×1 re-roll matching his talk
+      sheet, exact blue key, cream paper, and zero pure white.
 
 ### 2026-07-18 — biker restored
 
@@ -364,8 +480,12 @@ in both checker manifests), wired where needed. Build + tests green.
 - [ ] `[P1]` Re-roll §TEA-MASTER-BLUE-v2 at the runtime's real 8×1 grid and
       genuinely large scale. The 2026-07-20 candidates were only 312px/353px
       median content height on a 1024px sheet, far below the prompt's ≥85%.
-- [ ] `[P2]` Re-roll `PP give rolling pin.png` on blue at the runtime's real
-      8×1 grid. The generated 6-frame candidate was not installed.
+- [x] `[P2]` Re-roll `PP give rolling pin.png` on blue at the runtime's real
+      8×1 grid. RETIRED 2026-07-24 (user): the pin's only hand-over is
+      Poulain's back-facing trade, which always resolves to
+      give_rolling_pin_back — the front sheet never played. Sheet deleted,
+      loader entry + manifest rows removed, §PP-GIVE-ROLLING-PIN-BLUE
+      dropped from the queue.
 - [ ] `[P2]` Finish §OFFICE-DOOR-OPEN: day2 is open with warm spill; day3 is
       open but still lacks the requested warm doorway spill, so the pair stays
       queued.

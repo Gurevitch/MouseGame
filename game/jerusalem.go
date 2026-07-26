@@ -1,7 +1,6 @@
 package game
 
 import (
-	"image/color"
 	"math/rand"
 	"os"
 
@@ -37,10 +36,6 @@ import (
 // ---------- Sprite paths (city sheet preferred, fallback to existing art) ----------
 
 const (
-	jerBgEntrance = "assets/images/locations/jerusalem/background/wall_enterence.png"
-	jerBgWall     = "assets/images/locations/jerusalem/background/wall_close.png"
-	jerBgMarket   = "assets/images/locations/jerusalem/background/market.png"
-
 	// Art is organised into wall/ (plaza + Wall NPCs) and market/ (souk NPCs).
 	// Shimon's full-body 6x2 sheet has landed; the rest borrow Paris/camp art
 	// via the fallbacks below until their sheets are authored (§JERUSALEM).
@@ -62,8 +57,11 @@ const (
 	jerArtPrayGivePaper  = jerNPCWall + "npc_praying_man_give_paper.png" // #34
 	// #33 distinct wall-worshipper sway sheets (4-frame each, seen from behind
 	// at the Wall). Used by the ambient sway system, NOT as NPC idle/talk.
+	// 2026-07-24 (user #32): the user is moving praying_man{,2,3}.png into
+	// props/ — resolve via jerWallPrayerSheet() so both homes work.
 	jerArtWallPrayer1 = jerNPCWall + "praying_man.png"
 	jerArtWallPrayer2 = jerNPCWall + "praying_man2.png"
+	jerProps          = "assets/images/locations/jerusalem/props/"
 	jerArtKidIdle     = jerNPCWall + "npc_wall_kid_idle.png" // #separate idle + talk
 	jerArtKidTalk     = jerNPCWall + "npc_wall_kid_talk.png"
 
@@ -152,13 +150,6 @@ func registerJerGiveNamed(renderer *sdl.Renderer, n *npc, key, path string) {
 	registerJerGiveNamedGrid(renderer, n, key, path, 8, 1)
 }
 
-// Placeholder palette — warm limestone for the plaza/wall, dim amber for the souk.
-var (
-	jerPlazaBase  = color.NRGBA{R: 214, G: 182, B: 140, A: 255}
-	jerWallBase   = color.NRGBA{R: 224, G: 190, B: 120, A: 255}
-	jerMarketBase = color.NRGBA{R: 120, G: 96, B: 68, A: 255}
-)
-
 // ---------- NPC dialogs ----------
 
 var shimonIntroDialog = []dialogEntry{
@@ -243,11 +234,11 @@ var bagelPostDialog = []dialogEntry{
 }
 
 var prayingIntroDialog = []dialogEntry{
-	{speaker: "Avi", text: "Shalom, friend. You stand at the oldest mailbox in the world, you know."},
-	{speaker: "Pink Panther", text: "Mailbox?"},
-	{speaker: "Avi", text: "People write what's in their hearts and tuck it in the cracks. Wishes. Fears. The Wall holds them all."},
-	{speaker: "Avi", text: "If you carry someone's fear, leave it here. But first - bring me a ka'ak from the bagel man in the plaza."},
-	{speaker: "Avi", text: "While I eat, I will teach you what you leave in the Wall. A fair trade, no?"},
+	// 2026-07-24 (user #25): hungry version — he's been praying all day.
+	{speaker: "Avi", text: "Shalom, friend... forgive me if I sway. I have been praying here since sunrise, and my stomach is praying louder than I am."},
+	{speaker: "Pink Panther", text: "Sounds like you could use a break. Anything I can do?"},
+	{speaker: "Avi", text: "You can help me with exactly one thing: a ka'ak from the bagel man in the plaza. Warm, if he has it."},
+	{speaker: "Avi", text: "And while I eat, I will teach you what people leave in the Wall - wishes, fears, all of it. A fair trade, no?"},
 }
 
 var prayingBagelDialog = []dialogEntry{
@@ -304,7 +295,10 @@ func newShimon(renderer *sdl.Renderer, x int32) *npc {
 		bobAmount:      0,
 		talkFrameSpeed: 0.2,
 	}
-	registerJerGive(renderer, n, jerArtShimonGive)
+	// 2026-07-24 (user #29): the generic multi-item npc_shimon_give.png is
+	// RETIRED — both his beats name an explicit per-item give (give_pen /
+	// give_coin), and the generic reach was leaking in as the pen-take
+	// fallback ("he gives some items then the coin").
 	registerJerGiveNamed(renderer, n, "give_pen", jerArtShimonGivePen)
 	registerJerGiveNamed(renderer, n, "give_coin", jerArtShimonGiveCoin)
 	return n
@@ -386,6 +380,10 @@ func newBagelSeller(renderer *sdl.Renderer, x int32) *npc {
 		talkFrameSpeed: 0.18,
 	}
 	registerJerGiveGrid(renderer, n, jerArtBagelGive, 6, 1)
+	// 2026-07-24 (user #24): he visibly TAKES the finjan on the trade once
+	// §BAGEL-RECEIVE-COFFEE lands (optional; the handOff skips the take
+	// until then).
+	registerJerGiveNamedGrid(renderer, n, "receive_coffee", jerNPCWall+"npc_bagel_seller_receive_coffee.png", 6, 1)
 	return n
 }
 
@@ -402,6 +400,8 @@ func newPrayingMan(renderer *sdl.Renderer, x int32) *npc {
 	registerJerGive(renderer, n, jerArtPrayGive)
 	registerJerGiveNamed(renderer, n, "give_paper", jerArtPrayGivePaper)
 	registerJerGiveNamedGrid(renderer, n, "receive_bagel", jerNPCWall+"npc_praying_man_receive_bagel.png", 6, 1) // §AVI-RECEIVE-BAGEL
+	// 2026-07-24 (user #27): the receive sheet reaches away from PP — mirror it.
+	n.oneShotFlip = map[string]bool{"receive_bagel": true}
 	return n
 }
 
@@ -482,12 +482,15 @@ func decorateJerusalemEntrance(s *scene, renderer *sdl.Renderer) {
 	// 2026-07-23 (user #24): both sheets are now figures-only flat-blue strips.
 	// Alternate the distinct four-person groups for ABAB crowd variety.
 	crowds := []string{
-		firstExisting("assets/images/locations/jerusalem/props/people_pray.png", jerArtWallPrayer1),
-		firstExisting("assets/images/locations/jerusalem/props/people_pray2.png", jerNPCWall+"people_pray2.png"),
+		firstExisting(jerProps+"people_pray.png", jerArtWallPrayer1),
+		firstExisting(jerProps+"people_pray2.png", jerNPCWall+"people_pray2.png"),
 	}
-	for i := 0; i < 4; i++ {
+	// 2026-07-24 (user #22): SIX smaller groups, ABABAB, along the same line
+	// (was 4 at 0.40-0.52). Spread starts at 880 so the crowd stays right of
+	// Shimon (x760-880) and inside the frame.
+	for i := 0; i < 6; i++ {
 		s.ambientSprites = append(s.ambientSprites,
-			newAmbientWorshippersSheet(renderer, crowds[i%len(crowds)], float64(940+i*70), 585, 0.40+rand.Float64()*0.12))
+			newAmbientWorshippersSheet(renderer, crowds[i%len(crowds)], float64(880+i*62), 585, 0.30+rand.Float64()*0.09))
 	}
 	// Separation fence: three globally-keyed sections end-to-end across the
 	// foreground. The flat blue key is absent from the grey fence, so enclosed
@@ -526,8 +529,18 @@ func decorateJerusalemWall(s *scene, renderer *sdl.Renderer) {
 	// 2026-07-23 (user #27): the two sway figures rendered ~250-275px tall —
 	// bigger than Avi (~196px) and even PP. Scaled down to Avi's band so the
 	// wall group reads as one crowd; feet stay planted (sway anchors at y).
-	wallPrayerSheets := []string{jerArtWallPrayer1, jerNPCWall + "praying_man3.png"}
-	for i, sp := range []struct{ x, y, scale float64 }{{280, 660, 0.44}, {820, 705, 0.37}} {
+	// 2026-07-24 (user #32): sheets moving to props/ — props path preferred,
+	// old wall path as fallback.
+	wallPrayerSheets := []string{
+		firstExisting(jerProps+"praying_man.png", jerArtWallPrayer1),
+		firstExisting(jerProps+"praying_man3.png", jerNPCWall+"praying_man3.png"),
+	}
+	// 2026-07-24 (user pre-PR check): measured content ~525px/frame → both
+	// at 0.37 ≈ Avi's ~195px; FEET ON THE STANDING LINE (Avi/Noam foot 700,
+	// the left one floated 40px above it); the right one moved off Noam
+	// (x880) to the open Wall face at x1100 — everyone prays INTO the Wall
+	// on the same line: worshipper 280 · Avi 470 · Noam 880 · worshipper 1100.
+	for i, sp := range []struct{ x, y, scale float64 }{{280, 700, 0.37}, {1100, 705, 0.37}} {
 		s.ambientSprites = append(s.ambientSprites,
 			newAmbientSway(renderer, wallPrayerSheets[i%2], 4, sp.x, sp.y, sp.scale, 0.5))
 	}
@@ -655,7 +668,12 @@ func (g *Game) setupJerusalemCallbacks() {
 							give("coin", "Coin")
 							shimon.dialog = shimonDoneDialog
 							shimon.altDialogFunc = nil
-						}, &handOff{item: "Pen", returnItem: "Coin", npcGiveAnim: "give_coin", dialogFirst: true}
+							// 2026-07-24 (user #29): skipNPCTake — the pen-take
+							// stage fell back to the generic multi-item give
+							// sheet before give_coin played ("he gives some
+							// items then the coin"). PP's own give_pen beat
+							// carries the hand-over; Shimon only gives the coin.
+						}, &handOff{item: "Pen", returnItem: "Coin", npcGiveAnim: "give_coin", skipNPCTake: true, dialogFirst: true}
 					}
 					// Stage 2: PP has the note paper but no pen → give the Pen (once).
 					if !penGiven() && game.inv.hasItem("Note Paper") && !game.inv.hasItem("Pen") {
@@ -678,13 +696,17 @@ func (g *Game) setupJerusalemCallbacks() {
 						return nil, nil, nil
 					}
 					return bagelTradeDialog, func() {
-						game.inv.giveItemTo("Coffee", "bagel_seller")
-						give("bagel", "Bagel")
-						bagel.dialog = bagelPostDialog
-						bagel.altDialogFunc = nil
-						bagel.altDialogRequiresHeld = false
-						bagel.altDialogRequiresItem = ""
-					}, &handOff{item: "Coffee", returnItem: "Bagel", skipNPCTake: true} // user #25: his single give sheet must not double as the take
+							game.inv.giveItemTo("Coffee", "bagel_seller")
+							give("bagel", "Bagel")
+							bagel.dialog = bagelPostDialog
+							bagel.altDialogFunc = nil
+							bagel.altDialogRequiresHeld = false
+							bagel.altDialogRequiresItem = ""
+							// 2026-07-24 (user #24): once §BAGEL-RECEIVE-COFFEE lands
+							// he visibly TAKES the finjan; until then the take stays
+							// skipped so his give sheet can't double as it (#25).
+						}, &handOff{item: "Coffee", returnItem: "Bagel", npcAnim: "receive_coffee",
+							skipNPCTake: !bagel.hasOneShotAnim("receive_coffee")}
 				}
 			}
 		}

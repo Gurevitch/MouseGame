@@ -55,14 +55,17 @@ func firstExisting(paths ...string) string {
 // candidate list; talk falls back to idle until its sheet lands; idle falls
 // back to a generic vendor row if even idle is missing.
 func loadJapanNPC(renderer *sdl.Renderer, idleCands, talkCands []string) (idle, talk []npcFrame) {
+	// 2026-07-24 (user #37/#40): CONNECTED key for every Japan NPC — the
+	// global tol-8 key punched their white eye sclera into holes (Hiro lost
+	// his eyes in both sheets; same class for Kenji/Kiku/Tea Master).
 	if p := firstExisting(idleCands...); p != "" {
-		idle = loadNPCGrid(renderer, p, 8, 1)
+		idle = loadNPCGridConnected(renderer, p, 8, 1)
 	}
 	if len(idle) == 0 {
 		idle = loadNPCGridRow(renderer, jpFbkVendor8x2, 8, 2, 0)
 	}
 	if p := firstExisting(talkCands...); p != "" {
-		talk = loadNPCGrid(renderer, p, 8, 1)
+		talk = loadNPCGridConnected(renderer, p, 8, 1)
 	}
 	if len(talk) == 0 {
 		talk = idle
@@ -75,73 +78,86 @@ func loadJapanNPC(renderer *sdl.Renderer, idleCands, talkCands []string) (idle, 
 // --- Gary (torii): overjoyed to finally be in Kyoto; his ramen tip OPENS the
 // stall down the street (the book-upside-down gag plays mid-chat). ---
 var garyTokyoDialog = []dialogEntry{
-	{speaker: "Gary", text: "PINK PANTHER! Can you BELIEVE it - KYOTO! I have dreamed of zis since I was a boy. Ze temples, ze gardens, ze cherry blossoms..."},
-	{speaker: "Gary", text: "I read EVERYTHING about zis place - every shrine, every festival, every bowl of noodles. It is ALL here in my guidebook!"},
+	{speaker: "Gary", text: "PINK PANTHER! Can you BELIEVE it - KYOTO! I've dreamed about this since I was a kid. The temples, the gardens, the cherry blossoms..."},
+	{speaker: "Gary", text: "I read EVERYTHING about this place - every shrine, every festival, every bowl of noodles. It's ALL here in my guidebook!"},
 	{speaker: "Pink Panther", text: "...Gary. You're holding the book upside down."},
 	{speaker: "Gary", text: "WHAT? ...Oh. Oh my. ...Ahh. MUCH better. Now it makes far more sense!"},
-	{speaker: "Gary", text: "Right - rule one of any guidebook: you MUST taste ze ramen at ze little stall down ze street. Go, go - tell zem Gary sent you, zey'll open right up!"},
-	{speaker: "Pink Panther", text: "Ramen it is. Thanks, Gary."},
+	{speaker: "Gary", text: "Listen - the book says the old cherry in the hidden grove only blooms for an offering blessed at a sacred hearth. The ramen cook down the street keeps one!"},
+	{speaker: "Pink Panther", text: "A blessed offering. Ramen first, then. Thanks, Gary."},
 }
 
+// 2026-07-18 (user #45/#46): Gary is the chapter's CUSTOMS ORACLE — whenever
+// PP doesn't know the local etiquette, Gary + guidebook has the answer. His
+// repeat dialog advances with the chapter flags (see setupTokyoCallbacks).
 var garyTokyoPostDialog = []dialogEntry{
-	{speaker: "Gary", text: "(flips ze book again) Now it says Kyoto is in PERU! Remarkable little book."},
+	{speaker: "Gary", text: "Need a custom checked? My book knows everything. Now it says Kyoto is in PERU, but I'm reading between the lines."},
+}
+
+var garyDressCodeDialog = []dialogEntry{
+	{speaker: "Gary", text: "The book is very clear: you do NOT visit the Whispering Cherry in street clothes. It's a dress-code thing."},
+	{speaker: "Gary", text: "The lady at the flower store dresses visitors properly. Tell her the tree sent you. Well - don't, actually. That sounds weird."},
+}
+
+var garyTeaCustomDialog = []dialogEntry{
+	{speaker: "Gary", text: "Before the grove, the book says you need 'a still heart' - that's the tea ceremony. Matcha, a bowl, cool well water."},
+	{speaker: "Gary", text: "The tea master at the temple tea-house hosts it. Very serene. I cried a little."},
 }
 
 // --- Hiro (street): OPEN for business (Gary's tip), but the SACRED hearth for
-// the blessed offering bowl still needs his crow-stolen fire-striker ---
+// the blessed offering bowl still needs his kite-stolen fire-striker ---
 var hiroRamenDialog = []dialogEntry{
-	{speaker: "Hiro", text: "Irasshaimase, panther-san! You have ze look of a hungry traveller - but my stall is dark today, I am afraid."},
+	{speaker: "Hiro", text: "Irasshaimase, panther-san! You have the look of a hungry traveller - but my stall is dark today, I am afraid."},
 	{speaker: "Pink Panther", text: "Actually, I need an OFFERING bowl - one blessed at your hearth, for the old cherry tree."},
-	{speaker: "Hiro", text: "Ahh, ze Whispering Cherry. For zat I must light ze SACRED hearth - but my fire-striker, ze flint, a CROW stole it zis morning!"},
-	{speaker: "Hiro", text: "Bring me my striker and I will bless your offering bowl in ze first flame."},
+	{speaker: "Hiro", text: "Ahh, the Whispering Cherry. For that I must light the SACRED hearth - but my fire-striker, the flint, a KITE swooped down and stole it this morning!"},
+	{speaker: "Hiro", text: "Bring me my striker and I will bless your offering bowl in the first flame."},
 }
 
 var hiroRamenPostDialog = []dialogEntry{
-	{speaker: "Hiro", text: "No striker, no sacred flame, panther-san. Zat thieving crow! Bring it back and ze blessed bowl is yours."},
+	{speaker: "Hiro", text: "No striker, no sacred flame, panther-san. That thieving kite! Bring it back and the blessed bowl is yours."},
 }
 
 var hiroOpenDialog = []dialogEntry{
 	{speaker: "Hiro", text: "MY STRIKER! You found it! Stand back - "},
-	{speaker: "Hiro", text: "(steel on flint - a spark - ze sacred hearth flares blue-gold)"},
-	{speaker: "Hiro", text: "Zere. A bowl blessed in ze first flame. Carry it to ze old tree, with respect."},
+	{speaker: "Hiro", text: "(steel on flint - a spark - the sacred hearth flares blue-gold)"},
+	{speaker: "Hiro", text: "There. A bowl blessed in the first flame. Carry it to the old tree, with respect."},
 }
 
-// --- Kenji (street): saw where the crow dropped it; needs well-water first ---
+// --- Kenji (street): saw where the kite dropped it; needs well-water first ---
 var kenjiStudentDialog = []dialogEntry{
-	{speaker: "Kenji", text: "Please - do not nudge ze table... oh, ze panther. You have ze look of a man hunting a crow's hiding place."},
-	{speaker: "Pink Panther", text: "Hiro's fire-striker. You saw where the crow dropped it?"},
-	{speaker: "Kenji", text: "I did. But my ink has dried to dust and I cannot think with a dry brush. Bring me water from ze temple well - just zere - and I will tell you."},
+	{speaker: "Kenji", text: "Please - do not nudge the table... oh, the panther. You have the look of a man hunting a kite's hiding place."},
+	{speaker: "Pink Panther", text: "Hiro's fire-striker. You saw where the kite dropped it?"},
+	{speaker: "Kenji", text: "I did. But my ink has dried to dust and I cannot think with a dry brush. Bring me water from the temple well - just there - and I will tell you."},
 }
 
 var kenjiWaterDialog = []dialogEntry{
-	{speaker: "Kenji", text: "Ahh, cool well-water. Now ze ink flows... and so does my memory."},
-	{speaker: "Kenji", text: "Ze crow dropped ze striker in ze flower store's eaves. Oba-chan keeps every shiny lost thing - ask her for it."},
-	{speaker: "Kenji", text: "And here - I brushed you ze kanji for 'voice'. For ze quiet girl. A heart should carry one."},
+	{speaker: "Kenji", text: "Ahh, cool well-water. Now the ink flows... and so does my memory."},
+	{speaker: "Kenji", text: "The kite dropped the striker in the flower store's eaves. Oba-chan keeps every shiny lost thing - ask her for it."},
+	{speaker: "Kenji", text: "And here - I brushed you the kanji for 'voice'. For the quiet girl. A heart should carry one."},
 }
 
 var kenjiStudentPostDialog = []dialogEntry{
-	{speaker: "Kenji", text: "Ink is just a voice zat takes its time. Ask Oba-chan for ze striker, panther-san."},
+	{speaker: "Kenji", text: "Ink is just a voice that takes its time. Ask Oba-chan for the striker, panther-san."},
 }
 
 // --- Oba-chan (flower store): initial gate, gives the striker, then leads ---
 var obachanDialog = []dialogEntry{
 	{speaker: "Oba-chan", text: "..."},
 	{speaker: "Pink Panther", text: "Hello, madame. I'm looking for a blossom for a girl who's lost her voice inside."},
-	{speaker: "Oba-chan", text: "Ze Whispering Cherry can mend such a heart. But it blooms only for a true offering, and ze path is not for strangers. Earn it first."},
+	{speaker: "Oba-chan", text: "The Whispering Cherry can mend such a heart. But it blooms only for a true offering, and the path is not for strangers. Earn it first."},
 }
 
 var obachanStrikerDialog = []dialogEntry{
-	{speaker: "Oba-chan", text: "Hiro's fire-striker? Hah - a crow dropped it in my eaves zis morning, ze little thief."},
-	{speaker: "Oba-chan", text: "Here. Take it back to him, and ze street will eat again."},
+	{speaker: "Oba-chan", text: "Hiro's fire-striker? Hah - a kite dropped it in my eaves this morning, the little thief."},
+	{speaker: "Oba-chan", text: "Here. Take it back to him, and the street will eat again."},
 }
 
 var obachanLeadDialog = []dialogEntry{
-	{speaker: "Oba-chan", text: "A bowl blessed at ze first flame, and a voice charm besides. Now you carry something to GIVE."},
-	{speaker: "Oba-chan", text: "Come - follow me. I open ze path to ze old tree. Pick ze blossom yourself; it means more zat way."},
+	{speaker: "Oba-chan", text: "A bowl blessed at the first flame, and a voice charm besides. Now you carry something to GIVE."},
+	{speaker: "Oba-chan", text: "Come - follow me. I open the path to the old tree. Pick the blossom yourself; it means more that way."},
 }
 
 var obachanPostDialog = []dialogEntry{
-	{speaker: "Oba-chan", text: "Ze path is open, panther-san. Past ze shop, into ze pink grove - ze oldest tree. Pick gently."},
+	{speaker: "Oba-chan", text: "The path is open, panther-san. Past the shop, into the pink grove - the oldest tree. Pick gently."},
 }
 
 // --- The old tree in the grove: place the offering, then pick the blossom ---
@@ -164,22 +180,22 @@ var groveTreeDoneDialog = []dialogEntry{
 var dresserDialog = []dialogEntry{
 	{speaker: "Kiku", text: "Ara! A pink panther in MY shop and not one stitch of silk on him? Unforgivable. Hold still - SPIN!"},
 	{speaker: "Pink Panther", text: "Whoa - okay, okay, I'm dressed. ...Actually, this is rather nice."},
-	{speaker: "Kiku", text: "Of course it is. And now, properly dressed, you must learn ze way of TEA. Ze old grove does not open its heart to a restless guest."},
-	{speaker: "Kiku", text: "Take matcha and a bowl from my shelves, draw fresh water at ze street well, whisk it - zen kneel with ze tea master up in ze temple house. THAT is how you still a racing heart."},
+	{speaker: "Kiku", text: "Of course it is. And now, properly dressed, you must learn the way of TEA. The old grove does not open its heart to a restless guest."},
+	{speaker: "Kiku", text: "Take matcha and a bowl from my shelves, draw fresh water at the street well, whisk it - then kneel with the tea master up in the temple house. THAT is how you still a racing heart."},
 }
 
 var dresserPostDialog = []dialogEntry{
-	{speaker: "Kiku", text: "Matcha, a bowl, well-water - zen ze tea master in ze temple house. Go, go, panther-san!"},
+	{speaker: "Kiku", text: "Matcha, a bowl, well-water - then the tea master in the temple house. Go, go, panther-san!"},
 }
 
 // --- Tea master (flower store): the matcha ceremony that gates the grove ---
 var teaMasterDialog = []dialogEntry{
-	{speaker: "Tea Master", text: "You wish to enter ze old grove? Hm. Ze Whispering Cherry does not open for a racing heart."},
-	{speaker: "Tea Master", text: "Bring me matcha from ze shelf, a bowl of your choosing, and water from ze street well. We will share a bowl, and your heart will be still enough."},
+	{speaker: "Tea Master", text: "You wish to enter the old grove? Hm. The Whispering Cherry does not open for a racing heart."},
+	{speaker: "Tea Master", text: "Bring me matcha from the shelf, a bowl of your choosing, and water from the street well. We will share a bowl, and your heart will be still enough."},
 }
 
 var teaMasterNeedDialog = []dialogEntry{
-	{speaker: "Tea Master", text: "Not yet. Matcha from ze shelf, a bowl, water from ze well - whisk zem together, zen return to me."},
+	{speaker: "Tea Master", text: "Not yet. Matcha from the shelf, a bowl, water from the well - whisk them together, then return to me."},
 }
 
 var teaMasterReadyDialog = []dialogEntry{
@@ -189,11 +205,11 @@ var teaMasterReadyDialog = []dialogEntry{
 // Plays while PP is SEATED (after the spin-and-sit one-shot).
 var teaMasterSippingDialog = []dialogEntry{
 	{speaker: "Tea Master", text: "(the whisk hums, the froth settles, you each take a slow sip... and the noise inside you quiets)"},
-	{speaker: "Tea Master", text: "Zere - your heart is still now. Ze grove will welcome you. Go gently, panther-san."},
+	{speaker: "Tea Master", text: "There - your heart is still now. The grove will welcome you. Go gently, panther-san."},
 }
 
 var teaMasterPostDialog = []dialogEntry{
-	{speaker: "Tea Master", text: "Carry ze stillness with you into ze grove."},
+	{speaker: "Tea Master", text: "Carry the stillness with you into the grove."},
 }
 
 // Flavor names for the "random cup" pickup (cosmetic only).
@@ -259,8 +275,10 @@ func newTouristTokyo(renderer *sdl.Renderer) *npc {
 		talkFrameSpeed: 0.12,
 	}
 	// "Flip the book" gag (§JP-TOURIST): one-shot of him turning the book over.
+	// 2026-07-24 (user #40): CONNECTED key — the global key ate his eye
+	// whites mid-flip (his idle/talk were already connected).
 	if p := firstExisting(jpNPCDir+"npc_gary_flip_his_book.png", jpNPCDir+"npc_gary_flip.png", jpNPCDir+"npc_tourist_flip.png"); p != "" {
-		if f := loadNPCGrid(renderer, p, 8, 1); len(f) > 0 {
+		if f := loadNPCGridConnected(renderer, p, 8, 1); len(f) > 0 {
 			n.oneShotAnims = map[string][]npcFrame{"flip": f}
 		}
 	}
@@ -271,13 +289,20 @@ func newKenjiStudent(renderer *sdl.Renderer) *npc {
 	idle, talk := loadJapanNPC(renderer,
 		[]string{jpNPCDir + "npc_kenji_idle.png"},
 		[]string{jpNPCDir + "npc_kenji_talk.png"})
-	return &npc{
+	n := &npc{
 		idleGrid: idle, talkGrid: talk,
 		bounds:         sdl.Rect{X: 940, Y: 380, W: 130, H: 240},
 		name:           "Kenji",
 		dialog:         kenjiStudentDialog,
 		talkFrameSpeed: 0.12,
 	}
+	// §KENJI-GIVE-CHARM (landed 2026-07-18): his brush-the-charm one-shot.
+	if p := firstExisting(jpNPCDir + "npc_kenji_give_charm.png"); p != "" {
+		if f := loadNPCGridConnected(renderer, p, 8, 1); len(f) > 0 {
+			n.oneShotAnims = map[string][]npcFrame{"give": f}
+		}
+	}
+	return n
 }
 
 func newTeaMaster(renderer *sdl.Renderer) *npc {
@@ -289,7 +314,10 @@ func newTeaMaster(renderer *sdl.Renderer) *npc {
 		[]string{jpNPCDir + "npc_tea_master_talk.png"})
 	return &npc{
 		idleGrid: idle, talkGrid: talk,
-		bounds:         sdl.Rect{X: 640, Y: 372, W: 140, H: 248},
+		// 2026-07-24 (user #43): interim size bump (H 248 → 280, foot kept
+		// at 620) — her placeholder sheets draw the figure tiny in-cell.
+		// The real fix stays the queued §TEA-MASTER-BLUE-v2 re-roll.
+		bounds:         sdl.Rect{X: 640, Y: 340, W: 140, H: 280},
 		name:           "Tea Master",
 		dialog:         teaMasterDialog,
 		talkFrameSpeed: 0.12,
@@ -328,6 +356,31 @@ func newDresser(renderer *sdl.Renderer) *npc {
 // ambient leaf sprites. The static scene data (bg, spawn, hotspots, NPCs,
 // walkSegments) is loaded from JSON before this function runs.
 func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
+	// 2026-07-24 (user D7): landscape props — Kyoto had NO living ambience
+	// (only petals/leaves/glows). Each is a silent no-op until its art lands
+	// under japan/props/ (§JP-* prompts in EXTRA_PROMPTS).
+	addJapanProp := func(sceneName, file string, x, y, scale, frameSec float64) {
+		s, ok := sm.scenes[sceneName]
+		if !ok || s == nil {
+			return
+		}
+		if p := firstExisting(jpPropDir + file); p != "" {
+			s.ambientSprites = append(s.ambientSprites,
+				newAmbientSwayGlobal(renderer, p, 6, x, y, scale, frameSec))
+		}
+	}
+	// two pilgrims from behind at the gates
+	addJapanProp("tokyo_torii", "torii_pilgrims.png", 420, 560, 0.4, 0.55)
+	// a cat lounging on the stall roof
+	addJapanProp("tokyo_street", "street_cat.png", 610, 355, 0.3, 0.7)
+	// the thieving KITE (tobi) perched on the flower-store eaves — the bird
+	// Hiro and Kenji blame for the fire-striker (§JP-KITE-SHINY)
+	addJapanProp("tokyo_temple", "kite_shiny.png", 905, 300, 0.32, 0.6)
+	// stone lantern with incense wisps by the flower store
+	addJapanProp("tokyo_temple", "incense_lantern.png", 180, 630, 0.42, 0.5)
+	// steaming kettle beside the tea master
+	addJapanProp("tokyo_teahouse", "teahouse_kettle.png", 850, 610, 0.34, 0.45)
+
 	if torii, ok := sm.scenes["tokyo_torii"]; ok {
 		for i := 0; i < 16; i++ {
 			torii.particles = append(torii.particles, particle{
@@ -382,67 +435,6 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 	}
 }
 
-// openRamenStall swaps the stall prop to its "open" frame and seats the waiting
-// line at the counter (the dynamic open→sit beat). Graceful: any missing art
-// just leaves that sprite as-is. Sets jp_ramen_open.
-func (g *Game) openRamenStall() {
-	if g.ramenStoreProp != nil && len(g.ramenOpenFrames) > 0 {
-		g.ramenStoreProp.frames = g.ramenOpenFrames
-	}
-	// The open prop's stools sit at screen x≈570/621/682/733, ground y≈530
-	// (prop at 645/530 scale 0.30). Seat the two queue members on stools 1 and
-	// 3, shrunk to the stall's mid-ground depth (their sit sheet includes the
-	// stool, so they anchor on the same ground line as the prop).
-	stoolX := []float64{570, 682}
-	for i, c := range g.ramenQueue {
-		if c == nil {
-			continue
-		}
-		if len(g.ramenSitFrames) > 0 {
-			c.frames = g.ramenSitFrames
-		}
-		if i < len(stoolX) {
-			c.x = stoolX[i]
-		} else {
-			c.x = 733
-		}
-		c.y = 530
-		c.scale = 0.23
-	}
-	// Hiro takes his place BEHIND the counter, upper body only (user
-	// 2026-07-14). Graceful: until the §JP-HIRO-COUNTER sheets land he keeps
-	// standing beside the stall with his full-body art.
-	if street, ok := g.sceneMgr.scenes["tokyo_street"]; ok {
-		for _, n := range street.npcs {
-			if n.name != "Hiro" {
-				continue
-			}
-			counterIdle := firstExisting(jpNPCDir + "npc_hiro_counter_idle.png")
-			if counterIdle == "" {
-				break
-			}
-			idle := loadNPCGridConnected(g.renderer, counterIdle, 8, 1)
-			if len(idle) == 0 {
-				break
-			}
-			n.idleGrid = idle
-			n.talkGrid = idle
-			if p := firstExisting(jpNPCDir + "npc_hiro_counter_talk.png"); p != "" {
-				if talk := loadNPCGridConnected(g.renderer, p, 8, 1); len(talk) > 0 {
-					n.talkGrid = talk
-				}
-			}
-			// Waist-cut sprite in the counter window: bottom edge lands on the
-			// counter top (screen y≈428) so the counter occludes him naturally.
-			n.bounds = sdl.Rect{X: 600, Y: 353, W: 95, H: 75}
-			n.approachXOverride = 645
-			n.approachYOverride = 385 // PP stays on the street walk line
-			break
-		}
-	}
-	g.vars.SetBool(ScopeGame, VarJpRamenOpen, true)
-}
-
 func (g *Game) setupTokyoCallbacks() {
 	game := g
 	give := func(id string) {
@@ -481,56 +473,49 @@ func (g *Game) setupTokyoCallbacks() {
 				if len(garyFlipTalk) > 0 {
 					gary.talkGrid = garyFlipTalk
 				}
-				gary.dialog = garyTokyoPostDialog
-				// His ramen tip opens the stall: by the time PP reaches the street
-				// it's lit and the waiting line has sat down at the counter.
-				if !game.vars.GetBool(ScopeGame, VarJpRamenOpen) {
-					g.openRamenStall()
+				// 2026-07-18 (user #45/#46): Gary = the customs oracle. His
+				// repeat dialog advances with the chapter: dress code once the
+				// offering path opens, tea etiquette once the grove is revealed
+				// but the ceremony isn't done, generic book gag otherwise.
+				switch {
+				case game.vars.GetBool(ScopeGame, VarJpGroveRevealed) && !game.vars.GetBool(ScopeGame, VarJpTeaDone):
+					gary.dialog = garyTeaCustomDialog
+				case game.inv.hasItem("Offering Bowl") && !game.vars.GetBool(ScopeGame, VarJpTeaLearned):
+					gary.dialog = garyDressCodeDialog
+				default:
+					gary.dialog = garyTokyoPostDialog
 				}
 			}
+
 		}
 	}
 
 	if street, ok := g.sceneMgr.scenes["tokyo_street"]; ok {
-		// Dynamic ramen stall + waiting line. A closed/open prop over the stall
-		// and a static line of 4 customers that SIT at the counter when Hiro
-		// opens (openRamenStall). Art pending → invisible until it lands; state
-		// restored on load.
-		jpProp := "assets/images/locations/japan/props/"
-		// Art landed 2026-07-14 (1536×1024, content ~1158×885 after the baked
-		// checkerboard is keyed): bottom-center anchored over the painted-in BG
-		// stall (BG px 555-875 → screen ~506-798, ground ≈527), scale 0.30 so the
-		// prop covers it edge to edge.
-		g.ramenStoreProp = newAmbientSway(g.renderer, firstExisting(jpProp+"ramen_closed.png"), 1, 645, 530, 0.30, 0.4)
-		street.ambientSprites = append(street.ambientSprites, g.ramenStoreProp)
-		g.ramenOpenFrames = loadAmbientStripKeyed(g.renderer, firstExisting(jpProp+"ramen_open.png"), 1)
-		// customer_sit.png is a 4-frame eating loop (stool included in-frame) —
-		// loading it as 8 cols split every figure in half (2026-07-14 fix).
-		g.ramenSitFrames = loadAmbientStripKeyed(g.renderer, firstExisting(jpNPCDir+"customer_sit.png"), 4)
-		// Two distinct queue members (different art) so the line doesn't look
-		// like clones. #25: spaced ~180px apart (was 80 -> they overlapped into a
-		// clone-pile) and stood in front of the shuttered stall (Hiro waits at
-		// its left edge, x470), so they read as two people queuing on the
-		// street, not a folder dump.
-		queueEntries := []struct {
-			path  string
-			x, y  float64
-			scale float64
-		}{
-			{firstExisting(jpNPCDir+"npc_ramen_tourist_wait.png", jpNPCDir+"customer_wait.png"), 520, 590, 0.62},
-			{firstExisting(jpNPCDir+"npc_ramen_local_wait.png", jpNPCDir+"customer_wait.png"), 700, 590, 0.62},
-		}
-		for _, q := range queueEntries {
-			// #25: the wait sheets are an 8-FRAME sway of ONE person. Loading them
-			// as 1 column drew the entire 8-figure strip as a single sprite — that
-			// was the "crowd of identical men". Load 8×1 so each entry is ONE
-			// animated person (the engine cuts + cycles the 8 poses).
-			c := newAmbientSway(g.renderer, q.path, 8, q.x, q.y, q.scale, 0.5)
-			street.ambientSprites = append(street.ambientSprites, c)
-			g.ramenQueue = append(g.ramenQueue, c)
-		}
-		if game.vars.GetBool(ScopeGame, VarJpRamenOpen) {
-			g.openRamenStall()
+		// 2026-07-18 (user #43/#44): the stall overlay prop + waiting-line
+		// ambients are REMOVED — they never fit the painted stall and stacked
+		// on the NPCs. The painted stall in the BG is the stall; Hiro stands
+		// at it (and moves behind the counter permanently once the
+		// §JP-HIRO-COUNTER waist-cut sheets land).
+		for _, n := range street.npcs {
+			if n.name != "Hiro" {
+				continue
+			}
+			if counterIdle := firstExisting(jpNPCDir + "npc_hiro_counter_idle.png"); counterIdle != "" {
+				if idle := loadNPCGridConnected(g.renderer, counterIdle, 6, 1); len(idle) > 0 {
+					n.idleGrid = idle
+					n.talkGrid = idle
+					if p := firstExisting(jpNPCDir + "npc_hiro_counter_talk.png"); p != "" {
+						if talk := loadNPCGridConnected(g.renderer, p, 6, 1); len(talk) > 0 {
+							n.talkGrid = talk
+						}
+					}
+					// Waist-cut bust in the stall window; PP stays on the walk line.
+					n.bounds = sdl.Rect{X: 600, Y: 353, W: 95, H: 75}
+					n.approachXOverride = 645
+					n.approachYOverride = 385
+				}
+			}
+			break
 		}
 
 		// The temple well (Kenji's water errand) - a hotspot in the street.
@@ -584,7 +569,7 @@ func (g *Game) setupTokyoCallbacks() {
 						game.inv.removeItem("Fire-Striker")
 						give("offering_bowl")
 						hiro.dialog = []dialogEntry{
-							{speaker: "Hiro", text: "Take ze blessed bowl to ze old tree, panther-san - and come back for noodles when your heart is light."},
+							{speaker: "Hiro", text: "Take the blessed bowl to the old tree, panther-san - and come back for noodles when your heart is light."},
 						}
 						hiro.altDialogFunc = nil
 					}, &handOff{item: "Fire-Striker", returnItem: "Offering Bowl"}
@@ -614,7 +599,7 @@ func (g *Game) setupTokyoCallbacks() {
 			case "Oba-chan":
 				oba := n
 				// Multi-stage: (1) once PP has Kenji's clue (Voice Charm) she hands
-				// over the crow-dropped Fire-Striker; (2) once PP carries the
+				// over the kite-dropped Fire-Striker; (2) once PP carries the
 				// blessed Offering Bowl she "follow me"s him - opening the grove.
 				oba.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					if game.inv.hasItem("Offering Bowl") && !game.vars.GetBool(ScopeGame, VarJpGroveRevealed) {
@@ -636,8 +621,19 @@ func (g *Game) setupTokyoCallbacks() {
 				kiku.onDialogEnd = func() {
 					// She spins PP into a kimono (the gag) AND teaches the tea
 					// ceremony - talking to her unlocks the matcha + bowl shelves
-					// (jp_tea_learned). One-shot no-ops until PP_kimono_spin.png lands.
-					game.player.playOneShot("kimono_spin", 1.8, nil)
+					// (jp_tea_learned). One-shots no-op until their sheets land.
+					// 2026-07-24 (user #42): the single 4.5s spin read as slow
+					// motion and never HELD the kimono. New chain: quick spin
+					// in → hold the kimono pose a beat → quick spin back.
+					// 2026-07-24 (user, take 2): THREE dedicated beats/sheets —
+					// spin INTO the costume, MODEL it, spin BACK. Each key is
+					// its own sheet once §PP-KIMONO-SPLIT lands; until then a
+					// slice of the combined spin sheet (see player.go).
+					game.player.playOneShot("kimono_spin_in", 1.3, func() {
+						game.player.playOneShot("kimono_model", 1.5, func() {
+							game.player.playOneShot("kimono_spin_out", 0.8, nil)
+						})
+					})
 					game.vars.SetBool(ScopeGame, VarJpTeaLearned, true)
 					kiku.dialog = dresserPostDialog
 				}

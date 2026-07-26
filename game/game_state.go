@@ -226,7 +226,17 @@ func (g *Game) applyCampMood() {
 			if n.name != "Director Higgins" {
 				continue
 			}
-			// 2026-07-18 (user #20): NO day-2 repositioning — day-1 anchor always.
+			// 2026-07-24 (#3/#19): day-scoped desk line — the day-2/3 office
+			// art draws the desk HIGHER than day-1, so Higgins's foot-anchored
+			// bottom moves with the mood. BOTH numbers live in
+			// camp_office.json's npcOverrides (footY / footYDark) — user:
+			// geometry belongs in the scene JSON, one location. Runs on
+			// every mood pass (incl. save-load), both directions.
+			if level > 0 && n.footYDark > 0 {
+				n.bounds.Y = n.footYDark - n.bounds.H
+			} else if level == 0 && n.footYDay > 0 {
+				n.bounds.Y = n.footYDay - n.bounds.H
+			}
 			if g.vars.GetBool(ScopeGame, VarLilyArcStarted) && !g.vars.GetBool(ScopeGame, VarLilyHealed) {
 				n.dialog = higginsAngryShortDialog
 			}

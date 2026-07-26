@@ -3,7 +3,8 @@
   "background": "assets/images/locations/camp/background/day1/camp_lake.png",
   "spawnX": 259,
   "spawnY": 378,
-  "minY": 300,
+  "_comment_minY": "2026-07-24 #33: 300 -> 220 so Lily's far-talk mark (PP top-left 224, foot ~494) isn't clamped back down; free walking still rides the dock walkSegments via snapToPath.",
+  "minY": 220,
   "maxY": 560,
   "musicPath": "assets/audio/music/camp.mp3",
   "_comment": "#10: PP can walk out along the deck (walkSegments). Big blocker removed so the deck is reachable; the walk path keeps him on the planks. A 'Lake' look-hotspot (wired in game.go) gives the 'not in the mood to swim' line. Tune the deck Y in-game.",
@@ -19,7 +20,7 @@
   "blockers": [],
   "_comment_walk": "2026-07-23 v4: whole dock line raised another 10px (user: the swim-decline spot sat low; the Lake-hotspot walk snaps to this line via snapToPath, far end = where the line plays). foot = clickY+135 (far end's foot now ~466).",
   "walkSegments": [
-    {"x1": 375, "y1": 385, "x2": 540, "y2": 358},
-    {"x1": 540, "y1": 358, "x2": 687, "y2": 331}
+    {"x1": 375, "y1": 425, "x2": 540, "y2": 400},
+    {"x1": 540, "y1": 375, "x2": 687, "y2": 375}
   ]
 }

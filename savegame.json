@@ -1,32 +1,43 @@
 {
   "vars": {
     "game": {
+      "camp_unlocked": 1,
       "chapter": 2,
       "day": 2,
-      "marcus_healed": 0,
+      "jake_healed": 1,
+      "jer_note_placed": 1,
+      "jer_pen_given": 1,
+      "jerusalem_unlocked": 1,
+      "lily_arc_started": 1,
+      "lily_lake_met": 1,
+      "marcus_healed": 1,
       "monologue_intro_played": 1,
-      "monologue_paris_played": 0,
+      "monologue_louvre_played": 1,
+      "monologue_paris_played": 1,
       "night_scene_done": 1,
-      "paris_unlocked": 0
+      "paris_done": 1,
+      "paris_unlocked": 1
     },
     "chapter": {
       "day2_started": 1,
       "met_kids": 5,
-      "talked_to_marcus": 0
+      "talked_to_marcus": 1
     },
     "scene": {}
   },
   "day": 2,
   "metKids": 5,
-  "talkedToMarcus": false,
-  "parisUnlocked": false,
+  "talkedToMarcus": true,
+  "parisUnlocked": true,
   "nightSceneDone": true,
   "day2Started": true,
-  "marcusHealed": false,
-  "currentScene": "camp_grounds",
-  "playerX": 245,
-  "playerY": 382,
-  "items": null,
+  "marcusHealed": true,
+  "currentScene": "camp_lake",
+  "playerX": 553,
+  "playerY": 300,
+  "items": [
+    "Travel Map"
+  ],
   "monologuePlayed": true,
-  "parisMonologuePlayed": false
+  "parisMonologuePlayed": true
 }

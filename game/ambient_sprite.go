@@ -67,18 +67,6 @@ type ambientSprite struct {
 	flyFrames      int     // leading frames that are the wing-flap loop (rest = perched pose)
 }
 
-// loadAmbientStrip cuts a single-row transparent sprite strip into frames
-// WITHOUT color-keying. Returns nil if the PNG isn't on disk yet - callers
-// then no-op, so the wiring can ship ahead of the art (same pattern as the
-// bird/cloud ambient sheets in scene.go).
-func loadAmbientStrip(renderer *sdl.Renderer, path string, frames int) []npcFrame {
-	if _, err := os.Stat(path); err != nil {
-		return nil
-	}
-	grid := engine.SpriteGridFromPNGRaw(renderer, path, frames, 1)
-	return framesFromGrid(grid, frames, 1, path)
-}
-
 // loadAmbientStripKeyed is for ambient sheets that shipped with a BAKED
 // white background instead of transparency (the current biker.png rendered
 // as a white box riding the street, 2026-06-11 #16). The edge-connected key
@@ -132,7 +120,11 @@ func newAmbientBiker(renderer *sdl.Renderer, startX, groundY, vx, scale float64)
 		// so the old RAW load drew a white box around him. Use the EDGE-CONNECTED
 		// white key (tol 40): it floods the background away from the sheet edges
 		// while leaving his enclosed white striped shirt intact.
-		frames:   loadAmbientStripKeyedTol(renderer, "assets/images/locations/paris/npc/outside/biker.png", 8, 40),
+		// 2026-07-18 (user: "biker is missing colors"): the sheet is now on the
+		// flat BLUE bg, and the old tol-40 connected key bled into his light-blue
+		// clothing. The bg is uniform, so the tight GLOBAL sampled key (tol 8)
+		// strips it — including the enclosed wheel gaps — without touching him.
+		frames:   loadAmbientStripGlobalKeyed(renderer, "assets/images/locations/paris/npc/outside/biker.png", 8),
 		kind:     ambientTravel,
 		x:        startX,
 		y:        groundY,
@@ -172,17 +164,19 @@ func newAmbientPigeonFlyUp(renderer *sdl.Renderer, x, y float64) *ambientSprite 
 
 // newAmbientWorshippers is the cluster of tiny figures swaying at the Western
 // Wall (item 9 / §AMB1). 6-frame in-place sway loop.
-func newAmbientWorshippers(renderer *sdl.Renderer, x, y, scale float64) *ambientSprite {
+// newAmbientWorshippersSheet is newAmbientWorshippers with a caller-chosen
+// sheet (2026-07-18 user #26: the entrance crowd alternates two groups ABAB).
+// 2026-07-23 (user #24): GLOBAL sampled key — the flat-blue people_pray2
+// re-roll has no background-colored detail on the figures (tallit stripes are
+// navy), and the global key also clears any enclosed pockets between them.
+func newAmbientWorshippersSheet(renderer *sdl.Renderer, sheet string, x, y, scale float64) *ambientSprite {
 	return &ambientSprite{
-		// 2026-06-21 (#22): people_pray.png is opaque near-white (not transparent),
-		// so key the background out (edge-connected, tol 40) instead of a raw load
-		// that boxed the worshippers.
-		frames:   loadAmbientStripKeyedTol(renderer, "assets/images/locations/jerusalem/npc/wall/people_pray.png", 6, 40),
+		frames:   loadAmbientStripGlobalKeyed(renderer, sheet, 6),
 		kind:     ambientSway,
 		x:        x,
 		y:        y,
 		scale:    scale,
-		frameSec: 0.4,
+		frameSec: 0.5,
 	}
 }
 
@@ -203,18 +197,19 @@ func newAmbientSway(renderer *sdl.Renderer, sheet string, cols int, x, y, scale,
 	}
 }
 
-// newAmbientProp is a STATIC single-frame decoration that ships with a
-// TRANSPARENT background (real alpha) - so it loads RAW. The white-key loader
-// would punch holes in light art and leaves a visible box on an already-
-// transparent PNG (the Jerusalem barrier fence). No animation.
-func newAmbientProp(renderer *sdl.Renderer, sheet string, x, y, scale float64) *ambientSprite {
+// newAmbientSwayGlobal (2026-07-25 user): newAmbientSway with the GLOBAL
+// sampled key — for the flat-blue §-prompt landscape props (Louvre/Japan)
+// whose enclosed background pockets the connected key preserves ("blue
+// spots around the couple"). Their canvas rule bans bg-coloured detail on
+// the figures, so the global key is always safe here.
+func newAmbientSwayGlobal(renderer *sdl.Renderer, sheet string, cols int, x, y, scale, frameSec float64) *ambientSprite {
 	return &ambientSprite{
-		frames:   loadAmbientStrip(renderer, sheet, 1),
+		frames:   loadAmbientStripGlobalKeyed(renderer, sheet, cols),
 		kind:     ambientSway,
 		x:        x,
 		y:        y,
 		scale:    scale,
-		frameSec: 999,
+		frameSec: frameSec,
 	}
 }
 
@@ -240,7 +235,10 @@ func newAmbientCrow(renderer *sdl.Renderer, perchX, perchY float64) *ambientSpri
 	startX := -120.0
 	startY := perchY - 160
 	return &ambientSprite{
-		frames:    loadAmbientStripKeyed(renderer, "assets/images/ambient/crow.png", 8),
+		// 2026-07-24 (user #18): GLOBAL key — the connected key left the
+		// enclosed checker pocket between the perched crow's legs (the
+		// corner samples catch both checker colours, so global clears it).
+		frames:    loadAmbientStripGlobalKeyed(renderer, "assets/images/ambient/crow.png", 8),
 		kind:      ambientPerch,
 		scale:     0.5,
 		x:         startX,

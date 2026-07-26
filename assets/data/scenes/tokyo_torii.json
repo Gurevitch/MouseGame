@@ -1,7 +1,8 @@
 {
   "name": "tokyo_torii",
   "background": "assets/images/locations/japan/background/tokyo_tori.png",
-  "spawnX": 220,
+  "_comment_spawn": "2026-07-24 #39: arrival moved to the RIGHT side (was 220 left).",
+  "spawnX": 1150,
   "spawnY": 470,
   "minY": 400,
   "maxY": 600,

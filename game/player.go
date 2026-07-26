@@ -97,8 +97,12 @@ type player struct {
 	talkFrames      []spriteFrame
 	talkSideFrames  []spriteFrame
 	talkBackFrames  []spriteFrame
-	grabFrames      []spriteFrame
-	useItemFrames   []spriteFrame
+	// talkSideScaredFrames + scaredTalk (2026-07-24 #34): frightened side-talk
+	// for the rude-Higgins beat (§PP-TALK-SIDE-SCARED, optional).
+	talkSideScaredFrames []spriteFrame
+	scaredTalk           bool
+	grabFrames           []spriteFrame
+	useItemFrames        []spriteFrame
 	// seated mode (Japan tea ceremony): while `seated`, idle/talk render the
 	// kneeling poses instead of the standing ones. Set after the spin-and-sit
 	// entry one-shot, cleared when PP stands again.
@@ -115,7 +119,19 @@ type player struct {
 	// lWalkApproach (2026-07-15 user #13, paris_bakery): NPC talk approaches
 	// walk the horizontal leg along the aisle FIRST, then the vertical leg at
 	// the target x — instead of an oblique beeline across the tables.
-	lWalkApproach  bool
+	lWalkApproach bool
+	// lastFootBlockers (2026-07-23 #9): the current scene's footBlockers,
+	// stashed each update so startLWalk can test the horizontal corridor
+	// for table crossings before committing to a straight leg.
+	lastFootBlockers []sdl.Rect
+	// oneShotFlip (2026-07-24 #23/#28): one-shot anims whose sheet faces the
+	// wrong way for their beat — mirrored at draw time (NPC pattern).
+	oneShotFlip map[string]bool
+	// movementLocked (2026-07-25 user): freeze PP through an NPC's
+	// multi-beat give chain (Poulain's counter hand-backs) — world clicks
+	// and walks are ignored until the chain's final beat unlocks, so PP
+	// can't wander off or turn out of the back-facing pose mid-hand-over.
+	movementLocked bool
 	moving         bool
 	allowOffscreen bool
 	facingLeft     bool
@@ -202,16 +218,12 @@ type player struct {
 	oneShotOnDone   func()
 }
 
-func stripFrames(renderer *sdl.Renderer, path string, cols int) []spriteFrame {
-	return gridFrames(renderer, path, cols, 1)
-}
-
 // spriteInset is the pixel margin trimmed off each cell at load time to strip
 // the black grid-line borders that AI-generated sheets bake in between cells.
 const spriteInset = 3
 
 func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFrame {
-	grid := engine.SpriteGridFromPNGCleanNeutral(renderer, path, cols, rows, spriteInset)
+	grid := engine.SpriteGridFromPNGClean(renderer, path, cols, rows, spriteInset)
 	var frames []spriteFrame
 	for r := 0; r < rows && r < len(grid); r++ {
 		for c := 0; c < cols && c < len(grid[r]); c++ {
@@ -219,6 +231,30 @@ func gridFrames(renderer *sdl.Renderer, path string, cols, rows int) []spriteFra
 			if gf.Tex == nil {
 				// Missing sheet → engine.emptyGrid; skip so `len(frames) > 0`
 				// guards don't register invisible animations.
+				continue
+			}
+			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
+				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX, footRow: gf.FRY})
+		}
+	}
+	stabilizeFootCX(frames)
+	return frames
+}
+
+// gridFramesTol (2026-07-23 #5/#13/#15): GLOBAL key with a caller tolerance.
+// The tol-8 global key missed the off-white/off-blue ENCLOSED pockets (232-246
+// whites) generators paint between an arm and the body, and the connected key
+// preserves them by design - both left visible squares in the arm gaps. Tol 24
+// clears the pockets while the art-rule colors survive (ivory belly #F2EFE5 is
+// 26 off pure white, cream props 49+ off the flat blue). ONLY for sheets whose
+// props are cream/tan - a white prop (the Paris porcelain cup) would be eaten.
+func gridFramesTol(renderer *sdl.Renderer, path string, cols, rows int, tol uint8) []spriteFrame {
+	grid := engine.SpriteGridFromPNGCleanTol(renderer, path, cols, rows, spriteInset, tol)
+	var frames []spriteFrame
+	for r := 0; r < rows && r < len(grid); r++ {
+		for c := 0; c < cols && c < len(grid[r]); c++ {
+			gf := grid[r][c]
+			if gf.Tex == nil {
 				continue
 			}
 			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
@@ -242,63 +278,12 @@ func gridFramesConnected(renderer *sdl.Renderer, path string, cols, rows int) []
 	return gridFramesConnectedTol(renderer, path, cols, rows, 8)
 }
 
-// gridFramesConnectedTol is gridFramesConnected with a caller-chosen
-// edge-connected key tolerance. A wider tol (24-40) eats the soft white halo
-// around the outline while the edge-only flood still protects interior whites
-// (off-white belly, sclera, held props) - they're enclosed by dark outlines the
-// flood can't cross. 2026-06-15 (#1): the flower-pick read with "white around
-// him" at tol 8, same fringe the biker fixed at tol 40.
-// gridFramesEqualTol cuts EQUAL cells (no gap detection) with a connected
-// key — for sheets whose figures TOUCH (2026-07-15: the regenerated give/
-// receive sheets keep coming back with 4-figure blobs no matter the prompt;
-// the figures still sit on the regular 192px pitch, so equal cells cut them
-// cleanly — the same fix that steadied office Higgins's touching busts).
-func gridFramesEqualTol(renderer *sdl.Renderer, path string, cols, rows int, tol uint8) []spriteFrame {
-	grid := engine.SpriteGridFromPNGCleanConnectedTolEqual(renderer, path, cols, rows, spriteInset, tol)
-	return framesFromGridFrames(grid, cols, rows)
-}
-
 func gridFramesConnectedTol(renderer *sdl.Renderer, path string, cols, rows int, tol uint8) []spriteFrame {
 	grid := engine.SpriteGridFromPNGCleanConnectedTol(renderer, path, cols, rows, spriteInset, tol)
 	var frames []spriteFrame
 	for r := 0; r < rows && r < len(grid); r++ {
 		for c := 0; c < cols && c < len(grid[r]); c++ {
 			gf := grid[r][c]
-			if gf.Tex == nil {
-				continue
-			}
-			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX, footRow: gf.FRY})
-		}
-	}
-	stabilizeFootCX(frames)
-	return frames
-}
-
-// framesFromGridFrames flattens an engine grid into spriteFrames (shared by
-// the gap-detect and equal-cell loaders).
-func framesFromGridFrames(grid [][]engine.GridFrame, cols, rows int) []spriteFrame {
-	var frames []spriteFrame
-	for r := 0; r < rows && r < len(grid); r++ {
-		for c := 0; c < cols && c < len(grid[r]); c++ {
-			gf := grid[r][c]
-			if gf.Tex == nil {
-				continue
-			}
-			frames = append(frames, spriteFrame{tex: gf.Tex, w: gf.W, h: gf.H,
-				ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH, footCX: gf.FCX, footRow: gf.FRY})
-		}
-	}
-	stabilizeFootCX(frames)
-	return frames
-}
-
-func gridFramesRow(renderer *sdl.Renderer, path string, cols, rows, row int) []spriteFrame {
-	grid := engine.SpriteGridFromPNGCleanNeutral(renderer, path, cols, rows, spriteInset)
-	var frames []spriteFrame
-	if row < len(grid) {
-		for c := 0; c < cols && c < len(grid[row]); c++ {
-			gf := grid[row][c]
 			if gf.Tex == nil {
 				continue
 			}
@@ -385,6 +370,11 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if path := firstExisting("assets/images/player/PP talk back.png", "assets/images/player/PP_talk_back.png"); path != "" {
 		p.talkBackFrames = gridFrames(renderer, path, 8, 2)
 	}
+	// 2026-07-24 (user #34): frightened side-talk for the rude-Higgins beat
+	// (§PP-TALK-SIDE-SCARED). Optional — setScaredTalk no-ops until it lands.
+	if path := firstExisting("assets/images/player/PP talk side scared.png", "assets/images/player/PP_talk_side_scared.png"); path != "" {
+		p.talkSideScaredFrames = gridFrames(renderer, path, 8, 2)
+	}
 
 	// Seated poses for the Japan tea ceremony (kneeling idle + talk). Optional -
 	// guarded so a missing sheet isn't re-opened every startup; while seated with
@@ -407,14 +397,16 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// same crouch-and-rise cycle with a flower in the last frames.
 	p.grabFrames = gridFrames(renderer, "assets/images/player/PP grab.png", 8, 2)
 
-	celebrateFrames := gridFrames(renderer, "assets/images/player/PP celebrate.png", 8, 2)
-	p.reactFrames = celebrateFrames
-	if len(celebrateFrames) >= 2 {
-		p.showInvFrames = celebrateFrames[0:2]
+	// 2026-07-18 (user #1): PP celebrate.png + PP sneak examine.png were
+	// deleted from disk — react/showInv/examine fall back to the grab frames
+	// (their states barely appear in play) instead of warning every startup.
+	p.reactFrames = p.grabFrames
+	if len(p.grabFrames) >= 2 {
+		p.showInvFrames = p.grabFrames[0:2]
 	}
-
-	p.examineFrames = gridFrames(renderer, "assets/images/player/PP sneak examine.png", 8, 2)
-	p.useItemFrames = gridFrames(renderer, "assets/images/player/PP sneak use.png", 8, 2)
+	p.examineFrames = p.grabFrames
+	// 2026-07-18 (user): PP sneak use.png removed — same fallback as examine.
+	p.useItemFrames = p.grabFrames
 
 	// One-shot named animations for sequence playback. receive_map drives
 	// the give-map handoff so PP visibly takes the map from Higgins instead
@@ -463,7 +455,8 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	if f := gridFrames(renderer, "assets/images/player/PP get bagguette.png", 6, 1); len(f) > 0 {
 		p.oneShotAnims["get_baguette"] = f
 	}
-	if f := gridFramesConnected(renderer, "assets/images/player/PP get jam.png", 8, 1); len(f) > 0 {
+	// 2026-07-24 (user #10): tol 8 → 24 — white AA fringe/spots (flower fix).
+	if f := gridFramesConnectedTol(renderer, "assets/images/player/PP get jam.png", 8, 1, 24); len(f) > 0 {
 		p.oneShotAnims["get_jam"] = f
 	}
 	// #7/#9/#15/#16 (user 2026-06-30): do NOT register a generic "receive_item"
@@ -476,7 +469,9 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// The dropped art is named pp_get_skatch.png; accept that and the canonical
 	// name. Falls back to grabFrames (generic reach) if neither is present.
 	if rp := firstExisting("assets/images/player/PP receive sketch.png", "assets/images/player/pp_get_skatch.png"); rp != "" {
-		if f := gridFramesConnected(renderer, rp, 8, 1); len(f) > 0 {
+		// 2026-07-25 (user): tol 8 → 24 — white AA fringe around PP ("white
+		// spots"); the connected flood still protects the bone sketch page.
+		if f := gridFramesConnectedTol(renderer, rp, 8, 1, 24); len(f) > 0 {
 			p.oneShotAnims["receive_sketch"] = f
 		}
 	}
@@ -484,7 +479,10 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// receive — register it under "receive_card" so it plays when Pierre hands
 	// the pass over. It must NOT double as the Beaumont postcard receive.
 	if rp := firstExisting("assets/images/player/pp_get_card.png"); rp != "" {
-		if f := gridFramesConnectedTol(renderer, rp, 8, 1, 24); len(f) > 0 {
+		// 2026-07-25 (user): GLOBAL tol-24 — the blue-bg sheet kept enclosed
+		// blue arm-gap pockets under the connected key ("blue spots around
+		// him"); the card is cream, nothing blue on PP.
+		if f := gridFramesTol(renderer, rp, 8, 1, 24); len(f) > 0 {
 			p.oneShotAnims["receive_card"] = f
 		}
 	}
@@ -512,12 +510,13 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// postcard, sketch page, jar label) - the global key erased them mid-give.
 	for key, path := range map[string]string{
 		"flower":        "assets/images/player/PP give flower.png",
-		"rolling_pin":   "assets/images/player/PP give rolling pin.png",
-		"baguette":      "assets/images/player/PP give baguette.png",
 		"confiture":     "assets/images/player/PP give confiture.png",
-		"cafe_au_lait":  "assets/images/player/PP give coffee.png",
 		"baguette_heel": "assets/images/player/PP give heel.png",
-		"pencil":        "assets/images/player/PP give pencil.png",
+		// "pencil" moved to the global tol-24 load below (2026-07-24 #16:
+		// blue-bg sheet; the connected key kept its enclosed blue pockets).
+		// "rolling_pin" RETIRED (2026-07-24, user): the pin's only hand-over
+		// is Poulain's back-facing trade, which always resolves to
+		// give_rolling_pin_back — the front sheet never played.
 	} {
 		// #5: tol 24 (was 8) — the give poses touch with a faint near-white
 		// bridge that survived the low-tol key, so the gap-detector mis-cut them
@@ -528,11 +527,25 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			p.oneShotAnims["give_"+key] = f
 		}
 	}
+	// 2026-07-24 (user #15): dedicated pot-pickup for the charcoal pencil
+	// (§PP-GET-PENCIL-POT, the rolling-pin-basket pattern). Optional — the
+	// pot pickup resolves to the generic grab until it lands.
+	if f := gridFrames(renderer, "assets/images/player/pp_get_pencil_pot.png", 6, 1); len(f) > 0 {
+		p.oneShotAnims["grab_pencil_pot"] = f
+	}
+	// 2026-07-24 (user #16): give-pencil is a BLUE-bg sheet — the connected
+	// key kept its enclosed blue arm-gap pockets. Global tol-24 clears them
+	// (nothing on PP is near the pale blue; the dark pencil is far off it).
+	if f := gridFramesTol(renderer, "assets/images/player/PP give pencil.png", 8, 1, 24); len(f) > 0 {
+		p.oneShotAnims["give_pencil"] = f
+	}
 	// 2026-07-17: wide-cell give re-rolls use 6×1 and a sampled blue
 	// background. Global keying removes the blue even from enclosed arm gaps.
 	for key, path := range map[string]string{
-		"sketch":   "assets/images/player/PP give sketch.png",
-		"postcard": "assets/images/player/PP give postcard.png",
+		"baguette":     "assets/images/player/PP give baguette.png",
+		"sketch":       "assets/images/player/PP give sketch.png",
+		"postcard":     "assets/images/player/PP give postcard.png",
+		"cafe_au_lait": "assets/images/player/PP give coffee.png",
 	} {
 		if f := gridFrames(renderer, path, 6, 1); len(f) > 0 {
 			p.oneShotAnims["give_"+key] = f
@@ -541,9 +554,8 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// 2026-07-15 (user #25/#27): Jerusalem per-item sheets — all optional,
 	// no-op until the art lands (§PP-GIVE-BAGEL / §PP-GET-PEN etc.).
 	for key, path := range map[string]string{
-		"receive_bagel": "assets/images/player/pp_get_bagel.png",
-		"receive_coin":  "assets/images/player/pp_get_coin.png",
-		"give_coin":     "assets/images/player/PP give coin.png",
+		"receive_coin": "assets/images/player/pp_get_coin.png",
+		"give_coin":    "assets/images/player/PP give coin.png",
 	} {
 		if _, err := os.Stat(path); err == nil {
 			if f := gridFramesConnectedTol(renderer, path, 8, 1, 24); len(f) > 0 {
@@ -553,11 +565,20 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	}
 	// 2026-07-17: blue-background Jerusalem sheets are all wide-cell 6×1.
 	for key, path := range map[string]string{
-		"give_bagel":           "assets/images/player/PP give bagel.png",
-		"receive_pen":          "assets/images/player/pp_get_pen.png",
-		"receive_cardamom":     "assets/images/player/pp_get_cardamom.png",
-		"receive_cafe_au_lait": "assets/images/player/pp_get_coffee.png",
-		"receive_paper":        "assets/images/player/pp_get_paper.png",
+		"give_bagel":               "assets/images/player/PP give bagel.png",
+		"receive_bagel":            "assets/images/player/pp_get_bagel.png",
+		"give_card":                "assets/images/player/PP give card.png",
+		"give_fire_striker":        "assets/images/player/PP give fire striker.png",
+		"receive_well_water":       "assets/images/player/pp_get_well_water.png",
+		"receive_voice_charm":      "assets/images/player/pp_get_voice_charm.png",
+		"receive_offering_bowl":    "assets/images/player/pp_get_offering_bowl.png",
+		"give_matcha_bowl":         "assets/images/player/PP give matcha bowl.png",
+		"receive_pen":              "assets/images/player/pp_get_pen.png",
+		"receive_cardamom":         "assets/images/player/pp_get_cardamom.png",
+		"give_cardamom":            "assets/images/player/PP give cardamom.png",
+		"receive_jerusalem_coffee": "assets/images/player/pp_get_coffee.png",
+		"give_jerusalem_coffee":    "assets/images/player/PP give jerusalem coffee.png",
+		"receive_paper":            "assets/images/player/pp_get_paper.png",
 	} {
 		if _, err := os.Stat(path); err == nil {
 			if f := gridFrames(renderer, path, 6, 1); len(f) > 0 {
@@ -565,11 +586,35 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			}
 		}
 	}
+	// 2026-07-24 (user #23/#28): these receive sheets face away from their
+	// giver in-scene — mirror them at draw time.
+	p.oneShotFlip = map[string]bool{
+		"receive_jerusalem_coffee": true,
+		"receive_paper":            true,
+		// 2026-07-25 (user): the postcard take reaches away from Beaumont.
+		"receive_postcard": true,
+		// 2026-07-25 (user): the bagel take reaches away from the seller.
+		"receive_bagel": true,
+	}
+	// 2026-07-25 (user): the pot pickup — until §PP-GET-PENCIL-POT lands,
+	// alias the generic grab MIRRORED (the grab leans LEFT; the pot sits to
+	// PP's RIGHT at the shared Pierre-depth mark). The dedicated sheet is
+	// drawn reaching right, so it loads un-flipped and replaces the alias.
+	if dp := firstExisting("assets/images/player/pp_get_pencil_pot.png"); dp != "" {
+		if f := gridFrames(renderer, dp, 6, 1); len(f) > 0 {
+			p.oneShotAnims["grab_pencil_pot"] = f
+		}
+	} else if len(p.grabFrames) > 0 {
+		p.oneShotAnims["grab_pencil_pot"] = p.grabFrames
+		p.oneShotFlip["grab_pencil_pot"] = true
+	}
 	// §PM1 (2026-06-12): PP pulls the travel map out of his invisible hip
 	// pocket BEFORE the globe screen opens (user: "a new sprite of us pull
 	// it out from pocket and then the map screen"). Optional - until the
 	// sheet lands, openTravelMap's playOneShot no-ops straight to the map.
-	if f := gridFramesConnected(renderer, "assets/images/player/PP pull map.png", 8, 1); len(f) > 0 {
+	// 2026-07-23 (#5): GLOBAL tol-24 — the blue re-roll left off-blue pockets
+	// in the arm gaps under the connected key; the map prop is cream, safe.
+	if f := gridFramesTol(renderer, "assets/images/player/PP pull map.png", 8, 1, 24); len(f) > 0 {
 		p.oneShotAnims["pull_map"] = f
 	}
 	// PR#9 (2026-06-12): PP recoils/hops backward when the Paris biker bumps
@@ -612,10 +657,22 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// generic back sprite): the rolling pin he hands over and the baguette +
 	// coffee he takes back, all drawn from behind. Guarded with os.Stat; until
 	// each lands the trade falls back to the front sheet for that item.
+	// 2026-07-23 (#13): the Poulain-counter back sheets carried off-white
+	// enclosed pockets in the arm gaps (the connected key preserves them by
+	// design). GLOBAL tol-24 key clears them; their props are wood/tan/cream,
+	// no white detail to protect on a back view.
 	for _, ns := range []struct{ key, path string }{
 		{"give_rolling_pin_back", "assets/images/player/PP_give_rolling_pin_back.png"},
 		{"get_baguette_back", "assets/images/player/PP_get_baguette_back.png"},
 		{"receive_cafe_au_lait_back", "assets/images/player/PP_get_coffee_back.png"},
+	} {
+		if _, err := os.Stat(ns.path); err == nil {
+			if f := gridFramesTol(renderer, ns.path, 8, 1, 24); len(f) > 0 {
+				p.oneShotAnims[ns.key] = f
+			}
+		}
+	}
+	for _, ns := range []struct{ key, path string }{
 		// Japan: the dresser-geisha gag - PP spins, ends up in a kimono, spins
 		// again, back to normal. One continuous one-shot (no persistent state).
 		{"kimono_spin", "assets/images/player/PP_kimono_spin.png"},
@@ -632,6 +689,29 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			if f := gridFramesConnected(renderer, ns.path, 8, 1); len(f) > 0 {
 				p.oneShotAnims[ns.key] = f
 			}
+		}
+	}
+	// 2026-07-24 (user): the kimono gag is THREE separate beats — spin INTO
+	// the costume, MODEL it, spin BACK to normal. Dedicated 6×1 blue sheets
+	// are queued (§PP-KIMONO-SPLIT); until each lands, its phase is sliced
+	// out of the combined PP_kimono_spin.png (frames: 1-2 spin blur →
+	// 3 kimono forming → 4-6 dressed poses → 7 spin blur → 8 normal).
+	for _, ks := range []struct {
+		key, path string
+		lo, hi    int
+	}{
+		{"kimono_spin_in", "assets/images/player/PP_kimono_spin_in.png", 0, 4},
+		{"kimono_model", "assets/images/player/PP_kimono_model.png", 3, 6},
+		{"kimono_spin_out", "assets/images/player/PP_kimono_spin_out.png", 6, 8},
+	} {
+		if _, err := os.Stat(ks.path); err == nil {
+			if f := gridFrames(renderer, ks.path, 6, 1); len(f) > 0 {
+				p.oneShotAnims[ks.key] = f
+				continue
+			}
+		}
+		if full := p.oneShotAnims["kimono_spin"]; len(full) >= 8 {
+			p.oneShotAnims[ks.key] = full[ks.lo:ks.hi]
 		}
 	}
 
@@ -664,14 +744,14 @@ func giveAnimKeyForItem(name string) string {
 	case "Postcard", "Signed Postcard":
 		return "postcard"
 	case "Card":
-		// The Press Pass card PP hands Claude — a flat card, same silhouette
-		// as the postcard give sheet (user #13).
-		return "postcard"
+		return "card"
 	// 2026-07-15 (user #23/#25/#27): Jerusalem chain items were falling to the
 	// generic "item" key, so their hand-overs played NO PP animation at all.
 	case "Coffee":
-		// The paper cup — the Paris café-au-lait give sheet IS a cup hand-over.
-		return "cafe_au_lait"
+		// 2026-07-18 (user #30): the Jerusalem finjan is NOT the Paris paper
+		// cup — its own key; falls back to the generic beat until
+		// §PP-GIVE-JER-COFFEE lands.
+		return "jerusalem_coffee"
 	case "Bagel":
 		return "bagel"
 	case "Pen":
@@ -688,9 +768,7 @@ func giveAnimKeyForItem(name string) string {
 
 func receiveAnimKeyForItem(name string) string {
 	switch name {
-	// 2026-07-15 (user #13): the flat-card RECEIVE (pp_get_card.png) plays
-	// both when Pierre hands the "Press Pass" item and for the "Card" item.
-	case "Card", "Press Pass":
+	case "Card":
 		return "card"
 	}
 	return giveAnimKeyForItem(name)
@@ -904,12 +982,22 @@ func (p *player) currentIdleFrames() []spriteFrame {
 	}
 }
 
+// setScaredTalk (2026-07-24 user #34): swaps PP's side-talk to the frightened
+// variant for the rude-Higgins exchange. No-ops until the §PP-TALK-SIDE-SCARED
+// sheet lands (the normal side talk plays meanwhile).
+func (p *player) setScaredTalk(on bool) {
+	p.scaredTalk = on && len(p.talkSideScaredFrames) > 0
+}
+
 func (p *player) currentTalkFrames() []spriteFrame {
 	if p.seated && len(p.seatedTalk) > 0 {
 		return p.seatedTalk
 	}
 	switch p.dir {
 	case dirLeft, dirRight:
+		if p.scaredTalk {
+			return p.talkSideScaredFrames
+		}
 		return p.talkSideFrames
 	case dirUp:
 		// Talking with his back to the camera (ppFaceBack NPCs). Use the
@@ -1003,6 +1091,10 @@ func (p *player) maxY() float64 {
 }
 
 func (p *player) setTarget(x, y float64) {
+	// 2026-07-25 (user): frozen through a counter give chain — ignore walks.
+	if p.movementLocked {
+		return
+	}
 	// #28: a move-elsewhere click grows PP back to full size if he was holding
 	// the shrunk Pierre-depth pose after a dialog.
 	// 2026-06-11 #19: TWO-STAGE exit from the receded depth - PP first walks
@@ -1158,8 +1250,56 @@ func (p *player) walkToTalkPos(target *npc, onArrive func()) {
 // arrival behavior (onArrival / interactTarget) for the second leg. Returns
 // false when the scene doesn't use L-walks or the move is single-axis.
 func (p *player) startLWalk(tx, ty, dx, dy float64, arm func()) bool {
-	if !p.lWalkApproach || dy*dy <= 40*40 || dx*dx <= 40*40 {
+	if !p.lWalkApproach {
 		return false
+	}
+	// 2026-07-23 (#9): near-horizontal moves used to skip the L entirely —
+	// but Poulain's counter row and the patron row differ by only ~7px, so a
+	// counter→patron click beelined straight ACROSS the table band and got
+	// shoved into a table. If the horizontal corridor at the current foot row
+	// crosses a table footBlocker, detour through the front lane instead:
+	// down, across, back up.
+	if dy*dy <= 40*40 || dx*dx <= 40*40 {
+		if dx*dx <= 40*40 {
+			return false // vertical-ish moves can't cross the table band sideways
+		}
+		footY := p.y + playerDstH
+		x0, x1 := p.x+playerDstW/2, tx+playerDstW/2
+		if x1 < x0 {
+			x0, x1 = x1, x0
+		}
+		laneFoot := 0.0
+		for _, b := range p.lastFootBlockers {
+			if footY >= float64(b.Y) && footY <= float64(b.Y+b.H) &&
+				x1 >= float64(b.X) && x0 <= float64(b.X+b.W) {
+				if bottom := float64(b.Y+b.H) + 15; bottom > laneFoot {
+					laneFoot = bottom
+				}
+			}
+		}
+		if laneFoot == 0 {
+			return false // corridor clear — the straight walk is fine
+		}
+		laneY := math.Min(laneFoot-playerDstH, p.maxY())
+		p.targetX = p.x
+		p.targetY = laneY
+		p.onArrival = func() {
+			p.targetX = tx
+			p.targetY = laneY
+			p.moving = true
+			p.state = stateWalking
+			p.onArrival = func() {
+				p.targetX = tx
+				p.targetY = ty
+				p.moving = true
+				p.state = stateWalking
+				arm()
+			}
+		}
+		p.moving = true
+		p.allowOffscreen = false
+		p.state = stateWalking
+		return true
 	}
 	if dy < 0 {
 		p.targetX = tx
@@ -1231,6 +1371,39 @@ func (p *player) walkToAndDo(x, y float64, action func()) {
 	p.targetY = engine.Clamp(y-playerDstH/2, p.minY(), p.maxY())
 	p.moving = true
 	p.allowOffscreen = false
+	p.state = stateWalking
+	p.interactTarget = nil
+	p.onArrival = action
+}
+
+// walkToAndDoViaLanes (2026-07-24 #11): walkToAndDo that honors the bakery
+// lane detour. Exit-hotspot walks used the straight walkToAndDo and beelined
+// across the table footBlockers ("he walked through the table"); this runs
+// the same corridor/L check startLWalk performs and falls back to the plain
+// walk in scenes without lWalkApproach.
+func (p *player) walkToAndDoViaLanes(x, y float64, action func()) {
+	tx := engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
+	ty := engine.Clamp(y-playerDstH/2, p.minY(), p.maxY())
+	p.interactTarget = nil
+	if p.startLWalk(tx, ty, tx-p.x, ty-p.y, func() { p.onArrival = action }) {
+		return
+	}
+	p.walkToAndDo(x, y, action)
+}
+
+// walkToAndDoUnclamped (2026-07-23 #3): like walkToAndDo but WITHOUT the
+// walk-band Y clamp. Scripted exit walks only (room door at the bottom of
+// the frame sits far below the room's maxY, so the clamped walk barely moved
+// PP - "just the frame changed"). X stays clamped to the screen.
+// 2026-07-24 (#2/#31): allowOffscreen=true — the unclamped TARGET was
+// useless while update() still clamped the MOVEMENT to the walk band each
+// frame, so PP jammed at the band edge and the arrival (scene transition)
+// never fired (the jake_room "stuck" oscillation).
+func (p *player) walkToAndDoUnclamped(x, y float64, action func()) {
+	p.targetX = engine.Clamp(x-playerDstW/2, playerMinX, playerMaxX)
+	p.targetY = y - playerDstH/2
+	p.moving = true
+	p.allowOffscreen = true
 	p.state = stateWalking
 	p.interactTarget = nil
 	p.onArrival = action
@@ -1390,6 +1563,7 @@ func (p *player) walkToExit(dir arrowDir, action func()) {
 
 func (p *player) update(dt float64, blockers []sdl.Rect, footBlockers []sdl.Rect) {
 	p.breathTimer += dt
+	p.lastFootBlockers = footBlockers
 
 	// One-shot named anim (sequence player). Frames advance evenly across
 	// the requested duration; on completion the registered callback fires.
@@ -1977,10 +2151,6 @@ func (p *player) currentGroup() []spriteFrame {
 	return p.currentIdleFrames()
 }
 
-func (p *player) draw(renderer *sdl.Renderer) {
-	p.drawScaled(renderer, 1.0)
-}
-
 // drawScaled renders PP with a character-scale multiplier so tight
 // indoor scenes can shrink PP to match the PTP "pub shot" ratios
 // without altering the underlying 170x235 hitbox.
@@ -2019,6 +2189,12 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 
 	// Decide the horizontal flip up-front so the foot-anchor below can account
 	// for it (CopyEx mirrors within the dst rect).
+	// 2026-07-18 (user #2): shift the flower grab LEFT so the crouch reach
+	// meets the flower at PP's stand spot (he stands to its right).
+	grabFlowerXShift := int32(0)
+	if p.activeOneShot == "grab_flower" {
+		grabFlowerXShift = -25
+	}
 	flip := sdl.FLIP_NONE
 	if p.state == stateWalking && (p.dir == dirLeft || p.dir == dirRight) {
 		// The side-walk sheet (PP walk left.png) is drawn FACING LEFT: show it
@@ -2035,6 +2211,17 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		// was written for the older left-facing art and made PP turn his back
 		// on every NPC he talked to — Higgins included.)
 		flip = sdl.FLIP_HORIZONTAL
+	}
+	// 2026-07-24 (#23/#28): per-anim one-shot mirror, same mechanism the
+	// NPCs have (npc.oneShotFlip) — some receive sheets face the wrong way
+	// relative to the giver (Jerusalem coffee, the note paper). Inverts
+	// whatever the rules above decided.
+	if p.activeOneShot != "" && p.oneShotFlip[p.activeOneShot] {
+		if flip == sdl.FLIP_HORIZONTAL {
+			flip = sdl.FLIP_NONE
+		} else {
+			flip = sdl.FLIP_HORIZONTAL
+		}
 	}
 
 	if frame.ow > 0 && frame.oh > 0 && refH > 0 {
@@ -2055,6 +2242,7 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		} else {
 			dstX = int32(anchorX - footFromLeft)
 		}
+		dstX += grabFlowerXShift
 		// Anchor Y by the animation's CONSTANT foot ROW (sheet median, set by
 		// stabilizeFootCX) instead of each frame's own content bottom - a
 		// dipped tail or a higher-sitting pose extends past the line instead
@@ -2079,6 +2267,7 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	if p.activeOneShot == "grab_flower" {
 		dstY -= 38
 	}
+
 	// PR#16: nudge the rolling-pin grab pose down so PP's reach meets the bike
 	// basket. 2026-06-30 (#2): the old +60 (tuned for the lower spawn band)
 	// shoved PP's legs under the bottom of the screen. 2026-07-15 (user #10):

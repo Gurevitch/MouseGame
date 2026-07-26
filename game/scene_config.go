@@ -13,6 +13,25 @@ type hotspotJSON struct {
 	TargetScene string     `json:"targetScene,omitempty"`
 	Name        string     `json:"name"`
 	Arrow       string     `json:"arrow"`
+	// WalkX/WalkY (2026-07-24 #2/#31): optional explicit door-walk anchor
+	// (PP CENTER coords) for scripted exit walks — the room exits derive a
+	// bad target from bounds alone (right-wall doors have y≈100 bounds).
+	// 0 = unset; WalkY 0 with WalkX set keeps PP's current row.
+	WalkX float64 `json:"walkX,omitempty"`
+	WalkY float64 `json:"walkY,omitempty"`
+}
+
+// npcOverrideJSON (2026-07-24, user: "why hardcoded and not in the JSON?"):
+// per-scene NPC placement knobs keyed by the factory id from `npcs`. The Go
+// constructors stay the defaults; a scene JSON override wins, so positions
+// tuned per scene live in ONE place next to the scene's other geometry.
+// footY = the sprite's bottom line (bounds.Y is derived); footYDark = the
+// bottom line applyCampMood switches to when the camp mood darkens (the
+// day-2/3 office art draws the desk higher).
+type npcOverrideJSON struct {
+	ID        string `json:"id"`
+	FootY     int32  `json:"footY,omitempty"`
+	FootYDark int32  `json:"footYDark,omitempty"`
 }
 
 type walkSegmentJSON struct {
@@ -34,6 +53,7 @@ type sceneDef struct {
 	MusicPath              string            `json:"musicPath"`
 	CharacterScale         float64           `json:"characterScale"`
 	NPCs                   []string          `json:"npcs"`
+	NPCOverrides           []npcOverrideJSON `json:"npcOverrides,omitempty"`
 	Hotspots               []hotspotJSON     `json:"hotspots"`
 	Blockers               []boundsJSON      `json:"blockers"`
 	FootBlockers           []boundsJSON      `json:"footBlockers"`

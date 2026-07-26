@@ -130,6 +130,12 @@ func (g *Game) LoadGame(path string) error {
 		g.travelMap.setUnlocked("camp_entrance", true)
 	}
 	g.applyCampMood()
+	// 2026-07-24 (user #4): the see-Marcus-first office gate was armed at
+	// setup time, before this load ran — lift it if the save already talked
+	// to Marcus.
+	if g.talkedToMarcus {
+		g.restoreHigginsWorriedDialog()
+	}
 
 	fmt.Printf("Game loaded from %s\n", path)
 	return nil

@@ -8,7 +8,8 @@
   "npcs": ["jp_hiro", "jp_kenji"],
   "hotspots": [
     {"bounds": {"x": 0, "y": 180, "w": 100, "h": 460}, "targetScene": "tokyo_torii", "name": "Back to the gates", "arrow": "left"},
-    {"bounds": {"x": 1300, "y": 180, "w": 100, "h": 460}, "targetScene": "tokyo_temple", "name": "On to the flower store", "arrow": "right"}
+    {"_comment": "2026-07-24 #41: flower-store exit changed right -> UP at ~(1190,396) per user (the temple->teahouse up-exit pattern).",
+     "bounds": {"x": 1090,"y": 336,"w": 200,"h": 120}, "targetScene": "tokyo_temple", "name": "On to the flower store", "arrow": "up"}
   ],
   "blockers": [],
   "walkSegments": [

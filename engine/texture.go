@@ -582,26 +582,6 @@ func footCenterLocal(img *image.NRGBA, cellRect image.Rectangle, ox, oy, ow, oh 
 	return int32(sum/n) - int32(cellRect.Min.X)
 }
 
-// blankCornerLogo makes pixels in the bottom-right corner region transparent,
-// removing watermarks/logos that image generators embed.
-func blankCornerLogo(img *image.NRGBA, w, h int) {
-	b := img.Bounds()
-	transparent := color.NRGBA{0, 0, 0, 0}
-	startX := b.Max.X - w
-	startY := b.Max.Y - h
-	if startX < b.Min.X {
-		startX = b.Min.X
-	}
-	if startY < b.Min.Y {
-		startY = b.Min.Y
-	}
-	for y := startY; y < b.Max.Y; y++ {
-		for x := startX; x < b.Max.X; x++ {
-			img.SetNRGBA(x, y, transparent)
-		}
-	}
-}
-
 // ContentBoxKeyed returns the opaque content box of a PNG after the standard
 // white color-key - the rectangle around the actual artwork. Inventory icons
 // use it to center items by their CONTENT: generated icons often sit

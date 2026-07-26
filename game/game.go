@@ -15,12 +15,6 @@ var openingMonologue = []dialogEntry{
 	{speaker: "Pink Panther", text: "But a job is a job. Time to meet the kids."},
 }
 
-var day2Monologue = []dialogEntry{
-	{speaker: "Pink Panther", text: "What a night... I could hear Marcus from across the camp."},
-	{speaker: "Pink Panther", text: "I need to find him. He must be in his cabin."},
-	{speaker: "Pink Panther", text: "And then I should tell Higgins about this."},
-}
-
 var parisStreetMonologue = []dialogEntry{
 	{speaker: "Pink Panther", text: "Ah, Paris! The city of lights, love, and... mysteries, apparently."},
 	{speaker: "Pink Panther", text: "Marcus kept drawing a museum with a glass pyramid. That must be the Louvre."},
@@ -33,30 +27,6 @@ var louvreArrivalMonologue = []dialogEntry{
 	{speaker: "Pink Panther", text: "So this is the Louvre... my first time inside."},
 	{speaker: "Pink Panther", text: "Marble floors, quiet halls, and somewhere in here - the painting Marcus keeps drawing."},
 	{speaker: "Pink Panther", text: "That must be the curator over there. Let's have a word."},
-}
-
-// getMonologue returns dialog from JSON store, falling back to hardcoded
-func (g *Game) getMonologue(name string) []dialogEntry {
-	if d := g.dialogs.Get("monologues", name); d != nil {
-		return d
-	}
-	switch name {
-	case "opening":
-		return openingMonologue
-	case "day2":
-		return day2Monologue
-	case "paris_street":
-		return parisStreetMonologue
-	}
-	return nil
-}
-
-// getNPCDialog returns dialog from JSON store, falling back to hardcoded vars
-func (g *Game) getNPCDialog(file, name string) []dialogEntry {
-	if d := g.dialogs.Get(file, name); d != nil {
-		return d
-	}
-	return nil
 }
 
 type Game struct {
@@ -93,10 +63,8 @@ type Game struct {
 	// Japan ramen stall: the closed/open prop + the waiting line that SITS at the
 	// counter when Hiro opens (built in setupTokyoCallbacks, swapped by
 	// openRamenStall). Art is pending so these are invisible until it lands.
-	ramenStoreProp  *ambientSprite
-	ramenQueue      []*ambientSprite
-	ramenOpenFrames []npcFrame
-	ramenSitFrames  []npcFrame
+	// (2026-07-18: the ramen stall overlay + queue fields were removed with
+	// the stall-mechanic rework — the stall is scene art now.)
 	// #34 airstrip sign crow: added by applyCampMood once the camp turns
 	// (never on the day-1 opening screen). Not persisted — re-added on load
 	// by the restore-path applyCampMood call.
@@ -229,12 +197,15 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	// 2026-06-11 #6/#11: the AGGRESSIVE key (tol 32) ate PP's cream face and
 	// chest on these sheets - the CONNECTED key only removes background
 	// reachable from the cell edges, so interior light colors survive.
-	sleepGrid := engine.SpriteGridFromPNGCleanConnected(renderer, "assets/images/player/pp_sleeping.png", 8, 1, 4)
+	// 2026-07-24 (#1): tol 8 → 24 — the default connected tolerance left the
+	// anti-aliased near-white fringe around PP on both sheets (the "white
+	// spots around him" when he wakes). Same fix as the flower/biker.
+	sleepGrid := engine.SpriteGridFromPNGCleanConnectedTol(renderer, "assets/images/player/pp_sleeping.png", 8, 1, 4, 24)
 	for c := 0; c < 8 && len(sleepGrid) > 0 && c < len(sleepGrid[0]); c++ {
 		gf := sleepGrid[0][c]
 		g.sleepingFrames = append(g.sleepingFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
 	}
-	wakeGrid := engine.SpriteGridFromPNGCleanConnected(renderer, "assets/images/player/pp_waking.png", 8, 1, 4)
+	wakeGrid := engine.SpriteGridFromPNGCleanConnectedTol(renderer, "assets/images/player/pp_waking.png", 8, 1, 4, 24)
 	for c := 0; c < 8 && len(wakeGrid) > 0 && c < len(wakeGrid[0]); c++ {
 		gf := wakeGrid[0][c]
 		g.wakingFrames = append(g.wakingFrames, npcFrame{tex: gf.Tex, w: gf.W, h: gf.H, ox: gf.OX, oy: gf.OY, ow: gf.OW, oh: gf.OH})
@@ -602,9 +573,6 @@ func (g *Game) setupCampCallbacks() {
 				// A6: PP faces Marcus (approaches from Marcus's left so PP ends
 				// up to his left and turns right to face him).
 				marcus.approachLeft = true
-				// 2026-07-15 (user #7): PP read as talking AWAY from Marcus in
-				// the room — invert his side facing for these dialogs.
-				marcus.ppTalkFlip = true
 				// 2026-06-24 (#20a): the postcard heal must be an intentional
 				// hand-over - PP has to SELECT/hold the Postcard and click Marcus,
 				// not have it fire just from owning it on scene entry. Gate the
@@ -621,6 +589,9 @@ func (g *Game) setupCampCallbacks() {
 					if game.day == 2 && !game.talkedToMarcus {
 						game.talkedToMarcus = true
 						marcus.dialog = marcusPostStrangeDialog
+						// 2026-07-24 (user #4): seeing strange Marcus unlocks
+						// Higgins's map hand-over (the office gate).
+						game.restoreHigginsWorriedDialog()
 					}
 				}
 				marcus.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
@@ -691,9 +662,12 @@ func (g *Game) setupCampCallbacks() {
 									}
 								}
 							}
+							// 2026-07-24 (user #20): no more pointing at Jake or
+							// naming the city — the player guesses; Higgins is the
+							// anytime clue source (higginsPostMarcusHealedDialog).
 							game.dialog.queueDialog([]dialogEntry{
-								{speaker: "Pink Panther", text: "One down. Jake's next - he keeps muttering about an old face in the stones of a wall."},
-								{speaker: "Pink Panther", text: "The travel map just lit up Jerusalem. That can't be a coincidence."},
+								{speaker: "Pink Panther", text: "One down. But the travel map is glowing again - somewhere new."},
+								{speaker: "Pink Panther", text: "I should update Higgins about all this... and keep my eyes open for whoever starts acting odd next."},
 							})
 							// #22: Marcus visibly takes/looks at the postcard during the
 							// hand-over (npcAnim); no-ops until the art lands.
@@ -709,7 +683,18 @@ func (g *Game) setupCampCallbacks() {
 		for _, n := range office.npcs {
 			if n.name == "Director Higgins" {
 				officeHiggins := n
+				// 2026-07-24 (user #4): Paris is GATED on having spoken with
+				// day-2 Marcus. Until then Higgins refuses (no map-promise
+				// dialog, no unlock); the Marcus talk handlers swap his dialog
+				// back to the worried map hand-over.
+				if !game.talkedToMarcus && !game.parisUnlocked {
+					officeHiggins.dialog = higginsSeeMarcusFirstDialog
+				}
 				officeHiggins.onDialogEnd = func() {
+					if !game.parisUnlocked && !game.talkedToMarcus {
+						officeHiggins.dialog = higginsSeeMarcusFirstDialog
+						return
+					}
 					if !game.parisUnlocked {
 						game.parisUnlocked = true
 						game.travelMap.setUnlocked("paris_street", true)
@@ -727,6 +712,9 @@ func (g *Game) setupCampCallbacks() {
 					if game.vars.GetBool(ScopeGame, VarLilyArcStarted) && !game.vars.GetBool(ScopeGame, VarLilyHealed) {
 						// 2026-07-15 (user #33): post-Lily he stays curt.
 						officeHiggins.dialog = higginsAngryShortDialog
+					} else if game.vars.GetBool(ScopeGame, VarJerusalemUnlocked) && !game.vars.GetBool(ScopeGame, VarJakeHealed) {
+						// 2026-07-18 (user #21): nudge PP toward Jake.
+						officeHiggins.dialog = higginsJakeReminderDialog
 					} else if game.marcusHealed {
 						officeHiggins.dialog = higginsPostMarcusHealedDialog
 					} else {
@@ -759,6 +747,8 @@ func (g *Game) setupCampCallbacks() {
 					} else if game.day >= 2 {
 						if !game.talkedToMarcus {
 							game.talkedToMarcus = true
+							// 2026-07-24 (user #4): unlock Higgins's hand-over.
+							game.restoreHigginsWorriedDialog()
 						}
 						kid.dialog = marcusPostStrangeDialog
 					}
@@ -930,6 +920,9 @@ func (g *Game) setupCampCallbacks() {
 			// bent AWAY from it ("looks at the other side"). Stand to the flower's
 			// RIGHT so the daisy is on his left, matching the animation.
 			standRight: true,
+			// 2026-07-23 #2: pull the stand mark 40px left (closer) so the
+			// grab paw reaches the daisy's actual spot.
+			standGapX: 40,
 			onPickup: func() {
 				// Hide flower in scene first so the grab anim doesn't play
 				// over a still-visible daisy on the ground.
@@ -949,8 +942,15 @@ func (g *Game) setupCampCallbacks() {
 					if item != nil {
 						game.inv.addItem(item)
 					}
-					game.dialog.startDialog([]dialogEntry{
+					// 2026-07-23 #2: the one-shot leaves PP in stateIdle, and the
+					// talk driver only animates mouths while stateTalking - set it
+					// for the monologue (pattern: the lake-decline line below).
+					game.player.state = stateTalking
+					game.player.dir = dirDown
+					game.dialog.startDialogWithCallback([]dialogEntry{
 						{speaker: "Pink Panther", text: "A pretty daisy. I bet Lily would like this."},
+					}, func() {
+						game.player.state = stateIdle
 					})
 				})
 			},
@@ -976,7 +976,10 @@ func (g *Game) setupCampCallbacks() {
 		// then declines to swim. Bounds cover the lake surface above the deck;
 		// tune in-game if the water sits elsewhere in the art.
 		lake.hotspots = append(lake.hotspots, hotspot{
-			bounds: sdl.Rect{X: 360, Y: 250, W: 700, H: 210},
+			// 2026-07-25 (user): PP stands at this rect's CENTER for the
+			// decline line — foot = centerY+135. Y 250→272 drops his foot
+			// from 490 to 512.
+			bounds: sdl.Rect{X: 360, Y: 272, W: 700, H: 210},
 			name:   "Lake",
 			onInteract: func() bool {
 				// 2026-07-15 (user #4): play the decline in the TALK SIDE pose
@@ -1105,7 +1108,17 @@ func (g *Game) playHigginsRudeBeat() {
 			if f, ok := higgins.oneShotAnims["rude_idle"]; ok {
 				higgins.idleGrid = f
 			}
+			// 2026-07-24 (user #34): Higgins can arrive before PP finishes his
+			// meet-walk — the dialog then froze PP in a mid-stride pose. Stop
+			// him and put him in the talking state (the talk driver animates
+			// both mouths; the scared side-talk sheet auto-upgrades the look
+			// once §PP-TALK-SIDE-SCARED lands).
+			g.player.moving = false
+			g.player.state = stateTalking
+			g.player.faceNPC(higgins)
+			g.player.setScaredTalk(true)
 			g.dialog.startDialogWithCallback(higginsRudeDialog, func() {
+				g.player.setScaredTalk(false)
 				g.finishHigginsRude()
 			})
 		},
@@ -1142,7 +1155,10 @@ func (g *Game) finishHigginsRude() {
 					hg.swapIdleForOneShot("walk_back")
 				}
 				g.higginsWalk = &higginsWalkState{
-					n: hg, fromX: float64(hg.bounds.X), toX: 1180, dur: 1.6,
+					// 2026-07-24 (user #35): 1180 left his sprite fully inside
+					// the 1400px frame when he vanished — walk him clear OFF
+					// the right edge before hiding.
+					n: hg, fromX: float64(hg.bounds.X), toX: 1450, dur: 2.0,
 					onArrive: func() {
 						hg.restoreSwappedIdle()
 						hg.hidden = true
@@ -1154,6 +1170,11 @@ func (g *Game) finishHigginsRude() {
 		}
 	}
 	// PP turns to the camera and connects the dots (Kyoto).
+	// 2026-07-24 (user #36): stop him where the Higgins chat happened and
+	// put him in the talking state — the aside used to render over a
+	// walking-front pose if the meet-walk was still in flight.
+	g.player.moving = false
+	g.player.state = stateTalking
 	g.player.dir = dirDown
 	g.player.facingLeft = false
 	g.dialog.startDialog(higginsRudeAsideDialog)
@@ -1215,22 +1236,6 @@ func (g *Game) checkDay1Complete() {
 		}
 		game.sceneMgr.transitionTo("camp_night", game.player)
 	})
-}
-
-// findNightHiggins returns the silent night-campfire Higgins NPC, if present.
-// Kept because other setup code may still reference him for hidden-NPC tweaks;
-// the night cutscene itself now runs through assets/data/sequences/night_bedtime.json.
-func (g *Game) findNightHiggins() *npc {
-	scene, ok := g.sceneMgr.scenes["camp_night"]
-	if !ok {
-		return nil
-	}
-	for _, n := range scene.npcs {
-		if n.name == "Director Higgins" {
-			return n
-		}
-	}
-	return nil
 }
 
 func (g *Game) giveMapItem() {
@@ -1296,9 +1301,9 @@ func (g *Game) setupParisCallbacks() {
 		// the give/receive one-shots), so a quick double-click on Poulain
 		// handed out TWO heels and one stayed in the bag after Margaux's trade.
 		heelHandedOut bool
-		sketchDone     bool // Camille drew the Room 7 replica, sketch in PP's bag
-		souvenirAsked  bool // Poulain asked for the grandson postcard (post-heal)
-		souvenirDone   bool // signed postcard delivered to Poulain
+		sketchDone    bool // Camille drew the Room 7 replica, sketch in PP's bag
+		souvenirAsked bool // Poulain asked for the grandson postcard (post-heal)
+		souvenirDone  bool // signed postcard delivered to Poulain
 	)
 	// Bakery NPC handles needed by Poulain's counter-service branch below.
 	var bakeryHenri *npc
@@ -1351,7 +1356,7 @@ func (g *Game) setupParisCallbacks() {
 				//   says "it's dry, bring me a spread", swaps dialog. No
 				//   press-pass yet. Inventory loses the baguette.
 				// Stage 2 (hintState 1): holds Confiture → Pierre takes it,
-				//   hands over the Press Pass.
+				//   hands over the Card.
 				// PP cannot present both items at once (one of them is no
 				// longer in the inventory at stage 2).
 				pierre := n
@@ -1370,9 +1375,10 @@ func (g *Game) setupParisCallbacks() {
 					}
 					talk := func() {
 						game.player.state = stateTalking
-						// Talk to the SIDE (Pierre's easel is to PP's right).
-						game.player.facingLeft = false
-						game.player.dir = dirRight
+						// 2026-07-24 (user #5): no hardcoded facing — PP stands
+						// at the SHARED mid mark between Pierre and Margaux and
+						// simply turns toward whoever he's talking to.
+						game.player.faceNPC(pierre)
 						releaseRecede := func() {
 							game.player.state = stateIdle
 							// Stay shrunk at Pierre's depth until PP next moves
@@ -1412,7 +1418,7 @@ func (g *Game) setupParisCallbacks() {
 						talk()
 						return
 					}
-					game.player.walkToAndDo(690, 510, func() {
+					game.player.walkToAndDo(parisRecedeMarkX, parisRecedeMarkY, func() {
 						game.player.playRecede(1.0, 0.65, 50, talk)
 					})
 				}
@@ -1472,7 +1478,7 @@ func (g *Game) setupParisCallbacks() {
 								pierre.dialog = pierreArtistPostDialog
 								pierre.altDialogFunc = nil
 								pierre.altDialogRequiresItem = ""
-							}, &handOff{item: "Confiture", npcAnim: "receive_confiture", returnItem: "Press Pass", npcGiveAnim: "give_ticket"}
+							}, &handOff{item: "Confiture", npcAnim: "receive_confiture", returnItem: "Card", npcGiveAnim: "give_ticket"}
 					}
 					return nil, nil, nil
 				}
@@ -1500,7 +1506,9 @@ func (g *Game) setupParisCallbacks() {
 						margaux.altDialogFunc = nil
 						margaux.altDialogRequiresHeld = false
 						margaux.altDialogRequiresItem = ""
-					}, &handOff{item: "Baguette Heel"}
+						// 2026-07-25 (user): her dedicated take plays once
+						// §MARGAUX-RECEIVE-HEEL lands; generic reach until then.
+					}, &handOff{item: "Baguette Heel", npcAnim: "receive_heel"}
 				}
 				// 2026-06-24 (#9): restore Margaux's recede (mirror of Pierre's) so
 				// PP renders at the SAME mid-distance SIZE at her as at Pierre - the
@@ -1512,10 +1520,15 @@ func (g *Game) setupParisCallbacks() {
 					}
 					talk := func() {
 						game.player.state = stateTalking
-						game.player.facingLeft = false
-						game.player.dir = dirRight
+						// 2026-07-18 (user #9): face HER (he stands on her right
+						// now) — the old hardcoded dirRight faced him away.
+						game.player.faceNPC(margaux)
 						releaseRecede := func() {
 							game.player.state = stateIdle
+							// 2026-07-23 (#6/#17, reverses the 2026-07-18 #10 call):
+							// STAY at the receded size/spot so chained chats with
+							// her and Pierre don't pop PP back to full size — the
+							// next ground click grows him back (setTarget).
 							game.player.holdRecede()
 						}
 						if margaux.altDialogFunc != nil {
@@ -1546,7 +1559,10 @@ func (g *Game) setupParisCallbacks() {
 						talk()
 						return
 					}
-					game.player.walkToAndDo(560, 510, func() {
+					game.player.walkToAndDo(parisRecedeMarkX, parisRecedeMarkY, func() {
+						// 2026-07-24 (user #5): the SHARED mid mark (see Pierre) —
+						// no per-NPC walk, just face her before the beat.
+						game.player.faceNPC(margaux)
 						game.player.playRecede(1.0, 0.65, 50, talk)
 					})
 				}
@@ -1588,7 +1604,7 @@ func (g *Game) setupParisCallbacks() {
 			}
 		}
 
-		// Louvre entrance gate: needs the Press Pass (#37 - single credential).
+		// Louvre entrance gate: needs the Card (#37 - single credential).
 		for i := range parisStreet.hotspots {
 			if parisStreet.hotspots[i].name != "To the Louvre" {
 				continue
@@ -1597,7 +1613,7 @@ func (g *Game) setupParisCallbacks() {
 			h.onInteract = func() bool {
 				// PR#24: opens only after PP HANDS Claude the pass (louvreUnlocked).
 				if !louvreUnlocked {
-					if game.inv.hasItem("Press Pass") {
+					if game.inv.hasItem("Card") {
 						game.dialog.startDialog([]dialogEntry{
 							{speaker: "Gendarme", text: "A press pass, oui? Bring it HERE, monsieur - hand it to me and I wave you straight in."},
 						})
@@ -1653,7 +1669,7 @@ func (g *Game) setupParisCallbacks() {
 							// Camp" travel pin so the player can return to heal
 							// Marcus.
 							game.vars.SetBool(ScopeGame, VarParisDone, true)
-							game.travelMap.setUnlocked("camp_entrance", true)
+ 							game.travelMap.setUnlocked("camp_entrance", true)
 							// #34: the camp turns "wrong" the moment the France
 							// trip is behind us - darken the grounds bg so the
 							// return landing reads as ominous.
@@ -1668,7 +1684,11 @@ func (g *Game) setupParisCallbacks() {
 							curator.playOneShotAnimThen(curator.giveAnimOr("give_postcard"), 1.0, func() {
 								// 2026-07-15 (user #16): mirror PP for the receive.
 								game.player.facingLeft = !game.player.facingLeft
-								if game.player.facingLeft { game.player.dir = dirLeft } else { game.player.dir = dirRight }
+								if game.player.facingLeft {
+									game.player.dir = dirLeft
+								} else {
+									game.player.dir = dirRight
+								}
 								game.player.playReceive("postcard", false, 1.0, func() {
 									game.dialog.startDialog([]dialogEntry{
 										{speaker: "Pink Panther", text: "A postcard of the painting... this is what Marcus has been drawing."},
@@ -1676,7 +1696,11 @@ func (g *Game) setupParisCallbacks() {
 									})
 								})
 							})
-						}, &handOff{item: "Camille's Sketch", skipNPCTake: true}
+							// 2026-07-24 (user #17): Beaumont takes the sketch on
+						// camera once §BEAUMONT-GET-SKETCH lands; until then
+						// the take stays skipped (no generic-reach stand-in).
+					}, &handOff{item: "Camille's Sketch", npcAnim: "receive_sketch",
+						skipNPCTake: !curator.hasOneShotAnim("receive_sketch")}
 					}
 					// Grandson souvenir loop: once Poulain has asked, Beaumont
 					// signs a second postcard (the new prints have arrived).
@@ -1791,15 +1815,23 @@ func (g *Game) setupParisCallbacks() {
 				if camilleAsked && !pigeonsCleared && !heelHandedOut && !game.inv.hasItem("Baguette Heel") {
 					return bakeryWomanHeelDialog, func() {
 						heelHandedOut = true
+						// 2026-07-23 (#18): the item lands in the bag AT dialog end
+						// (like every other trade) - the give/receive one-shots
+						// below are purely cosmetic, so wandering off mid-beat can
+						// no longer lose the item.
+						if item := game.items.createItem("baguette_heel"); item != nil {
+							game.inv.addItem(item)
+						}
+						// 2026-07-25 (user): planted back-facing through the beat.
+						game.player.movementLocked = true
+						game.player.dir = dirUp
 						// SKILL.md §8b: hand-overs are animated on both sides.
 						// Her give sheet + PP's baguette receive are the closest
 						// existing sheets (it IS a baguette end). PR#18: face PP.
 						poulain.flipped = (game.player.x + playerDstW/2) < float64(poulain.bounds.X+poulain.bounds.W/2)
 						poulain.playOneShotAnimThen(poulain.giveAnimOr("give_heel"), 1.5, func() {
 							game.player.playOneShot(game.player.resolveOneShot("get_baguette", true, "get_baguette"), 1.6, func() {
-								if item := game.items.createItem("baguette_heel"); item != nil {
-									game.inv.addItem(item)
-								}
+								game.player.movementLocked = false
 							})
 						})
 					}, nil
@@ -1810,13 +1842,18 @@ func (g *Game) setupParisCallbacks() {
 				henriWaiting := bakeryHenri != nil && bakeryHenri.altDialogFunc != nil
 				if !game.inv.hasItem("Cafe au Lait") && henriWaiting {
 					return bakeryWomanCoffeeRefillDialog, func() {
+						// 2026-07-23 (#18): grant at dialog end; anims are cosmetic.
+						if item := game.items.createItem("cafe_au_lait"); item != nil {
+							game.inv.addItem(item)
+						}
+						// 2026-07-25 (user): planted back-facing through the beat.
+						game.player.movementLocked = true
+						game.player.dir = dirUp
 						// §8b / #13: sequence the hand-over - she lifts the cup over
 						// the counter, THEN PP takes it (was give+receive in parallel).
 						poulain.playOneShotAnimThen(poulain.giveAnimOr("give_coffee"), 1.0, func() {
 							game.player.playReceive("cafe_au_lait", true, 1.0, func() {
-								if item := game.items.createItem("cafe_au_lait"); item != nil {
-									game.inv.addItem(item)
-								}
+								game.player.movementLocked = false
 							})
 						})
 					}, nil
@@ -1850,21 +1887,29 @@ func (g *Game) setupParisCallbacks() {
 						// (her sheet draws facing right; flip if PP is to her left).
 						poulain.flipped = (game.player.x + playerDstW/2) < float64(poulain.bounds.X+poulain.bounds.W/2)
 						game.inv.giveItemTo("Rolling Pin", "madame_poulain")
+						// 2026-07-23 (#18): BOTH items land in the bag right here at
+						// dialog end (like every other trade) - the sequenced
+						// hand-back one-shots below are purely cosmetic now.
+						if b := game.items.createItem("baguette"); b != nil {
+							game.inv.addItem(b)
+						}
+						if c := game.items.createItem("cafe_au_lait"); c != nil {
+							game.inv.addItem(c)
+						}
+						// 2026-07-25 (user): PP stays PLANTED in the back-facing
+						// counter pose for the whole hand-back chain — clicks
+						// can't walk him away until the last receive finishes.
+						game.player.movementLocked = true
+						game.player.dir = dirUp
 						// 2026-06-24 (#12/#13): sequence the two hand-backs like
 						// Henri's working jam trade instead of firing give + receive
 						// in parallel (which read as "broken"). Poulain hands the
 						// baguette → PP takes it → she hands the coffee → PP takes it.
-						// Items still land in the bag at the end of the chain.
 						poulain.playOneShotAnimThen(poulain.giveAnimOr("give_baguette"), 1.5, func() {
 							game.player.playOneShot(game.player.resolveOneShot("get_baguette", true, "get_baguette"), 1.6, func() {
-								if b := game.items.createItem("baguette"); b != nil {
-									game.inv.addItem(b)
-								}
 								poulain.playOneShotAnimThen(poulain.giveAnimOr("give_coffee"), 1.0, func() {
 									game.player.playReceive("cafe_au_lait", true, 1.0, func() {
-										if c := game.items.createItem("cafe_au_lait"); c != nil {
-											game.inv.addItem(c)
-										}
+										game.player.movementLocked = false
 									})
 								})
 							})
@@ -1978,7 +2023,7 @@ func (g *Game) setupParisCallbacks() {
 								})
 							})
 						})
-					}, &handOff{item: "Charcoal Pencil"}
+					}, &handOff{item: "Charcoal Pencil", npcAnim: "receive_pencil"} // user #18: her take beat (falls back until art lands)
 				}
 				// Holding the pencil before the quest is active - never silent.
 				if holdingPencil && !sketchDone {
@@ -2137,6 +2182,19 @@ func (g *Game) setupParisCallbacks() {
 			name:    "Charcoal Pencil",
 			visible: true,
 			hidden:  true,
+			// 2026-07-24 (user #6): the pot sits at Pierre's mid-distance —
+			// PP grabs it shrunk to the same 0.65 depth as the chats (and
+			// stays shrunk if he was already talking there). F3-tune the y.
+			// 2026-07-25 (user): x 735→800, closer to the pot (center 909);
+			// the mirrored grab now reaches RIGHT into it.
+			standXOverride: 800,
+			standYOverride: 485,
+			recedeDepth:    0.65,
+			// 2026-07-23 (#20): the default 80px gap grabbed thin air in the
+			// middle of the street. Stand tight against the pot, on its RIGHT
+			// (the grab sheet leans left), so the pluck happens AT the pot.
+			standRight: true,
+			standGapX:  15,
 			onPickup: func() {
 				// The pigeons guard the pot until Pierre repays his favor
 				// (user 2026-06-10): trying early plays a blocked beat and
@@ -2170,7 +2228,13 @@ func (g *Game) setupParisCallbacks() {
 				// 2026-07-15 (user #14): NO recede dance (the shrink/grow read as
 				// glitching) — a straight grab; PP faces the camera for the line
 				// so he doesn't talk with his back to us.
-				game.player.playOneShot("grab", 1.0, func() {
+				// 2026-07-24 (user #15): dedicated reach-into-the-pot pickup
+				// once §PP-GET-PENCIL-POT lands; generic grab until then.
+				pencilGrab := "grab"
+				if game.player.hasOneShot("grab_pencil_pot") {
+					pencilGrab = "grab_pencil_pot"
+				}
+				game.player.playOneShot(pencilGrab, 1.0, func() {
 					pencilTaken = true
 					if item := game.items.createItem("charcoal_pencil"); item != nil {
 						game.inv.addItem(item)
@@ -2178,9 +2242,13 @@ func (g *Game) setupParisCallbacks() {
 					game.player.dir = dirDown
 					game.player.facingLeft = false
 					// §8c: generic pickup line - Camille's own dialog already
-					// nudges where the pencil goes.
-					game.dialog.startDialog(genericPickupDialog(
-						"A charcoal pencil, rescued from the pigeons."))
+					// nudges where the pencil goes. 2026-07-23: talk-front
+					// while the line plays (same fix as the flower pickup).
+					game.player.state = stateTalking
+					game.dialog.startDialogWithCallback(genericPickupDialog(
+						"A charcoal pencil, rescued from the pigeons."), func() {
+						game.player.state = stateIdle
+					})
 				})
 			},
 		}
@@ -2247,6 +2315,34 @@ func (g *Game) Close() {
 	g.audio.close()
 }
 
+// parisRecedeMark (2026-07-24 user #5/#6): ONE shared mid-distance stand spot
+// between Pierre (easel ~x780+) and Margaux (~x617-695) on the paris_street
+// back line. Both chat overrides AND the pencil-pot pickup walk here and
+// shrink to 0.65; while the recede is held, talking to the other NPC (or
+// grabbing the pot) just turns PP in place — no re-walk, no size pop.
+const (
+	parisRecedeMarkX = 735.0
+	parisRecedeMarkY = 510.0
+)
+
+// restoreHigginsWorriedDialog (2026-07-24 user #4): once PP has seen strange
+// Marcus, office Higgins returns to the worried map hand-over dialog (the
+// see-Marcus-first gate is lifted). No-op after Paris unlocks — the regular
+// post-dialog swaps own his dialog from there.
+func (g *Game) restoreHigginsWorriedDialog() {
+	if g.parisUnlocked {
+		return
+	}
+	if office, ok := g.sceneMgr.scenes["camp_office"]; ok {
+		for _, n := range office.npcs {
+			if n.name == "Director Higgins" {
+				n.dialog = higginsWorriedDialog
+				break
+			}
+		}
+	}
+}
+
 // walkToFloorItem (2026-06-12 #14/#15, SKILL.md §8c): PP walks to a stand
 // point BESIDE a floor item instead of on top of it - feet aligned with the
 // item's base, to its LEFT by default (standRight flips sides for grabs whose
@@ -2256,21 +2352,51 @@ func (g *Game) Close() {
 func (g *Game) walkToFloorItem(fi *floorItem, action func()) {
 	itemCX := float64(fi.bounds.X) + float64(fi.bounds.W)/2
 	itemBase := float64(fi.bounds.Y) + float64(fi.bounds.H)
-	offset := float64(fi.bounds.W)/2 + 80
+	gap := fi.standGapX
+	if gap <= 0 {
+		gap = 80
+	}
+	offset := float64(fi.bounds.W)/2 + gap
 	standX := itemCX - offset
 	if fi.standRight {
 		standX = itemCX + offset
 	}
+	standY := itemBase - float64(playerDstH)/2
+	// 2026-07-24 (#6): explicit stand mark (the pencil pot shares Pierre's
+	// mid-distance spot instead of a beside-the-item mark).
+	if fi.standXOverride > 0 {
+		standX = fi.standXOverride
+	}
+	if fi.standYOverride > 0 {
+		standY = fi.standYOverride
+	}
 	plr := g.player
-	// walkToAndDo's y is PP's CENTER: itemBase minus half the player box
-	// plants his feet on the item's base line (scene minY/maxY still clamp).
-	plr.walkToAndDo(standX, itemBase-float64(playerDstH)/2, func() {
+	arrive := func() {
 		plr.dir = dirDown
 		plr.facingLeft = false
 		if action != nil {
 			action()
 		}
-	})
+	}
+	// 2026-07-24 (#6): depth items shrink PP at the mark before the pickup
+	// (and hold, like the Pierre/Margaux chats). Already-held recede (a chat
+	// just ended at this depth) skips straight to the action in place.
+	if fi.recedeDepth > 0 {
+		if plr.recedeHeld {
+			arrive()
+			return
+		}
+		plr.walkToAndDo(standX, standY, func() {
+			plr.playRecede(1.0, fi.recedeDepth, 50, func() {
+				plr.holdRecede()
+				arrive()
+			})
+		})
+		return
+	}
+	// walkToAndDo's y is PP's CENTER: itemBase minus half the player box
+	// plants his feet on the item's base line (scene minY/maxY still clamp).
+	plr.walkToAndDo(standX, standY, arrive)
 }
 
 func (g *Game) HandleClick(x, y int32) {
@@ -2362,6 +2488,12 @@ func (g *Game) HandleClick(x, y int32) {
 	if g.seqPlayer.IsPlaying() {
 		return
 	}
+	// 2026-07-25 (user): PP frozen through a counter give chain (Poulain's
+	// hand-backs) — swallow world clicks so he can't walk away or turn out
+	// of the back-facing pose mid-hand-over. Dialog advance is handled above.
+	if g.player != nil && g.player.movementLocked {
+		return
+	}
 	scene := g.sceneMgr.current()
 
 	// PP-click handling. Two cases:
@@ -2417,6 +2549,13 @@ func (g *Game) HandleClick(x, y int32) {
 						} else {
 							g.player.dir = dirRight
 						}
+						// 2026-07-23 (#14): the held-item drop hard-coded side
+						// facing, so Poulain's counter trades ignored ppFaceBack
+						// and PP talked side-on instead of showing his back.
+						if target.ppFaceBack {
+							g.player.dir = dirUp
+							g.player.facingLeft = false
+						}
 						// Same face-toward-PP flip used by startNPCDialog - the
 						// drag-onto-NPC path runs its own dialog start so it
 						// needs its own snapshot/restore. Otherwise dropping
@@ -2448,6 +2587,12 @@ func (g *Game) HandleClick(x, y int32) {
 								g.player.dir = dirLeft
 							} else {
 								g.player.dir = dirRight
+							}
+							// 2026-07-23 (#14): back-facing counter NPCs (Poulain)
+							// keep PP's back to the camera through the trade talk.
+							if target.ppFaceBack {
+								g.player.dir = dirUp
+								g.player.facingLeft = false
 							}
 							g.player.state = stateTalking
 							if len(target.talkGrid) > 0 {
@@ -2528,7 +2673,11 @@ func (g *Game) HandleClick(x, y int32) {
 		}
 		if hs.onInteract != nil {
 			hsLocal := hs
-			g.player.walkToAndDo(
+			// 2026-07-24 (user #11): lane-aware — the bakery exit hotspot
+			// walked a straight beeline ACROSS the tables; walkToAndDoViaLanes
+			// runs the same corridor detour the NPC approaches use and is a
+			// plain walkToAndDo everywhere else.
+			g.player.walkToAndDoViaLanes(
 				float64(hsLocal.bounds.X+hsLocal.bounds.W/2),
 				float64(hsLocal.bounds.Y+hsLocal.bounds.H/2),
 				func() {
@@ -2554,6 +2703,28 @@ func (g *Game) HandleClick(x, y int32) {
 		// reads as PP "flying to the sky". playRecede holds X, drifts up by
 		// dyUp and shrinks 1.0 -> endScale, which reads as "stepping through
 		// the door". See FIXME.md trailing "new PR" block.
+		// 2026-07-18 (user #37): leaving a kid room mirrors the bakery — PP walks
+		// to the door hotspot first, THEN the scene changes (no walking off-frame).
+		// 2026-07-24 (#2/#31): the derived door target was wrong for the
+		// right-wall rooms (bounds y≈100 → a target near the frame TOP) and the
+		// walk-band clamp made PP jam/oscillate. Each room JSON now carries an
+		// explicit walkX/walkY door anchor (PP CENTER coords; walkY 0 = keep
+		// PP's row for right-wall doors), and the unclamped walk may leave the
+		// band (allowOffscreen).
+		if strings.HasSuffix(g.sceneMgr.currentName, "_room") && !strings.HasSuffix(tgt, "_room") {
+			doorX := float64(hs.bounds.X + hs.bounds.W/2)
+			doorY := float64(hs.bounds.Y) + 60
+			if hs.walkX > 0 {
+				doorX = hs.walkX
+			}
+			if hs.walkY > 0 {
+				doorY = hs.walkY
+			} else if hs.walkX > 0 {
+				doorY = plr.y + playerDstH/2 // keep the current row
+			}
+			plr.walkToAndDoUnclamped(doorX, doorY, onArrival)
+			return
+		}
 		if hs.arrow == arrowUp && strings.HasSuffix(tgt, "_room") {
 			doorX := float64(hs.bounds.X + hs.bounds.W/2)
 			doorY := float64(hs.bounds.Y + hs.bounds.H/2)

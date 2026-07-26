@@ -226,7 +226,9 @@ func (sp *SequencePlayer) Draw(renderer *sdl.Renderer) {
 	// midpoint and lands at the target. arcHeight is the pixels above the
 	// straight-line midpoint the projectile reaches at t=0.5.
 	// Formula: arc(t) = 4*h*t*(1-t) → 0 at t=0/1, max=h at t=0.5.
-	const arcHeight = 200.0
+	// 2026-07-23 (#4): 200 → 70 — the map soared way above the office desk
+	// line; a flatter toss keeps it at throw height.
+	const arcHeight = 70.0
 	arcLift := arcHeight * 4.0 * t * (1.0 - t)
 	cy := step.FromY + int32(dy*t) - int32(arcLift)
 	dst := sdl.Rect{
@@ -259,6 +261,11 @@ func (sp *SequencePlayer) executeStep() {
 
 	switch step.Action {
 	case SeqDialog:
+		// 2026-07-23 (#4): sequence dialogs skip startNPCDialog, so the talk
+		// driver's stateTalking gate left PP AND the speaking NPC idle-mouthed
+		// (the post-map-throw chat). Setting it here animates both; the driver
+		// auto-restores idle when the dialog closes.
+		sp.game.player.state = stateTalking
 		sp.game.dialog.startDialog(step.Dialog)
 		seq.waiting = true
 		seq.timer = 0
@@ -302,7 +309,7 @@ func (sp *SequencePlayer) executeStep() {
 				// "walk_back" during an npc_move).
 				if frames, ok := n.oneShotAnims[step.Anim]; ok && len(frames) > 0 {
 					n.swapIdleForOneShot(step.Anim)
-					fmt.Printf("[SeqNPCAnim] swapped idle to %q (%d frames) on %q\n",
+ 					fmt.Printf("[SeqNPCAnim] swapped idle to %q (%d frames) on %q\n",
 						step.Anim, len(frames), step.NPC)
 				} else {
 					fmt.Printf("[SeqNPCAnim] anim %q not registered on %q (frames=%d) - falling back to idle\n",
@@ -531,27 +538,3 @@ func (sp *SequencePlayer) findNPC(sceneName, npcName string) *npc {
 }
 
 // --- Helper constructors for readable sequence building ---
-
-func dialogStep(entries ...dialogEntry) SeqStep {
-	return SeqStep{Action: SeqDialog, Dialog: entries}
-}
-
-func dialogStepSlice(entries []dialogEntry) SeqStep {
-	return SeqStep{Action: SeqDialog, Dialog: entries}
-}
-
-func waitStep(seconds float64) SeqStep {
-	return SeqStep{Action: SeqWait, Duration: seconds}
-}
-
-func transitionStep(scene string) SeqStep {
-	return SeqStep{Action: SeqTransition, Scene: scene}
-}
-
-func callbackStep(fn func()) SeqStep {
-	return SeqStep{Action: SeqCallback, Callback: fn}
-}
-
-func setVarStep(scope, name string, value int) SeqStep {
-	return SeqStep{Action: SeqSetVar, VarScope: scope, VarName: name, VarValue: value}
-}

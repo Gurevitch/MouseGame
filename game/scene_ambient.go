@@ -85,9 +85,35 @@ func decorateParisStreetSprites(s *scene, renderer *sdl.Renderer) {
 // decorateParisLouvre adds the museum mood: dust motes swirling in the
 // sunbeams from the glass pyramid, the main central light column, and two
 // narrower side-window beams.
-func decorateParisLouvre(s *scene) {
+func decorateParisLouvre(s *scene, renderer *sdl.Renderer) {
 	if s == nil {
 		return
+	}
+	// 2026-07-24 (user #14): landscape props — the gallery was empty except
+	// for light/dust. Three sway figures under paris/props/ (the Jerusalem
+	// pattern); each is a silent no-op until its art lands (§LOUVRE-*).
+	louvreProps := "assets/images/locations/paris/props/"
+	for _, pr := range []struct {
+		file     string
+		x, y     float64
+		scale    float64
+		frameSec float64
+	}{
+		// 2026-07-24 (pre-PR check): BG-furniture sizes — the first wiring
+		// drew them PP-sized or bigger; scales cut to ~110-150px.
+		// 2026-07-25 (user F3 marks): kid → the couch middle, couple → the
+		// kid's old spot, officer → left-of-centre post.
+		// visitors admiring a frame (the kid's old mid-ground spot)
+		{"louvre_visitor_pair.png", 690, 630, 0.24, 0.55},
+		// uniformed guard on post
+		{"louvre_guard.png", 409, 591, 0.25, 0.6},
+		// student sketching, middle of the couch
+		{"louvre_sketch_student.png", 860, 621, 0.23, 0.5},
+	} {
+		if p := firstExisting(louvreProps + pr.file); p != "" {
+			s.ambientSprites = append(s.ambientSprites,
+				newAmbientSwayGlobal(renderer, p, 6, pr.x, pr.y, pr.scale, pr.frameSec))
+		}
 	}
 	for i := 0; i < 15; i++ {
 		s.particles = append(s.particles, particle{

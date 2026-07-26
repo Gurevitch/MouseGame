@@ -6,7 +6,8 @@
   "spawnY": 435,
   "minY": 392,
   "maxY": 485,
-  "characterScale": 0.85,
+  "_comment_scale": "2026-07-24 #26: 0.85 -> 0.88 - after the #27 worshipper downscale the whole cast read a touch small.",
+  "characterScale": 0.88,
   "npcs": ["jer_praying_man", "jer_wall_kid"],
   "hotspots": [
     {"bounds": {"x": 0,   "y": 250, "w": 110, "h": 420}, "targetScene": "jerusalem_entrance", "name": "Back to the Plaza",    "arrow": "left"},
