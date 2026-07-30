@@ -136,6 +136,11 @@ type npc struct {
 
 	dialogDone  bool
 	onDialogEnd func()
+	// onDialogStart fires once when a dialog with this NPC begins (after PP
+	// reaches the talk mark, before the first line shows). Added 2026-07-29
+	// for Takeshi's kamishibai doors: the open-doors one-shot plays over the
+	// first line. Must be cheap and side-effect-safe to re-run per dialog.
+	onDialogStart func()
 	// altDialogFunc returns (entries, endCallback, handOff). The optional
 	// handOff marks the dialog as a physical item hand-over: every dispatcher
 	// plays PP's give one-shot + the NPC's receive one-shot BEFORE the text
@@ -926,9 +931,8 @@ func newRoomJake(renderer *sdl.Renderer) *npc {
 	// anchorRefH fix is REVERTED — it assumed idle and one-shots share a
 	// grid, but Jake's idle is 8×2 (512px cells) while the coin sheet is 8×1
 	// (1024px cells), so the shared reference blew his one-shot scale up.
-	// The default per-anim fill keeps every state at bounds.H; the residual
-	// coin-beat size wobble is the sheet's baked CHECKERBOARD background
-	// (frames keep uneven remnants) — proper fix queued: §JAKE-GET-COIN-BLUE.
+	// The default per-anim fill keeps every state at bounds.H. The blue-key
+	// §JAKE-GET-COIN-BLUE re-roll removes the old checkerboard wobble.
 	return n
 }
 

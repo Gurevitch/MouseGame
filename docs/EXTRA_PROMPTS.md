@@ -170,38 +170,6 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
 
 ## Open Prompts
 
-### §PP-TALK-SIDE-STUNG-v4 (user 2026-07-25: one more take — the landed v3 is close but the 16 poses read samey and the brows stay neutral)
-
-`assets/images/player/PP talk side scared.png` (OVERWRITE — wiring keys off
-this filename; 8×2, 1536×1024, flat `#B4D7EE`). Attach `PP idle side.png`
-as the design + scale lock (same size/anchor, facing RIGHT). Acting
-reference in one line: a classic cartoon character being unfairly chewed
-out by his boss — the silent "...who, ME?" take. He half-understands
-what's happening and is a little hurt that a friend is using this tone.
-EVERY frame must be clearly different; follow this exact 16-frame
-storyboard. The EYEBROWS carry the emotion — inner ends tilted UP
-(hurt-surprise) — and the eyes stay round and FULLY OPEN in all 16 frames:
-
-Row 1 (getting scolded): 1 upright, ears drop, brows shoot up, small "o"
-mouth · 2 leans back an inch, one paw rising · 3 paw lands flat on his own
-chest, head pulled back ("...me?") · 4 frozen mid-scold, mouth a flat
-line · 5 mouth opens to object, one finger half-raised · 6 the objection
-dies, the finger wilts, brows even higher · 7 both palms turn up at waist
-level ("what did I do?") · 8 a quick glance at the camera, worried mouth.
-
-Row 2 (trying to answer): 9 turns back to the speaker, small pat-the-air
-("okay, okay…") · 10 talking, brows still hurt-tilted · 11 talking, paw
-drifting back to his chest · 12 head tilts, one brow higher than the
-other ("wait — what?") · 13 talking with both paws slightly out ·
-14 swallows, ears at half-mast · 15 one last quiet word, shoulders
-dipped · 16 settles into a deflated but upright stand, tiny mouth.
-
-BANS (each ruined an earlier take): NO half-lidded/sleepy eyes, NO
-head-scratching, NO full shrugs, NO pointing, NO trembling clasped paws,
-NO cowering hunch — the spine stays tall even when the shoulders dip.
-Plain pink paws, ivory belly `#F2EFE5`, zero pure white, ≥15px gaps, no
-separators, no extras.
-
 ### §PP-SLEEP-WAKE-BLUE (user 2026-07-25: wake-up still shows white spots — enclosed pockets no key can fix on the white-bg originals)
 
 Two sheets, both 8×1, 1536×1024, flat `#B4D7EE`, PP + his BLUE blanket at
@@ -250,8 +218,37 @@ idle stance. ≥15px gaps, zero pure white, no separators, no extras. Wired
   blue, waist-cut bust, NO counter in the sprite, action at chest height):
   idle: 1 wipes the counter · 2 stirs with the ladle · 3 tastes · 4 proud
   nod · 5 slides a bowl forward · 6 rests paws down. talk: 6 talk poses
-  with ladle gestures.
+  with ladle gestures. **Extended 2026-07-27 (story v2):** add a third
+  sheet `npc_hiro_counter_give.png` (6×1, same waist-cut framing) — Hiro
+  ladles broth into a bowl, tops it, and slides the steaming bowl forward
+  two-handed toward screen-left (the first-bowl-for-PP beat).
 ## Done log
+
+- **2026-07-28 — Japan story-v2 art batch:** completed
+  §BAGEL-SELLER-REDESIGN, §JP-STREET-NOREN-CLEAR, §PP-SIT-TO-STAND,
+  §PP-SAKURA-SELFIE, both §JP-LINE prompts, §KENJI-BRUSH-MENU,
+  §JP-TAKESHI, §JP-ITEMS-V2, §PP-RAMEN-PAIR, and
+  §OBACHAN-RECEIVE-RAMEN. All 15 animation sheets are exact
+  1536×1024 strips on normalized `#B4D7EE`; the three item icons are
+  exact 512×512. Every sheet GAP-DETECTS. Legitimate detached-object
+  audit hits are the carts, tongs, food, menus, camera, stage/cards,
+  briefcase, bundle, and bowls. The Tokyo background now has an open
+  counter window; the ceremony stand-up and sakura selfie are wired.
+  The bagel seller now uses separate idle/talk sheets with the old
+  combined sheet retained only as a fallback.
+
+- **2026-07-28 — §PP-TALK-SIDE-STUNG-v5:** generated the stronger
+  hurt-surprise take, normalized its background to exact flat `#B4D7EE`,
+  and replaced `PP talk side scared.png`. The 1536×1024 8×2 sheet
+  GAP-DETECTS, has no pure-white or frame-leak hits, and passed visual
+  inspection. The audit's detached-piece hit is PP's intentionally
+  disconnected eyebrow/whisker ink; mathematical border crossings are
+  harmless because the loader uses the detected full-height gaps.
+
+- **2026-07-26 — §JAKE-GET-COIN-BLUE:** replaced the broken checkerboard
+  sheet with an exact 1536×1024 flat-`#B4D7EE` 8×1 strip. It GAP-DETECTS,
+  has no ghost, pure-white, or frame-leak hits, and the loader no longer
+  needs the interim checkerboard tolerance.
 
 - **2026-07-25 — five-sheet generated batch:** §BAGEL-RECEIVE-COFFEE-v2,
   all three §PP-KIMONO-SPLIT phases, and §PP-TALK-SIDE-STUNG (v3 — close

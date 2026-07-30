@@ -62,6 +62,7 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"jp_gary":       newTouristTokyo,
 	"jp_hiro":       newRamenSeller,
 	"jp_kenji":      newKenjiStudent,
+	"jp_takeshi":    newTakeshi,
 	"jp_obachan":    newObachan,
 	"jp_kiku":       newDresser,
 	"jp_tea_master": newTeaMaster,

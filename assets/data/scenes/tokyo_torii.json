@@ -6,7 +6,7 @@
   "spawnY": 470,
   "minY": 400,
   "maxY": 600,
-  "npcs": ["jp_gary"],
+  "npcs": ["jp_gary", "jp_kenji"],
   "hotspots": [
     {"bounds": {"x": 1300, "y": 180, "w": 100, "h": 460}, "targetScene": "tokyo_street", "name": "Down to the ramen street", "arrow": "right"}
   ],

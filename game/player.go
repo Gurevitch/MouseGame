@@ -414,6 +414,16 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// flower floor item at the lake is picked up (and re-used when handing
 	// it over to Lily).
 	p.oneShotAnims = map[string][]spriteFrame{}
+	// 2026-07-27 (user: "speak and drink tea when needed"): the landed
+	// PP_sit_talk.png is really TWO beats on one sheet — frames 1-2 kneeling
+	// talk, frames 3-8 a full lift→sip→lower drink arc. Slice it: the talk
+	// loop keeps only the mouth beats (drinking mid-sentence read as random),
+	// and the drink arc becomes the `sit_drink` one-shot the tea ceremony
+	// plays at the shared-sip moment.
+	if len(p.seatedTalk) == 8 {
+		p.oneShotAnims["sit_drink"] = p.seatedTalk[2:8]
+		p.seatedTalk = p.seatedTalk[0:2]
+	}
 	// The spin→sit TRANSFORM: PP standing → fast spin into the tea clothes →
 	// drops into a kneel (ends seated). No-op until the art lands.
 	if path := firstExisting(
@@ -423,6 +433,19 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	); path != "" {
 		if f := gridFramesConnected(renderer, path, 8, 1); len(f) > 0 {
 			p.oneShotAnims["tea_sit"] = f
+		}
+	}
+	// 2026-07-28: the reverse ceremony beat is a separate 6-frame strip so PP
+	// visibly rises from seiza before the seated mode is cleared.
+	if path := firstExisting("assets/images/player/PP_sit_to_stand.png"); path != "" {
+		if f := gridFrames(renderer, path, 6, 1); len(f) > 0 {
+			p.oneShotAnims["tea_stand"] = f
+		}
+	}
+	// Sakura payoff: camera out of the invisible pocket, selfie, camera back in.
+	if path := firstExisting("assets/images/player/pp_sakura_selfie.png"); path != "" {
+		if f := gridFrames(renderer, path, 8, 1); len(f) > 0 {
+			p.oneShotAnims["sakura_selfie"] = f
 		}
 	}
 	// User 2026-05-31 (#15): receive-map sheet is 4×2, not 8×2 - cutting 8×2
@@ -1960,6 +1983,12 @@ func (p *player) startNPCDialog() {
 	// turning to face PP.
 	if !n.fixedFacing {
 		n.flipped = p.x+playerDstW/2 < float64(n.bounds.X+n.bounds.W/2)
+	}
+
+	// 2026-07-29: one-time per-dialog hook (Takeshi opens his kamishibai
+	// stage doors over the first line). Fires for rule, alt and plain paths.
+	if n.onDialogStart != nil {
+		n.onDialogStart()
 	}
 
 	if len(n.talkGrid) > 0 {

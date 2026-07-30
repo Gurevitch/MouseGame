@@ -150,7 +150,11 @@ consistent.
   (gate-keeper) **225**, Spice Seller **215**, Coffee Seller **215**, Bagel Seller
   **215**, Praying Man (robed) **225**, Wall Kid **190**. See the dedicated
   Jerusalem identity block below — the Wall Kid must NOT look like Marcus.
-- Tokyo: Hiro **210**, Kenji **215**, Oba-chan **200**, Gary **215**.
+- Tokyo: Hiro **210**, Kenji **215**, Oba-chan **200**, Gary **215**,
+  Takeshi **195** (elderly KAMISHIBAI street storyteller behind his little
+  wooden card stage — culture-flavor NPC, no quest; rotating picture-tales:
+  the Whispering Cherry legend, the beckoning cat, the red gates; bald
+  crown + grey wisps, mustard cardigan; see EXTRA_PROMPTS §JP-TAKESHI).
 - Rio: Tio Jorge **220**, Marisa **215**, Padre Antonio **225**,
   Bruno **215**.
 - Buenos Aires: Don Rafa **220**, Lucia **210**, Paco **215**,
@@ -173,6 +177,12 @@ locals, NOT recolored camp kids. **No pure white** (cream `#E5DDC8` for shirts/r
   over a cream shirt, small fez/cap, full mustache.
 - **Bagel Seller** (plaza) — cheerful ka'ak (sesame bagel) cart vendor; apron, flat cap,
   round friendly face, a tray/ring of long sesame bagels.
+  **Design LOCKED 2026-07-27** (playtester: he'd been generated as a Shimon
+  clone): stocky ~40s, thick BLACK mustache with **no beard**, maroon flat
+  cap, olive-green rolled-sleeve shirt, cream apron `#E5DDC8` with sesame
+  dust, brown trousers, metal cart. **MUST NOT look like Shimon:** no
+  kippah, no grey beard, no plain cream button shirt, no slim build.
+  Re-roll prompts at EXTRA_PROMPTS §BAGEL-SELLER-REDESIGN (all 3 sheets).
 - **Praying Man** (Wall) — elderly devout man; long grey beard, black hat, a **tallit**
   (cream-and-stripe prayer shawl) over a dark coat. Idle = facing the Wall, swaying.
 - **Wall Kid** (×2, same sheet) — a bar-mitzvah-age boy, ~**190px**. **MUST be visibly

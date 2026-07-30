@@ -100,6 +100,16 @@ func loadAmbientStripGlobalKeyed(renderer *sdl.Renderer, path string, frames int
 	return framesFromGrid(grid, frames, 1, path)
 }
 
+// loadAmbientStripGlobalKeyedTol is loadAmbientStripGlobalKeyed with a
+// caller-chosen tolerance (see newAmbientSwayGlobalTol).
+func loadAmbientStripGlobalKeyedTol(renderer *sdl.Renderer, path string, frames int, tol uint8) []npcFrame {
+	if _, err := os.Stat(path); err != nil {
+		return nil
+	}
+	grid := engine.SpriteGridFromPNGCleanTol(renderer, path, frames, 1, 0, tol)
+	return framesFromGrid(grid, frames, 1, path)
+}
+
 // containsPoint hit-tests the sprite's last drawn rect (clickable ambients).
 func (a *ambientSprite) containsPoint(x, y int32) bool {
 	if a.onClick == nil || a.lastRect.W <= 0 {
@@ -205,6 +215,21 @@ func newAmbientSway(renderer *sdl.Renderer, sheet string, cols int, x, y, scale,
 func newAmbientSwayGlobal(renderer *sdl.Renderer, sheet string, cols int, x, y, scale, frameSec float64) *ambientSprite {
 	return &ambientSprite{
 		frames:   loadAmbientStripGlobalKeyed(renderer, sheet, cols),
+		kind:     ambientSway,
+		x:        x,
+		y:        y,
+		scale:    scale,
+		frameSec: frameSec,
+	}
+}
+
+// newAmbientSwayGlobalTol is newAmbientSwayGlobal with a caller-chosen key
+// tolerance. Tol 24 shaves the anti-aliased seams the tol-8 global key leaves
+// where the flat blue meets the prop's outline (the teahouse kettle's "blue
+// spot", 2026-07-26).
+func newAmbientSwayGlobalTol(renderer *sdl.Renderer, sheet string, cols int, x, y, scale, frameSec float64, tol uint8) *ambientSprite {
+	return &ambientSprite{
+		frames:   loadAmbientStripGlobalKeyedTol(renderer, sheet, cols, tol),
 		kind:     ambientSway,
 		x:        x,
 		y:        y,

@@ -157,6 +157,34 @@ Flower store TEA MASTER: bring the Matcha Bowl -> kneel + whisk + sip one-shot
 Items: Matcha, Tea Bowl, Matcha Bowl (all consumed by the end). Art queued at
 EXTRA_PROMPTS §JP-MATCHA (tea master idle/talk, PP sit-and-drink, 3 item icons).
 
+## Item placement pass (2026-07-26 PR #9/#12)
+
+The chain's LOGIC was fully wired but two pickups sat on empty background —
+invisible, unfindable — which is why the story stalled in playtest. Every
+item now has a VISIBLE anchor painted in the BG:
+
+| Item | Where it physically lives now | Given by / used on |
+|------|------------------------------|--------------------|
+| Well-Water | the little ROOFED WELL at the base of the temple stairs, ramen street right side (hotspot 1015,420) | drawn at the well → Kenji |
+| Voice Charm | Kenji brushes it (his give_charm one-shot) | Kenji → carried to the grove |
+| Fire-Striker | Oba-chan's shelf (dialog hand-over, kite dropped it in her eaves) | Oba-chan → Hiro |
+| Offering Bowl | Hiro ladles it at the lit sacred hearth | Hiro → the old tree |
+| Matcha | tin on the flower-STALL TABLE, right of Kiku (hotspot 1135,430) | shelf → whisked at the well |
+| Tea Bowl | chawan row on the same stall table (hotspot 1220,430) | shelf → whisked at the well |
+| Matcha Bowl | whisked AT the street well (matcha + bowl + cool water) | → Tea Master (teahouse) |
+| Pressed Sakura | picked off the blooming old tree | → Lily (camp lake) |
+
+Also fixed here: Oba-chan's striker gate read the DEAD `jp_ramen_open` flag
+(no writer since the stall rework), so chatting with her after the Hiro
+trade handed a second, never-consumable striker. She now offers it only
+while PP hasn't earned the Offering Bowl (`!has(Offering Bowl) &&
+!jp_grove_revealed`); `jp_ramen_open` is retired from game_state.go.
+
+Presentation joins from the same PR: both stair exits (street→flower store,
+temple→teahouse) walk PP to the painted stair base and RECEDE (market-exit
+pattern); the teahouse exit is an UP arrow on the garden shoji door; Gary's
+book-flip plays once; the tea master loads equal-cell (jitter fix).
+
 ## Resolved (2026-06-24)
 
 1. Kiku the geisha = **teaches the tea ceremony** (and does the kimono gag);

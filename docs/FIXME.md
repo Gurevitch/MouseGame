@@ -14,6 +14,122 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### 2026-07-29 — post-drop feedback round (kamishibai doors, seat set, Hiro bust, selfie v2)
+
+User reviewed the landed 07-28 batch. WIRED NOW (all graceful until art):
+(1) new npc.onDialogStart hook (player.startNPCDialog) — Takeshi OPENS
+his kamishibai stage doors over the first line and CLOSES them at
+dialog end (one-shots open_doors/close_doors), and each tale now swaps
+in its OWN talk sheet (cherry/cat/gates cards) when §JP-TAKESHI-DOORS
+lands; (2) bagel seller's redesigned give sheet reached AWAY from PP —
+mirrored via oneShotFlip["give"] (Avi pattern); (3) the grove pick
+prefers the dedicated pick_sakura one-shot (reaches UP) over the reused
+camp flower-grab; (4) sit_drink prefers the dedicated PP_sit_drink.png
+once the §PP-TEA-SEAT-SET re-roll lands (the old-talk slice stays as
+the fallback; the four seat sheets must land TOGETHER); (5) counter-Hiro
+gained a "working" alt-idle slot (npc_hiro_counter_work, altIdleGrid
+after 6s idle — Marcus-punctuation mechanism). Prompts queued:
+§JP-TAKESHI-DOORS ×6 (closed-doors idle overwrite, open/close
+one-shots, 3 per-tale talk sheets), §PP-TEA-SEAT-SET ×4 (spin-to-sit /
+sit-idle / talk-only / NEW drink, matched to the landed
+PP_sit_to_stand kimono), §PP-SAKURA-SELFIE-v2 (v1 REJECTED — the phone
+materializes/vanishes, pocket beats now mandatory), §PP-PICK-SAKURA,
+and §JP-HIRO-COUNTER rewritten (waist-up Poulain style ×4 sheets incl.
+work, with the BG's angled-window perspective: screen-LEFT side nearer).
+NOTE: the Pressed Sakura ITEM icon already exists
+(assets/images/items/pressed_sakura.png — blossom taped to paper).
+
+- [ ] `[P1]` Run /sprite-check when the new batch lands; playtest the
+      door open/close sequencing, the per-tale cards, the mirrored bagel
+      give, the sip beat, and counter-Hiro's work punctuation.
+
+### 2026-07-27 — Japan story-v2 prep + bagel-seller redesign
+
+Playtester (the user's wife) caught the bagel seller as a Shimon clone —
+full 3-sheet redesign queued (§BAGEL-SELLER-REDESIGN) + design locked in
+CHARACTERS.md (black mustache no beard, maroon cap, olive shirt, apron;
+hard bans on every Shimon feature). Japan story v2 designed with the user
+(flow proposal in chat; wiring waits for the OK): Hiro opens the stall via
+two grocery lines — Kenji brushes the stall's hand-signed MENU (the
+"special autograph"; §KENJI-BRUSH-MENU queued, joke beat "a brushed menu
+is not so common... but better than nothing") + Oba-chan's fresh greens;
+first ramen bowl → Oba-chan → matcha; tea-master escort opens the grove;
+PP selfie before the pick (§PP-SAKURA-SELFIE). Wired NOW: the 3-man
+waiting line at the stall's left (tourist 340 + local 405 live off the
+landed checkerboard wait sheets, keyed loader; §JP-LINE-SQUAT Asian-squat
+man slots in at 470 when it lands); Kenji MOVED TO THE TORII SCENE
+(X 260 — a calligrapher's pitch at the shrine gates; his water-trade
+wiring moved to the torii block, the well errand now ping-pongs
+torii↔street like the Paris bakery↔street rhythm); NEW culture-flavor
+NPC "Takeshi" (jp_takeshi, street X 885, Kenji's old area) — v2 concept:
+the KAMISHIBAI paper-theater storyteller behind his card stage ("just
+tells us to eat loud" was flat), rotating picture-tales that each touch
+something in the chapter: the Whispering Cherry legend (primes the grove
+quest as folklore), the beckoning cat (points at the roof-cat prop), the
+red gates (torii bow + the slurp joke as the closer). Placeholder art
+until §JP-TAKESHI lands. Prompts queued: §BAGEL-SELLER-REDESIGN ×3,
+§JP-STREET-NOREN-CLEAR (BG counter window for §JP-HIRO-COUNTER, which
+gained a third give-bowl sheet), §PP-SIT-TO-STAND (the ceremony set's
+only missing sheet — spin-in/sit/sit-talk/spin-out all landed),
+§PP-SAKURA-SELFIE, §JP-LINE-SQUAT, §KENJI-BRUSH-MENU, §JP-TAKESHI ×2,
+§JP-ITEMS-V2 (menu/greens/ramen icons), §PP-RAMEN-PAIR ×2,
+§OBACHAN-RECEIVE-RAMEN.
+
+User adjustments (same day): the whole waiting line lives under
+japan/props/ — squat prompt repointed there and the two standing slots
+now prefer NEW props (§JP-LINE-STAND-PAIR: lunch-break salaryman +
+obaa-san with furoshiki) with the old npc/ checkerboard wait sheets as
+fallbacks; §PP-SAKURA-SELFIE rewritten around the three mandatory beats
+(camera OUT of pocket → selfie+flash → camera BACK IN, ends
+empty-pawed); seated SPEAK+DRINK solved with ZERO new art — the landed
+PP_sit_talk.png is sliced at load (frames 1-2 kneeling talk loop,
+frames 3-8 → the new `sit_drink` one-shot) and the tea ceremony now
+plays the visible shared sip before PP rises (graceful if the slice is
+absent).
+
+- [ ] `[P1]` PLAYTEST (after art lands): queue-line placement/scale
+      (x340/405/470, y520, 0.34), the sit_drink sip beat after the
+      sipping dialog, Kenji at the gates, counter-Hiro in the opened
+      window, new bagel seller vs Shimon side by side.
+- [ ] Story v2 wiring (pending user OK on the flow): Hiro general-first
+      dialog + two-line grocery gate, Kenji menu beat, ramen→Oba-chan→
+      matcha, Gary photo-favor, tea-master escort + grove gate move,
+      selfie beat, retire fire-striker/offering-bowl items.
+
+### 2026-07-26 — PR (Japan 12-item sweep)
+
+All code-side; no new art queued. #2 torii pilgrims prop REMOVED (Gary's
+arrival scene reads cleaner; sheet stays on disk, unwired); #3 Gary's
+book-flip gag latched to the FIRST chat only (garyFlipped guard — later
+chats find the book already right-way-up); #4 incense lantern ("statue")
+foot → (334,473); #5 kite foot → (657,217); #6 tea master JITTER fixed —
+her cells hold the figure + a separate standing whisk + motion marks
+(jitter_audit ghost pieces ×4), so the gap cutter sliced a different
+boundary every frame; now loads via the EQUAL-cell loader (the
+office-Higgins blink fix) + nudged left (X 640→615); teahouse exit
+changed to an UP arrow on the garden shoji door (~193,351); #7 kettle
+blue spot → new newAmbientSwayGlobalTol, tol 24; #8 street cat foot →
+(866,309); #9 item pickups got VISIBLE anchors — the "temple well"
+hotspot moved from the empty left edge onto the painted roofed well at
+the stair base (1015,420; Kenji shifted 940→880 so his box clears it),
+matcha tin + tea-bowl shelves moved from the bare upper-left wall onto
+the flower-stall table (1135/1220, y430); #10 street→flower-store exit
+now WALKS to the stair base (foot 1184,459, unclamped) then recedes into
+the transition (market-exit pattern); #11 temple→teahouse up-exit
+likewise walks to the temple stairs (foot 838,384) before its recede.
+BONUS: Oba-chan's striker gate keyed off DEAD jp_ramen_open (never set
+since the stall rework) — a chat after the Hiro trade handed a SECOND
+striker that could never leave the bag; now gated on Offering Bowl /
+jp_grove_revealed and the var is retired.
+
+- [ ] `[P1]` PLAYTEST: Gary flips once then stays right-way-up; tea
+      master stands still through idle+talk; both stair recedes (street
+      foot 1184,459 / temple foot 838,384); the well + shelf pickups
+      land on their painted anchors; kettle blue spot gone; cat/kite/
+      lantern reads at the new feet; Oba-chan no longer re-hands the
+      striker after the Hiro trade; full chain Gary→Hiro→Kenji→well→
+      Oba-chan→Hiro→tea→grove→sakura→Danny call.
+
 ### 2026-07-24 — PR (43-item sweep, plan abundant-gathering-cosmos)
 
 Root causes worth remembering: (a) walkToAndDoUnclamped only unclamped the

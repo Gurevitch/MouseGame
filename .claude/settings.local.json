@@ -90,7 +90,13 @@
       "Bash(awk '/func \\\\\\(p \\\\*player\\\\\\) footY/,/^}/' game/player.go)",
       "Bash(awk '/func \\\\\\(p \\\\*player\\\\\\) minY/,/^}/' game/player.go)",
       "Bash(awk '/func \\\\\\(p \\\\*player\\\\\\) maxY/,/^}/' game/player.go)",
-      "Bash(GOTMPDIR=.gotmp go test ./...)"
+      "Bash(GOTMPDIR=.gotmp go test ./...)",
+      "PowerShell($env:GOTMPDIR=\".gotmp\"; go build ./...)",
+      "PowerShell($env:GOTMPDIR=\".gotmp\"; go test -v ./... 2>&1 | Select-String -Pattern \"^\\(=== RUN|--- \\(PASS|FAIL|SKIP\\)|PASS|FAIL|ok  |---\\)\" | Select-Object -Last 60)",
+      "PowerShell($env:GOTMPDIR=\".gotmp\"; go test ./... 2>&1 | Select-String -Pattern \"FAIL|ok  \")",
+      "PowerShell($env:GOTMPDIR=\".gotmp\"; go test -v ./... 2>&1 | Select-String -Pattern \"^\\(--- FAIL|FAIL|ok  \\)\")",
+      "PowerShell($env:GOTMPDIR=\".gotmp\"; go build ./...; if \\($?\\) { go test ./game 2>&1 | Select-Object -Last 3 })",
+      "PowerShell(\"---\")"
     ]
   }
 }

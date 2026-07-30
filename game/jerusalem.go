@@ -49,7 +49,9 @@ const (
 	// Per-item Shimon gives (#35/#37) - upgrade the two-stage hand-off when they land.
 	jerArtShimonGivePen  = jerNPCWall + "npc_shimon_give_pen.png"
 	jerArtShimonGiveCoin = jerNPCWall + "npc_shimon_give_coin.png"
-	jerArtBagel          = jerNPCWall + "npc_bagel_seller.png"
+	jerArtBagel          = jerNPCWall + "npc_bagel_seller.png" // legacy combined fallback
+	jerArtBagelIdle      = jerNPCWall + "npc_bagel_seller_idle.png"
+	jerArtBagelTalk      = jerNPCWall + "npc_bagel_seller_talk.png"
 	jerArtBagelGive      = jerNPCWall + "npc_bagel_seller_give.png"
 	jerArtPrayIdle       = jerNPCWall + "npc_praying_man_idle.png"
 	jerArtPrayTalk       = jerNPCWall + "npc_praying_man_talk.png"
@@ -370,9 +372,17 @@ func newCoffeeSeller(renderer *sdl.Renderer, x int32) *npc {
 }
 
 func newBagelSeller(renderer *sdl.Renderer, x int32) *npc {
+	idle := loadNPCGridRowPath(renderer, jerArtBagel, jerFbkGuard6x2, 6, 2, 0)
+	if _, err := os.Stat(jerArtBagelIdle); err == nil {
+		idle = loadNPCGrid(renderer, jerArtBagelIdle, 6, 1)
+	}
+	talk := loadNPCGridRowPath(renderer, jerArtBagel, jerFbkGuard6x2, 6, 2, 1)
+	if _, err := os.Stat(jerArtBagelTalk); err == nil {
+		talk = loadNPCGrid(renderer, jerArtBagelTalk, 6, 1)
+	}
 	n := &npc{
-		idleGrid:       loadNPCGridRowPath(renderer, jerArtBagel, jerFbkGuard6x2, 6, 2, 0),
-		talkGrid:       loadNPCGridRowPath(renderer, jerArtBagel, jerFbkGuard6x2, 6, 2, 1),
+		idleGrid:       idle,
+		talkGrid:       talk,
 		bounds:         sdl.Rect{X: x, Y: 430, W: 120, H: 230},
 		name:           "Bagel Seller",
 		dialog:         bagelNeedCoffeeDialog,
@@ -380,6 +390,9 @@ func newBagelSeller(renderer *sdl.Renderer, x int32) *npc {
 		talkFrameSpeed: 0.18,
 	}
 	registerJerGiveGrid(renderer, n, jerArtBagelGive, 6, 1)
+	// 2026-07-29 (user): the redesigned give sheet reaches AWAY from PP —
+	// mirror it (same fix as Avi's receive_bagel).
+	n.oneShotFlip = map[string]bool{"give": true}
 	// 2026-07-24 (user #24): he visibly TAKES the finjan on the trade once
 	// §BAGEL-RECEIVE-COFFEE lands (optional; the handOff skips the take
 	// until then).

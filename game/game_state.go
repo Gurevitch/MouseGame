@@ -45,8 +45,10 @@ const (
 	VarLilyLakeMet     = "lily_lake_met"     // PP has talked to Lily at the lake
 	VarHigginsRudeDone = "higgins_rude_done" // the rude-Higgins + camera aside played → Tokyo unlocks
 	VarJpGroveRevealed = "jp_grove_revealed" // Oba-chan said "follow me" → the hidden sakura grove exit opens
-	VarJpRamenOpen     = "jp_ramen_open"     // PP gave Hiro his fire-striker → stall opens, the waiting line sits
-	VarJpTeaLearned    = "jp_tea_learned"    // Kiku the geisha taught PP the tea ceremony → the matcha/bowl shelves unlock
+	// jp_ramen_open RETIRED 2026-07-26: the stall-overlay/queue rework (2026-07-18
+	// #43/#44) removed every writer, and its last reader (Oba-chan's striker gate)
+	// now keys off the trade outcome (Offering Bowl / jp_grove_revealed) instead.
+	VarJpTeaLearned = "jp_tea_learned" // Kiku the geisha taught PP the tea ceremony → the matcha/bowl shelves unlock
 	VarJpTeaDone       = "jp_tea_done"       // PP shared the matcha ceremony with the tea master → grove entry allowed
 
 	// "chapter" scope: resets when a chapter ends (via ResetChapter)

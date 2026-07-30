@@ -5,7 +5,7 @@
   "spawnY": 470,
   "minY": 400,
   "maxY": 620,
-  "npcs": ["jp_hiro", "jp_kenji"],
+  "npcs": ["jp_hiro", "jp_takeshi"],
   "hotspots": [
     {"bounds": {"x": 0, "y": 180, "w": 100, "h": 460}, "targetScene": "tokyo_torii", "name": "Back to the gates", "arrow": "left"},
     {"_comment": "2026-07-24 #41: flower-store exit changed right -> UP at ~(1190,396) per user (the temple->teahouse up-exit pattern).",

@@ -126,7 +126,7 @@ var hiroOpenDialog = []dialogEntry{
 var kenjiStudentDialog = []dialogEntry{
 	{speaker: "Kenji", text: "Please - do not nudge the table... oh, the panther. You have the look of a man hunting a kite's hiding place."},
 	{speaker: "Pink Panther", text: "Hiro's fire-striker. You saw where the kite dropped it?"},
-	{speaker: "Kenji", text: "I did. But my ink has dried to dust and I cannot think with a dry brush. Bring me water from the temple well - just there - and I will tell you."},
+	{speaker: "Kenji", text: "I did. But my ink has dried to dust and I cannot think with a dry brush. Bring me water from the temple well - down in the ramen street, at the foot of the stairs - and I will tell you."},
 }
 
 var kenjiWaterDialog = []dialogEntry{
@@ -137,6 +137,33 @@ var kenjiWaterDialog = []dialogEntry{
 
 var kenjiStudentPostDialog = []dialogEntry{
 	{speaker: "Kenji", text: "Ink is just a voice that takes its time. Ask Oba-chan for the striker, panther-san."},
+}
+
+// --- Takeshi (street): the KAMISHIBAI storyteller — culture flavor, no
+// quest (user 2026-07-27, v2: "just tell us to eat loud" was flat). The
+// classic street paper-theater man with a little wooden card stage. Each
+// chat is one picture-tale; the tales teach real Japan AND touch things
+// the player can see or will do (the cherry legend primes the grove quest,
+// the cat tale points at the roof-cat prop, the gates tale covers the
+// torii bow). onDialogEnd rotates to the next tale.
+var takeshiCherryTaleDialog = []dialogEntry{
+	{speaker: "Takeshi", text: "Ah, a customer for my paper theater! Sit, sit. Today's tale... (flips a card) ...The Whispering Cherry."},
+	{speaker: "Takeshi", text: "Deep in a hidden grove stands a tree older than the temple bells. Most years it will not bloom at all. Gold cannot buy its flowers. Princes have tried."},
+	{speaker: "Takeshi", text: "(flips the card) But bring it a true gift - something made with care, given with a whole heart - and the old tree wakes... and WHISPERS back."},
+	{speaker: "Pink Panther", text: "A tree that answers. I know a little girl who'd love that story."},
+	{speaker: "Takeshi", text: "Heh. It is no story, pink one. Ask any old man in this street."},
+}
+
+var takeshiCatTaleDialog = []dialogEntry{
+	{speaker: "Takeshi", text: "(flips a card) The Beckoning Cat! Long ago, a poor shopkeeper shared his last rice ball with a stray cat..."},
+	{speaker: "Takeshi", text: "The cat sat at his door and raised one paw - and travelers followed it in, curious. The shop never stood empty again. We call it maneki-neko, the beckoning cat."},
+	{speaker: "Takeshi", text: "Look up - the stray on Hiro's roof. Left paw tucked, waiting. When that stall opens again, watch her raise it. Luck knows where soup is coming."},
+}
+
+var takeshiGatesTaleDialog = []dialogEntry{
+	{speaker: "Takeshi", text: "(flips a card) The Red Gates. A torii is a doorway with no wall - because the wall it passes through cannot be seen."},
+	{speaker: "Takeshi", text: "On this side, the everyday world. Through the gate - the sacred. So we bow once as we pass. Small manners for big neighbours."},
+	{speaker: "Takeshi", text: "And since you ask about manners: at the noodle stand, SLURP LOUDLY. Quiet noodles insult the cook. That card I painted from experience."},
 }
 
 // --- Oba-chan (flower store): initial gate, gives the striker, then leads ---
@@ -291,7 +318,12 @@ func newKenjiStudent(renderer *sdl.Renderer) *npc {
 		[]string{jpNPCDir + "npc_kenji_talk.png"})
 	n := &npc{
 		idleGrid: idle, talkGrid: talk,
-		bounds:         sdl.Rect{X: 940, Y: 380, W: 130, H: 240},
+		// 2026-07-27 (user): moved into the TORII scene — a calligraphy
+		// student's natural pitch is at the shrine gates, selling brushwork
+		// to arriving visitors. Gives Gary's scene a second beat, and his
+		// well errand now ping-pongs between two scenes (torii <-> street),
+		// matching the Paris bakery<->street rhythm.
+		bounds:         sdl.Rect{X: 260, Y: 380, W: 130, H: 240},
 		name:           "Kenji",
 		dialog:         kenjiStudentDialog,
 		talkFrameSpeed: 0.12,
@@ -305,19 +337,73 @@ func newKenjiStudent(renderer *sdl.Renderer) *npc {
 	return n
 }
 
+func newTakeshi(renderer *sdl.Renderer) *npc {
+	// §JP-TAKESHI (queued): the elderly KAMISHIBAI storyteller behind his
+	// little wooden card stage. Placeholder vendor row until the sheets land.
+	idle, talk := loadJapanNPC(renderer,
+		[]string{jpNPCDir + "npc_takeshi_idle.png"},
+		[]string{jpNPCDir + "npc_takeshi_talk.png"})
+	n := &npc{
+		idleGrid: idle, talkGrid: talk,
+		// Mid-right of the street (Kenji's old area, now free): queue at
+		// 340-470, stall window 510-760, Takeshi 885-1010 — his box ends
+		// exactly where the well hotspot begins (1010).
+		bounds:         sdl.Rect{X: 885, Y: 385, W: 125, H: 235},
+		name:           "Takeshi",
+		dialog:         takeshiCherryTaleDialog,
+		talkFrameSpeed: 0.14,
+	}
+	// §JP-TAKESHI-DOORS (user 2026-07-29): the kamishibai stage gets working
+	// DOORS — idle re-rolls with the doors closed, and these one-shots open
+	// them when a tale starts / shut them when it ends. Graceful no-ops
+	// until the sheets land.
+	for key, file := range map[string]string{
+		"open_doors":  "npc_takeshi_open_doors.png",
+		"close_doors": "npc_takeshi_close_doors.png",
+	} {
+		if p := firstExisting(jpNPCDir + file); p != "" {
+			if f := loadNPCGridConnected(renderer, p, 8, 1); len(f) > 0 {
+				if n.oneShotAnims == nil {
+					n.oneShotAnims = map[string][]npcFrame{}
+				}
+				n.oneShotAnims[key] = f
+			}
+		}
+	}
+	return n
+}
+
 func newTeaMaster(renderer *sdl.Renderer) *npc {
 	// The tea master is a woman. npc_tea_master_talk.png is the canonical
 	// (female, flat-cartoon) sheet. Prefer a matching female idle when present;
 	// fall back to the talk sheet for the idle until the regen lands (§TEA-MASTER-IDLE).
-	idle, talk := loadJapanNPC(renderer,
-		[]string{jpNPCDir + "npc_tea_master_idle.png", jpNPCDir + "npc_tea_master_idle_f.png", jpNPCDir + "npc_tea_master_talk.png"},
-		[]string{jpNPCDir + "npc_tea_master_talk.png"})
+	// 2026-07-26 PR #6 (jitter): her cells hold the kneeling figure PLUS a
+	// separate standing whisk and floating motion marks (jitter_audit: GHOST
+	// PIECES in 4 idle cells), so the content-gap cutter sliced a different
+	// boundary every frame and the anchors wobbled. The EQUAL-cell loader
+	// (the office-Higgins "blink" fix) keeps the consistent in-cell placement,
+	// and the anchor deadband then holds her still.
+	loadEqual := func(cands ...string) []npcFrame {
+		if p := firstExisting(cands...); p != "" {
+			return loadNPCGridEqualConnectedTol(renderer, p, 8, 1, npcSpriteInset, 8)
+		}
+		return nil
+	}
+	idle := loadEqual(jpNPCDir+"npc_tea_master_idle.png", jpNPCDir+"npc_tea_master_idle_f.png", jpNPCDir+"npc_tea_master_talk.png")
+	if len(idle) == 0 {
+		idle = loadNPCGridRow(renderer, jpFbkVendor8x2, 8, 2, 0)
+	}
+	talk := loadEqual(jpNPCDir + "npc_tea_master_talk.png")
+	if len(talk) == 0 {
+		talk = idle
+	}
 	return &npc{
 		idleGrid: idle, talkGrid: talk,
 		// 2026-07-24 (user #43): interim size bump (H 248 → 280, foot kept
 		// at 620) — her placeholder sheets draw the figure tiny in-cell.
 		// The real fix stays the queued §TEA-MASTER-BLUE-v2 re-roll.
-		bounds:         sdl.Rect{X: 640, Y: 340, W: 140, H: 280},
+		// 2026-07-26 PR #6: nudged a little left (X 640 → 615) per user.
+		bounds:         sdl.Rect{X: 615, Y: 340, W: 140, H: 280},
 		name:           "Tea Master",
 		dialog:         teaMasterDialog,
 		talkFrameSpeed: 0.12,
@@ -359,27 +445,30 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 	// 2026-07-24 (user D7): landscape props — Kyoto had NO living ambience
 	// (only petals/leaves/glows). Each is a silent no-op until its art lands
 	// under japan/props/ (§JP-* prompts in EXTRA_PROMPTS).
-	addJapanProp := func(sceneName, file string, x, y, scale, frameSec float64) {
+	addJapanProp := func(sceneName, file string, x, y, scale, frameSec float64, tol uint8) {
 		s, ok := sm.scenes[sceneName]
 		if !ok || s == nil {
 			return
 		}
 		if p := firstExisting(jpPropDir + file); p != "" {
 			s.ambientSprites = append(s.ambientSprites,
-				newAmbientSwayGlobal(renderer, p, 6, x, y, scale, frameSec))
+				newAmbientSwayGlobalTol(renderer, p, 6, x, y, scale, frameSec, tol))
 		}
 	}
-	// two pilgrims from behind at the gates
-	addJapanProp("tokyo_torii", "torii_pilgrims.png", 420, 560, 0.4, 0.55)
-	// a cat lounging on the stall roof
-	addJapanProp("tokyo_street", "street_cat.png", 610, 355, 0.3, 0.7)
-	// the thieving KITE (tobi) perched on the flower-store eaves — the bird
-	// Hiro and Kenji blame for the fire-striker (§JP-KITE-SHINY)
-	addJapanProp("tokyo_temple", "kite_shiny.png", 905, 300, 0.32, 0.6)
+	// 2026-07-26 PR #2: the torii pilgrims are REMOVED — Gary's arrival scene
+	// reads cleaner without figures behind him (the petal particles stay).
+	// 2026-07-26 PR #8: cat repositioned onto the street awning per user.
+	addJapanProp("tokyo_street", "street_cat.png", 866, 309, 0.3, 0.7, 8)
+	// the thieving KITE (tobi) perched up on the temple roof — the bird
+	// Hiro and Kenji blame for the fire-striker (§JP-KITE-SHINY).
+	// 2026-07-26 PR #5: foot moved to (657,217) per user.
+	addJapanProp("tokyo_temple", "kite_shiny.png", 657, 217, 0.32, 0.6, 8)
 	// stone lantern with incense wisps by the flower store
-	addJapanProp("tokyo_temple", "incense_lantern.png", 180, 630, 0.42, 0.5)
-	// steaming kettle beside the tea master
-	addJapanProp("tokyo_teahouse", "teahouse_kettle.png", 850, 610, 0.34, 0.45)
+	// 2026-07-26 PR #4: foot moved to (334,473) per user.
+	addJapanProp("tokyo_temple", "incense_lantern.png", 334, 473, 0.42, 0.5, 8)
+	// steaming kettle beside the tea master. 2026-07-26 PR #7: tol 24 — the
+	// tol-8 global key left a blue AA seam pocket on the kettle.
+	addJapanProp("tokyo_teahouse", "teahouse_kettle.png", 850, 610, 0.34, 0.45, 24)
 
 	if torii, ok := sm.scenes["tokyo_torii"]; ok {
 		for i := 0; i < 16; i++ {
@@ -388,6 +477,30 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 				vx: (rand.Float64() - 0.4) * 18, vy: 14 + rand.Float64()*10,
 				alpha: uint8(rand.Intn(30) + 50), size: int32(rand.Intn(3) + 2), r: 255, g: 180, b: 200,
 			})
+		}
+	}
+
+	// 2026-07-27 (user): a waiting LINE at the LEFT side of the ramen stall —
+	// three line PROPS (they live under japan/props/, like every other
+	// landscape prop): two standing + one in the classic deep Asian squat.
+	// Until the §JP-LINE-* props land, the two standing slots fall back to
+	// the old npc/ checkerboard wait sheets (edge-connected keyed loader
+	// strips either background). Staggered frame speeds so the three don't
+	// sway in sync.
+	if street, ok := sm.scenes["tokyo_street"]; ok {
+		for _, q := range []struct {
+			cands    []string
+			x        float64
+			frameSec float64
+		}{
+			{[]string{jpPropDir + "npc_ramen_wait_salaryman.png", jpNPCDir + "npc_ramen_tourist_wait.png"}, 340, 0.60},
+			{[]string{jpPropDir + "npc_ramen_wait_grandma.png", jpNPCDir + "npc_ramen_local_wait.png"}, 405, 0.50},
+			{[]string{jpPropDir + "npc_ramen_local_squat.png"}, 470, 0.55},
+		} {
+			if p := firstExisting(q.cands...); p != "" {
+				street.ambientSprites = append(street.ambientSprites,
+					newAmbientSway(renderer, p, 8, q.x, 520, 0.34, q.frameSec))
+			}
 		}
 	}
 
@@ -449,6 +562,29 @@ func (g *Game) setupTokyoCallbacks() {
 		// UPSIDE-DOWN; when PP talks to him he flips it and KEEPS it right-way-up
 		// (swap idle+talk to the "book correct" sheets after the flip one-shot).
 		// All graceful - no swap until the flipped sheets land (§JP-TOURIST).
+		// Kenji lives at the gates now (2026-07-27) — his well-water trade
+		// wiring moved here from the street block.
+		for _, n := range torii.npcs {
+			if n.name != "Kenji" {
+				continue
+			}
+			kenji := n
+			kenji.onDialogEnd = func() {} // stays on the water ask until traded
+			// Bring Kenji well-water → he points to Oba-chan's eaves + gives the Voice Charm.
+			kenji.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+				if !game.inv.hasItem("Well-Water") || game.inv.hasItem("Voice Charm") {
+					return nil, nil, nil
+				}
+				return kenjiWaterDialog, func() {
+					game.inv.removeItem("Well-Water")
+					give("voice_charm")
+					kenji.dialog = kenjiStudentPostDialog
+					kenji.altDialogFunc = nil
+				}, &handOff{item: "Well-Water", returnItem: "Voice Charm"}
+			}
+			break
+		}
+
 		for _, n := range torii.npcs {
 			if n.name != "Gary" {
 				continue
@@ -465,13 +601,20 @@ func (g *Game) setupTokyoCallbacks() {
 			if p := firstExisting(jpNPCDir+"npc_gary_idle_normal_book_talk.png", jpNPCDir+"npc_gary_talk_flipped.png", jpNPCDir+"npc_gary_talk.png"); p != "" {
 				garyFlipTalk = loadNPCGridConnected(game.renderer, p, 8, 1)
 			}
+			// 2026-07-26 PR #3: the flip gag plays ONCE, on the first chat.
+			// Every later dialog finds the book already right-way-up (the
+			// swapped normal-book idle/talk sheets stay in place).
+			garyFlipped := false
 			gary.onDialogEnd = func() {
-				gary.playOneShotAnim("flip", 1.0)
-				if len(garyFlipIdle) > 0 {
-					gary.idleGrid = garyFlipIdle
-				}
-				if len(garyFlipTalk) > 0 {
-					gary.talkGrid = garyFlipTalk
+				if !garyFlipped {
+					garyFlipped = true
+					gary.playOneShotAnim("flip", 1.0)
+					if len(garyFlipIdle) > 0 {
+						gary.idleGrid = garyFlipIdle
+					}
+					if len(garyFlipTalk) > 0 {
+						gary.talkGrid = garyFlipTalk
+					}
 				}
 				// 2026-07-18 (user #45/#46): Gary = the customs oracle. His
 				// repeat dialog advances with the chapter: dress code once the
@@ -513,14 +656,28 @@ func (g *Game) setupTokyoCallbacks() {
 					n.bounds = sdl.Rect{X: 600, Y: 353, W: 95, H: 75}
 					n.approachXOverride = 645
 					n.approachYOverride = 385
+					// 2026-07-29 (user): "random of him working" — after a few
+					// idle seconds the work strip (chopping, ladling, wiping)
+					// plays as the alt-idle punctuation (Marcus-freakout
+					// mechanism). Graceful until §JP-HIRO-COUNTER's work
+					// sheet lands.
+					if p := firstExisting(jpNPCDir + "npc_hiro_counter_work.png"); p != "" {
+						if work := loadNPCGridConnected(g.renderer, p, 6, 1); len(work) > 0 {
+							n.altIdleGrid = work
+							n.altIdleAfterSec = 6.0
+						}
+					}
 				}
 			}
 			break
 		}
 
 		// The temple well (Kenji's water errand) - a hotspot in the street.
+		// 2026-07-26 PR #9: moved from the empty left edge onto the little
+		// ROOFED WELL painted at the base of the temple stairs (right side),
+		// so the pickup has a visible anchor the player can find.
 		street.hotspots = append(street.hotspots, hotspot{
-			bounds: sdl.Rect{X: 120, Y: 430, W: 130, H: 180}, name: "The temple well",
+			bounds: sdl.Rect{X: 1015, Y: 420, W: 85, H: 75}, name: "The temple well",
 			onInteract: func() bool {
 				// Matcha ceremony: with the powder + a bowl in hand, whisk a proper
 				// Matcha Bowl at the well's cool water.
@@ -549,6 +706,25 @@ func (g *Game) setupTokyoCallbacks() {
 			},
 		})
 
+		// 2026-07-26 PR #10: the flower-store up-exit climbs the painted
+		// STAIRS — PP first walks to the stair base (foot ≈ 1184,459; above
+		// the walk band, so unclamped), then recedes (shrink + drift up) into
+		// the transition, like the Jerusalem market→plaza exit.
+		for i := range street.hotspots {
+			if street.hotspots[i].targetScene != "tokyo_temple" {
+				continue
+			}
+			street.hotspots[i].onInteract = func() bool {
+				game.player.walkToAndDoUnclamped(1184, 324, func() {
+					game.player.playRecede(0.9, 0.45, 70, func() {
+						game.sceneMgr.transitionTo("tokyo_temple", game.player)
+					})
+				})
+				return true
+			}
+			break
+		}
+
 		for _, n := range street.npcs {
 			switch n.name {
 			case "Hiro":
@@ -574,20 +750,48 @@ func (g *Game) setupTokyoCallbacks() {
 						hiro.altDialogFunc = nil
 					}, &handOff{item: "Fire-Striker", returnItem: "Offering Bowl"}
 				}
-			case "Kenji":
-				kenji := n
-				kenji.onDialogEnd = func() {} // stays on the water ask until traded
-				// Bring Kenji well-water → he points to Oba-chan's eaves + gives the Voice Charm.
-				kenji.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
-					if !game.inv.hasItem("Well-Water") || game.inv.hasItem("Voice Charm") {
-						return nil, nil, nil
+			case "Takeshi":
+				// Culture flavor only (user 2026-07-27): the kamishibai man
+				// rotates his picture-tales — cherry legend → beckoning cat →
+				// red gates → repeat.
+				// 2026-07-29 (user): the stage DOORS open when a tale begins
+				// and close when it ends, and each tale shows ITS OWN card —
+				// per-tale talk sheets swap in when they land (§JP-TAKESHI-
+				// DOORS); until then the landed single talk sheet plays.
+				takeshi := n
+				loadTaleTalk := func(file string) []npcFrame {
+					if p := firstExisting(jpNPCDir + file); p != "" {
+						return loadNPCGridConnected(game.renderer, p, 8, 1)
 					}
-					return kenjiWaterDialog, func() {
-						game.inv.removeItem("Well-Water")
-						give("voice_charm")
-						kenji.dialog = kenjiStudentPostDialog
-						kenji.altDialogFunc = nil
-					}, &handOff{item: "Well-Water", returnItem: "Voice Charm"}
+					return nil
+				}
+				baseTalk := takeshi.talkGrid
+				type kamishibaiTale struct {
+					dialog []dialogEntry
+					talk   []npcFrame
+				}
+				tales := []kamishibaiTale{
+					{takeshiCherryTaleDialog, loadTaleTalk("npc_takeshi_talk_cherry.png")},
+					{takeshiCatTaleDialog, loadTaleTalk("npc_takeshi_talk_cat.png")},
+					{takeshiGatesTaleDialog, loadTaleTalk("npc_takeshi_talk_gates.png")},
+				}
+				if len(tales[0].talk) > 0 {
+					takeshi.talkGrid = tales[0].talk
+				}
+				taleIdx := 0
+				takeshi.onDialogStart = func() {
+					takeshi.playOneShotAnim("open_doors", 1.0)
+				}
+				takeshi.onDialogEnd = func() {
+					takeshi.playOneShotAnim("close_doors", 1.0)
+					taleIdx++
+					next := tales[taleIdx%len(tales)]
+					takeshi.dialog = next.dialog
+					if len(next.talk) > 0 {
+						takeshi.talkGrid = next.talk
+					} else {
+						takeshi.talkGrid = baseTalk
+					}
 				}
 			}
 		}
@@ -608,8 +812,14 @@ func (g *Game) setupTokyoCallbacks() {
 							oba.dialog = obachanPostDialog
 						}, nil
 					}
+					// 2026-07-26 PR: the old !jp_ramen_open guard was DEAD (the
+					// flag is never set since the stall-open rework), so a chat
+					// after the Hiro trade handed a SECOND striker that could
+					// never leave the bag. Gate on the trade's outcome instead:
+					// she only has the striker while PP hasn't earned the bowl.
 					if game.inv.hasItem("Voice Charm") && !game.inv.hasItem("Fire-Striker") &&
-						!game.vars.GetBool(ScopeGame, VarJpRamenOpen) {
+						!game.inv.hasItem("Offering Bowl") &&
+						!game.vars.GetBool(ScopeGame, VarJpGroveRevealed) {
 						return obachanStrikerDialog, func() {
 							give("fire_striker")
 						}, &handOff{returnItem: "Fire-Striker"}
@@ -641,8 +851,11 @@ func (g *Game) setupTokyoCallbacks() {
 		}
 		// Tea-ceremony shelves in the flower store: a matcha tin + a shelf of
 		// chawan (you're handed a random one).
+		// 2026-07-26 PR #9: both moved from the bare upper-left wall onto the
+		// STALL TABLE with the painted pots and bowls (right of Kiku, left of
+		// the grove exit), so the pickups sit on something the player can see.
 		grove.hotspots = append(grove.hotspots, hotspot{
-			bounds: sdl.Rect{X: 150, Y: 250, W: 120, H: 150}, name: "A tin of matcha",
+			bounds: sdl.Rect{X: 1135, Y: 430, W: 80, H: 85}, name: "A tin of matcha",
 			onInteract: func() bool {
 				if !game.vars.GetBool(ScopeGame, VarJpTeaLearned) {
 					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "Pretty green powder... but I wouldn't know what to do with it. Maybe the kimono lady can teach me."}})
@@ -659,7 +872,7 @@ func (g *Game) setupTokyoCallbacks() {
 			},
 		})
 		grove.hotspots = append(grove.hotspots, hotspot{
-			bounds: sdl.Rect{X: 290, Y: 250, W: 120, H: 150}, name: "A shelf of tea bowls",
+			bounds: sdl.Rect{X: 1220, Y: 430, W: 75, H: 85}, name: "A shelf of tea bowls",
 			onInteract: func() bool {
 				if !game.vars.GetBool(ScopeGame, VarJpTeaLearned) {
 					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "Lovely bowls. I shouldn't just grab one - I should learn the proper way first. The kimono lady, maybe."}})
@@ -699,13 +912,18 @@ func (g *Game) setupTokyoCallbacks() {
 		})
 		// G9: the path UP to the temple tea-house should recede (shrink + drift
 		// up) instead of marching PP off the top of the screen.
+		// 2026-07-26 PR #11: PP first walks to the temple STAIRS' base
+		// (foot ≈ 838,384; above the walk band, so unclamped), THEN recedes —
+		// same beat as the street→flower-store stairs.
 		for i := range grove.hotspots {
 			if grove.hotspots[i].targetScene != "tokyo_teahouse" {
 				continue
 			}
 			grove.hotspots[i].onInteract = func() bool {
-				game.player.playRecede(1.0, 0.5, 80, func() {
-					game.sceneMgr.transitionTo("tokyo_teahouse", game.player)
+				game.player.walkToAndDoUnclamped(838, 249, func() {
+					game.player.playRecede(1.0, 0.5, 80, func() {
+						game.sceneMgr.transitionTo("tokyo_teahouse", game.player)
+					})
 				})
 				return true
 			}
@@ -738,10 +956,18 @@ func (g *Game) setupTokyoCallbacks() {
 					game.player.playOneShot("tea_sit", 2.2, func() {
 						game.player.seated = true
 						game.dialog.startDialogWithCallback(teaMasterSippingDialog, func() {
-							game.player.seated = false
-							game.vars.SetBool(ScopeGame, VarJpTeaDone, true)
-							tea.dialog = teaMasterPostDialog
-							tea.altDialogFunc = nil
+							// 2026-07-27 (user): the shared sip is VISIBLE now —
+							// the sit_drink one-shot (sliced from PP_sit_talk's
+							// drink arc) plays before PP rises. Graceful: a
+							// missing slice falls straight through to standing.
+							game.player.playOneShot("sit_drink", 2.0, func() {
+								game.player.playOneShot("tea_stand", 1.8, func() {
+									game.player.seated = false
+									game.vars.SetBool(ScopeGame, VarJpTeaDone, true)
+									tea.dialog = teaMasterPostDialog
+									tea.altDialogFunc = nil
+								})
+							})
 						})
 					})
 				}, &handOff{item: "Matcha Bowl"}
@@ -772,12 +998,21 @@ func (g *Game) setupTokyoCallbacks() {
 					// flower-grab one-shot); the petal lands in the bag + Danny calls.
 					game.inv.removeItem("Offering Bowl")
 					game.inv.removeItem("Voice Charm")
-					game.player.playOneShot("grab_flower", 0.9, func() {
+					// 2026-07-29 (user): a DEDICATED pick — PP reaches up to
+					// the branch (§PP-PICK-SAKURA) — replaces the reused camp
+					// flower grab once its sheet lands.
+					pick := "grab_flower"
+					if _, ok := game.player.oneShotAnims["pick_sakura"]; ok {
+						pick = "pick_sakura"
+					}
+					game.player.playOneShot(pick, 0.9, func() {
 						give("pressed_sakura")
-						game.dialog.startDialog([]dialogEntry{
-							{speaker: "Pink Panther", text: "A real sakura blossom. Light as a breath. Lily will hold this and come back to herself."},
+						game.player.playOneShot("sakura_selfie", 2.4, func() {
+							game.dialog.startDialog([]dialogEntry{
+								{speaker: "Pink Panther", text: "A real sakura blossom. Light as a breath. Lily will hold this and come back to herself."},
+							})
+							game.dialog.queueDialog(dannyPhoneCallDialog)
 						})
-						game.dialog.queueDialog(dannyPhoneCallDialog)
 					})
 				})
 				return true
