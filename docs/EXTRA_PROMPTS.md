@@ -170,59 +170,28 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
 
 ## Open Prompts
 
-### §PP-SLEEP-WAKE-BLUE (user 2026-07-25: wake-up still shows white spots — enclosed pockets no key can fix on the white-bg originals)
-
-Two sheets, both 8×1, 1536×1024, flat `#B4D7EE`, PP + his BLUE blanket at
-the same size/anchor as today's sheets (attach `pp_waking.png` as the
-design lock — same blanket, same beats). The old sheets have PURE-WHITE
-muzzle/eye whites AND enclosed white pockets, so neither keying nor
-punching can save them — this re-roll fixes both (muzzle ivory `#F2EFE5`,
-eye sclera pale-grey `#C4C4C4`, zero pure white; the flat blue bg is
-globally keyed so the arm-loop pockets disappear).
-
-- `assets/images/player/pp_sleeping.png` (OVERWRITE): 8-frame breathing
-  loop — PP curled under the blue blanket by the campfire, chest rising
-  and falling gently, one ear twitch, tail tip curl. Loopable.
-- `assets/images/player/pp_waking.png` (OVERWRITE): 1 asleep under the
-  blanket · 2-3 sits up rubbing his eyes with both paws · 4 blinks over
-  the blanket edge · 5 pushes the blanket off · 6 rises to his feet,
-  still droopy · 7 big overhead stretch · 8 standing, awake. Ends in his
-  normal standing pose.
-
-### §MARGAUX-RECEIVE-HEEL (user 2026-07-25)
-
-`assets/images/locations/paris/npc/outside/npc_pigeon_lady_receive_heel.png`
-(NEW, 6×1, 1536×1024, flat `#B4D7EE`). Attach `npc_pigeon_lady_idle.png` as
-the design lock (same size/anchor). Madame Margaux TAKES the day-old
-baguette heel from PP (he stands to her RIGHT): 1 turns right, curious ·
-2 reaches out · 3 takes the heel two-handed (crust tan, never white) ·
-4 inspects it approvingly · 5 tucks it into her apron/bag · 6 back to her
-idle stance. ≥15px gaps, zero pure white, no separators, no extras. Wired
-(`receive_heel` on the heel hand-off) — auto-upgrades on landing.
-
-**Carried over (still open from earlier batches):**
-
-- **§WALL-PRAYER-BG** — `jerusalem/props/praying_man.png` (+ `_man2`,
-  moved from npc/wall/ 2026-07-24):
-  the lone Wall worshippers ship a baked limestone background; re-export
-  figures-only (flat `#B4D7EE`), shawl cream `#E5DDC8`, keep the 4-frame
-  from-behind sway. Low priority — they currently read OK parked at the
-  Wall's foot.
-
-- **§TEA-MASTER-BLUE-v2** — `npc_tea_master_idle.png` + `_talk.png` (6×1,
-  blue, figures fill ≥85% of the cell height — she renders tiny today):
-  idle: 1 kneels at the low table · 2 lifts the whisk · 3 whisks the bowl ·
-  4 sets whisk down · 5 turns the bowl a half-turn · 6 bows her head.
-  talk: same framing, 6 gentle talk poses with the bowl resting.
-- **§JP-HIRO-COUNTER** — `npc_hiro_counter_idle.png` + `_talk.png` (6×1,
-  blue, waist-cut bust, NO counter in the sprite, action at chest height):
-  idle: 1 wipes the counter · 2 stirs with the ladle · 3 tastes · 4 proud
-  nod · 5 slides a bowl forward · 6 rests paws down. talk: 6 talk poses
-  with ladle gestures. **Extended 2026-07-27 (story v2):** add a third
-  sheet `npc_hiro_counter_give.png` (6×1, same waist-cut framing) — Hiro
-  ladles broth into a bowl, tops it, and slides the steaming bowl forward
-  two-handed toward screen-left (the first-bowl-for-PP beat).
 ## Done log
+
+- **2026-07-31 — final prompt sweep (5 prompt groups / 8 sheets):**
+  §PP-TEA-SPIN-PAIR, §TAKESHI-TALK-CHERRY-v2,
+  §TAKESHI-TALK-GATES-v2, §JP-HIRO-COUNTER-IDLE-v2,
+  §PP-SLEEP-WAKE-BLUE and §MARGAUX-RECEIVE-HEEL landed. All sheets are
+  normalized to flat `#B4D7EE`, GAP-DETECTED at their runtime grids, and
+  clear the pure-white scan. The sleep/wake and Margaux receive sheets were
+  added to both audit manifests.
+
+- **2026-07-31 — Japan/tea art batch landed (7 prompts cleared):**
+  §JP-TAKESHI-DOORS (idle + open/close doors + all three tale cards),
+  §PP-TEA-SEAT-SET (spin-to-sit, sit idle/talk, the new sit-drink),
+  §TEA-MASTER-BLUE-v2, §JP-HIRO-COUNTER (idle/talk/work/give),
+  §PP-SAKURA-SELFIE-v2, §PP-PICK-SAKURA and §WALL-PRAYER-BG are all on
+  disk and wired (Takeshi's doors fire from onDialogStart/onDialogEnd with
+  the per-tale talk swap; counter-Hiro's four sheets load in
+  newRamenSeller). Three follow-ups from the playtest are re-queued above:
+  the spin pair must actually change his clothes, Takeshi's cherry + gates
+  talk sheets need the doors framing, and Hiro's counter idle must stop
+  offering the bowl.
+
 
 - **2026-07-28 — Japan story-v2 art batch:** completed
   §BAGEL-SELLER-REDESIGN, §JP-STREET-NOREN-CLEAR, §PP-SIT-TO-STAND,

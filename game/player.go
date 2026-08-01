@@ -390,23 +390,14 @@ func newPlayer(renderer *sdl.Renderer) *player {
 			*ns.dst = gridFrames(renderer, path, 8, 1)
 		}
 	}
-	// User 2026-05-12: swapped from "PP grab flower.png" (square 128×128
-	// cells) to the canonical "PP grab.png" (portrait 172×384 cells). The
-	// square cells made the grab anim render shorter than idle inside the
-	// 245×340 bounds - full size now matches idle. PP grab.png shows the
-	// same crouch-and-rise cycle with a flower in the last frames.
-	p.grabFrames = gridFrames(renderer, "assets/images/player/PP grab.png", 8, 2)
-
-	// 2026-07-18 (user #1): PP celebrate.png + PP sneak examine.png were
-	// deleted from disk — react/showInv/examine fall back to the grab frames
-	// (their states barely appear in play) instead of warning every startup.
-	p.reactFrames = p.grabFrames
-	if len(p.grabFrames) >= 2 {
-		p.showInvFrames = p.grabFrames[0:2]
-	}
-	p.examineFrames = p.grabFrames
-	// 2026-07-18 (user): PP sneak use.png removed — same fallback as examine.
-	p.useItemFrames = p.grabFrames
+	// 2026-07-31 (user): "PP grab.png" is RETIRED and its loader with it —
+	// every beat that used to fall back to it has dedicated art now
+	// (grab_flower, grab_rolling_pin, grab_basket, grab_pencil_pot,
+	// write_note, put_note, and jump_back for the biker flinch), and nothing
+	// plays the generic "grab" one-shot or enters the grabbing/using/
+	// examining/show-inventory states. grabFrames + react/examine/useItem/
+	// showInv therefore stay empty; the `len(p.grabFrames) > 0` guards below
+	// and the action-state draw paths are inert no-ops as a result.
 
 	// One-shot named animations for sequence playback. receive_map drives
 	// the give-map handoff so PP visibly takes the map from Higgins instead
@@ -414,15 +405,27 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// flower floor item at the lake is picked up (and re-used when handing
 	// it over to Lily).
 	p.oneShotAnims = map[string][]spriteFrame{}
-	// 2026-07-27 (user: "speak and drink tea when needed"): the landed
-	// PP_sit_talk.png is really TWO beats on one sheet — frames 1-2 kneeling
-	// talk, frames 3-8 a full lift→sip→lower drink arc. Slice it: the talk
-	// loop keeps only the mouth beats (drinking mid-sentence read as random),
-	// and the drink arc becomes the `sit_drink` one-shot the tea ceremony
-	// plays at the shared-sip moment.
-	if len(p.seatedTalk) == 8 {
+	// 2026-07-27 (user: "speak and drink tea when needed"): the drink arc.
+	// 2026-07-29: a DEDICATED PP_sit_drink.png is queued with the re-rolled
+	// seat set (§PP-TEA-SEAT-SET) — prefer it. Until it lands, the OLD
+	// combined PP_sit_talk.png is sliced: frames 1-2 kneeling talk loop,
+	// frames 3-8 the lift→sip→lower drink arc (drinking mid-sentence read
+	// as random). The new set must land TOGETHER so a pure-talk overwrite
+	// is never mis-sliced.
+	if path := firstExisting("assets/images/player/PP_sit_drink.png"); path != "" {
+		if f := gridFrames(renderer, path, 8, 1); len(f) > 0 {
+			p.oneShotAnims["sit_drink"] = f
+		}
+	} else if len(p.seatedTalk) == 8 {
 		p.oneShotAnims["sit_drink"] = p.seatedTalk[2:8]
 		p.seatedTalk = p.seatedTalk[0:2]
+	}
+	// §PP-PICK-SAKURA (2026-07-29): the grove pick — PP reaches UP into the
+	// branches, picks one blossom, pockets it. Falls back to grab_flower.
+	if path := firstExisting("assets/images/player/pp_pick_sakura.png"); path != "" {
+		if f := gridFramesConnected(renderer, path, 8, 1); len(f) > 0 {
+			p.oneShotAnims["pick_sakura"] = f
+		}
 	}
 	// The spin→sit TRANSFORM: PP standing → fast spin into the tea clothes →
 	// drops into a kneel (ends seated). No-op until the art lands.

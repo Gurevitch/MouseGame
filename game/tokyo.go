@@ -374,26 +374,20 @@ func newTakeshi(renderer *sdl.Renderer) *npc {
 }
 
 func newTeaMaster(renderer *sdl.Renderer) *npc {
-	// The tea master is a woman. npc_tea_master_talk.png is the canonical
-	// (female, flat-cartoon) sheet. Prefer a matching female idle when present;
-	// fall back to the talk sheet for the idle until the regen lands (§TEA-MASTER-IDLE).
-	// 2026-07-26 PR #6 (jitter): her cells hold the kneeling figure PLUS a
-	// separate standing whisk and floating motion marks (jitter_audit: GHOST
-	// PIECES in 4 idle cells), so the content-gap cutter sliced a different
-	// boundary every frame and the anchors wobbled. The EQUAL-cell loader
-	// (the office-Higgins "blink" fix) keeps the consistent in-cell placement,
-	// and the anchor deadband then holds her still.
-	loadEqual := func(cands ...string) []npcFrame {
+	// The regenerated blue tea-master sheets are dedicated, cleanly separated
+	// 6x1 strips, so use the gap-aware cutter instead of clipping them to equal
+	// mathematical cells.
+	loadTeaMaster := func(cands ...string) []npcFrame {
 		if p := firstExisting(cands...); p != "" {
-			return loadNPCGridEqualConnectedTol(renderer, p, 8, 1, npcSpriteInset, 8)
+			return loadNPCGridConnected(renderer, p, 6, 1)
 		}
 		return nil
 	}
-	idle := loadEqual(jpNPCDir+"npc_tea_master_idle.png", jpNPCDir+"npc_tea_master_idle_f.png", jpNPCDir+"npc_tea_master_talk.png")
+	idle := loadTeaMaster(jpNPCDir+"npc_tea_master_idle.png", jpNPCDir+"npc_tea_master_idle_f.png", jpNPCDir+"npc_tea_master_talk.png")
 	if len(idle) == 0 {
 		idle = loadNPCGridRow(renderer, jpFbkVendor8x2, 8, 2, 0)
 	}
-	talk := loadEqual(jpNPCDir + "npc_tea_master_talk.png")
+	talk := loadTeaMaster(jpNPCDir + "npc_tea_master_talk.png")
 	if len(talk) == 0 {
 		talk = idle
 	}
@@ -665,6 +659,21 @@ func (g *Game) setupTokyoCallbacks() {
 						if work := loadNPCGridConnected(g.renderer, p, 6, 1); len(work) > 0 {
 							n.altIdleGrid = work
 							n.altIdleAfterSec = 6.0
+						}
+					}
+					// 2026-07-31: the landed counter GIVE sheet (ladles broth,
+					// tops the bowl, slides it forward) was on disk but wired
+					// to NOTHING, so the Fire-Striker → Offering Bowl trade
+					// animated on PP's side only. Registered under the
+					// auto-derived key AND the generic "give" so playHandOff
+					// finds it either way.
+					if p := firstExisting(jpNPCDir + "npc_hiro_counter_give.png"); p != "" {
+						if give := loadNPCGridConnected(g.renderer, p, 6, 1); len(give) > 0 {
+							if n.oneShotAnims == nil {
+								n.oneShotAnims = map[string][]npcFrame{}
+							}
+							n.oneShotAnims["give_offering_bowl"] = give
+							n.oneShotAnims["give"] = give
 						}
 					}
 				}
