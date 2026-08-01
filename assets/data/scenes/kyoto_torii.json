@@ -1,6 +1,6 @@
 {
-  "name": "tokyo_torii",
-  "background": "assets/images/locations/japan/background/tokyo_tori.png",
+  "name": "kyoto_torii",
+  "background": "assets/images/locations/japan/background/kyoto_torii.png",
   "_comment_spawn": "2026-07-24 #39: arrival moved to the RIGHT side (was 220 left).",
   "spawnX": 1150,
   "spawnY": 470,
@@ -8,7 +8,7 @@
   "maxY": 600,
   "npcs": ["jp_gary", "jp_kenji"],
   "hotspots": [
-    {"bounds": {"x": 1300, "y": 180, "w": 100, "h": 460}, "targetScene": "tokyo_street", "name": "Down to the ramen street", "arrow": "right"}
+    {"bounds": {"x": 1300, "y": 180, "w": 100, "h": 460}, "targetScene": "kyoto_street", "name": "Down to the ramen street", "arrow": "right"}
   ],
   "blockers": [],
   "walkSegments": [

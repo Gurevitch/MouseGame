@@ -40,7 +40,7 @@ Built: Camp, Paris (Marcus), Jerusalem (Jake), Tokyo/Kyoto (Lily). Next: Rome
 - **Item/give beats** use the two-stage `handOff` (PP gives → NPC receives → NPC
   gives back → PP receives); per-item `give_<key>` / `receive_<key>` sheets
   auto-upgrade the animation. See `game/player.go playHandOff`.
-- Chapter wiring lives in `game/<city>.go` (paris.go, jerusalem.go, tokyo.go…);
+- Chapter wiring lives in `game/<city>.go` (paris.go, jerusalem.go, kyoto.go…);
   scenes load NPCs/hotspots; save-safe flags live in `game/game_state.go`
   (VarStore). Architecture detail in `docs/ARCHITECTURE.md`.
 

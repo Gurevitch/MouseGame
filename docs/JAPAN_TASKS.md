@@ -1,7 +1,7 @@
 # Kyoto / Japan chapter — quest design
 
 Status: **BUILT (2026-06-24)** — the full 8-step chain below is wired in
-`game/tokyo.go` (logic + dynamic stall + queue-sit), builds + tests green. Runs
+`game/kyoto.go` (logic + dynamic stall + queue-sit), builds + tests green. Runs
 on placeholder art; the new art is queued in EXTRA_PROMPTS §JP. Decisions locked:
 **Kiku = optional gag** (not a gate); **the well is a hotspot in the ramen
 street**; **the stall stays open with the line seated** after Hiro serves PP.
@@ -34,7 +34,7 @@ chains.
   hearth for the offering bowl. Keeps the Kenji→well→Oba-chan→striker chain.
 - **Higgins** comes OUT of his office (bottom-right corner) and strides across
   to PP for the rude intercept.
-- **Tea ceremony → its own temple tea-house** (`tokyo_teahouse`, a 5th Kyoto
+- **Tea ceremony → its own temple tea-house** (`kyoto_teahouse`, a 5th Kyoto
   scene, reached UP from the flower store). Tea master + ceremony live there;
   matcha/bowl supplies stay in the flower store; the whisk is at the street well.
   (Authentic — the ceremony grew out of Zen temple tea rooms.)
@@ -125,7 +125,7 @@ pick (8). Kiku kimono is an optional 9th soft-gate.
 
 ## Code touchpoints (when we build)
 
-- `game/tokyo.go` — Hiro/Kenji/Oba-chan trade wiring (held-item gating like the
+- `game/kyoto.go` — Hiro/Kenji/Oba-chan trade wiring (held-item gating like the
   Paris/Jerusalem chains), the store open/close prop + queue-sit swap, the well
   hotspot, the grove "place offering → bloom → pick" rework.
 - `game/game_state.go` — flags: `jp_ramen_open`, plus per-step gates as needed.

@@ -11,10 +11,10 @@ import (
 // Japan / Kyoto chapter: Lily's arc. Art lives under
 // assets/images/locations/japan/. Three scenes, left -> right:
 //
-//   - tokyo_torii  (torii gate corridor): PP lands here. Right -> ramen street.
-//   - tokyo_street (ramen store; the tree drops leaves): Hiro the cook + Gary
+//   - kyoto_torii  (torii gate corridor): PP lands here. Right -> ramen street.
+//   - kyoto_street (ramen store; the tree drops leaves): Hiro the cook + Gary
 //     the tourist. Left -> torii, right -> the flower grove.
-//   - tokyo_temple (flower store by the forest): Oba-chan presses the sakura
+//   - kyoto_temple (flower store by the forest): Oba-chan presses the sakura
 //     (the anchor) + Kiku the dresser spins PP into a kimono for a gag. Left ->
 //     the ramen street.
 //
@@ -23,7 +23,7 @@ import (
 // The Japan art has been re-saved under several different filenames during
 // authoring, so every asset is resolved from a CANDIDATE LIST (firstExisting):
 // whichever name is on disk wins, and a missing asset degrades gracefully
-// (flat-colour BG / placeholder NPC). Scene keys stay "tokyo_*".
+// (flat-colour BG / placeholder NPC). Scene keys stay "kyoto_*".
 
 const (
 	jpNPCDir  = "assets/images/locations/japan/npc/"
@@ -88,7 +88,7 @@ var garyTokyoDialog = []dialogEntry{
 
 // 2026-07-18 (user #45/#46): Gary is the chapter's CUSTOMS ORACLE — whenever
 // PP doesn't know the local etiquette, Gary + guidebook has the answer. His
-// repeat dialog advances with the chapter flags (see setupTokyoCallbacks).
+// repeat dialog advances with the chapter flags (see setupKyotoCallbacks).
 var garyTokyoPostDialog = []dialogEntry{
 	{speaker: "Gary", text: "Need a custom checked? My book knows everything. Now it says Kyoto is in PERU, but I'm reading between the lines."},
 }
@@ -274,7 +274,7 @@ func newRamenSeller(renderer *sdl.Renderer) *npc {
 	}
 }
 
-func newTouristTokyo(renderer *sdl.Renderer) *npc {
+func newTouristKyoto(renderer *sdl.Renderer) *npc {
 	// START state: Gary holds the guidebook UPSIDE-DOWN (the "opposite book"
 	// sheets). After he flips it (onDialogEnd) the callback swaps him to the
 	// plain npc_gary_idle (book correct).
@@ -323,7 +323,9 @@ func newKenjiStudent(renderer *sdl.Renderer) *npc {
 		// to arriving visitors. Gives Gary's scene a second beat, and his
 		// well errand now ping-pongs between two scenes (torii <-> street),
 		// matching the Paris bakery<->street rhythm.
-		bounds:         sdl.Rect{X: 260, Y: 380, W: 130, H: 240},
+		// 2026-08-01 (user #24): he rendered huge — a young student should sit
+		// well under PP. H 240 → 190 (W scaled with it), feet kept at 620.
+		bounds:         sdl.Rect{X: 260, Y: 430, W: 105, H: 190},
 		name:           "Kenji",
 		dialog:         kenjiStudentDialog,
 		talkFrameSpeed: 0.12,
@@ -346,9 +348,11 @@ func newTakeshi(renderer *sdl.Renderer) *npc {
 	n := &npc{
 		idleGrid: idle, talkGrid: talk,
 		// Mid-right of the street (Kenji's old area, now free): queue at
-		// 340-470, stall window 510-760, Takeshi 885-1010 — his box ends
-		// exactly where the well hotspot begins (1010).
-		bounds:         sdl.Rect{X: 885, Y: 385, W: 125, H: 235},
+		// 340-470, stall window 510-760.
+		// 2026-08-01 (user #23): shifted right 885 → 920 — as far as the
+		// street allows without covering the well hotspot (1015-1100; NPC
+		// clicks win over hotspots, so his box must leave it reachable).
+		bounds:         sdl.Rect{X: 920, Y: 385, W: 125, H: 235},
 		name:           "Takeshi",
 		dialog:         takeshiCherryTaleDialog,
 		talkFrameSpeed: 0.14,
@@ -401,6 +405,11 @@ func newTeaMaster(renderer *sdl.Renderer) *npc {
 		name:           "Tea Master",
 		dialog:         teaMasterDialog,
 		talkFrameSpeed: 0.12,
+		// 2026-08-01 (user #28): he kneels on the raised tatami platform —
+		// foot-aligning PP to his bounds walked PP way up the platform
+		// ("climbing to the roof"). elevated keeps PP on his own floor row
+		// and he just walks across to the platform edge.
+		elevated: true,
 	}
 }
 
@@ -452,19 +461,19 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 	// 2026-07-26 PR #2: the torii pilgrims are REMOVED — Gary's arrival scene
 	// reads cleaner without figures behind him (the petal particles stay).
 	// 2026-07-26 PR #8: cat repositioned onto the street awning per user.
-	addJapanProp("tokyo_street", "street_cat.png", 866, 309, 0.3, 0.7, 8)
+	addJapanProp("kyoto_street", "street_cat.png", 866, 309, 0.3, 0.7, 8)
 	// the thieving KITE (tobi) perched up on the temple roof — the bird
 	// Hiro and Kenji blame for the fire-striker (§JP-KITE-SHINY).
 	// 2026-07-26 PR #5: foot moved to (657,217) per user.
-	addJapanProp("tokyo_temple", "kite_shiny.png", 657, 217, 0.32, 0.6, 8)
+	addJapanProp("kyoto_temple", "kite_shiny.png", 657, 217, 0.32, 0.6, 8)
 	// stone lantern with incense wisps by the flower store
 	// 2026-07-26 PR #4: foot moved to (334,473) per user.
-	addJapanProp("tokyo_temple", "incense_lantern.png", 334, 473, 0.42, 0.5, 8)
+	addJapanProp("kyoto_temple", "incense_lantern.png", 334, 473, 0.42, 0.5, 8)
 	// steaming kettle beside the tea master. 2026-07-26 PR #7: tol 24 — the
 	// tol-8 global key left a blue AA seam pocket on the kettle.
-	addJapanProp("tokyo_teahouse", "teahouse_kettle.png", 850, 610, 0.34, 0.45, 24)
+	addJapanProp("kyoto_teahouse", "teahouse_kettle.png", 850, 610, 0.34, 0.45, 24)
 
-	if torii, ok := sm.scenes["tokyo_torii"]; ok {
+	if torii, ok := sm.scenes["kyoto_torii"]; ok {
 		for i := 0; i < 16; i++ {
 			torii.particles = append(torii.particles, particle{
 				x: rand.Float64() * float64(engine.ScreenWidth), y: rand.Float64() * float64(engine.ScreenHeight),
@@ -481,26 +490,29 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 	// the old npc/ checkerboard wait sheets (edge-connected keyed loader
 	// strips either background). Staggered frame speeds so the three don't
 	// sway in sync.
-	if street, ok := sm.scenes["tokyo_street"]; ok {
+	if street, ok := sm.scenes["kyoto_street"]; ok {
+		// 2026-08-01 (user #22): per-figure foot lines (were all 520) so the
+		// three stand ON the stall's ground line: businessman 561, grandma
+		// 558, squat man 557.
 		for _, q := range []struct {
 			cands    []string
-			x        float64
+			x, y     float64
 			frameSec float64
 		}{
-			{[]string{jpPropDir + "npc_ramen_wait_salaryman.png", jpNPCDir + "npc_ramen_tourist_wait.png"}, 340, 0.60},
-			{[]string{jpPropDir + "npc_ramen_wait_grandma.png", jpNPCDir + "npc_ramen_local_wait.png"}, 405, 0.50},
-			{[]string{jpPropDir + "npc_ramen_local_squat.png"}, 470, 0.55},
+			{[]string{jpPropDir + "npc_ramen_wait_salaryman.png", jpNPCDir + "npc_ramen_tourist_wait.png"}, 340, 561, 0.60},
+			{[]string{jpPropDir + "npc_ramen_wait_grandma.png", jpNPCDir + "npc_ramen_local_wait.png"}, 405, 558, 0.50},
+			{[]string{jpPropDir + "npc_ramen_local_squat.png"}, 470, 557, 0.55},
 		} {
 			if p := firstExisting(q.cands...); p != "" {
 				street.ambientSprites = append(street.ambientSprites,
-					newAmbientSway(renderer, p, 8, q.x, 520, 0.34, q.frameSec))
+					newAmbientSway(renderer, p, 8, q.x, q.y, 0.34, q.frameSec))
 			}
 		}
 	}
 
 	// Live falling leaves over the tree (user: "leaves fall like a live
 	// animation"). No-ops until the leaf sheet lands (§JP-LEAVES).
-	if street, ok := sm.scenes["tokyo_street"]; ok {
+	if street, ok := sm.scenes["kyoto_street"]; ok {
 		leafSpots := []struct{ x, y, scale, speed, drift, sec float64 }{
 			{420, -40, 0.35, 55, 14, 0.18}, {560, -160, 0.28, 42, -10, 0.22},
 			{700, -90, 0.40, 64, 8, 0.16}, {300, -200, 0.25, 48, 18, 0.2},
@@ -511,7 +523,7 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 		}
 	}
 
-	if grove, ok := sm.scenes["tokyo_temple"]; ok {
+	if grove, ok := sm.scenes["kyoto_temple"]; ok {
 		grove.glows = []glowEffect{{x: 200, y: 100, w: 600, h: 320, r: 255, g: 220, b: 230, alpha: 12, pulse: 0.3}}
 		for i := 0; i < 14; i++ {
 			grove.particles = append(grove.particles, particle{
@@ -522,7 +534,7 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 		}
 	}
 
-	if sakura, ok := sm.scenes["tokyo_sakura"]; ok {
+	if sakura, ok := sm.scenes["kyoto_sakura"]; ok {
 		sakura.glows = []glowEffect{{x: 300, y: 80, w: 700, h: 360, r: 255, g: 200, b: 220, alpha: 14, pulse: 0.25}}
 		for i := 0; i < 26; i++ {
 			sakura.particles = append(sakura.particles, particle{
@@ -537,12 +549,12 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 		}
 	}
 
-	if teahouse, ok := sm.scenes["tokyo_teahouse"]; ok {
+	if teahouse, ok := sm.scenes["kyoto_teahouse"]; ok {
 		teahouse.glows = []glowEffect{{x: 250, y: 120, w: 600, h: 300, r: 245, g: 225, b: 190, alpha: 10, pulse: 0.2}}
 	}
 }
 
-func (g *Game) setupTokyoCallbacks() {
+func (g *Game) setupKyotoCallbacks() {
 	game := g
 	give := func(id string) {
 		if item := game.items.createItem(id); item != nil {
@@ -550,7 +562,7 @@ func (g *Game) setupTokyoCallbacks() {
 		}
 	}
 
-	if torii, ok := g.sceneMgr.scenes["tokyo_torii"]; ok {
+	if torii, ok := g.sceneMgr.scenes["kyoto_torii"]; ok {
 		// No travel-map hotspot here — torii is a walk-through gate, not a hub.
 		// Gary greets PP at the gates. He starts holding the guidebook
 		// UPSIDE-DOWN; when PP talks to him he flips it and KEEPS it right-way-up
@@ -627,7 +639,7 @@ func (g *Game) setupTokyoCallbacks() {
 		}
 	}
 
-	if street, ok := g.sceneMgr.scenes["tokyo_street"]; ok {
+	if street, ok := g.sceneMgr.scenes["kyoto_street"]; ok {
 		// 2026-07-18 (user #43/#44): the stall overlay prop + waiting-line
 		// ambients are REMOVED — they never fit the painted stall and stacked
 		// on the NPCs. The painted stall in the BG is the stall; Hiro stands
@@ -720,13 +732,13 @@ func (g *Game) setupTokyoCallbacks() {
 		// the walk band, so unclamped), then recedes (shrink + drift up) into
 		// the transition, like the Jerusalem market→plaza exit.
 		for i := range street.hotspots {
-			if street.hotspots[i].targetScene != "tokyo_temple" {
+			if street.hotspots[i].targetScene != "kyoto_temple" {
 				continue
 			}
 			street.hotspots[i].onInteract = func() bool {
 				game.player.walkToAndDoUnclamped(1184, 324, func() {
 					game.player.playRecede(0.9, 0.45, 70, func() {
-						game.sceneMgr.transitionTo("tokyo_temple", game.player)
+						game.sceneMgr.transitionTo("kyoto_temple", game.player)
 					})
 				})
 				return true
@@ -757,7 +769,61 @@ func (g *Game) setupTokyoCallbacks() {
 							{speaker: "Hiro", text: "Take the blessed bowl to the old tree, panther-san - and come back for noodles when your heart is light."},
 						}
 						hiro.altDialogFunc = nil
-					}, &handOff{item: "Fire-Striker", returnItem: "Offering Bowl"}
+					}, &handOff{item: "Fire-Striker", returnItem: "Offering Bowl", back: true}
+				}
+				// 2026-08-01 (user #25): Hiro is BEHIND his counter — chats with
+				// him use the same walk-to-mark + recede-shrink choreography as
+				// Pierre/Poulain, and PP shows his BACK to the camera. The
+				// recedeHeld guard talks in place on chained clicks.
+				hiro.ppFaceBack = true
+				hiro.onClickOverride = func() {
+					if game.player == nil || game.dialog == nil {
+						return
+					}
+					talk := func() {
+						game.player.state = stateTalking
+						game.player.dir = dirUp
+						game.player.facingLeft = false
+						releaseRecede := func() {
+							game.player.state = stateIdle
+							game.player.holdRecede()
+						}
+						if hiro.altDialogFunc != nil {
+							entries, cb, ho := hiro.altDialogFunc()
+							if entries != nil {
+								game.inv.heldItem = nil
+								start := func() {
+									game.dialog.startDialogWithCallback(entries, func() {
+										if cb != nil {
+											cb()
+										}
+										releaseRecede()
+									})
+								}
+								if ho != nil {
+									game.player.playHandOff(hiro, ho, start)
+								} else {
+									start()
+								}
+								return
+							}
+						}
+						d := hiro.dialog
+						game.dialog.startDialogWithCallback(d, func() {
+							if hiro.onDialogEnd != nil {
+								hiro.onDialogEnd()
+							}
+							releaseRecede()
+						})
+					}
+					if game.player.recedeHeld {
+						talk()
+						return
+					}
+					// Stand mark: centre of the counter window, on the street lane.
+					game.player.walkToAndDo(640, 520, func() {
+						game.player.playRecede(1.0, 0.65, 50, talk)
+					})
 				}
 			case "Takeshi":
 				// Culture flavor only (user 2026-07-27): the kamishibai man
@@ -788,10 +854,19 @@ func (g *Game) setupTokyoCallbacks() {
 					takeshi.talkGrid = tales[0].talk
 				}
 				taleIdx := 0
+				// 2026-08-01 (user #23): the doors STAY OPEN for the whole
+				// dialog — after the open one-shot plays, hold its final
+				// (doors-open) frame as the idle, so PP's lines between
+				// Takeshi's talk beats don't flash the closed-door idle.
+				baseIdle := takeshi.idleGrid
 				takeshi.onDialogStart = func() {
+					if f, ok := takeshi.oneShotAnims["open_doors"]; ok && len(f) > 0 {
+						takeshi.idleGrid = f[len(f)-1:]
+					}
 					takeshi.playOneShotAnim("open_doors", 1.0)
 				}
 				takeshi.onDialogEnd = func() {
+					takeshi.idleGrid = baseIdle
 					takeshi.playOneShotAnim("close_doors", 1.0)
 					taleIdx++
 					next := tales[taleIdx%len(tales)]
@@ -806,7 +881,7 @@ func (g *Game) setupTokyoCallbacks() {
 		}
 	}
 
-	if grove, ok := g.sceneMgr.scenes["tokyo_temple"]; ok {
+	if grove, ok := g.sceneMgr.scenes["kyoto_temple"]; ok {
 		for _, n := range grove.npcs {
 			switch n.name {
 			case "Oba-chan":
@@ -899,9 +974,15 @@ func (g *Game) setupTokyoCallbacks() {
 			},
 		})
 		// Exit INTO the hidden grove - needs BOTH Oba-chan's opened path AND a
-		// still heart (the tea ceremony). Right edge, opposite the street exit.
+		// still heart (the tea ceremony).
+		// 2026-08-01 (user #27): the exit is INVISIBLE until Oba-chan reveals
+		// the path (visibleWhen — no hover name, no arrow cursor), and it
+		// moved to the path opening around (373,350) as an UP arrow.
 		grove.hotspots = append(grove.hotspots, hotspot{
-			bounds: sdl.Rect{X: 1300, Y: 180, W: 100, H: 460}, name: "Into the sakura grove", arrow: arrowRight,
+			bounds: sdl.Rect{X: 293, Y: 270, W: 160, H: 160}, name: "Into the sakura grove", arrow: arrowUp,
+			visibleWhen: func() bool {
+				return game.vars.GetBool(ScopeGame, VarJpGroveRevealed)
+			},
 			onInteract: func() bool {
 				if !game.vars.GetBool(ScopeGame, VarJpGroveRevealed) {
 					game.dialog.startDialog([]dialogEntry{
@@ -915,7 +996,7 @@ func (g *Game) setupTokyoCallbacks() {
 					})
 					return true
 				}
-				game.sceneMgr.transitionTo("tokyo_sakura", game.player)
+				game.sceneMgr.transitionTo("kyoto_sakura", game.player)
 				return true
 			},
 		})
@@ -925,13 +1006,13 @@ func (g *Game) setupTokyoCallbacks() {
 		// (foot ≈ 838,384; above the walk band, so unclamped), THEN recedes —
 		// same beat as the street→flower-store stairs.
 		for i := range grove.hotspots {
-			if grove.hotspots[i].targetScene != "tokyo_teahouse" {
+			if grove.hotspots[i].targetScene != "kyoto_teahouse" {
 				continue
 			}
 			grove.hotspots[i].onInteract = func() bool {
 				game.player.walkToAndDoUnclamped(838, 249, func() {
 					game.player.playRecede(1.0, 0.5, 80, func() {
-						game.sceneMgr.transitionTo("tokyo_teahouse", game.player)
+						game.sceneMgr.transitionTo("kyoto_teahouse", game.player)
 					})
 				})
 				return true
@@ -942,7 +1023,25 @@ func (g *Game) setupTokyoCallbacks() {
 
 	// Temple tea-house: share the whisked Matcha Bowl with the tea master →
 	// jp_tea_done (the grove gate). No reward item; just the moment.
-	if teahouse, ok := g.sceneMgr.scenes["tokyo_teahouse"]; ok {
+	if teahouse, ok := g.sceneMgr.scenes["kyoto_teahouse"]; ok {
+		// 2026-08-01 (user #29): leaving the tea-house goes THROUGH the shoji
+		// door — walk to the door base first, then recede through it. The
+		// generic up-arrow path (walkToExit) marched PP straight up from
+		// wherever he stood.
+		for i := range teahouse.hotspots {
+			if teahouse.hotspots[i].targetScene != "kyoto_temple" {
+				continue
+			}
+			teahouse.hotspots[i].onInteract = func() bool {
+				game.player.walkToAndDoUnclamped(193, 430, func() {
+					game.player.playRecede(0.8, 0.5, 60, func() {
+						game.sceneMgr.transitionTo("kyoto_temple", game.player)
+					})
+				})
+				return true
+			}
+			break
+		}
 		for _, n := range teahouse.npcs {
 			if n.name != "Tea Master" {
 				continue
@@ -986,7 +1085,7 @@ func (g *Game) setupTokyoCallbacks() {
 
 	// Hidden sakura grove: the old tree is the pick-the-blossom payoff. Picking
 	// gives the Pressed Sakura (the anchor) + fires Danny's foreshadow call.
-	if sakura, ok := g.sceneMgr.scenes["tokyo_sakura"]; ok {
+	if sakura, ok := g.sceneMgr.scenes["kyoto_sakura"]; ok {
 		for i := range sakura.hotspots {
 			if sakura.hotspots[i].name != "The oldest cherry tree" {
 				continue

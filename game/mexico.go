@@ -67,7 +67,7 @@ var mxVendorPostDialog = []dialogEntry{
 var finaleMonologue = []dialogEntry{
 	{speaker: "Pink Panther", text: "Five cities. Five names. Five kids."},
 	{speaker: "Pink Panther", text: "Turns out they weren't broken. They were connected - to places they had never seen, to histories they had never lived."},
-	{speaker: "Pink Panther", text: "Marcus to Paris. Jake to Jerusalem. Lily to Tokyo. Tommy to Rio and Buenos Aires. Danny to Rome."},
+	{speaker: "Pink Panther", text: "Marcus to Paris. Jake to Jerusalem. Lily to Kyoto. Tommy to Rio and Buenos Aires. Danny to Rome."},
 	{speaker: "Pink Panther", text: "And all of them, somehow, to this plaza."},
 	{speaker: "Director Higgins", text: "PP. You did it. Every cabin is smiling again."},
 	{speaker: "Pink Panther", text: "I didn't do it, Higgins. They did. I just carried the postcards."},

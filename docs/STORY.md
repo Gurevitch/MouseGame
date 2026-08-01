@@ -585,11 +585,11 @@ placeholder/landed art. Built:
   there with the Pressed Sakura (→ `lily_healed`, unlocks Tommy / Rio+BA).
 - The rude-Higgins intercept (he strides halfway in via `npc_director_front_walk`)
   + PP's camera aside, which unlocks Tokyo.
-- **Five Kyoto scenes:** `tokyo_torii` (arrival, Gary — his ramen tip opens the
-  stall) → `tokyo_street` (ramen — Hiro + Kenji, falling leaves, the well) →
-  `tokyo_temple` (flower store — Oba-chan + Kiku the dresser-geisha; matcha/bowl
-  shelves) → `tokyo_teahouse` (UP from the store — the temple tea-house where the
-  Tea Master hosts the matcha ceremony) → `tokyo_sakura` (hidden grove).
+- **Five Kyoto scenes:** `kyoto_torii` (arrival, Gary — his ramen tip opens the
+  stall) → `kyoto_street` (ramen — Hiro + Kenji, falling leaves, the well) →
+  `kyoto_temple` (flower store — Oba-chan + Kiku the dresser-geisha; matcha/bowl
+  shelves) → `kyoto_teahouse` (UP from the store — the temple tea-house where the
+  Tea Master hosts the matcha ceremony) → `kyoto_sakura` (hidden grove).
 - **8-step offering chain + matcha gate** (see docs/JAPAN_TASKS.md): Gary →
   Hiro (needs his crow-stolen fire-striker for the blessed bowl) → Kenji (needs
   well-water) → well → Kenji (Voice Charm + clue) → Oba-chan (fire-striker) →
@@ -604,7 +604,7 @@ sheets, gap re-rolls, and BG edge-continuity — see EXTRA_PROMPTS §2026-06-24 
 
 
 Lily's arc. Built after the Batch-1 bug sweep lands & playtests. Mirrors the
-Paris/Jerusalem chapter pattern (chapter wiring in `game/tokyo.go` — a stub +
+Paris/Jerusalem chapter pattern (chapter wiring in `game/kyoto.go` — a stub +
 the Pressed Sakura heal handoff already exist in `game.go`; scenes in
 `assets/data/scenes/`; NPCs in `assets/data/npc/`; items in `items.json`;
 save-safe VarStore flags). All art ships behind graceful fallbacks; prompts go

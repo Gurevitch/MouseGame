@@ -25,7 +25,7 @@ ClonedPP/
 │   ├── inventory.go / item_registry.go
 │   ├── travel_map.go           # includes Visible/Show/Hide/Toggle display state
 │   ├── sequence.go / sequence_loader.go
-│   └── paris.go / jerusalem.go / tokyo.go / rio.go / rome.go / mexico.go
+│   └── paris.go / jerusalem.go / kyoto.go / rio.go / rome.go / mexico.go
 │                               # chapter-specific rule registration ("setup*Callbacks")
 ├── tools/
 │   ├── pack_atlas.py           # manifest YAML → atlas PNG + sidecar JSON
@@ -111,7 +111,7 @@ Example rule for Jake's Day-2 healing:
     {"type": "give", "item": "Coin Rubbing", "to": "jake"},
     {"type": "set_strange", "bool": false},
     {"type": "set_var", "scope": "game", "key": "jake_healed", "value": 1},
-    {"type": "unlock_city", "city": "tokyo_street"},
+    {"type": "unlock_city", "city": "kyoto_street"},
     {"type": "emit", "event": "kid_healed", "kv": ["kid", "jake"]}
   ]
 }

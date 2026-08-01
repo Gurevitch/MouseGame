@@ -26,3 +26,6 @@ hit_debug/
 
 .gotmp/
 /sprite_gallery/
+
+# Claude Code local settings
+.claude/settings.local.json

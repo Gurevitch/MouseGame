@@ -47,6 +47,8 @@ var sheets = []sheet{
 	{"PP give coffee", "assets/images/player/PP give coffee.png", 6, 1, -1},
 	{"PP give heel", "assets/images/player/PP give heel.png", 8, 1, -1},
 	{"PP give pencil", "assets/images/player/PP give pencil.png", 8, 1, -1},
+	{"PP give pen", "assets/images/player/PP give pen.png", 8, 1, -1},
+	{"PP give coin", "assets/images/player/PP give coin.png", 8, 1, -1},
 	{"PP give sketch", "assets/images/player/PP give sketch.png", 6, 1, -1},
 	{"PP give postcard", "assets/images/player/PP give postcard.png", 6, 1, -1},
 	{"PP give bagel", "assets/images/player/PP give bagel.png", 6, 1, -1},
@@ -57,6 +59,7 @@ var sheets = []sheet{
 	{"PP receive paper", "assets/images/player/pp_get_paper.png", 6, 1, -1},
 	{"PP jump back", "assets/images/player/PP jump back.png", 8, 1, -1},
 	{"PP pull map", "assets/images/player/PP pull map.png", 8, 1, -1},
+	{"PP put coffee table", "assets/images/player/pp_put_coffee_table.png", 6, 1, -1},
 
 	// ---- Camp scene props ----
 	{"Campfire small", "assets/images/locations/camp/campfire_small.png", 6, 1, -1},
@@ -164,6 +167,7 @@ var sheets = []sheet{
 	{"Coffee seller give", "assets/images/locations/jerusalem/npc/market/npc_coffee_seller_give.png", 8, 1, -1},
 	{"Shimon give coin", "assets/images/locations/jerusalem/npc/wall/npc_shimon_give_coin.png", 8, 1, -1},
 	{"Shimon give pen", "assets/images/locations/jerusalem/npc/wall/npc_shimon_give_pen.png", 8, 1, -1},
+	{"Shimon receive pen", "assets/images/locations/jerusalem/npc/wall/npc_shimon_receive_pen.png", 6, 1, -1},
 	{"Wall worshipper 1 (4f sway)", "assets/images/locations/jerusalem/props/praying_man.png", 4, 1, -1},
 	{"Wall worshipper 2 (4f sway)", "assets/images/locations/jerusalem/props/praying_man2.png", 4, 1, -1},
 	{"Wall worshipper 3 (4f sway)", "assets/images/locations/jerusalem/props/praying_man3.png", 4, 1, -1},

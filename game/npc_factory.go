@@ -59,7 +59,7 @@ var npcFactories = map[string]func(*sdl.Renderer) *npc{
 	"jer_antiques_kid":     func(r *sdl.Renderer) *npc { return newAntiquesKid(r, 900) },
 	"jer_antiques_old_man": func(r *sdl.Renderer) *npc { return newAntiquesOldMan(r, 1040) },
 	// Japan / Kyoto NPCs
-	"jp_gary":       newTouristTokyo,
+	"jp_gary":       newTouristKyoto,
 	"jp_hiro":       newRamenSeller,
 	"jp_kenji":      newKenjiStudent,
 	"jp_takeshi":    newTakeshi,

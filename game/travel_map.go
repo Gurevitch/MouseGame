@@ -411,7 +411,7 @@ func travelRegionOf(scene string) string {
 		return "camp"
 	}
 	for _, region := range []string{
-		"paris", "jerusalem", "tokyo", "rome", "rio", "buenos_aires",
+		"paris", "jerusalem", "kyoto", "rome", "rio", "buenos_aires",
 		"mexico", "egypt", "india", "thailand", "china", "australia",
 	} {
 		if strings.HasPrefix(scene, region) {
@@ -485,7 +485,7 @@ func (tm *travelMap) setUnlocked(scene string, unlocked bool) {
 			// 2026-06-12 SOFTLOCK FIX: mirror into the VarStore so the pin's
 			// relevantWhen (which reads vars.game.<id>_unlocked) can light it as
 			// a valid travel target. A pin must be unlocked AND relevant to
-			// travel; the city _unlocked vars (jerusalem/tokyo/rome/rio/mexico)
+			// travel; the city _unlocked vars (jerusalem/kyoto/rome/rio/mexico)
 			// were defined but never written, so every city after Paris was
 			// unlocked-but-not-relevant → not clickable. (Paris worked only
 			// because paris_unlocked is synced from a Go bool.)

@@ -123,6 +123,9 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 	// checked first, so hovering a floor item next to an NPC showed
 	// the talk cursor - wrong action signal for the player.
 	for _, fi := range s.floorItems {
+		if fi.decor {
+			continue // scenery only — no hover feedback
+		}
 		// #14: also light up the grab cursor for hidden-but-interactable items
 		// (e.g. the rolling pin tucked in the bike basket) so the player learns
 		// there's something to grab even though the sprite isn't drawn.
@@ -171,6 +174,9 @@ func (ui *uiManager) updateHover(s *scene, mx, my int32, inv *inventory, plr *pl
 	}
 	pt := sdl.Point{X: mx, Y: my}
 	for _, hs := range s.hotspots {
+		if hs.visibleWhen != nil && !hs.visibleWhen() {
+			continue // gated exit not revealed yet (user #27)
+		}
 		if pt.InRect(&hs.bounds) {
 			ui.hoverName = hs.name
 			switch hs.arrow {
@@ -199,10 +205,6 @@ func (ui *uiManager) draw(renderer *sdl.Renderer, mx, my int32) {
 		sdl.Color{R: 0, G: 0, B: 0, A: 120})
 	ui.font.DrawText(renderer, txt, 9, 10, 2,
 		sdl.Color{R: 255, G: 255, B: 255, A: 210})
-
-	drawTaskIcon(renderer, engine.ScreenWidth-80, 6)
-	ui.font.DrawText(renderer, "TASKS", engine.ScreenWidth-56, 13, 2,
-		sdl.Color{R: 255, G: 180, B: 200, A: 200})
 
 	if ui.hoverName != "" {
 		w := ui.font.TextWidth(ui.hoverName, 3)
@@ -304,21 +306,4 @@ func (ui *uiManager) drawCursor(renderer *sdl.Renderer, mx, my int32) {
 
 	dst := sdl.Rect{X: mx + dx, Y: my + dy + bob, W: w, H: h}
 	renderer.Copy(tex, src, &dst)
-}
-
-func drawTaskIcon(renderer *sdl.Renderer, x, y int32) {
-	// Clipboard body
-	renderer.SetDrawColor(180, 160, 140, 200)
-	renderer.FillRect(&sdl.Rect{X: x, Y: y + 4, W: 18, H: 22})
-	// Clipboard clip at top
-	renderer.SetDrawColor(200, 180, 160, 220)
-	renderer.FillRect(&sdl.Rect{X: x + 5, Y: y, W: 8, H: 6})
-	// Task lines
-	renderer.SetDrawColor(60, 50, 40, 220)
-	renderer.FillRect(&sdl.Rect{X: x + 3, Y: y + 9, W: 12, H: 2})
-	renderer.FillRect(&sdl.Rect{X: x + 3, Y: y + 14, W: 12, H: 2})
-	renderer.FillRect(&sdl.Rect{X: x + 3, Y: y + 19, W: 8, H: 2})
-	// Outline
-	renderer.SetDrawColor(100, 80, 60, 180)
-	renderer.DrawRect(&sdl.Rect{X: x, Y: y + 4, W: 18, H: 22})
 }

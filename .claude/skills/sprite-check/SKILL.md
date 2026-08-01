@@ -42,6 +42,17 @@ holes) and full-width "leak" frames. NOTE: it flags INTENDED whites too
 hits; the fix is almost always an art regen with the no-pure-white rule, not a
 code change.
 
+**Background residue** (blue/white spots around a figure or trapped between
+arm and body): the art keeps being GENERATED on flat `#B4D7EE` — that stays
+the style. Fix residue by BAKING the bg out of that PNG with `tools/bg_bake`
+(allowlist + per-sheet mode inside `tools/bg_bake/main.go`) — but ONLY for
+sheets with a reported, verified problem; a proactive sweep punched pixels
+out of PP's ivory and was rolled back (2026-08-01). Strict `pocketTol: 6` on
+near-white bgs, and ALWAYS `Read` the PNG after baking. Baked (transparent)
+sheets stay baked in the repo — runtime keys no-op on them; reverting brings
+the spots back. Currently baked: PP talk side, pp_sleeping, pp_waking,
+npc_pierre_get_baguette, npc_bagel_seller_give.
+
 When a NEW sheet lands on disk, add it to BOTH manifests first:
 `engine/grid_content_test.go` (the cases list) and
 `tools/jitter_audit/main.go` (the sheets list), with the grid the loader

@@ -1,0 +1,18 @@
+{
+  "name": "kyoto_temple",
+  "background": "assets/images/locations/japan/background/kyoto_temple.png",
+  "spawnX": 200,
+  "spawnY": 470,
+  "minY": 400,
+  "maxY": 620,
+  "characterScale": 0.95,
+  "npcs": ["jp_obachan", "jp_kiku"],
+  "hotspots": [
+    {"bounds": {"x": 0, "y": 180, "w": 100, "h": 460}, "targetScene": "kyoto_street", "name": "Back to the ramen street", "arrow": "left"},
+    {"bounds": {"x": 540, "y": 110, "w": 300, "h": 210}, "targetScene": "kyoto_teahouse", "name": "To the temple tea-house", "arrow": "up"}
+  ],
+  "blockers": [],
+  "walkSegments": [
+    {"x1": 110, "y1": 520, "x2": 1290, "y2": 520}
+  ]
+}

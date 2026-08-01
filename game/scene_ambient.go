@@ -106,9 +106,12 @@ func decorateParisLouvre(s *scene, renderer *sdl.Renderer) {
 		// visitors admiring a frame (the kid's old mid-ground spot)
 		{"louvre_visitor_pair.png", 690, 630, 0.24, 0.55},
 		// uniformed guard on post
-		{"louvre_guard.png", 409, 591, 0.25, 0.6},
+		// 2026-08-01 (user #13): a bit down (591 → 606).
+		{"louvre_guard.png", 409, 606, 0.25, 0.6},
 		// student sketching, middle of the couch
-		{"louvre_sketch_student.png", 860, 621, 0.23, 0.5},
+		// 2026-08-01 (user #13): foot to (867,670) so he reads as SEATED on
+		// the couch instead of floating above it.
+		{"louvre_sketch_student.png", 867, 670, 0.23, 0.5},
 	} {
 		if p := firstExisting(louvreProps + pr.file); p != "" {
 			s.ambientSprites = append(s.ambientSprites,

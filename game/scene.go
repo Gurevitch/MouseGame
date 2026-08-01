@@ -34,6 +34,10 @@ type hotspot struct {
 	// set keeps PP's current row (right-wall doors).
 	walkX float64
 	walkY float64
+	// visibleWhen (2026-08-01 user #27): when set, the hotspot only hovers/
+	// clicks while it returns true — the sakura-grove exit stays undiscoverable
+	// until Oba-chan opens the path.
+	visibleWhen func() bool
 }
 
 type particle struct {
@@ -161,6 +165,10 @@ type floorItem struct {
 	// at the stand mark before the pickup runs (held after, like the
 	// Pierre/Margaux chats), unless already recede-held.
 	recedeDepth float64
+	// decor (2026-08-01 user #11): pure scenery — drawn like a visible floor
+	// item but never hoverable/clickable (Henri's coffee cup left on the
+	// table after PP sets it down).
+	decor bool
 }
 
 type walkSegment struct {
@@ -399,7 +407,7 @@ func newSceneManager(renderer *sdl.Renderer) *sceneManager {
 	addJerusalemScenes(sm, renderer)
 
 	// ===== Japan/Kyoto: 5 scenes (JSON-driven) =====
-	for _, name := range []string{"tokyo_torii", "tokyo_street", "tokyo_temple", "tokyo_sakura", "tokyo_teahouse"} {
+	for _, name := range []string{"kyoto_torii", "kyoto_street", "kyoto_temple", "kyoto_sakura", "kyoto_teahouse"} {
 		if s := sm.loadSceneFromJSON(renderer, sceneDefs, name); s != nil {
 			sm.scenes[name] = s
 		}
@@ -449,6 +457,17 @@ func (sm *sceneManager) update(dt float64) {
 				// in an L along the aisle (horizontal leg first), not cut an
 				// oblique line across the tables.
 				sm.transPlayer.lWalkApproach = sm.currentName == "paris_bakery"
+				// 2026-08-01 (user #10): the lane row PP crosses the scene on —
+				// the LOWEST horizontal walkSegment (bakery: center y=625, foot
+				// 760, safely under the tables). Stored as PP top-left Y.
+				sm.transPlayer.laneTopY = 0
+				if sm.transPlayer.lWalkApproach {
+					for _, seg := range s.walkSegments {
+						if seg.y1 == seg.y2 && seg.y1-playerDstH/2 > sm.transPlayer.laneTopY {
+							sm.transPlayer.laneTopY = seg.y1 - playerDstH/2
+						}
+					}
+				}
 				// User 2026-05-12: clamp spawnY to the player's max Y range
 				// so a scene whose authored spawnY drifted past the new
 				// (post-rebalance) playerMaxY doesn't drop PP below-screen.
@@ -593,6 +612,9 @@ func (s *scene) rightmostInGroup(groupID string) *npc {
 func (s *scene) checkFloorItemClick(x, y int32) *floorItem {
 	pt := sdl.Point{X: x, Y: y}
 	for _, fi := range s.floorItems {
+		if fi.decor {
+			continue // scenery only — never clickable
+		}
 		// #14: hidden items are clickable too (sprite not drawn, but the cursor
 		// changed on hover so the player knows something is there).
 		if (fi.visible || fi.hidden) && pt.InRect(&fi.bounds) {
@@ -605,6 +627,9 @@ func (s *scene) checkFloorItemClick(x, y int32) *floorItem {
 func (s *scene) checkHotspotClick(x, y int32) *hotspot {
 	pt := sdl.Point{X: x, Y: y}
 	for i := range s.hotspots {
+		if s.hotspots[i].visibleWhen != nil && !s.hotspots[i].visibleWhen() {
+			continue // gated exit not revealed yet (user #27)
+		}
 		if pt.InRect(&s.hotspots[i].bounds) {
 			return &s.hotspots[i]
 		}

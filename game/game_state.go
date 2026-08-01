@@ -10,7 +10,7 @@ const (
 	ChapterCampDay2  = 2 // Weirdness begins at Camp Sylvania
 	ChapterParis     = 3 // Marcus's memory arc in Paris
 	ChapterJerusalem = 4 // Jake's courage arc
-	ChapterTokyo     = 5 // Lily's voice arc
+	ChapterKyoto     = 5 // Lily's voice arc
 	ChapterRioBA     = 6 // Tommy's family arc (Rio + Buenos Aires)
 	ChapterRome      = 7 // Danny's identity arc
 	ChapterFinale    = 8 // Mexico City reunion
@@ -24,7 +24,7 @@ const (
 	VarDay               = "day"                // legacy camp day counter (1 or 2)
 	VarParisUnlocked     = "paris_unlocked"     // travel pin unlocked
 	VarJerusalemUnlocked = "jerusalem_unlocked" // travel pin unlocked
-	VarTokyoUnlocked     = "tokyo_unlocked"
+	VarKyotoUnlocked     = "kyoto_unlocked"
 	VarRioUnlocked       = "rio_unlocked"
 	VarRomeUnlocked      = "rome_unlocked"
 	VarMexicoUnlocked    = "mexico_unlocked"

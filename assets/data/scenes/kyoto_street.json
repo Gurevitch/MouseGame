@@ -1,0 +1,18 @@
+{
+  "name": "kyoto_street",
+  "background": "assets/images/locations/japan/background/kyoto_street.png",
+  "spawnX": 200,
+  "spawnY": 470,
+  "minY": 400,
+  "maxY": 620,
+  "npcs": ["jp_hiro", "jp_takeshi"],
+  "hotspots": [
+    {"bounds": {"x": 0, "y": 180, "w": 100, "h": 460}, "targetScene": "kyoto_torii", "name": "Back to the gates", "arrow": "left"},
+    {"_comment": "2026-07-24 #41: flower-store exit changed right -> UP at ~(1190,396) per user (the temple->teahouse up-exit pattern).",
+     "bounds": {"x": 1090,"y": 336,"w": 200,"h": 120}, "targetScene": "kyoto_temple", "name": "On to the flower store", "arrow": "up"}
+  ],
+  "blockers": [],
+  "walkSegments": [
+    {"x1": 110, "y1": 520, "x2": 1290, "y2": 520}
+  ]
+}

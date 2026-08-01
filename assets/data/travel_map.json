@@ -50,19 +50,19 @@
       "relevantWhen": "vars.game.jerusalem_unlocked == 1 && vars.game.jake_healed == 0 && vars.game.jer_note_placed == 0"
     },
     {
-      "id": "tokyo",
-      "name": "Tokyo",
-      "scene": "tokyo_street",
+      "id": "kyoto",
+      "name": "Kyoto",
+      "scene": "kyoto_street",
       "pinX": 1164, "pinY": 328,
       "unlocked": false,
       "facts": [
-        "Capital of Japan, a city of ancient temples and modern towers.",
-        "Senso-ji in Asakusa is Tokyo's oldest temple, founded in 645 AD.",
-        "Cherry blossoms bloom every spring - the sakura festival draws millions."
+        "Japan's imperial capital for over a thousand years, a city of temples and gardens.",
+        "Fushimi Inari shrine is famous for its thousands of vermilion torii gates.",
+        "Cherry blossoms bloom every spring - the sakura season draws millions."
       ],
       "landmark": "assets/images/ui/landmarks/landmark_torii_gate.png",
       "audio": "",
-      "relevantWhen": "vars.game.tokyo_unlocked == 1 && vars.game.lily_healed == 0"
+      "relevantWhen": "vars.game.kyoto_unlocked == 1 && vars.game.lily_healed == 0"
     },
     {
       "id": "rome",

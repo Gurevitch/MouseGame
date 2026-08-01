@@ -39,6 +39,8 @@ var realSheetCases = []sheetCase{
 	{"../assets/images/player/PP give coffee.png", 6, 1},
 	{"../assets/images/player/PP give heel.png", 8, 1},
 	{"../assets/images/player/PP give pencil.png", 8, 1},
+	{"../assets/images/player/PP give pen.png", 8, 1},
+	{"../assets/images/player/PP give coin.png", 8, 1},
 	{"../assets/images/player/PP give sketch.png", 6, 1},
 	{"../assets/images/player/PP give postcard.png", 6, 1},
 	{"../assets/images/player/PP give bagel.png", 6, 1},
@@ -58,6 +60,7 @@ var realSheetCases = []sheetCase{
 	{"../assets/images/player/pp_get_offering_bowl.png", 6, 1},
 	{"../assets/images/player/PP jump back.png", 8, 1},
 	{"../assets/images/player/PP pull map.png", 8, 1},
+	{"../assets/images/player/pp_put_coffee_table.png", 6, 1},
 	// ---- Camp scene props ----
 	{"../assets/images/locations/camp/campfire_small.png", 6, 1},
 	{"../assets/images/locations/camp/campfire_smoke.png", 6, 1},
@@ -148,6 +151,7 @@ var realSheetCases = []sheetCase{
 	// ---- Jerusalem NPCs (grids per game/jerusalem.go) ----
 	{"../assets/images/locations/jerusalem/npc/wall/npc_shimon.png", 6, 2},
 	{"../assets/images/locations/jerusalem/npc/wall/npc_shimon_give.png", 8, 1},
+	{"../assets/images/locations/jerusalem/npc/wall/npc_shimon_receive_pen.png", 6, 1},
 	{"../assets/images/locations/jerusalem/npc/wall/npc_bagel_seller.png", 6, 2},
 	{"../assets/images/locations/jerusalem/npc/wall/npc_bagel_seller_idle.png", 6, 1},
 	{"../assets/images/locations/jerusalem/npc/wall/npc_bagel_seller_talk.png", 6, 1},

@@ -1539,6 +1539,12 @@ type handOff struct {
 	// the postcard-give a SECOND time (the callback plays it too). Skipping the
 	// take leaves a single, clean give.
 	skipNPCTake bool
+
+	// ppGiveAnim (2026-08-01 user #11): explicit override for PP's stage-1
+	// one-shot, replacing the give_<item> resolution. Henri's coffee beat uses
+	// "put_coffee_table" (PP sets the cup down instead of handing it over);
+	// falls back to the normal give chain while the sheet hasn't landed.
+	ppGiveAnim string
 }
 
 // playOneShotAnim starts a named non-looping animation registered under

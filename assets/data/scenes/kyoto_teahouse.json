@@ -1,5 +1,5 @@
 {
-  "name": "tokyo_teahouse",
+  "name": "kyoto_teahouse",
   "background": "assets/images/locations/japan/background/teahouse.png",
   "spawnX": 220,
   "spawnY": 470,
@@ -9,7 +9,7 @@
   "npcs": ["jp_tea_master"],
   "hotspots": [
     {"_comment": "2026-07-26 PR #6: exit changed left-edge -> UP arrow at ~(193,351), on the open shoji door to the garden.",
-     "bounds": {"x": 93, "y": 291, "w": 200, "h": 120}, "targetScene": "tokyo_temple", "name": "Back to the flower store", "arrow": "up"}
+     "bounds": {"x": 93, "y": 291, "w": 200, "h": 120}, "targetScene": "kyoto_temple", "name": "Back to the flower store", "arrow": "up"}
   ],
   "blockers": [],
   "walkSegments": [
