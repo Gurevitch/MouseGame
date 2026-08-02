@@ -74,6 +74,7 @@ var sheets = []sheet{
 	{"Higgins give map", "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 6, 2, -1},
 	{"Higgins shout", "assets/images/locations/camp/npc/higgins/npc_director_higgins_shout.png", 8, 2, -1},
 	{"Higgins walk back", "assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_back.png", 8, 2, -1},
+	{"Higgins walk right", "assets/images/locations/camp/npc/higgins/npc_director_higgins_walk.png", 8, 1, -1},
 
 	// ---- Camp kids (engine loads ALL kid states as 8x2, atlas.go:34) ----
 	{"Tommy idle", "assets/images/locations/camp/npc/kids/tommy/npc_tommy_idle.png", 8, 2, -1},
@@ -202,6 +203,8 @@ var sheets = []sheet{
 	{"Gary idle (opposite book)", "assets/images/locations/japan/npc/npc_gary_idle_oposite_book.png", 8, 1, -1},
 	{"Gary talk (opposite book)", "assets/images/locations/japan/npc/npc_gary_talk_oposite_book.png", 8, 1, -1},
 	{"Gary flip book", "assets/images/locations/japan/npc/npc_gary_flip_his_book.png", 8, 1, -1},
+	{"Gary idle (normal book)", "assets/images/locations/japan/npc/npc_gary_idle_normal_book_idle.png", 8, 1, -1},
+	{"Gary talk (normal book)", "assets/images/locations/japan/npc/npc_gary_idle_normal_book_talk.png", 8, 1, -1},
 	{"Geisha idle (Kiku)", "assets/images/locations/japan/npc/npc_geisha_idle.png", 8, 1, -1},
 	{"Oba-chan idle", "assets/images/locations/japan/npc/npc_obachan_idle.png", 8, 1, -1},
 	{"Oba-chan talk", "assets/images/locations/japan/npc/npc_obachan_talk.png", 8, 1, -1},
@@ -265,7 +268,6 @@ var sheets = []sheet{
 	{"Louvre guard", "assets/images/locations/paris/props/louvre_guard.png", 6, 1, -1},
 	{"Louvre sketch student", "assets/images/locations/paris/props/louvre_sketch_student.png", 6, 1, -1},
 	{"Japan kite shiny", "assets/images/locations/japan/props/kite_shiny.png", 6, 1, -1},
-	{"Japan torii pilgrims", "assets/images/locations/japan/props/torii_pilgrims.png", 6, 1, -1},
 	{"Japan street cat", "assets/images/locations/japan/props/street_cat.png", 6, 1, -1},
 	{"Japan incense lantern", "assets/images/locations/japan/props/incense_lantern.png", 6, 1, -1},
 	{"Japan teahouse kettle", "assets/images/locations/japan/props/teahouse_kettle.png", 6, 1, -1},

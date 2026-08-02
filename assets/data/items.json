@@ -217,6 +217,18 @@
       "name": "Matcha Bowl",
       "texture": "assets/images/items/matcha_bowl.png",
       "description": "Matcha whisked with cool well-water into a froth. Ready to share with the tea master."
+    },
+    {
+      "id": "katsuobushi",
+      "name": "Katsuobushi",
+      "texture": "assets/images/items/katsuobushi.png",
+      "description": "A paper packet of smoked bonito flakes from the flower store's stall table. Half of Hiro's ramen broth."
+    },
+    {
+      "id": "kombu",
+      "name": "Kombu",
+      "texture": "assets/images/items/kombu.png",
+      "description": "A strip of dried kelp, hung to dry by the pond at the street bridge. The other half of Hiro's broth."
     }
   ]
 }
