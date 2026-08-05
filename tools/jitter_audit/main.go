@@ -75,10 +75,12 @@ var sheets = []sheet{
 	{"Higgins shout", "assets/images/locations/camp/npc/higgins/npc_director_higgins_shout.png", 8, 2, -1},
 	{"Higgins walk back", "assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_back.png", 8, 2, -1},
 	{"Higgins walk right", "assets/images/locations/camp/npc/higgins/npc_director_higgins_walk.png", 8, 1, -1},
+	{"Higgins walk back v2", "assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_back_v2.png", 8, 1, -1},
 
 	// ---- Camp kids (engine loads ALL kid states as 8x2, atlas.go:34) ----
 	{"Tommy idle", "assets/images/locations/camp/npc/kids/tommy/npc_tommy_idle.png", 8, 2, -1},
 	{"Tommy talk", "assets/images/locations/camp/npc/kids/tommy/npc_tommy_talk.png", 8, 2, -1},
+	{"Tommy strange idle", "assets/images/locations/camp/npc/kids/tommy/npc_tommy_strange_idle.png", 8, 2, -1},
 	{"Tommy walk left (row1 of 8x3)", "assets/images/locations/camp/npc/kids/tommy/npc_tommy_walk_left.png", 8, 3, 1},
 	{"Jake idle", "assets/images/locations/camp/npc/kids/jake/npc_jake_idle.png", 8, 2, -1},
 	{"Jake talk", "assets/images/locations/camp/npc/kids/jake/npc_jake_talk.png", 8, 2, -1},

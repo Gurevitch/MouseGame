@@ -179,7 +179,60 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
 
 ## Open Prompts
 
+### §CAMILLE-PATRON-v2 — re-roll, clean gaps between figures (2026-08-01)
+
+Save to: `assets/images/locations/paris/npc/coffee/cafe_patron_camille.png`
+(replaces the current sheet). Canvas **1536×1024**, grid **8×1** (cells
+192×1024). Why the regen: figures 6–7 of the current sheet touch, so the
+gap-cutter merges them into one double-wide "frame" and drops it (plus a
+stray speck) — her café loop runs 6 frames instead of 8.
+
+===PROMPT START===
+
+> Sprite sheet, 8 frames in a single row, each cell 192×1024 (tall
+> rectangular), canvas exactly 1536×1024, flat `#B4D7EE` background, no
+> separators. Hand-drawn 1990s Saturday-morning cartoon, ~3 px ink, flat
+> fills.
+>
+> CHARACTER: Mademoiselle Camille, EXACTLY as in the attached
+> `cafe_patron_camille.png` reference — young Parisian art student, brown
+> chin-length bob, RED BERET, dark green wrap dress with a waist tie, warm
+> smile, holding a cream café-au-lait cup with heart latte art. Upper body
+> (seated café patron), same size, same waist cutoff row and centerline in
+> every cell.
+>
+> ACTION: a cozy café idle loop, every frame CLEARLY different: cradling the
+> cup with both hands → raising it → sipping with eyes closed → lowering it
+> → resting her chin on one hand, dreamy → holding the cup again, glancing
+> aside → a small contented sigh → back near frame 1 so the loop closes.
+> HARD RULE: ≥15 px fully-EMPTY background gap between EVERY pair of
+> figures — no figure may touch or overlap its neighbour, no stray specks or
+> fragments anywhere on the canvas. Cup and latte art cream `#E5DDC8`, eye
+> sclera pale grey `#C4C4C4`, zero pure `#FFFFFF` anywhere.
+
+===PROMPT END===
+
 ## Done log
+
+- **2026-08-02 — Higgins back walk + Tommy strange idle landed:**
+  §HIGGINS-WALK-BACK-v2 added the preferred 1536×1024, 8×1 rear walk cycle.
+  §TOMMY-STRANGE-IDLE-v2 replaced the gap-breaking music-note clusters with
+  one or two notes kept close to Tommy in each of its 16 cells. Both sheets
+  GAP-DETECT and add no pure-white scan hits; both were added to the audit
+  manifests.
+
+- **2026-08-02 — Higgins right-profile walk landed:**
+  §HIGGINS-WALK-RIGHT-v2 replaced the old reversed, stiff sheet with an
+  on-design 1536×1024, 8×1 right-facing walk cycle. It retains his glasses,
+  green shirt, red lanyard, and clipboard, GAP-DETECTS, and adds no
+  pure-white scan hits. The sheet was added to both sprite audit manifests.
+
+- **2026-08-02 — Gary blue-standard set + Kyoto grocery icons landed:**
+  §GARY-BLUE-SET regenerated all five 1536×1024, 8×1 Gary sheets on flat
+  `#B4D7EE`; every sheet GAP-DETECTS and adds no pure-white scan hits.
+  §JP-GROCERY-ICONS added the 512×512 katsuobushi and kombu inventory art.
+  The two previously unregistered normal-book Gary sheets were added to both
+  sprite audit manifests.
 
 - **2026-08-01 — correction rerolls landed:** §HIGGINS-THROW-MAP-v3 now
   matches his green-shirt, glasses, and red-lanyard office design, keeps a

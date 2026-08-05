@@ -96,7 +96,9 @@
       "PowerShell($env:GOTMPDIR=\".gotmp\"; go test ./... 2>&1 | Select-String -Pattern \"FAIL|ok  \")",
       "PowerShell($env:GOTMPDIR=\".gotmp\"; go test -v ./... 2>&1 | Select-String -Pattern \"^\\(--- FAIL|FAIL|ok  \\)\")",
       "PowerShell($env:GOTMPDIR=\".gotmp\"; go build ./...; if \\($?\\) { go test ./game 2>&1 | Select-Object -Last 3 })",
-      "PowerShell(\"---\")"
+      "PowerShell(\"---\")",
+      "Bash(GOTMPDIR=.gotmp go test ./engine -run ContentGrid -v)",
+      "Bash(GOTMPDIR=.gotmp go build ./game)"
     ]
   }
 }

@@ -75,15 +75,39 @@ func loadJapanNPC(renderer *sdl.Renderer, idleCands, talkCands []string) (idle, 
 
 // ---------- Dialogs ----------
 
-// --- Gary (torii): overjoyed to finally be in Kyoto; his ramen tip OPENS the
-// stall down the street (the book-upside-down gag plays mid-chat). ---
-var garyTokyoDialog = []dialogEntry{
+// --- Gary (torii). 2026-08-01 (user): the chapter opening is now a
+// MEET-BOTH gate — Gary's arrival chat is the pure book gag, Hiro's stall
+// is simply dark; once BOTH are met, Gary's book produces the ramen-place
+// tip, and only then Hiro names what he's missing (fire-striker + two
+// groceries), which starts the item chain. Gary's book then knows where
+// each grocery is sold. ---
+var garyArrivalDialog = []dialogEntry{
 	{speaker: "Gary", text: "PINK PANTHER! Can you BELIEVE it - KYOTO! I've dreamed about this since I was a kid. The temples, the gardens, the cherry blossoms..."},
 	{speaker: "Gary", text: "I read EVERYTHING about this place - every shrine, every festival, every bowl of noodles. It's ALL here in my guidebook!"},
 	{speaker: "Pink Panther", text: "...Gary. You're holding the book upside down."},
 	{speaker: "Gary", text: "WHAT? ...Oh. Oh my. ...Ahh. MUCH better. Now it makes far more sense!"},
-	{speaker: "Gary", text: "Listen - the book says the old cherry in the hidden grove only blooms for an offering blessed at a sacred hearth. The ramen cook down the street keeps one!"},
-	{speaker: "Pink Panther", text: "A blessed offering. Ramen first, then. Thanks, Gary."},
+}
+
+var garyRamenTipDialog = []dialogEntry{
+	{speaker: "Gary", text: "You met the ramen cook down the street? THE temple-street ramen cook? Hold on - my book has a whole page on him!"},
+	{speaker: "Gary", text: "Here: 'the old cherry in the hidden grove blooms only for an offering blessed over a sacred FIRE - and the ramen cook of the temple street keeps the last one.'"},
+	{speaker: "Pink Panther", text: "So Hiro's dark little stall is the key to the whole grove. Back down the street, then. Thanks, Gary."},
+}
+
+// 2026-08-01 (user, round 2): the shopping list is a PING-PONG — Hiro asks
+// for ONE grocery at a time, and Gary's book locates each one separately.
+var garyKatsuobushiDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Gary - where does a panther buy KATSUOBUSHI in this town?"},
+	{speaker: "Gary", text: "Katsuo-what? Oh - the smoked bonito flakes! The book has a market index! Let me check, let me check..."},
+	{speaker: "Gary", text: "Here it is - KATSUOBUSHI: 'the flower-store lady by the temple stocks a little of everything.' The shop up the street stairs!"},
+	{speaker: "Pink Panther", text: "The flower store it is. Thanks, Gary."},
+}
+
+var garyKombuDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "One more, Gary - KOMBU. Where do I find dried kelp?"},
+	{speaker: "Gary", text: "Back to the index! Let me check, let me check... kimonos... koi... KOMBU - here it is!"},
+	{speaker: "Gary", text: "'Hung to dry by the water.' The pond at the bottom of the ramen street, by the little bridge!"},
+	{speaker: "Pink Panther", text: "Drying by the pond. This book is starting to earn its keep."},
 }
 
 // 2026-07-18 (user #45/#46): Gary is the chapter's CUSTOMS ORACLE — whenever
@@ -103,30 +127,64 @@ var garyTeaCustomDialog = []dialogEntry{
 	{speaker: "Gary", text: "The tea master at the temple tea-house hosts it. Very serene. I cried a little."},
 }
 
-// --- Hiro (street): OPEN for business (Gary's tip), but the SACRED hearth for
-// the blessed offering bowl still needs his kite-stolen fire-striker ---
+// --- Hiro (street): stall dark on arrival; once Gary's tip lands he names
+// everything he's missing — the kite-stolen fire-striker AND two groceries
+// (katsuobushi + kombu). All three open the sacred hearth. ---
 var hiroRamenDialog = []dialogEntry{
-	{speaker: "Hiro", text: "Irasshaimase, panther-san! You have the look of a hungry traveller - but my stall is dark today, I am afraid."},
-	{speaker: "Pink Panther", text: "Actually, I need an OFFERING bowl - one blessed at your hearth, for the old cherry tree."},
-	{speaker: "Hiro", text: "Ahh, the Whispering Cherry. For that I must light the SACRED hearth - but my fire-striker, the flint, a KITE swooped down and stole it this morning!"},
-	{speaker: "Hiro", text: "Bring me my striker and I will bless your offering bowl in the first flame."},
+	{speaker: "Hiro", text: "Irasshaimase, panther-san... forgive the dark stall. No noodles today, I am afraid."},
+	{speaker: "Pink Panther", text: "Rough morning?"},
+	{speaker: "Hiro", text: "The roughest in years. But you did not come all this way to hear an old cook's troubles. Enjoy the street, my friend."},
+}
+
+var hiroMissingDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Still closed, Hiro? I was counting on your fire today."},
+	{speaker: "Hiro", text: "Closed, closed, CLOSED - and I am racing the morning as it is, panther-san!"},
+	{speaker: "Hiro", text: "This morning my KATSUOBUSHI delivery did not come - the first time in twenty years! No flakes, no broth, no ramen!"},
+	{speaker: "Hiro", text: "And on top of it all my FIRE-STRIKER has vanished - it was by the stove at dawn, and now, poof! Gone!"},
+	{speaker: "Pink Panther", text: "A flint and fish flakes. Keep your pots ready - I'll do the running."},
+}
+
+// Delivering the katsuobushi IS the second ask (the ping-pong middle beat).
+var hiroKatsuTradeDialog = []dialogEntry{
+	{speaker: "Hiro", text: "KATSUOBUSHI! Fresh flakes, the good kind - into the pantry they go."},
+	{speaker: "Hiro", text: "Now all that is left for the ramen is KOMBU - dried kelp, for the deep of the broth."},
+	{speaker: "Pink Panther", text: "One more trip to Gary's book, then."},
 }
 
 var hiroRamenPostDialog = []dialogEntry{
-	{speaker: "Hiro", text: "No striker, no sacred flame, panther-san. That thieving kite! Bring it back and the blessed bowl is yours."},
+	{speaker: "Hiro", text: "Still closed, panther-san - my striker is still missing, the pantry still waits for katsuobushi, and the morning will not wait at all!"},
 }
 
+var hiroPostKatsuDialog = []dialogEntry{
+	{speaker: "Hiro", text: "The flakes rest in my pantry, panther-san. Now KOMBU - and my lost striker - and the stall opens again."},
+}
+
+// The cherry agenda is PP's (from Gary's tip), not Hiro's — after the hearth
+// lights, PP is the one who asks for the blessed bowl.
 var hiroOpenDialog = []dialogEntry{
-	{speaker: "Hiro", text: "MY STRIKER! You found it! Stand back - "},
-	{speaker: "Hiro", text: "(steel on flint - a spark - the sacred hearth flares blue-gold)"},
-	{speaker: "Hiro", text: "There. A bowl blessed in the first flame. Carry it to the old tree, with respect."},
+	{speaker: "Hiro", text: "My STRIKER - and the KOMBU! With the flakes already in the pantry, the broth is complete. Stand back - "},
+	{speaker: "Pink Panther", text: "Beautiful. Now, about that favor - one bowl, blessed in the first flame. It's for the old cherry in the grove."},
+	{speaker: "Hiro", text: "For the one who saved my morning? Gladly. Here - carry it with respect."},
 }
 
-// --- Kenji (street): saw where the kite dropped it; needs well-water first ---
+// --- Kenji (torii): saw where the kite dropped it; needs well-water first ---
+// Kenji is the WITNESS: Hiro only knows his striker vanished; Kenji is the
+// one who saw the kite take it (2026-08-01 — the theft claim moved here,
+// where it makes sense). Before Hiro's ask exists, Kenji is pure flavor —
+// the witness beat can't fire until PP actually knows a striker is missing.
+var kenjiIdleDialog = []dialogEntry{
+	{speaker: "Kenji", text: "Please - do not nudge the table. Ink and stillness, panther-san. A calligrapher needs both, and the street offers neither."},
+}
+
+var kenjiNeedWaterDialog = []dialogEntry{
+	{speaker: "Kenji", text: "Water from the temple well, panther-san - down the ramen street, at the foot of the stairs. Then the ink flows, and so does my memory."},
+}
+
 var kenjiStudentDialog = []dialogEntry{
-	{speaker: "Kenji", text: "Please - do not nudge the table... oh, the panther. You have the look of a man hunting a kite's hiding place."},
-	{speaker: "Pink Panther", text: "Hiro's fire-striker. You saw where the kite dropped it?"},
-	{speaker: "Kenji", text: "I did. But my ink has dried to dust and I cannot think with a dry brush. Bring me water from the temple well - down in the ramen street, at the foot of the stairs - and I will tell you."},
+	{speaker: "Kenji", text: "Please - do not nudge the table... oh, the panther. You have the look of a man who lost something small and shiny."},
+	{speaker: "Pink Panther", text: "Hiro's fire-striker. It vanished from his stall at dawn."},
+	{speaker: "Kenji", text: "Not vanished - TAKEN. A kite swooped the street this morning and flew off with a glint in its grip. I saw exactly where it came down..."},
+	{speaker: "Kenji", text: "...but my ink has dried to dust and I cannot think with a dry brush. Bring me water from the temple well - down in the ramen street, at the foot of the stairs - and I will tell you."},
 }
 
 var kenjiWaterDialog = []dialogEntry{
@@ -147,21 +205,21 @@ var kenjiStudentPostDialog = []dialogEntry{
 // the cat tale points at the roof-cat prop, the gates tale covers the
 // torii bow). onDialogEnd rotates to the next tale.
 var takeshiCherryTaleDialog = []dialogEntry{
-	{speaker: "Takeshi", text: "Ah, a customer for my paper theater! Sit, sit. Today's tale... (flips a card) ...The Whispering Cherry."},
+	{speaker: "Takeshi", text: "Ah, a customer for my paper theater! Sit, sit. Today's tale... The Whispering Cherry."},
 	{speaker: "Takeshi", text: "Deep in a hidden grove stands a tree older than the temple bells. Most years it will not bloom at all. Gold cannot buy its flowers. Princes have tried."},
-	{speaker: "Takeshi", text: "(flips the card) But bring it a true gift - something made with care, given with a whole heart - and the old tree wakes... and WHISPERS back."},
+	{speaker: "Takeshi", text: "But bring it a true gift - something made with care, given with a whole heart - and the old tree wakes... and WHISPERS back."},
 	{speaker: "Pink Panther", text: "A tree that answers. I know a little girl who'd love that story."},
 	{speaker: "Takeshi", text: "Heh. It is no story, pink one. Ask any old man in this street."},
 }
 
 var takeshiCatTaleDialog = []dialogEntry{
-	{speaker: "Takeshi", text: "(flips a card) The Beckoning Cat! Long ago, a poor shopkeeper shared his last rice ball with a stray cat..."},
+	{speaker: "Takeshi", text: "The Beckoning Cat! Long ago, a poor shopkeeper shared his last rice ball with a stray cat..."},
 	{speaker: "Takeshi", text: "The cat sat at his door and raised one paw - and travelers followed it in, curious. The shop never stood empty again. We call it maneki-neko, the beckoning cat."},
 	{speaker: "Takeshi", text: "Look up - the stray on Hiro's roof. Left paw tucked, waiting. When that stall opens again, watch her raise it. Luck knows where soup is coming."},
 }
 
 var takeshiGatesTaleDialog = []dialogEntry{
-	{speaker: "Takeshi", text: "(flips a card) The Red Gates. A torii is a doorway with no wall - because the wall it passes through cannot be seen."},
+	{speaker: "Takeshi", text: "The Red Gates. A torii is a doorway with no wall - because the wall it passes through cannot be seen."},
 	{speaker: "Takeshi", text: "On this side, the everyday world. Through the gate - the sacred. So we bow once as we pass. Small manners for big neighbours."},
 	{speaker: "Takeshi", text: "And since you ask about manners: at the noodle stand, SLURP LOUDLY. Quiet noodles insult the cook. That card I painted from experience."},
 }
@@ -189,7 +247,7 @@ var obachanPostDialog = []dialogEntry{
 
 // --- The old tree in the grove: place the offering, then pick the blossom ---
 var groveTreeNeedOfferingDialog = []dialogEntry{
-	{speaker: "Pink Panther", text: "The old tree's branches are bare. Oba-chan said it blooms for an offering blessed at the hearth - I should bring one first."},
+	{speaker: "Pink Panther", text: "The old tree's branches are bare. Oba-chan said it blooms for an offering blessed over a sacred fire - I should bring one first."},
 }
 
 var groveTreeDialog = []dialogEntry{
@@ -298,7 +356,7 @@ func newTouristKyoto(renderer *sdl.Renderer) *npc {
 		// Placed at the torii arrival now (was the ramen street).
 		bounds:         sdl.Rect{X: 560, Y: 370, W: 130, H: 240},
 		name:           "Gary",
-		dialog:         garyTokyoDialog,
+		dialog:         garyArrivalDialog,
 		talkFrameSpeed: 0.12,
 	}
 	// "Flip the book" gag (§JP-TOURIST): one-shot of him turning the book over.
@@ -575,9 +633,28 @@ func (g *Game) setupKyotoCallbacks() {
 				continue
 			}
 			kenji := n
-			kenji.onDialogEnd = func() {} // stays on the water ask until traded
-			// Bring Kenji well-water → he points to Oba-chan's eaves + gives the Voice Charm.
+			// 2026-08-01 (coherence pass): Kenji is FLAVOR until PP actually
+			// knows a striker is missing (Hiro's ask) — his default witness
+			// dialog used to spill the kite story unprompted.
+			kenji.dialog = kenjiIdleDialog
+			kenji.onDialogEnd = func() {
+				if len(kenji.dialog) > 0 && &kenji.dialog[0] == &kenjiStudentDialog[0] {
+					// The witness beat just played — he's now waiting on water.
+					game.vars.SetBool(ScopeGame, "jp_kenji_water_asked", true)
+					kenji.dialog = kenjiNeedWaterDialog
+				}
+			}
 			kenji.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+				// Witness beat: only once Hiro's ask exists and it hasn't played.
+				if game.vars.GetBool(ScopeGame, "jp_hiro_ask_done") &&
+					!game.vars.GetBool(ScopeGame, "jp_kenji_water_asked") &&
+					!game.inv.hasItem("Voice Charm") {
+					return kenjiStudentDialog, func() {
+						game.vars.SetBool(ScopeGame, "jp_kenji_water_asked", true)
+						kenji.dialog = kenjiNeedWaterDialog
+					}, nil
+				}
+				// Bring Kenji well-water → he points to Oba-chan's eaves + gives the Voice Charm.
 				if !game.inv.hasItem("Well-Water") || game.inv.hasItem("Voice Charm") {
 					return nil, nil, nil
 				}
@@ -622,15 +699,33 @@ func (g *Game) setupKyotoCallbacks() {
 						gary.talkGrid = garyFlipTalk
 					}
 				}
+				// 2026-08-01 (user): the opening is a meet-both gate — record
+				// that Gary was met, and note when the tip was actually HEARD
+				// (his dialog was the tip when this chat ended).
+				game.vars.SetBool(ScopeGame, "jp_met_gary", true)
+				if len(gary.dialog) > 0 && &gary.dialog[0] == &garyRamenTipDialog[0] {
+					game.vars.SetBool(ScopeGame, "jp_gary_tip_done", true)
+				}
 				// 2026-07-18 (user #45/#46): Gary = the customs oracle. His
 				// repeat dialog advances with the chapter: dress code once the
 				// offering path opens, tea etiquette once the grove is revealed
-				// but the ceremony isn't done, generic book gag otherwise.
+				// but the ceremony isn't done; before all that, the ramen tip
+				// (once Hiro is met) and the grocery index (once Hiro's ask
+				// names katsuobushi + kombu); generic book gag otherwise.
 				switch {
 				case game.vars.GetBool(ScopeGame, VarJpGroveRevealed) && !game.vars.GetBool(ScopeGame, VarJpTeaDone):
 					gary.dialog = garyTeaCustomDialog
 				case game.inv.hasItem("Offering Bowl") && !game.vars.GetBool(ScopeGame, VarJpTeaLearned):
 					gary.dialog = garyDressCodeDialog
+				case game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
+					!game.inv.hasItem("Kombu") && !game.inv.hasItem("Offering Bowl"):
+					gary.dialog = garyKombuDialog
+				case game.vars.GetBool(ScopeGame, "jp_hiro_ask_done") &&
+					!game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
+					!game.inv.hasItem("Katsuobushi"):
+					gary.dialog = garyKatsuobushiDialog
+				case game.vars.GetBool(ScopeGame, "jp_met_hiro") && !game.vars.GetBool(ScopeGame, "jp_gary_tip_done"):
+					gary.dialog = garyRamenTipDialog
 				default:
 					gary.dialog = garyTokyoPostDialog
 				}
@@ -693,6 +788,29 @@ func (g *Game) setupKyotoCallbacks() {
 			break
 		}
 
+		// 2026-08-01 (user): Hiro's grocery #2 — kombu drying by the water at
+		// the pond bridge (bottom-right of the street). Gary's book points
+		// here; gated on Hiro's ask like the katsuobushi packet.
+		street.hotspots = append(street.hotspots, hotspot{
+			bounds: sdl.Rect{X: 1150, Y: 650, W: 130, H: 80}, name: "Kombu drying by the pond",
+			onInteract: func() bool {
+				// Gated on the SECOND ask — Hiro only names kombu after the
+				// katsuobushi is in his pantry (user: ping-pong, one at a time).
+				if !game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") {
+					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "Long dark ribbons drying by the water... seaweed? Someone's dinner, not mine."}})
+					return true
+				}
+				if game.inv.hasItem("Kombu") || game.inv.hasItem("Offering Bowl") {
+					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "I've got the kelp already."}})
+					return true
+				}
+				game.dialog.startDialogWithCallback([]dialogEntry{
+					{speaker: "Pink Panther", text: "Kombu - dried kelp, hung by the water just like Gary's book said. That's the other half of Hiro's broth."},
+				}, func() { give("kombu") })
+				return true
+			},
+		})
+
 		// The temple well (Kenji's water errand) - a hotspot in the street.
 		// 2026-07-26 PR #9: moved from the empty left edge onto the little
 		// ROOFED WELL painted at the base of the temple stairs (right side),
@@ -715,6 +833,14 @@ func (g *Game) setupKyotoCallbacks() {
 				if game.inv.hasItem("Well-Water") {
 					game.dialog.startDialog([]dialogEntry{
 						{speaker: "Pink Panther", text: "I've already got a cup of well-water for Kenji."},
+					})
+					return true
+				}
+				// 2026-08-01 (coherence pass): no reason to draw water before
+				// Kenji has actually asked for it.
+				if !game.vars.GetBool(ScopeGame, "jp_kenji_water_asked") {
+					game.dialog.startDialog([]dialogEntry{
+						{speaker: "Pink Panther", text: "A cold stone well. Good clear water... but I've got no cup and no reason to draw one."},
 					})
 					return true
 				}
@@ -750,26 +876,55 @@ func (g *Game) setupKyotoCallbacks() {
 			switch n.name {
 			case "Hiro":
 				hiro := n
+				// 2026-08-01 (user): opening rework. First chat = the stall is
+				// just dark (no ask). Once Gary's tip lands, the next chat has
+				// Hiro name EVERYTHING he's missing — the kite-stolen striker
+				// plus katsuobushi + kombu — which starts the item chain.
 				hiro.onDialogEnd = func() {
-					// Until PP earns the blessed bowl, the reminder is "bring my striker".
-					if !game.inv.hasItem("Offering Bowl") {
+					game.vars.SetBool(ScopeGame, "jp_met_hiro", true)
+					if len(hiro.dialog) > 0 && &hiro.dialog[0] == &hiroMissingDialog[0] {
+						game.vars.SetBool(ScopeGame, "jp_hiro_ask_done", true)
+					}
+					if game.inv.hasItem("Offering Bowl") {
+						return // post-trade dialog was set by the trade callback
+					}
+					switch {
+					case game.vars.GetBool(ScopeGame, "jp_katsuobushi_given"):
+						hiro.dialog = hiroPostKatsuDialog
+					case game.vars.GetBool(ScopeGame, "jp_hiro_ask_done"):
 						hiro.dialog = hiroRamenPostDialog
+					case game.vars.GetBool(ScopeGame, "jp_gary_tip_done"):
+						hiro.dialog = hiroMissingDialog
+					default:
+						hiro.dialog = hiroRamenDialog
 					}
 				}
-				// The stall is already OPEN (Gary's tip). Bring Hiro his fire-striker
-				// → he lights the SACRED hearth and blesses the Offering Bowl.
+				// 2026-08-01 (user, round 2): PING-PONG trades. Stage 1 — PP
+				// delivers the katsuobushi and Hiro immediately names the
+				// SECOND grocery (kombu). Stage 2 — kombu + the fire-striker
+				// light the sacred hearth → the Offering Bowl.
 				hiro.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
-					if !game.inv.hasItem("Fire-Striker") || game.inv.hasItem("Offering Bowl") {
-						return nil, nil, nil
+					if game.inv.hasItem("Katsuobushi") && !game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") {
+						return hiroKatsuTradeDialog, func() {
+							game.inv.removeItem("Katsuobushi")
+							game.vars.SetBool(ScopeGame, "jp_katsuobushi_given", true)
+							hiro.dialog = hiroPostKatsuDialog
+						}, &handOff{item: "Katsuobushi", back: true}
 					}
-					return hiroOpenDialog, func() {
-						game.inv.removeItem("Fire-Striker")
-						give("offering_bowl")
-						hiro.dialog = []dialogEntry{
-							{speaker: "Hiro", text: "Take the blessed bowl to the old tree, panther-san - and come back for noodles when your heart is light."},
-						}
-						hiro.altDialogFunc = nil
-					}, &handOff{item: "Fire-Striker", returnItem: "Offering Bowl", back: true}
+					if game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
+						game.inv.hasItem("Kombu") && game.inv.hasItem("Fire-Striker") &&
+						!game.inv.hasItem("Offering Bowl") {
+						return hiroOpenDialog, func() {
+							game.inv.removeItem("Fire-Striker")
+							game.inv.removeItem("Kombu")
+							give("offering_bowl")
+							hiro.dialog = []dialogEntry{
+								{speaker: "Hiro", text: "Take the blessed bowl to the old tree, panther-san - and come back for noodles when your heart is light."},
+							}
+							hiro.altDialogFunc = nil
+						}, &handOff{item: "Fire-Striker", returnItem: "Offering Bowl", back: true}
+					}
+					return nil, nil, nil
 				}
 				// 2026-08-01 (user #25): Hiro is BEHIND his counter — chats with
 				// him use the same walk-to-mark + recede-shrink choreography as
@@ -970,6 +1125,26 @@ func (g *Game) setupKyotoCallbacks() {
 				game.dialog.startDialogWithCallback([]dialogEntry{
 					{speaker: "Pink Panther", text: "So many chawan to choose from... I'll take " + bowl + " one today."},
 				}, func() { give("tea_bowl") })
+				return true
+			},
+		})
+		// 2026-08-01 (user): Hiro's grocery #1 — a katsuobushi packet on the
+		// same stall table, left of the matcha tin. Gated on Hiro's ask so PP
+		// doesn't shop before he knows the list (Gary's book points here).
+		grove.hotspots = append(grove.hotspots, hotspot{
+			bounds: sdl.Rect{X: 1050, Y: 435, W: 70, H: 75}, name: "A packet of katsuobushi",
+			onInteract: func() bool {
+				if !game.vars.GetBool(ScopeGame, "jp_hiro_ask_done") {
+					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "A paper packet of... smoked fish flakes? Smells intense. No reason to pocket someone's groceries, though."}})
+					return true
+				}
+				if game.inv.hasItem("Katsuobushi") || game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") {
+					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "Hiro's flakes are handled already."}})
+					return true
+				}
+				game.dialog.startDialogWithCallback([]dialogEntry{
+					{speaker: "Pink Panther", text: "Katsuobushi - smoked bonito flakes, exactly like Gary's book said. Half of Hiro's broth, rescued."},
+				}, func() { give("katsuobushi") })
 				return true
 			},
 		})

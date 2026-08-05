@@ -120,6 +120,11 @@ type player struct {
 	// walk the horizontal leg along the aisle FIRST, then the vertical leg at
 	// the target x — instead of an oblique beeline across the tables.
 	lWalkApproach bool
+	// laneTopY (2026-08-01 user #10): PP top-left Y of the scene's free-walk
+	// lane (the bakery aisle BELOW the tables). Set on scene transition from
+	// the lowest horizontal walkSegment; 0 = scene has no lane. startLWalk
+	// routes every table-crossing horizontal leg through this row.
+	laneTopY float64
 	// lastFootBlockers (2026-07-23 #9): the current scene's footBlockers,
 	// stashed each update so startLWalk can test the horizontal corridor
 	// for table crossings before committing to a straight leg.
@@ -420,6 +425,14 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		p.oneShotAnims["sit_drink"] = p.seatedTalk[2:8]
 		p.seatedTalk = p.seatedTalk[0:2]
 	}
+	// §PP-PUT-COFFEE-TABLE (2026-08-01 user #11): PP sets Henri's café au
+	// lait down on the table instead of handing it over. Optional — the
+	// handOff ppGiveAnim override falls back to give_coffee until it lands.
+	if path := firstExisting("assets/images/player/pp_put_coffee_table.png"); path != "" {
+		if f := gridFramesConnectedTol(renderer, path, 6, 1, 24); len(f) > 0 {
+			p.oneShotAnims["put_coffee_table"] = f
+		}
+	}
 	// §PP-PICK-SAKURA (2026-07-29): the grove pick — PP reaches UP into the
 	// branches, picks one blossom, pockets it. Falls back to grab_flower.
 	if path := firstExisting("assets/images/player/pp_pick_sakura.png"); path != "" {
@@ -579,12 +592,17 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	}
 	// 2026-07-15 (user #25/#27): Jerusalem per-item sheets — all optional,
 	// no-op until the art lands (§PP-GIVE-BAGEL / §PP-GET-PEN etc.).
+	// 2026-08-01: GLOBAL tol-24 (was connected) — the landed pen/coin gives
+	// are blue-bg sheets whose hand-on-hip frames ENCLOSE blue pockets; the
+	// connected key would keep them (the give-pencil precedent). Nothing on
+	// PP or the brass props is near the pale blue.
 	for key, path := range map[string]string{
 		"receive_coin": "assets/images/player/pp_get_coin.png",
+		"give_pen":     "assets/images/player/PP give pen.png",
 		"give_coin":    "assets/images/player/PP give coin.png",
 	} {
 		if _, err := os.Stat(path); err == nil {
-			if f := gridFramesConnectedTol(renderer, path, 8, 1, 24); len(f) > 0 {
+			if f := gridFramesTol(renderer, path, 8, 1, 24); len(f) > 0 {
 				p.oneShotAnims[key] = f
 			}
 		}
@@ -621,14 +639,20 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		"receive_postcard": true,
 		// 2026-07-25 (user): the bagel take reaches away from the seller.
 		"receive_bagel": true,
+		// 2026-08-01 (user #15): the cardamom take reaches away from the
+		// spice seller — mirror it.
+		"receive_cardamom": true,
 	}
 	// 2026-07-25 (user): the pot pickup — until §PP-GET-PENCIL-POT lands,
 	// alias the generic grab MIRRORED (the grab leans LEFT; the pot sits to
-	// PP's RIGHT at the shared Pierre-depth mark). The dedicated sheet is
-	// drawn reaching right, so it loads un-flipped and replaces the alias.
+	// PP's RIGHT at the shared Pierre-depth mark).
+	// 2026-08-01 (user #14): the dedicated sheet turned out to reach LEFT
+	// too (PP bends left over the pencil) — mirror it as well so the pick
+	// lands on the pot at his right.
 	if dp := firstExisting("assets/images/player/pp_get_pencil_pot.png"); dp != "" {
 		if f := gridFrames(renderer, dp, 6, 1); len(f) > 0 {
 			p.oneShotAnims["grab_pencil_pot"] = f
+			p.oneShotFlip["grab_pencil_pot"] = true
 		}
 	} else if len(p.grabFrames) > 0 {
 		p.oneShotAnims["grab_pencil_pot"] = p.grabFrames
@@ -854,7 +878,17 @@ func (p *player) playHandOff(target *npc, ho *handOff, then func()) {
 		return
 	}
 	key := giveAnimKeyForItem(ho.item)
-	p.playGiveFacing(key, ho.back, giveDur, func() {
+	// 2026-08-01 (user #11): explicit PP-anim override (Henri's coffee is SET
+	// DOWN on the table, not handed over). Only when the sheet has landed —
+	// otherwise the normal give_<key> chain keeps the beat animated.
+	playStage1 := func(done func()) {
+		if ho.ppGiveAnim != "" && p.hasOneShot(ho.ppGiveAnim) {
+			p.playOneShot(ho.ppGiveAnim, giveDur, done)
+			return
+		}
+		p.playGiveFacing(key, ho.back, giveDur, done)
+	}
+	playStage1(func() {
 		// #10: some trades don't want the NPC's take-reach (it falls back to the
 		// NPC's "give" sheet and double-plays the hand-back). Skip straight to the
 		// return/give stage.
@@ -1131,7 +1165,10 @@ func (p *player) setTarget(x, y float64) {
 		p.releaseRecedeSmooth(0.5)
 		fx, fy := x, y
 		p.targetX = engine.Clamp(p.x, playerMinX, playerMaxX)
-		p.targetY = p.maxY()
+		// 2026-08-01 (user, Hiro): a SHORT step toward the camera is enough
+		// to sell the regrow — walking all the way to maxY read as "walks
+		// too much" in scenes with a deep walk band (the ramen street).
+		p.targetY = math.Min(p.y+90, p.maxY())
 		p.moving = true
 		p.allowOffscreen = false
 		p.state = stateWalking
@@ -1279,34 +1316,46 @@ func (p *player) startLWalk(tx, ty, dx, dy float64, arm func()) bool {
 	if !p.lWalkApproach {
 		return false
 	}
-	// 2026-07-23 (#9): near-horizontal moves used to skip the L entirely —
-	// but Poulain's counter row and the patron row differ by only ~7px, so a
-	// counter→patron click beelined straight ACROSS the table band and got
-	// shoved into a table. If the horizontal corridor at the current foot row
-	// crosses a table footBlocker, detour through the front lane instead:
-	// down, across, back up.
-	if dy*dy <= 40*40 || dx*dx <= 40*40 {
-		if dx*dx <= 40*40 {
-			return false // vertical-ish moves can't cross the table band sideways
-		}
-		footY := p.y + playerDstH
-		x0, x1 := p.x+playerDstW/2, tx+playerDstW/2
-		if x1 < x0 {
-			x0, x1 = x1, x0
-		}
-		laneFoot := 0.0
-		for _, b := range p.lastFootBlockers {
-			if footY >= float64(b.Y) && footY <= float64(b.Y+b.H) &&
-				x1 >= float64(b.X) && x0 <= float64(b.X+b.W) {
-				if bottom := float64(b.Y+b.H) + 15; bottom > laneFoot {
-					laneFoot = bottom
-				}
+	if dx*dx <= 40*40 {
+		return false // vertical-ish moves can't cross the table band sideways
+	}
+	// Row the horizontal leg would use: up-moves cross at the CURRENT row
+	// first, down-moves drop to the target row then cross, near-horizontal
+	// moves cross at the current row.
+	horizY := p.y
+	if dy > 40 {
+		horizY = ty
+	}
+	x0, x1 := p.x+playerDstW/2, tx+playerDstW/2
+	if x1 < x0 {
+		x0, x1 = x1, x0
+	}
+	// 2026-08-01 (user #10): if the horizontal leg would brush the table band
+	// (its foot row less than 60px below the bottom of any table blocker the
+	// x-span crosses), reroute the WHOLE crossing through the scene's
+	// free-walk lane (laneTopY, foot ≈760 in the bakery): down to the lane,
+	// across UNDER the tables, then back up to the mark. The old detour only
+	// fired when the foot row was strictly inside a blocker — the patron talk
+	// row sits 2px below the tables, so PP crossed right along the table
+	// fronts (the "not logical walk").
+	legFoot := horizY + playerDstH
+	needLane := false
+	laneFallbackFoot := 0.0
+	for _, b := range p.lastFootBlockers {
+		if x1 >= float64(b.X) && x0 <= float64(b.X+b.W) &&
+			legFoot < float64(b.Y+b.H)+60 {
+			needLane = true
+			if bottom := float64(b.Y+b.H) + 15; bottom > laneFallbackFoot {
+				laneFallbackFoot = bottom
 			}
 		}
-		if laneFoot == 0 {
-			return false // corridor clear — the straight walk is fine
+	}
+	if needLane {
+		laneY := p.laneTopY
+		if laneY <= 0 {
+			// no authored lane in this scene — squeeze just under the band
+			laneY = math.Min(laneFallbackFoot-playerDstH, p.maxY())
 		}
-		laneY := math.Min(laneFoot-playerDstH, p.maxY())
 		p.targetX = p.x
 		p.targetY = laneY
 		p.onArrival = func() {
@@ -1326,6 +1375,9 @@ func (p *player) startLWalk(tx, ty, dx, dy float64, arm func()) bool {
 		p.allowOffscreen = false
 		p.state = stateWalking
 		return true
+	}
+	if dy*dy <= 40*40 {
+		return false // near-horizontal with a clear corridor — straight walk
 	}
 	if dy < 0 {
 		p.targetX = tx
@@ -2221,12 +2273,10 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 
 	// Decide the horizontal flip up-front so the foot-anchor below can account
 	// for it (CopyEx mirrors within the dst rect).
-	// 2026-07-18 (user #2): shift the flower grab LEFT so the crouch reach
-	// meets the flower at PP's stand spot (he stands to its right).
-	grabFlowerXShift := int32(0)
-	if p.activeOneShot == "grab_flower" {
-		grabFlowerXShift = -25
-	}
+	// 2026-08-01 (user #3): the old -25px flower-grab shift made PP pop
+	// sideways the moment the grab started; the stand mark now walks him
+	// tight to the daisy instead (standGapX), so the one-shot draws with
+	// no horizontal offset.
 	flip := sdl.FLIP_NONE
 	if p.state == stateWalking && (p.dir == dirLeft || p.dir == dirRight) {
 		// The side-walk sheet (PP walk left.png) is drawn FACING LEFT: show it
@@ -2274,7 +2324,6 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		} else {
 			dstX = int32(anchorX - footFromLeft)
 		}
-		dstX += grabFlowerXShift
 		// Anchor Y by the animation's CONSTANT foot ROW (sheet median, set by
 		// stabilizeFootCX) instead of each frame's own content bottom - a
 		// dipped tail or a higher-sitting pose extends past the line instead
@@ -2294,11 +2343,9 @@ func (p *player) drawScaled(renderer *sdl.Renderer, charScale float64) {
 	}
 
 	dstY := p.footY() - int32(footOffset)
-	// User 2026-06-02 (#10): lift the flower-grab pose so PP's reach lines up
-	// with the flower on the ground instead of bending below it.
-	if p.activeOneShot == "grab_flower" {
-		dstY -= 38
-	}
+	// 2026-08-01 (user #3): the old -38px lift made PP jump UP when the
+	// flower grab started. His feet now stay on the walk line, which
+	// walkToFloorItem already aligns with the flower's base.
 
 	// PR#16: nudge the rolling-pin grab pose down so PP's reach meets the bike
 	// basket. 2026-06-30 (#2): the old +60 (tuned for the lower spawn band)

@@ -61,7 +61,7 @@ type Game struct {
 	// the rude intercept (a simple x-lerp run from Update); nil when idle.
 	higginsWalk *higginsWalkState
 	// Japan ramen stall: the closed/open prop + the waiting line that SITS at the
-	// counter when Hiro opens (built in setupTokyoCallbacks, swapped by
+	// counter when Hiro opens (built in setupKyotoCallbacks, swapped by
 	// openRamenStall). Art is pending so these are invisible until it lands.
 	// (2026-07-18: the ramen stall overlay + queue fields were removed with
 	// the stall-mechanic rework — the stall is scene art now.)
@@ -177,7 +177,7 @@ func New(renderer *sdl.Renderer, font *engine.BitmapFont) *Game {
 	g.setupCampCallbacks()
 	g.setupParisCallbacks()
 	g.setupJerusalemCallbacks()
-	g.setupTokyoCallbacks()
+	g.setupKyotoCallbacks()
 	g.setupRioCallbacks()
 	g.setupRomeCallbacks()
 	g.setupMexicoCallbacks()
@@ -920,9 +920,10 @@ func (g *Game) setupCampCallbacks() {
 			// bent AWAY from it ("looks at the other side"). Stand to the flower's
 			// RIGHT so the daisy is on his left, matching the animation.
 			standRight: true,
-			// 2026-07-23 #2: pull the stand mark 40px left (closer) so the
-			// grab paw reaches the daisy's actual spot.
-			standGapX: 40,
+			// 2026-08-01 (user #3): stand tight to the daisy (was 40) so the
+			// crouch-left reach picks it at its exact spot — the draw-time
+			// offsets are gone, so the stand mark alone lines up the grab.
+			standGapX: 15,
 			onPickup: func() {
 				// Hide flower in scene first so the grab anim doesn't play
 				// over a still-visible daisy on the ground.
@@ -1085,7 +1086,12 @@ func (g *Game) playHigginsRudeBeat() {
 	higgins.hidden = false
 	higgins.silent = false
 	higgins.bounds.X = 1180
-	higgins.bounds.Y = 540
+	// 2026-08-01 (user #20): bigger for the face-off — the 180×210 hint-beat
+	// size read tiny next to PP in the scared-talk exchange. Feet stay on the
+	// same line (Y+H = 750).
+	higgins.bounds.W = 214
+	higgins.bounds.H = 250
+	higgins.bounds.Y = 500
 	higgins.dialog = higginsRudeDialog
 	// #23: stride in with the SIDE walk facing LEFT (toward PP) instead of the
 	// front-facing sheet that read as moonwalking. Fall back to walk_front.
@@ -1139,8 +1145,8 @@ type higginsWalkState struct {
 // finishHigginsRude plays PP's camera aside, hides Higgins, and unlocks Tokyo.
 func (g *Game) finishHigginsRude() {
 	g.vars.SetBool(ScopeGame, VarHigginsRudeDone, true)
-	g.travelMap.setUnlocked("tokyo_street", true)
-	g.vars.SetBool(ScopeGame, VarTokyoUnlocked, true)
+	g.travelMap.setUnlocked("kyoto_street", true)
+	g.vars.SetBool(ScopeGame, VarKyotoUnlocked, true)
 	// #23: instead of vanishing on the spot, Higgins strolls BACK to his office
 	// (right edge) while PP delivers the aside, then hides once he's there. The
 	// x-lerp runs from Update even during the dialog, so he doesn't freeze.
@@ -1956,6 +1962,19 @@ func (g *Game) setupParisCallbacks() {
 					// simultaneously and the item was added instantly, so the receive
 					// read as broken/instant.
 					game.inv.giveItemTo("Cafe au Lait", "monsieur_henri")
+					// 2026-08-01 (user #11): the cup PP just set down STAYS on
+					// Henri's table (decor prop at his mark, 602,518).
+					if cupDef, ok := game.items.getDef("cafe_au_lait"); ok {
+						if cupTex, cw, ch := engine.SafeTextureFromPNGKeyed(game.renderer, cupDef.Texture); cupTex != nil {
+							bakery.floorItems = append(bakery.floorItems, &floorItem{
+								tex: cupTex, srcW: cw, srcH: ch,
+								bounds:  sdl.Rect{X: 602, Y: 518, W: 36, H: 36},
+								name:    "Cafe au Lait",
+								visible: true,
+								decor:   true,
+							})
+						}
+					}
 					henri.playOneShotAnimThen("give_jam", 1.3, func() {
 						game.player.playOneShot("get_jam", 1.5, func() {
 							if c := game.items.createItem("confiture"); c != nil {
@@ -1966,7 +1985,10 @@ func (g *Game) setupParisCallbacks() {
 					henri.dialog = henriPostTradeDialog
 					henri.altDialogFunc = nil
 					henri.altDialogRequiresItem = ""
-				}, &handOff{item: "Cafe au Lait"}
+					// 2026-08-01 (user #11): Henri never had a receive-coffee
+					// sheet — PP now SETS the cup on the table instead
+					// (put_coffee_table override + no NPC take-reach).
+				}, &handOff{item: "Cafe au Lait", ppGiveAnim: "put_coffee_table", skipNPCTake: true}
 			}
 			break
 		}
@@ -2158,8 +2180,14 @@ func (g *Game) setupParisCallbacks() {
 					}
 					// 2026-06-11 #18 / SKILL.md §8c: pickup lines are GENERIC -
 					// the "who needs this" hint lives in NPC dialogs instead.
-					game.dialog.startDialog(genericPickupDialog(
-						"A wooden rolling pin, tucked away in someone's bike basket."))
+					// 2026-08-01 (user #8): speak the line facing SIDE (he just
+					// reached into the basket beside him), not squared to camera.
+					game.player.state = stateTalking
+					game.player.dir = dirRight
+					game.dialog.startDialogWithCallback(genericPickupDialog(
+						"A wooden rolling pin, tucked away in someone's bike basket."), func() {
+						game.player.state = stateIdle
+					})
 				})
 			},
 		}
@@ -2187,7 +2215,9 @@ func (g *Game) setupParisCallbacks() {
 			// stays shrunk if he was already talking there). F3-tune the y.
 			// 2026-07-25 (user): x 735→800, closer to the pot (center 909);
 			// the mirrored grab now reaches RIGHT into it.
-			standXOverride: 800,
+			// 2026-08-01 (user #14): 800→855 — the pick still landed short of
+			// the pot; stand almost against it so the flipped reach hits it.
+			standXOverride: 855,
 			standYOverride: 485,
 			recedeDepth:    0.65,
 			// 2026-07-23 (#20): the default 80px gap grabbed thin air in the
@@ -2660,6 +2690,18 @@ func (g *Game) HandleClick(x, y int32) {
 		// and where the click landed, to make talk issues debuggable.
 		fmt.Printf("[dialog] click (%d,%d) in %q started dialog with %q (npc bounds %+v)\n",
 			x, y, g.sceneMgr.currentName, npc.name, npc.bounds)
+		// 2026-08-01 (user #9): scripted-click NPCs (Pierre/Margaux) get their
+		// override IMMEDIATELY, same as the held-item path above. Routing them
+		// through walkToAndInteract first released the held recede and marched
+		// PP back to the road before the override walked him up again — now a
+		// chained chat between the two just turns in place (the override's own
+		// recedeHeld guard).
+		if npc.onClickOverride != nil {
+			ov := npc.onClickOverride
+			g.player.interactTarget = nil
+			ov()
+			return
+		}
 		g.player.walkToAndInteract(npc, g.dialog)
 		return
 	}

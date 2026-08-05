@@ -225,10 +225,24 @@ var bagelNeedCoffeeDialog = []dialogEntry{
 	{speaker: "Bagel Seller", text: "Fresh ka'ak! Sesame ka'ak! ...but ahh, what I'd give for a real souk coffee with it."},
 }
 
-var bagelTradeDialog = []dialogEntry{
-	{speaker: "Bagel Seller", text: "Is that cardamom coffee I smell? Trade you - a warm ka'ak for that cup!"},
-	{speaker: "Pink Panther", text: "Deal."},
-	{speaker: "Bagel Seller", text: "Bless you. Take the ka'ak to the old man praying at the Wall - he hasn't eaten all morning, stubborn soul."},
+// 2026-08-01 (user #17): the coffee no longer buys the ka'ak on the spot —
+// the seller drinks it and OWES PP A FAVOR. Only after Avi asks for a ka'ak
+// does PP come back and call the favor in.
+var bagelCoffeeThanksDialog = []dialogEntry{
+	{speaker: "Bagel Seller", text: "Is that cardamom coffee I smell? For me? Friend, you just saved my morning."},
+	{speaker: "Pink Panther", text: "Enjoy it while it's hot."},
+	{speaker: "Bagel Seller", text: "Ahh... perfect. I owe you one now. If you ever need a favor - anything at all - you come and talk to me."},
+}
+
+var bagelFavorWaitDialog = []dialogEntry{
+	{speaker: "Bagel Seller", text: "Best coffee I've had all week. Don't forget - you have a favor waiting with me."},
+}
+
+var bagelFavorCallDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Remember when you said I could ask you for a favor?"},
+	{speaker: "Bagel Seller", text: "Of course I remember! Name it, friend."},
+	{speaker: "Pink Panther", text: "One warm ka'ak. It's for the old man praying at the Wall - he hasn't eaten all morning."},
+	{speaker: "Bagel Seller", text: "For Avi? Take the warmest one on the cart. Go, go - before it cools!"},
 }
 
 var bagelPostDialog = []dialogEntry{
@@ -303,6 +317,10 @@ func newShimon(renderer *sdl.Renderer, x int32) *npc {
 	// fallback ("he gives some items then the coin").
 	registerJerGiveNamed(renderer, n, "give_pen", jerArtShimonGivePen)
 	registerJerGiveNamed(renderer, n, "give_coin", jerArtShimonGiveCoin)
+	// 2026-08-01 (user #18): Shimon visibly TAKES the pen back once
+	// §SHIMON-RECEIVE-PEN lands (optional; the coin trade skips the take
+	// until then — see the conditional skipNPCTake at the trade).
+	registerJerGiveNamedGrid(renderer, n, "receive_pen", jerNPCWall+"npc_shimon_receive_pen.png", 6, 1)
 	return n
 }
 
@@ -686,7 +704,11 @@ func (g *Game) setupJerusalemCallbacks() {
 							// sheet before give_coin played ("he gives some
 							// items then the coin"). PP's own give_pen beat
 							// carries the hand-over; Shimon only gives the coin.
-						}, &handOff{item: "Pen", returnItem: "Coin", npcGiveAnim: "give_coin", skipNPCTake: true, dialogFirst: true}
+							// 2026-08-01 (user #18): once §SHIMON-RECEIVE-PEN
+							// lands he takes the pen for real; PP's give_pen now
+							// aliases the pencil give so the hand-back animates.
+						}, &handOff{item: "Pen", returnItem: "Coin", npcGiveAnim: "give_coin",
+							skipNPCTake: !shimon.hasOneShotAnim("receive_pen"), dialogFirst: true}
 					}
 					// Stage 2: PP has the note paper but no pen → give the Pen (once).
 					if !penGiven() && game.inv.hasItem("Note Paper") && !game.inv.hasItem("Pen") {
@@ -699,27 +721,46 @@ func (g *Game) setupJerusalemCallbacks() {
 					return nil, nil, nil
 				}
 			case "Bagel Seller":
+				// 2026-08-01 (user #17): TWO-stage favor rework. The coffee no
+				// longer buys the ka'ak on the spot — the seller drinks it and
+				// owes PP a favor; only after Avi ASKS for a ka'ak does PP come
+				// back and call the favor in. No requires-fields: the branching
+				// below runs on every click (the Camille multi-branch pattern).
 				bagel := n
-				bagel.altDialogRequiresHeld = true
-				bagel.altDialogRequiresItem = "Coffee"
-				bagel.altDialogStrictMissingHint = bagelNeedCoffeeDialog
-				bagel.onDialogEnd = func() { bagel.dialog = bagelNeedCoffeeDialog }
-				bagel.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
-					if !held("Coffee") || game.inv.hasItem("Bagel") {
-						return nil, nil, nil
+				bagel.onDialogEnd = func() {
+					if game.vars.GetBool(ScopeGame, "jer_bagel_favor_owed") &&
+						!game.vars.GetBool(ScopeGame, "jer_bagel_given") {
+						bagel.dialog = bagelFavorWaitDialog
 					}
-					return bagelTradeDialog, func() {
-							game.inv.giveItemTo("Coffee", "bagel_seller")
+				}
+				bagel.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+					favorOwed := game.vars.GetBool(ScopeGame, "jer_bagel_favor_owed")
+					// Stage 1: PP hands the coffee over → the favor is banked.
+					if held("Coffee") && !favorOwed {
+						return bagelCoffeeThanksDialog, func() {
+								game.inv.giveItemTo("Coffee", "bagel_seller")
+								game.vars.SetBool(ScopeGame, "jer_bagel_favor_owed", true)
+								bagel.dialog = bagelFavorWaitDialog
+								// 2026-07-24 (user #24): once §BAGEL-RECEIVE-COFFEE
+								// lands he visibly TAKES the finjan; until then the
+								// take stays skipped so his give sheet can't double
+								// as it (#25).
+							}, &handOff{item: "Coffee", npcAnim: "receive_coffee",
+								skipNPCTake: !bagel.hasOneShotAnim("receive_coffee")}
+					}
+					// Stage 2: Avi has asked for a ka'ak → PP calls the favor in
+					// on a plain click (no item needed).
+					if favorOwed && game.vars.GetBool(ScopeGame, "jer_avi_asked") &&
+						!game.vars.GetBool(ScopeGame, "jer_bagel_given") &&
+						!game.inv.hasItem("Bagel") {
+						return bagelFavorCallDialog, func() {
 							give("bagel", "Bagel")
+							game.vars.SetBool(ScopeGame, "jer_bagel_given", true)
 							bagel.dialog = bagelPostDialog
 							bagel.altDialogFunc = nil
-							bagel.altDialogRequiresHeld = false
-							bagel.altDialogRequiresItem = ""
-							// 2026-07-24 (user #24): once §BAGEL-RECEIVE-COFFEE lands
-							// he visibly TAKES the finjan; until then the take stays
-							// skipped so his give sheet can't double as it (#25).
-						}, &handOff{item: "Coffee", returnItem: "Bagel", npcAnim: "receive_coffee",
-							skipNPCTake: !bagel.hasOneShotAnim("receive_coffee")}
+						}, &handOff{returnItem: "Bagel", dialogFirst: true}
+					}
+					return nil, nil, nil
 				}
 			}
 		}
@@ -804,8 +845,16 @@ func (g *Game) setupJerusalemCallbacks() {
 				pray := n
 				pray.altDialogRequiresHeld = true
 				pray.altDialogRequiresItem = "Bagel"
-				pray.altDialogStrictMissingHint = prayingIntroDialog
+				// 2026-08-01 (user #17): NO strict-missing-hint here — that
+				// branch returns without running onDialogEnd (the #26 coffee
+				// soft-lock), so `jer_avi_asked` could never flip. A no-bagel
+				// click falls through to his base dialog (the same ask text)
+				// and onDialogEnd runs.
 				pray.onDialogEnd = func() {
+					// 2026-08-01 (user #17): his ka'ak ask is what lets PP call
+					// in the bagel seller's favor (the bagel is no longer handed
+					// out with the coffee trade).
+					game.vars.SetBool(ScopeGame, "jer_avi_asked", true)
 					if !game.inv.hasItem("Note Paper") {
 						pray.dialog = prayingIntroDialog
 					} else {

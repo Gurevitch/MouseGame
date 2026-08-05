@@ -289,6 +289,10 @@ type npc struct {
 	// switches between them. Zero = no JSON override, code defaults apply.
 	footYDay  int32
 	footYDark int32
+	// talkYOff (2026-08-01, user): vertical draw nudge applied only while the
+	// TALK grid is active (not one-shots) — office Higgins's talk sheet sits
+	// a touch lower than his idle at the shared foot line.
+	talkYOff int32
 	// oneShotFlip overrides the npc's `flipped` orientation per one-shot
 	// animation name. Office Higgins's idle/talk got mirrored (2026-06-11
 	// #10) but his give-map throw was authored for the OLD orientation -
@@ -764,7 +768,10 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		fixedFacing:     true,
 		fixedFootAnchor: true, // idle/talk/give_map all bottom on the desk line (Y+H)
 		oneShotFlip:     map[string]bool{"give_map": true},
-		silent:          true,
+		// 2026-08-01 (user): his TALK sheet reads a touch lower than the idle
+		// at the shared desk line — draw it a tiny bit up.
+		talkYOff: -6,
+		silent:   true,
 		// 2026-06-20 #3: PP stood at the default 10px gap (foot ~x750), right on
 		// the trash bin (~x715-840). A big gap stops him clear of the bin, to the
 		// left, facing right to talk.
@@ -823,9 +830,18 @@ func newGroundsHiggins(renderer *sdl.Renderer) *npc {
 	// Register the back-walk one-shot used by the higgins_walk_in sequence
 	// when he enters from the right edge after Lily's shy dialog. PNG is
 	// 1376×768; load as 8×2 take_row=0 to mirror the talk sheet's geometry.
-	walkBackFrames := loadNPCGridRowClean(renderer,
-		"assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_back.png",
-		8, 2, 0)
+	// 2026-08-01 (user): §HIGGINS-WALK-BACK-v2 — the on-design 8×1 blue
+	// re-roll is preferred once it lands; the old 8×2 sheet stays the
+	// fallback until then.
+	var walkBackFrames []npcFrame
+	if p := firstExisting("assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_back_v2.png"); p != "" {
+		walkBackFrames = loadNPCGridConnected(renderer, p, 8, 1)
+	}
+	if len(walkBackFrames) == 0 {
+		walkBackFrames = loadNPCGridRowClean(renderer,
+			"assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_back.png",
+			8, 2, 0)
+	}
 	if len(walkBackFrames) > 0 {
 		h.oneShotAnims = map[string][]npcFrame{"walk_back": walkBackFrames}
 	}
@@ -2044,6 +2060,12 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		dstX = n.bounds.X + (n.bounds.W-dstW)/2
 		dstY = n.bounds.Y + bobOffset + (n.bounds.H - dstH)
 		src = frame.src
+	}
+
+	// 2026-08-01 (user): per-state nudge — the talk sheet only (one-shots and
+	// idle keep the anchored line).
+	if n.talkYOff != 0 && n.animState == npcAnimTalk && n.activeOneShot == "" {
+		dstY += n.talkYOff
 	}
 
 	dst := sdl.Rect{X: dstX, Y: dstY, W: dstW, H: dstH}
