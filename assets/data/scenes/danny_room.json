@@ -2,7 +2,7 @@
   "name": "danny_room",
   "background": "assets/images/locations/camp/background/day1/danny_room.png",
   "spawnX": 900,
-  "spawnY": 360,
+  "spawnY": 390,
   "minY": 320,
   "maxY": 400,
   "musicPath": "assets/audio/music/camp_cabin.mp3",
@@ -16,7 +16,8 @@
     {"x": 0, "y": 0, "w": 400, "h": 450},
     {"x": 400, "y": 0, "w": 600, "h": 300}
   ],
+  "_comment": "2026-08-07 #4: spawnY 360 -> 390 (foot 630 -> 660, the jake_room row) - PP entered floating too high on the cabin floor.",
   "walkSegments": [
-    {"x1": 250, "y1": 360, "x2": 1050, "y2": 360}
+    {"x1": 250, "y1": 390, "x2": 1050, "y2": 390}
   ]
 }

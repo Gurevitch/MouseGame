@@ -7,12 +7,18 @@
   "maxY": 620,
   "characterScale": 0.95,
   "npcs": ["jp_tea_master"],
+  "_comment_npcs": "2026-08-07 #30: footY mirrors newTeaMaster (elevated: she kneels on the tatami platform; PP stays on his floor row). Go-side extras here: the steaming KETTLE ambient prop (moved to 780,530 this batch) and the walk-to-stairs recede back down to the temple.",
+  "npcOverrides": [
+    {"id": "jp_tea_master", "footY": 620}
+  ],
   "hotspots": [
     {"_comment": "2026-07-26 PR #6: exit changed left-edge -> UP arrow at ~(193,351), on the open shoji door to the garden.",
      "bounds": {"x": 93, "y": 291, "w": 200, "h": 120}, "targetScene": "kyoto_temple", "name": "Back to the flower store", "arrow": "up"}
   ],
   "blockers": [],
+  "_comment_walk": "2026-08-08 D-3: the single y=520 lane sat BELOW minY (520-135=385<400), so every click clamped to one row - zero depth. Two lanes now (far 540, near 610) inside the band; tune with F3.",
   "walkSegments": [
-    {"x1": 110, "y1": 520, "x2": 1290, "y2": 520}
+    {"x1": 110, "y1": 540, "x2": 1290, "y2": 540},
+    {"x1": 110, "y1": 610, "x2": 1290, "y2": 610}
   ]
 }

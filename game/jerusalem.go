@@ -378,7 +378,19 @@ func newCoffeeSeller(renderer *sdl.Renderer, x int32) *npc {
 	}
 	// §COFFEE-GIVE (landed 2026-07-14): the dedicated pour-and-offer sheet;
 	// the older generic give stays as fallback.
-	registerJerGive(renderer, n, firstExisting(jerNPCMarket+"npc_coffee_seller_give_coffee.png", jerArtCoffeeGive))
+	// 2026-08-07 #23: tol 24 — the near-white bg's AA halos bridged figure 8's
+	// extended cup-arm into figure 7's zone under the tol-8 key, so the
+	// waist-splitter cut through the offered cup. Registered under BOTH the
+	// generic "give" and the derived give_jerusalem_coffee key that
+	// stageReturn tries first, so the hand-back resolves without fallback.
+	if p := firstExisting(jerNPCMarket+"npc_coffee_seller_give_coffee.png", jerArtCoffeeGive); p != "" {
+		if f := loadNPCGridTol(renderer, p, 8, 1, 24); len(f) > 0 {
+			n.oneShotAnims = map[string][]npcFrame{
+				"give":                  f,
+				"give_jerusalem_coffee": f,
+			}
+		}
+	}
 	// #15/#16: pin the give one-shot to the idle's scale so the coffee seller
 	// doesn't shrink when he pours/hands the coffee.
 	n.anchorRefH = maxOpaqueH(n.idleGrid)
@@ -429,7 +441,10 @@ func newPrayingMan(renderer *sdl.Renderer, x int32) *npc {
 		talkFrameSpeed: 0.2,
 	}
 	registerJerGive(renderer, n, jerArtPrayGive)
-	registerJerGiveNamed(renderer, n, "give_paper", jerArtPrayGivePaper)
+	// 2026-08-07 #1: the give-paper sheet holds SEVEN figures (gaps 60-75px),
+	// not 8 — the 8×1 load waist-split a real figure into a 34×103 runt that
+	// dropMalformedFrames warned about and deleted every boot.
+	registerJerGiveNamedGrid(renderer, n, "give_paper", jerArtPrayGivePaper, 7, 1)
 	registerJerGiveNamedGrid(renderer, n, "receive_bagel", jerNPCWall+"npc_praying_man_receive_bagel.png", 6, 1) // §AVI-RECEIVE-BAGEL
 	// 2026-07-24 (user #27): the receive sheet reaches away from PP — mirror it.
 	n.oneShotFlip = map[string]bool{"receive_bagel": true}

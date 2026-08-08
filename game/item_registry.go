@@ -49,6 +49,20 @@ func newItemRegistry(renderer *sdl.Renderer, path string) *itemRegistry {
 	return reg
 }
 
+// idForName resolves a display name ("Cafe au Lait") back to its registry id
+// ("cafe_au_lait") by scanning the defs. 2026-08-08 #8: the save file stores
+// DISPLAY names, and the old hardcoded 7-name switch silently dropped every
+// other item from the bag on load ("Card", "Confiture", "Coin", ...). Falls
+// back to the input so ids saved by future formats still resolve.
+func (reg *itemRegistry) idForName(name string) string {
+	for id, def := range reg.defs {
+		if def.Name == name {
+			return id
+		}
+	}
+	return name
+}
+
 // createItem creates an inventoryItem from the registry by ID
 func (reg *itemRegistry) createItem(id string) *inventoryItem {
 	def, ok := reg.defs[id]

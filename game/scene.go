@@ -266,6 +266,13 @@ type sceneManager struct {
 	// arrival. Consumed (and cleared) once on the next completed transition, so
 	// returning from a cabin pops PP in normally instead of walking him in (#2/#14).
 	entryWalkPending bool
+	// restorePosPending (2026-08-08 #8): LoadGame wants PP at the SAVED
+	// coordinates, but the transition's completion always snapped him to the
+	// scene's spawn point, clobbering the restore. Set alongside a
+	// transitionTo from LoadGame; consumed once at fade-in.
+	restorePosPending bool
+	restoreX          float64
+	restoreY          float64
 }
 
 // newIrisMask builds the iris-wipe mask texture: a 512x512 opaque-black
@@ -474,6 +481,13 @@ func (sm *sceneManager) update(dt float64) {
 				// The walking clamp catches normal movement; transitionTo is
 				// a direct assignment path that bypassed it.
 				py := s.spawnY
+				// 2026-08-08 #8: a load restores the SAVED position instead of
+				// the scene spawn (still clamped to the scene band below).
+				if sm.restorePosPending {
+					sm.restorePosPending = false
+					sm.transPlayer.x = engine.Clamp(sm.restoreX, playerMinX, playerMaxX)
+					py = sm.restoreY
+				}
 				if py > sm.transPlayer.maxY() {
 					py = sm.transPlayer.maxY()
 				}
@@ -518,7 +532,15 @@ func (sm *sceneManager) update(dt float64) {
 					if dur < 1.2 {
 						dur = 1.2
 					}
-					p.playWalkIn(startX, endX, p.y, dur, nil)
+					// 2026-08-07 #2: the camp-entrance arrival drifts UP the
+					// road (~35px) while walking in, so the entry reads as PP
+					// coming up the path instead of sliding along a flat line.
+					// Every other entry walk keeps the classic fixed-y.
+					endY := p.y
+					if s.name == "camp_entrance" {
+						endY = engine.Clamp(p.y-35, s.minY, s.maxY)
+					}
+					p.playWalkIn(startX, endX, p.y, endY, dur, nil)
 				}
 			}
 		}
@@ -1095,8 +1117,23 @@ func (s *scene) drawAmbient(renderer *sdl.Renderer, showAmbientLife bool) {
 
 	// Ambient sprite movers draw on top of the particle dust but still
 	// before the actors (drawAmbient runs ahead of drawActors), so they
-	// read as background depth.
+	// read as background depth. Foreground movers (the biker) skip this
+	// pass and draw in drawForegroundAmbient after the actors instead.
 	for _, a := range s.ambientSprites {
+		if a.foreground {
+			continue
+		}
 		a.draw(renderer)
+	}
+}
+
+// drawForegroundAmbient draws the ambient movers flagged foreground — they
+// render ABOVE the footY-sorted actors (2026-08-07 #8: the Paris biker
+// crosses in front of the flower pot, the NPCs, and PP).
+func (s *scene) drawForegroundAmbient(renderer *sdl.Renderer) {
+	for _, a := range s.ambientSprites {
+		if a.foreground {
+			a.draw(renderer)
+		}
 	}
 }

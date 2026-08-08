@@ -478,6 +478,21 @@ func (tm *travelMap) hitTestAny(mx, my int32) *travelLocation {
 	return best
 }
 
+// restoreUnlockedFromVars re-lights every pin whose <id>_unlocked var is set
+// in the save (2026-08-08 #8: setUnlocked mirrors INTO the vars but nothing
+// read them back on load, so kyoto/rio/rome/mexico pins went dark again
+// after loading a late save).
+func (tm *travelMap) restoreUnlockedFromVars(vars *VarStore) {
+	if vars == nil {
+		return
+	}
+	for i := range tm.locations {
+		if vars.GetBool(ScopeGame, tm.locations[i].id+"_unlocked") {
+			tm.locations[i].unlocked = true
+		}
+	}
+}
+
 func (tm *travelMap) setUnlocked(scene string, unlocked bool) {
 	for i := range tm.locations {
 		if tm.locations[i].scene == scene {

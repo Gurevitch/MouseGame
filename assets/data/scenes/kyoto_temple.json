@@ -7,12 +7,20 @@
   "maxY": 620,
   "characterScale": 0.95,
   "npcs": ["jp_obachan", "jp_kiku"],
+  "_comment_npcs": "2026-08-07 #30: footY overrides mirror the Go constructors (newObachan, newDresser). Go-side hotspots here: the MATCHA tin (1135,430) + TEA BOWL shelf (1220,430) on the stall table, the sakura-grove exit (visibleWhen jp_grove_revealed), and the walk-to-stairs recede on the teahouse exit. The katsuobushi packet hotspot was REMOVED 2026-08-07 #31 (it sat under Kiku's click box) - Oba-chan hands it over in dialog now.",
+  "npcOverrides": [
+    {"id": "jp_obachan", "footY": 620},
+    {"id": "jp_kiku", "footY": 610}
+  ],
   "hotspots": [
     {"bounds": {"x": 0, "y": 180, "w": 100, "h": 460}, "targetScene": "kyoto_street", "name": "Back to the ramen street", "arrow": "left"},
-    {"bounds": {"x": 540, "y": 110, "w": 300, "h": 210}, "targetScene": "kyoto_teahouse", "name": "To the temple tea-house", "arrow": "up"}
+    {"_comment": "2026-08-08 #22: rect re-centred so the UP arrow glyph (drawn at X+W/2, Y+14) lands at (852,285) - the temple stair top - instead of floating at the roofline.",
+     "bounds": {"x": 752, "y": 271, "w": 200, "h": 140}, "targetScene": "kyoto_teahouse", "name": "To the temple tea-house", "arrow": "up"}
   ],
   "blockers": [],
+  "_comment_walk": "2026-08-08 D-3: the single y=520 lane sat BELOW minY (520-135=385<400), so every click clamped to one row - zero depth. Two lanes now (far 540, near 610) inside the band; tune with F3.",
   "walkSegments": [
-    {"x1": 110, "y1": 520, "x2": 1290, "y2": 520}
+    {"x1": 110, "y1": 540, "x2": 1290, "y2": 540},
+    {"x1": 110, "y1": 610, "x2": 1290, "y2": 610}
   ]
 }

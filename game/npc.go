@@ -114,6 +114,13 @@ type npc struct {
 	// set this on NPCs whose one-shot is a genuine full-body action that should
 	// fill the bounds (e.g. Higgins's give_map throw).
 	anchorRefHOneShots bool
+	// oneShotRefH (2026-08-08 #12): per-anim override of the scale reference.
+	// For a one-shot whose content is FRAMED TALLER than the idle it's pinned
+	// to (Camille's receive_pencil: 418px content vs her 334px bust idle),
+	// the shared anchorRefH pin ENLARGES it ~25%. Register the anim's own
+	// maxOpaqueH here to render it at its natural scale inside the same
+	// bounds. Checked before anchorRefH in drawScaled.
+	oneShotRefH map[string]int32
 	// headAnchorOffsetY (item 3): pixels to push the head-anchored content DOWN
 	// from bounds.Y, so a bust sits at the right height in its window instead of
 	// pinned to the very top.
@@ -299,12 +306,16 @@ type npc struct {
 	// without this the map would fly out of the wrong hand.
 	oneShotFlip map[string]bool
 
+	// namedAnimFrameSpeed optionally overrides the default 0.10 seconds/frame
+	// cadence while a named animation is looped through the idle cycler.
+	namedAnimFrameSpeed map[string]float64
+	swappedIdleSpeed    float64
+
 	// swappedIdleBackup holds the original idleGrid when a sequence step
 	// temporarily swaps it for a looping named animation (e.g. Higgins's
 	// "walk_back" cycle during an npc_move). The next idle/talk anim step
 	// restores it via restoreSwappedIdle(). Unlike one-shots this path
-	// uses the existing idle frame cycler so the animation loops at the
-	// natural talkFrameSpeed × 2.5 pace.
+	// uses the existing idle frame cycler.
 	swappedIdleBackup []npcFrame
 
 	// lastDrawRect caches the on-screen rect from the most recent
@@ -761,13 +772,16 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 		// 2026-06-11 #12: 0.08 strobed against the 20-chars/s text reveal.
 		talkFrameSpeed: 0.20,
 		// User 2026-06-11 (#10): flip idle+talk 180 deg AGAIN from the previous
-		// orientation -> back to unflipped sheets. The give-map throw stays at
-		// its previous (flipped) orientation via oneShotFlip below ("map is in
-		// good side"). fixedFacing keeps startNPCDialog from re-flipping him.
+		// orientation -> back to unflipped sheets. fixedFacing keeps
+		// startNPCDialog from re-flipping him.
+		// 2026-08-07 #7 (user): the give-map throw sailed toward the WRONG
+		// side — un-mirror it so Higgins releases the map leftward, toward
+		// PP at the office door. §HIGGINS-GIVE-MAP-v4 (right→left release
+		// drawn in) is queued as the real art fix.
 		flipped:         false,
 		fixedFacing:     true,
 		fixedFootAnchor: true, // idle/talk/give_map all bottom on the desk line (Y+H)
-		oneShotFlip:     map[string]bool{"give_map": true},
+		oneShotFlip:     map[string]bool{"give_map": false},
 		// 2026-08-01 (user): his TALK sheet reads a touch lower than the idle
 		// at the shared desk line — draw it a tiny bit up.
 		talkYOff: -6,
@@ -783,6 +797,16 @@ func newOfficeHiggins(renderer *sdl.Renderer) *npc {
 	// 2026-07-17: the re-roll uses a sampled blue background, so global keying
 	// safely removes enclosed background without touching his cream map.
 	giveFrames := loadNPCGrid(renderer, "assets/images/locations/camp/npc/higgins/npc_director_higgins_give_map.png", 6, 2)
+	// 2026-08-08 #3 (user): the throw must END on the raised-EMPTY-hand pose
+	// so the tweened map item takes over seamlessly. Frame map (measured):
+	// 0-5 build to the wind-up (map in hand), 6 has a BAKED map projectile
+	// painted in the cell (it would double with the tween sprite), 7 = arm
+	// extended hand empty, 8-11 settle back to idle. Keep {0..5, 7} — the
+	// one-shot now finishes on the empty raised hand (the camille give_sketch
+	// slice precedent).
+	if len(giveFrames) >= 8 {
+		giveFrames = append(giveFrames[:6:6], giveFrames[7])
+	}
 	if len(giveFrames) > 0 {
 		n.oneShotAnims = map[string][]npcFrame{"give_map": giveFrames}
 	}
@@ -844,6 +868,9 @@ func newGroundsHiggins(renderer *sdl.Renderer) *npc {
 	}
 	if len(walkBackFrames) > 0 {
 		h.oneShotAnims = map[string][]npcFrame{"walk_back": walkBackFrames}
+		// Let each rear-walk pose read clearly without returning to the old,
+		// excessively slow 0.45-second cadence.
+		h.namedAnimFrameSpeed = map[string]float64{"walk_back": 0.15}
 	}
 	// User 2026-06-12 (#6): the "lights out" bellow the player actually
 	// WATCHES happens here at camp_grounds (checkDay1Complete), BEFORE the
@@ -909,7 +936,9 @@ func newGroundsHiggins(renderer *sdl.Renderer) *npc {
 // in its own factory to make that intent explicit.
 func newRoomTommy(renderer *sdl.Renderer) *npc {
 	n := newTommy(renderer)
-	n.bounds = sdl.Rect{X: 760, Y: 445, W: 162, H: 245}
+	// 2026-08-07 #5 (user): bigger in his room — H 245 → 265, W 162 → 175
+	// (feet kept planted at y=690, centre-x kept at 841).
+	n.bounds = sdl.Rect{X: 754, Y: 425, W: 175, H: 265}
 	n.silent = true
 	return n
 }
@@ -1664,6 +1693,7 @@ func (n *npc) swapIdleForOneShot(name string) {
 	n.idleGrid = frames
 	n.idleCurFrame = 0
 	n.idleFrameTimer = 0
+	n.swappedIdleSpeed = n.namedAnimFrameSpeed[name]
 	n.animState = npcAnimIdle
 }
 
@@ -1674,6 +1704,7 @@ func (n *npc) restoreSwappedIdle() {
 	}
 	n.idleGrid = n.swappedIdleBackup
 	n.swappedIdleBackup = nil
+	n.swappedIdleSpeed = 0
 	n.idleCurFrame = 0
 	n.idleFrameTimer = 0
 }
@@ -1752,6 +1783,9 @@ func (n *npc) update(dt float64) {
 		// look unsmooth during the 1.8s walk_in move.
 		if n.swappedIdleBackup != nil {
 			idleSpeed = 0.10
+			if n.swappedIdleSpeed > 0 {
+				idleSpeed = n.swappedIdleSpeed
+			}
 		}
 		if n.idleFrameTimer >= idleSpeed {
 			n.idleFrameTimer -= idleSpeed
@@ -1973,6 +2007,13 @@ func (n *npc) drawScaled(renderer *sdl.Renderer, charScale float64) {
 		// receive one-shots so a full-body give sheet doesn't render tiny.
 		if n.anchorRefH > 0 && (n.activeOneShot == "" || n.anchorRefHOneShots) {
 			refH = n.anchorRefH
+		}
+		// 2026-08-08 #12: a per-anim reference beats the shared pin (Camille's
+		// taller-framed receive_pencil rendered ~25% oversized under it).
+		if n.activeOneShot != "" && n.oneShotRefH != nil {
+			if or, ok := n.oneShotRefH[n.activeOneShot]; ok && or > 0 {
+				refH = or
+			}
 		}
 		scale := float64(n.bounds.H) * charScale / float64(refH)
 		base := sdl.Rect{X: 0, Y: 0, W: frame.w, H: frame.h}
@@ -2569,6 +2610,13 @@ var pierreArtistDialog = []dialogEntry{
 	{speaker: "Pierre", text: "Tell her Pierre sent you. She still owes me a coffee from ze '89 restoration."},
 }
 
+// pierreWaitingSpreadDialog: Pierre's stage-1 reminder (baguette taken,
+// waiting on the confiture). Extracted 2026-08-08 #8 so the save/load
+// reconcile can restore it alongside the trade callback.
+var pierreWaitingSpreadDialog = []dialogEntry{
+	{speaker: "Pierre", text: "Still waiting on zat spread, mon ami. Beurre or confiture, anything."},
+}
+
 var pierreArtistPostDialog = []dialogEntry{
 	{speaker: "Pierre", text: "Don't forget - ze pigeons approve of your pink, monsieur!"},
 }
@@ -2671,7 +2719,8 @@ var pigeonLadyPostDialog = []dialogEntry{
 var pigeonLadyHeelDialog = []dialogEntry{
 	{speaker: "Pink Panther", text: "A day-old heel from Madame Poulain - for the pot pigeon."},
 	{speaker: "Madame Margaux", text: "Parfait! Watch, monsieur. Coo-coo! Over here, mon brave..."},
-	{speaker: "Madame Margaux", text: "(she scatters ze crumbs - ze gargoyle abandons ze flower pot and flutters over to ze feast)"},
+	// 2026-08-07 #17 (user): the "(she scatters ze crumbs...)" stage
+	// direction is out — the beat plays on screen, no narration needed.
 	{speaker: "Madame Margaux", text: "Voila - ze pot is yours. Whatever fell in zere, it is safe now."},
 }
 
@@ -2817,6 +2866,15 @@ func loadCafePatronGrids(renderer *sdl.Renderer, name string) ([]npcFrame, []npc
 	if name == "henri" {
 		tol = 16
 	}
+	// Camille's sheet has ~15-level off-white halos that bridge her two
+	// tightest figure gaps (3px at cols 591/1340) and inflate a dust speck
+	// into a 7×26 run, so the slicer merged figures 7+8 (dropped as
+	// double-figure) and gave the speck its own cell (dropped as runt) —
+	// her loop ran 6 of 8 frames. tol 24 clears the halos; the cream cup
+	// (#E5DDC8) is 55 levels off white and survives.
+	if name == "camille" {
+		tol = 24
+	}
 	var idle, talk []npcFrame
 	if p := firstExisting(base+"_idle.png", base+".png"); p != "" {
 		idle = loadNPCGridConnectedTol(renderer, p, 8, 1, tol)
@@ -2920,11 +2978,18 @@ var camilleFlavorDialog = []dialogEntry{
 }
 
 // camilleSketchAskDialog plays once Beaumont has asked for her sketch.
+// 2026-08-08 #7 (user: "her talk sprite is not running"): the dialog used
+// to OPEN with PP's long line — the NPC mouth gate freezes her whenever PP
+// speaks, so she stood stone-still through the whole opening. She now
+// reacts FIRST, so her talk loop runs from the first frame.
 var camilleSketchAskDialog = []dialogEntry{
-	{speaker: "Pink Panther", text: "Mademoiselle - Curator Beaumont needs a sketch of ze Room 7 portrait. He says you have ze fastest charcoal in Paris."},
+	{speaker: "Mademoiselle Camille", text: "Monsieur! You come from ze museum - I can smell ze old varnish from here. Tell me everything!"},
+	{speaker: "Pink Panther", text: "Curator Beaumont needs a sketch of ze Room 7 portrait. He says you have ze fastest charcoal in Paris."},
 	{speaker: "Mademoiselle Camille", text: "Beaumont said ZAT? About ME?! Monsieur, I would sketch ze whole Louvre for him!"},
 	{speaker: "Mademoiselle Camille", text: "But - oh non. My lucky charcoal pencil. It rolled into ze flower pot by ze Louvre steps, and a pigeon guards it like ze crown jewels."},
-	{speaker: "Mademoiselle Camille", text: "See Madame Margaux - ze pigeon lady across ze street. Bring her a day-old baguette heel from Madame Poulain and she'll coax ze bird off ze pot."},
+	// 2026-08-07 #15 (user): the "see Margaux, bring her a day-old heel from
+	// Poulain" line SPELLED OUT the whole puzzle — deleted. The player now
+	// discovers the bread ask by talking to Margaux herself.
 }
 
 var camillePencilReminderDialog = []dialogEntry{
@@ -2980,6 +3045,13 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 				n.oneShotAnims = map[string][]npcFrame{}
 			}
 			n.oneShotAnims["receive_pencil"] = f
+			// 2026-08-08 #12 (user): the take is FRAMED fuller-body (~418px
+			// content) than her 334px bust idle, so the shared anchor pin
+			// blew it up ~25%. Scale it by its own tallest pose instead.
+			if n.oneShotRefH == nil {
+				n.oneShotRefH = map[string]int32{}
+			}
+			n.oneShotRefH["receive_pencil"] = maxOpaqueH(f)
 		}
 	}
 	// Sketching one-shot (#19): draw → present, ending with Camille holding the
@@ -3004,6 +3076,13 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 		if n.oneShotAnims == nil {
 			n.oneShotAnims = map[string][]npcFrame{}
 		}
+		// 2026-08-08 #9 (user): the landed sheet's LAST frame is a bright
+		// hands-clasped smile — she looked HAPPY the pencil was gone. The
+		// one-shot holds its final frame, so drop frame 8 and let the hold
+		// land on frame 7: the slumped, eyes-closed dismay pose.
+		if len(f) == 8 {
+			f = f[:7]
+		}
 		n.oneShotAnims["lost_pencil"] = f
 	}
 	// C6: give_sketch one-shot — Camille holds the finished sketch toward PP
@@ -3025,6 +3104,12 @@ func newCafePatronCamille(renderer *sdl.Renderer) *npc {
 				n.oneShotAnims = map[string][]npcFrame{}
 			}
 			n.oneShotAnims["give_sketch"] = f
+			// 2026-08-07 #19 (user): the extend reaches AWAY from PP —
+			// mirror the one-shot (the Higgins give-map mechanism).
+			if n.oneShotFlip == nil {
+				n.oneShotFlip = map[string]bool{}
+			}
+			n.oneShotFlip["give_sketch"] = true
 		}
 	}
 	// sketch_room7: the Room 7 replica drawing (§CAM-ROOM7) — distinct from the

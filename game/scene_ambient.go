@@ -70,8 +70,14 @@ func decorateParisStreetSprites(s *scene, renderer *sdl.Renderer) {
 	// the white-box background, and the tol-40 edge-connected key now strips
 	// it (newAmbientBiker loads keyed). Remaining enclosed white in the wheel
 	// gaps clears for good with the §BIKER-BLUE re-roll.
-	s.ambientSprites = append(s.ambientSprites,
-		newAmbientBiker(renderer, -200, 750, 190, 0.85))
+	// 2026-08-07 #8 (user): the biker is the FRONT-MOST object — he rides
+	// the near lane (foot 750, in front of the pot's 650 line) but ambients
+	// drew a whole pass before the actors, so he slid BEHIND the pot.
+	// 2026-08-08 #4 (user): a little bigger — 0.85 → 0.95 (bottom-anchored
+	// on the same ground line, so he grows upward).
+	biker := newAmbientBiker(renderer, -200, 750, 190, 0.95)
+	biker.foreground = true
+	s.ambientSprites = append(s.ambientSprites, biker)
 	// 2026-06-12: the street-density flavor ambients (accordion player + crumb
 	// lady) were dropped - the screen was getting crowded, and the pigeon lady
 	// is now a real quest NPC (Madame Margaux, who lures the pot pigeon for the

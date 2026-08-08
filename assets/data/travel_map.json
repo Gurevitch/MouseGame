@@ -47,7 +47,7 @@
       ],
       "landmark": "assets/images/ui/landmarks/landmark_western_wall.png",
       "audio": "",
-      "relevantWhen": "vars.game.jerusalem_unlocked == 1 && vars.game.jake_healed == 0 && vars.game.jer_note_placed == 0"
+      "relevantWhen": "vars.game.jerusalem_unlocked == 1 && vars.game.jake_strange_seen == 1 && vars.game.jake_healed == 0 && vars.game.jer_note_placed == 0"
     },
     {
       "id": "kyoto",

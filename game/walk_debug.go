@@ -58,6 +58,21 @@ func (wd *walkDebug) draw(renderer *sdl.Renderer, font *engine.BitmapFont, s *sc
 		font.DrawText(renderer, fmt.Sprintf("%d,%d", int(seg.x1), int(seg.y1)),
 			int32(seg.x1)+4, int32(seg.y1)-14, 1, yellow)
 	}
+	// 2026-08-08 #16 (user): the overlay now shows the COLLISION geometry
+	// too — body blockers in red, foot-point blockers in orange, hotspot
+	// rects in cyan — so lanes, water blocks, and click zones tune together.
+	renderer.SetDrawColor(255, 70, 70, 200)
+	for _, b := range s.blockers {
+		renderer.DrawRect(&b)
+	}
+	renderer.SetDrawColor(255, 160, 40, 220)
+	for _, b := range s.footBlockers {
+		renderer.DrawRect(&b)
+	}
+	renderer.SetDrawColor(80, 220, 255, 200)
+	for i := range s.hotspots {
+		renderer.DrawRect(&s.hotspots[i].bounds)
+	}
 	// PP's foot point.
 	if p != nil {
 		fx, fy := p.footCenter()

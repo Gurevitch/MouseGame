@@ -6,13 +6,24 @@
   "minY": 400,
   "maxY": 620,
   "npcs": ["jp_hiro", "jp_takeshi"],
+  "_comment_npcs": "2026-08-07 #30: Takeshi's footY mirrors his Go constructor. jp_hiro has NO override on purpose - setupKyotoCallbacks swaps him to the counter-window bust {600,353,95,75} at boot. Go-side hotspots in this scene: the temple WELL (1015,420, kyoto.go), the KOMBU drying rack (1150,650), and the walk-to-stairs recede on the temple exit.",
+  "npcOverrides": [
+    {"id": "jp_takeshi", "footY": 620}
+  ],
   "hotspots": [
     {"bounds": {"x": 0, "y": 180, "w": 100, "h": 460}, "targetScene": "kyoto_torii", "name": "Back to the gates", "arrow": "left"},
     {"_comment": "2026-07-24 #41: flower-store exit changed right -> UP at ~(1190,396) per user (the temple->teahouse up-exit pattern).",
      "bounds": {"x": 1090,"y": 336,"w": 200,"h": 120}, "targetScene": "kyoto_temple", "name": "On to the flower store", "arrow": "up"}
   ],
   "blockers": [],
+  "_comment_water": "2026-08-08 #28: the POND is walk-blocked (foot-point test) - PP crosses onto the plank BRIDGE (x>=1100) only. The kombu beat walks him to a bridge mark before the scoop.",
+  "footBlockers": [
+    {"x": 800, "y": 700, "w": 295, "h": 60}
+  ],
+  "_comment_walk": "2026-08-08 D-3: the single y=520 lane sat BELOW minY (520-135=385<400), so every click clamped to one row - zero depth. Two lanes now (far 540, near 610) inside the band + the bridge deck lane; tune with F3.",
   "walkSegments": [
-    {"x1": 110, "y1": 520, "x2": 1290, "y2": 520}
+    {"x1": 110, "y1": 540, "x2": 1290, "y2": 540},
+    {"x1": 110, "y1": 610, "x2": 1080, "y2": 610},
+    {"x1": 1120, "y1": 700, "x2": 1270, "y2": 700}
   ]
 }

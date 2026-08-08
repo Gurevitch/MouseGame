@@ -179,40 +179,57 @@ it on sheets with legit separate objects: thrown map, handed items, pigeon).
 
 ## Open Prompts
 
-### §CAMILLE-PATRON-v2 — re-roll, clean gaps between figures (2026-08-01)
-
-Save to: `assets/images/locations/paris/npc/coffee/cafe_patron_camille.png`
-(replaces the current sheet). Canvas **1536×1024**, grid **8×1** (cells
-192×1024). Why the regen: figures 6–7 of the current sheet touch, so the
-gap-cutter merges them into one double-wide "frame" and drops it (plus a
-stray speck) — her café loop runs 6 frames instead of 8.
-
-===PROMPT START===
-
-> Sprite sheet, 8 frames in a single row, each cell 192×1024 (tall
-> rectangular), canvas exactly 1536×1024, flat `#B4D7EE` background, no
-> separators. Hand-drawn 1990s Saturday-morning cartoon, ~3 px ink, flat
-> fills.
->
-> CHARACTER: Mademoiselle Camille, EXACTLY as in the attached
-> `cafe_patron_camille.png` reference — young Parisian art student, brown
-> chin-length bob, RED BERET, dark green wrap dress with a waist tie, warm
-> smile, holding a cream café-au-lait cup with heart latte art. Upper body
-> (seated café patron), same size, same waist cutoff row and centerline in
-> every cell.
->
-> ACTION: a cozy café idle loop, every frame CLEARLY different: cradling the
-> cup with both hands → raising it → sipping with eyes closed → lowering it
-> → resting her chin on one hand, dreamy → holding the cup again, glancing
-> aside → a small contented sigh → back near frame 1 so the loop closes.
-> HARD RULE: ≥15 px fully-EMPTY background gap between EVERY pair of
-> figures — no figure may touch or overlap its neighbour, no stray specks or
-> fragments anywhere on the canvas. Cup and latte art cream `#E5DDC8`, eye
-> sclera pale grey `#C4C4C4`, zero pure `#FFFFFF` anywhere.
-
-===PROMPT END===
-
 ## Done log
+
+- **2026-08-08 — Kyoto trade/pickup sprite batch landed:** installed
+  §PP-KNEEL-SCOOP, §TEA-MASTER-IDLE-v3, §OBACHAN-GIVE,
+  §PP-GET-KATSUOBUSHI, §PP-GIVE-KATSUOBUSHI-BACK, and
+  §HIRO-COUNTER-RECEIVE in their runtime asset folders. All six sheets
+  GAP-DETECT as 6×1, are registered in both sprite manifests, and pass the
+  full test suite. Exact pure-white pixels in the Oba-chan and PP rear-give
+  sheets were converted to cream.
+
+- **2026-08-07 — §HIGGINS-WALK-BACK-v3 landed:** replaced the preferred rear
+  walk sheet with the corrected long cargo trousers, brown boots, red lanyard
+  strap, and clipboard design. The 1536×1024 8×1 sheet GAP-DETECTS, passes the
+  jitter audit with all eight frames OK, adds no pure-white scan hit, and
+  passes the full test suite.
+
+- **2026-08-07 — seven-sheet blue-background batch landed:**
+  §SPICE-IDLE-BLUE, §CAMILLE-LOSTPENCIL-BLUE, §HIGGINS-GIVE-MAP-v4,
+  §KENJI-IDLE-NATURE, §KENJI-IDLE-DRAWING, §BAGEL-GIVE-v2, and
+  §CURATOR-TALK-v2 replaced their target assets. Camille and the curator were
+  mechanically re-spaced to 15px inter-frame gaps; Camille's two trapped blue
+  pockets and the spice seller's white pockets were removed. All seven sheets
+  GAP-DETECT at their runtime grids, add no pure-white scan hits, and pass the
+  full test suite. The new Kenji sheets and geisha talk sheet were added to
+  both sprite audit manifests.
+
+- **2026-08-07 — §KIKU-BLUE ×2 landed + normalized:** the geisha idle/talk
+  re-rolls arrived on-design (8/8 clean poses each) but with a NOISY blue bg
+  (±4-8 levels off a slightly-off corner color, ~0% exactly flat), which the
+  runtime tol-8 connected key couldn't fully strip — the reported "bg not
+  removed well". Fixed by baking both sheets transparent (bg_bake rows
+  retuned to the blue-canvas template: tol 24 flood + pockets + specks,
+  fringe 2). Verified: GAP-DETECTED 1×8 both, boot log clean, visual pass
+  clean — the old idle frame-3 white patch is gone with the new art.
+  **Round 2 (user):** the art itself also carried WHITE-PAINT slivers in the
+  obi/arm gaps (some dimmed to ~215-229, under the bake's white threshold) —
+  idle frame 5 + talk frames 2/3/4 flagged, all seven waist-level slivers on
+  both sheets alpha-punched surgically (faces untouched — the remaining
+  near-white blobs are her eye sclera/teeth by design). GAP-DETECT re-verified.
+
+- **2026-08-07 — §CAMILLE-PATRON-v2 RETIRED (code fix, no regen needed):**
+  the "figures touch" diagnosis was wrong — the sheet's figures never
+  touched; their two tightest gaps (3px, cols 591/1340) were bridged by
+  ~15-level off-white antialias halos that the connected tol-8 key kept as
+  content, and the same halo inflated a dust speck into a 7×26 run. The
+  slicer then merged figures 7+8 (dropped as double-figure) and gave the
+  speck its own cell (dropped as runt) — her café loop ran 6 of 8 frames
+  with two boot warnings. Fixed loader-side in `loadCafePatronGrids`:
+  Camille loads at connected tol 24 (the Henri-fringe precedent; her cream
+  cup sits 55 levels off white and survives). Boot log clean, all 8 frames
+  load, full tests green.
 
 - **2026-08-02 — Higgins back walk + Tommy strange idle landed:**
   §HIGGINS-WALK-BACK-v2 added the preferred 1536×1024, 8×1 rear walk cycle.

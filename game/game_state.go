@@ -40,6 +40,29 @@ const (
 	VarParisDone         = "paris_done"              // postcard obtained → camp return unlocked (#32)
 	VarJerNotePlaced     = "jer_note_placed"         // Jerusalem: note tucked in the Wall → return flight + coin (#26)
 	VarJerPenGiven       = "jer_pen_given"           // Jerusalem: Shimon gave PP the pen (D15: save-safe replaces local gavePen)
+	VarJakeStrangeSeen   = "jake_strange_seen"       // 2026-08-07 #20: PP talked to strange Jake → the Jerusalem pin lights up
+
+	// 2026-08-08 #8 (save/load overhaul): the Paris chain state — previously
+	// closure locals in setupParisCallbacks that a relaunch zeroed (the
+	// "stuck at the Louvre after loading" softlock). Every flag is now a
+	// game-scope var (persisted wholesale); reconcileLoadedWorld re-derives
+	// NPC dialogs / floor items / gates from these after a load.
+	VarParisPierreStage   = "paris_pierre_stage"   // 0 none, 1 baguette taken, 2 press pass given
+	VarParisLouvreOpen    = "paris_louvre_unlocked" // Claude took the pass and waved PP in
+	VarParisSketchAsked   = "paris_sketch_asked"    // Beaumont asked for Camille's replica sketch
+	VarParisCamilleAsked  = "paris_camille_asked"   // Camille sent PP after her lost pencil
+	VarParisPigeonsClear  = "paris_pigeons_cleared" // Pierre shooed the pot pigeon
+	VarParisPencilTaken   = "paris_pencil_taken"    // pencil fished out of the pot
+	VarParisHeelGiven     = "paris_heel_given"      // Poulain handed out the day-old heel
+	VarParisSketchDone    = "paris_sketch_done"     // Camille drew the Room 7 replica
+	VarParisSketchShown   = "paris_sketch_shown"    // her first-chat sketching one-shot played
+	VarParisPostcardGiven = "paris_postcard_given"  // Beaumont traded the Postcard
+	VarParisPinTaken      = "paris_pin_taken"       // rolling pin fished from the bicycle basket
+	VarParisPoulainTraded = "paris_poulain_traded"  // rolling pin → baguette+coffee trade done
+	VarParisHenriTraded   = "paris_henri_traded"    // coffee → confiture trade done (cup decor on the table)
+	VarParisSouvenirArmed = "paris_souvenir_armed"  // post-heal: Poulain's souvenir intro shown
+	VarParisSouvenirAsked = "paris_souvenir_asked"  // Poulain asked for the grandson postcard
+	VarParisSouvenirDone  = "paris_souvenir_done"   // signed postcard delivered
 	// Japan/Kyoto chapter opening (Lily's arc).
 	VarLilyArcStarted  = "lily_arc_started"  // sad Lily revealed at the lake (post-Jake-heal)
 	VarLilyLakeMet     = "lily_lake_met"     // PP has talked to Lily at the lake

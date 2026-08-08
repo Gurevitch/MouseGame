@@ -13,6 +13,13 @@ Built: Camp, Paris (Marcus), Jerusalem (Jake), Tokyo/Kyoto (Lily). Next: Rome
 - Test verbosely so per-test PASS lines show: `go test -v ./...`
 - To run/playtest the app use the **`run`** skill; to verify/repair sprite
   sheets use the **`sprite-check`** skill.
+- **On macOS/Linux:** `brew install pkgconf sdl2` once, or cgo can't find the
+  SDL2 headers and every `sdl.*` constant/type reports as undefined. Audio is a
+  silent no-op off Windows (`game/audio_stub.go`; MCI/winmm is Windows-only).
+- **Cross-compiling PP.exe from macOS/Linux:** `brew install mingw-w64`, then
+  `scripts/fetch_sdl2_mingw.sh` once, then `scripts/build_windows.sh`. Plain
+  `GOOS=windows go build` does NOT work — it silently drops cgo and buries you
+  in bogus `undefined: sdl.Renderer` errors.
 
 ## Working conventions (important)
 

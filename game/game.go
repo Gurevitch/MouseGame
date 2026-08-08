@@ -335,6 +335,11 @@ func (g *Game) setupCampCallbacks() {
 				jake.dialog = jakeStrangeDialog
 				jake.onDialogEnd = func() {
 					jake.dialog = jakePostStrangeDialog
+					// 2026-08-07 #20: hearing strange Jake is what tells PP
+					// WHERE to fly — the Jerusalem pin's relevantWhen requires
+					// jake_strange_seen, so the flight only lights up after
+					// this chat (Higgins' office chat stays a bonus clue).
+					game.vars.SetBool(ScopeGame, VarJakeStrangeSeen, true)
 				}
 				// #20: the heal must be an INTENTIONAL give — PP has to be holding
 				// the Coin, not merely have it in the bag. A plain click without the
@@ -1296,20 +1301,28 @@ func (g *Game) setupParisCallbacks() {
 	//   Beaumont trades the Postcard. The old easel "pigeon critic" +
 	//   mini_portrait beat is removed; the heel's job is shooing the pot
 	//   pigeon. Closure state (none needs save/load):
+	// 2026-08-08 #8 (save/load overhaul): these were closure BOOLS that a
+	// relaunch zeroed — saving in the Louvre after handing Claude the pass
+	// hard-stuck the game on reload (pass consumed, gate closed). Every flag
+	// now reads/writes a game-scope var (persisted wholesale in the save);
+	// reconcileLoadedWorld re-derives the NPC dialog pointers and floor items
+	// from the same vars after a load.
+	parisFlag := func(key string) func() bool {
+		return func() bool { return g.vars.GetBool(ScopeGame, key) }
+	}
+	parisSet := func(key string) { g.vars.SetBool(ScopeGame, key, true) }
 	var (
-		sketchAsked    bool // Beaumont asked for Camille's replica sketch (postcards sold out)
-		camilleAsked   bool // Camille sent PP after her lost lucky pencil
-		louvreUnlocked bool // Claude took the press pass and waved PP in
-		pigeonsCleared bool // Pierre shooed the flower-pot pigeon with the heel
-		pencilTaken    bool // pencil fished out of the flower pot by the Louvre steps
+		sketchAsked    = parisFlag(VarParisSketchAsked)   // Beaumont asked for Camille's replica sketch
+		camilleAsked   = parisFlag(VarParisCamilleAsked)  // Camille sent PP after her lost lucky pencil
+		louvreUnlocked = parisFlag(VarParisLouvreOpen)    // Claude took the press pass and waved PP in
+		pigeonsCleared = parisFlag(VarParisPigeonsClear)  // Pierre shooed the flower-pot pigeon
+		pencilTaken    = parisFlag(VarParisPencilTaken)   // pencil fished out of the flower pot
 		// 2026-07-15 (user #12): latch the heel hand-out the moment the dialog
-		// fires — the old inv.hasItem guard only saw the heel ~3s later (after
-		// the give/receive one-shots), so a quick double-click on Poulain
-		// handed out TWO heels and one stayed in the bag after Margaux's trade.
-		heelHandedOut bool
-		sketchDone    bool // Camille drew the Room 7 replica, sketch in PP's bag
-		souvenirAsked bool // Poulain asked for the grandson postcard (post-heal)
-		souvenirDone  bool // signed postcard delivered to Poulain
+		// fires — a quick double-click on Poulain handed out TWO heels.
+		heelHandedOut = parisFlag(VarParisHeelGiven)
+		sketchDone    = parisFlag(VarParisSketchDone)     // Camille drew the Room 7 replica
+		souvenirAsked = parisFlag(VarParisSouvenirAsked)  // Poulain asked for the grandson postcard
+		souvenirDone  = parisFlag(VarParisSouvenirDone)   // signed postcard delivered
 	)
 	// Bakery NPC handles needed by Poulain's counter-service branch below.
 	var bakeryHenri *npc
@@ -1330,7 +1343,7 @@ func (g *Game) setupParisCallbacks() {
 		// pencil and flaps the pigeon up-and-away. Shared so the pencil
 		// pickup gate (pigeonsCleared) and the lady's hand-off agree.
 		clearPotPigeon := func() {
-			pigeonsCleared = true
+			parisSet(VarParisPigeonsClear)
 			for _, fi := range parisStreet.floorItems {
 				if fi.name == "Charcoal Pencil" {
 					tex, w, h := engine.SafeTextureFromPNGKeyed(game.renderer, "assets/images/locations/paris/props/flower_pot_pencil.png")
@@ -1455,9 +1468,8 @@ func (g *Game) setupParisCallbacks() {
 							}, func() {
 								game.inv.giveItemTo("Baguette", "pierre")
 								pierre.hintState = 1
-								pierre.dialog = []dialogEntry{
-									{speaker: "Pierre", text: "Still waiting on zat spread, mon ami. Beurre or confiture, anything."},
-								}
+								game.vars.Set(ScopeGame, VarParisPierreStage, 1) // #8 save-safe mirror
+								pierre.dialog = pierreWaitingSpreadDialog
 								pierre.altDialogRequiresItem = "Confiture"
 							}, &handOff{item: "Baguette", npcAnim: "receive_baguette"}
 					}
@@ -1476,6 +1488,7 @@ func (g *Game) setupParisCallbacks() {
 									game.inv.addItem(item)
 								}
 								pierre.hintState = 2
+								game.vars.Set(ScopeGame, VarParisPierreStage, 2) // #8 save-safe mirror
 								// Reorder (2026-06-12): Pierre is done questing after
 								// the press pass - he just points PP at the Louvre. The
 								// flower-pot pigeon is now handled by Madame Margaux,
@@ -1499,7 +1512,7 @@ func (g *Game) setupParisCallbacks() {
 				margaux.altDialogRequiresItem = "Baguette Heel"
 				margaux.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					held := game.inv.heldItem
-					if !camilleAsked || pigeonsCleared ||
+					if !camilleAsked() || pigeonsCleared() ||
 						held == nil || held.name != "Baguette Heel" {
 						return nil, nil, nil
 					}
@@ -1578,7 +1591,7 @@ func (g *Game) setupParisCallbacks() {
 				// exactly where it rolled.
 				nicolas := n
 				nicolas.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
-					if camilleAsked && !pencilTaken {
+					if camilleAsked() && !pencilTaken() {
 						return nicolasPencilHintDialog, nil, nil
 					}
 					return nil, nil, nil
@@ -1595,12 +1608,12 @@ func (g *Game) setupParisCallbacks() {
 				claude.altDialogRequiresHeld = true
 				claude.altDialogRequiresItem = "Card"
 				claude.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
-					if louvreUnlocked || !(game.inv.heldItem != nil && game.inv.heldItem.name == "Card") {
+					if louvreUnlocked() || !(game.inv.heldItem != nil && game.inv.heldItem.name == "Card") {
 						return nil, nil, nil
 					}
 					return claudePressPassDialog, func() {
 						game.inv.giveItemTo("Card", "claude") // consumed at the door
-						louvreUnlocked = true
+						parisSet(VarParisLouvreOpen)
 						claude.dialog = gendarmePostDialog
 						claude.altDialogFunc = nil
 						claude.altDialogRequiresHeld = false
@@ -1618,7 +1631,7 @@ func (g *Game) setupParisCallbacks() {
 			h := &parisStreet.hotspots[i]
 			h.onInteract = func() bool {
 				// PR#24: opens only after PP HANDS Claude the pass (louvreUnlocked).
-				if !louvreUnlocked {
+				if !louvreUnlocked() {
 					if game.inv.hasItem("Card") {
 						game.dialog.startDialog([]dialogEntry{
 							{speaker: "Gendarme", text: "A press pass, oui? Bring it HERE, monsieur - hand it to me and I wave you straight in."},
@@ -1647,23 +1660,23 @@ func (g *Game) setupParisCallbacks() {
 		for _, n := range parisLouvre.npcs {
 			if n.name == "Curator Beaumont" {
 				curator := n
-				postcardGiven := false
+				postcardGiven := parisFlag(VarParisPostcardGiven) // #8 save-safe
 				curator.onDialogEnd = func() {
 					// 2026-06-10 rework: the postcards are SOLD OUT, so the
 					// first chat no longer hands the postcard over - Beaumont
 					// asks for Camille's replica sketch and the postcard moves
 					// to the sketch trade below. The flag flip also guards
 					// against the old duplicate-postcard repeat-chat bug.
-					if !sketchAsked {
-						sketchAsked = true
+					if !sketchAsked() {
+						parisSet(VarParisSketchAsked)
 						curator.dialog = curatorWaitingDialog
 					}
 				}
 				curator.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
 					// Sketch → postcard trade (main chain resumes here).
-					if held := game.inv.heldItem; held != nil && held.name == "Camille's Sketch" && !postcardGiven {
+					if held := game.inv.heldItem; held != nil && held.name == "Camille's Sketch" && !postcardGiven() {
 						return curatorSketchTradeDialog, func() {
-							postcardGiven = true
+							parisSet(VarParisPostcardGiven)
 							game.inv.giveItemTo("Camille's Sketch", "curator_beaumont")
 							item := game.items.createItem("postcard")
 							if item != nil {
@@ -1688,7 +1701,8 @@ func (g *Game) setupParisCallbacks() {
 							ppCenter := game.player.x + float64(playerDstW)/2
 							curator.flipped = ppCenter < float64(curator.bounds.X+curator.bounds.W/2)
 							curator.playOneShotAnimThen(curator.giveAnimOr("give_postcard"), 1.0, func() {
-								// 2026-07-15 (user #16): mirror PP for the receive.
+								// 2026-07-15 (user #16): mirror PP for the receive
+								// (its flip-map entry compensates — keep as-is).
 								game.player.facingLeft = !game.player.facingLeft
 								if game.player.facingLeft {
 									game.player.dir = dirLeft
@@ -1696,10 +1710,15 @@ func (g *Game) setupParisCallbacks() {
 									game.player.dir = dirRight
 								}
 								game.player.playReceive("postcard", false, 1.0, func() {
-									game.dialog.startDialog([]dialogEntry{
+									// 2026-08-08 #13: the mirror left PP facing AWAY
+									// for the homeward lines — face Beaumont (he's to
+									// PP's right) and talk-state so the mouth moves.
+									game.player.faceNPC(curator)
+									game.player.state = stateTalking
+									game.dialog.startDialogWithCallback([]dialogEntry{
 										{speaker: "Pink Panther", text: "A postcard of the painting... this is what Marcus has been drawing."},
 										{speaker: "Pink Panther", text: "I should head back outside, then take the travel map home to camp. Marcus needs this."},
-									})
+									}, func() { game.player.state = stateIdle })
 								})
 							})
 							// 2026-07-24 (user #17): Beaumont takes the sketch on
@@ -1710,7 +1729,7 @@ func (g *Game) setupParisCallbacks() {
 					}
 					// Grandson souvenir loop: once Poulain has asked, Beaumont
 					// signs a second postcard (the new prints have arrived).
-					if souvenirAsked && !souvenirDone && !game.inv.hasItem("Signed Postcard") {
+					if souvenirAsked() && !souvenirDone() && !game.inv.hasItem("Signed Postcard") {
 						return curatorSouvenirDialog, func() {
 							// §PR3: reuse Beaumont's postcard hand-over for the signed card too.
 							curator.playOneShotAnimThen(curator.giveAnimOr("give_postcard"), 1.0, func() {
@@ -1783,7 +1802,7 @@ func (g *Game) setupParisCallbacks() {
 				continue
 			}
 			poulain := n
-			souvenirArmed := false
+			souvenirArmed := parisFlag(VarParisSouvenirArmed) // #8 save-safe
 			poulain.onDialogEnd = func() {
 				// Subsequent clicks while the rolling pin is still missing
 				// just replay the lost-pin beat (no flag flip yet).
@@ -1791,15 +1810,15 @@ func (g *Game) setupParisCallbacks() {
 				// to the next anchor beat - asking for a Louvre postcard
 				// for her grandson. Wires the next chapter so the bakery
 				// stops looping the trade-complete line forever.
-				if game.marcusHealed && !souvenirArmed {
+				if game.marcusHealed && !souvenirArmed() {
 					poulain.dialog = bakeryWomanLouvreSouvenirDialog
-					souvenirArmed = true
+					parisSet(VarParisSouvenirArmed)
 					return
 				}
 				// The souvenir ask itself just played → Beaumont will sign a
 				// second postcard from now on (see the curator's altDialog).
-				if souvenirArmed && !souvenirAsked {
-					souvenirAsked = true
+				if souvenirArmed() && !souvenirAsked() {
+					parisSet(VarParisSouvenirAsked)
 				}
 			}
 			// Counter service (2026-06-10): after the rolling-pin trade Poulain
@@ -1808,19 +1827,19 @@ func (g *Game) setupParisCallbacks() {
 			// dialog. Armed by the trade callback below.
 			poulainCounterService := func() ([]dialogEntry, func(), *handOff) {
 				// 1) Signed postcard hand-in (grandson souvenir loop).
-				if held := game.inv.heldItem; held != nil && held.name == "Signed Postcard" && !souvenirDone {
+				if held := game.inv.heldItem; held != nil && held.name == "Signed Postcard" && !souvenirDone() {
 					return bakeryWomanSouvenirThanksDialog, func() {
 						game.inv.giveItemTo("Signed Postcard", "madame_poulain")
-						souvenirDone = true
+						parisSet(VarParisSouvenirDone)
 						poulain.dialog = bakeryWomanSouvenirDoneDialog
 					}, &handOff{item: "Signed Postcard"}
 				}
 				// 2) Day-old heel to shoo the flower-pot pigeon (PR#29). Offered
 				// once Camille has sent PP after the pencil, until Pierre has
 				// shooed the bird.
-				if camilleAsked && !pigeonsCleared && !heelHandedOut && !game.inv.hasItem("Baguette Heel") {
+				if camilleAsked() && !pigeonsCleared() && !heelHandedOut() && !game.inv.hasItem("Baguette Heel") {
 					return bakeryWomanHeelDialog, func() {
-						heelHandedOut = true
+						parisSet(VarParisHeelGiven)
 						// 2026-07-23 (#18): the item lands in the bag AT dialog end
 						// (like every other trade) - the give/receive one-shots
 						// below are purely cosmetic, so wandering off mid-beat can
@@ -1866,14 +1885,20 @@ func (g *Game) setupParisCallbacks() {
 				}
 				return nil, nil, nil
 			}
-			poulain.altDialogRequiresItem = "Rolling Pin"
-			// User playtest #25: PP must actively hand the rolling pin over (pull
-			// it from the bag and drop it on Poulain) - having it in the bag is no
-			// longer enough. Clicking her without holding it just replays her
-			// lost-pin line, which is the nudge to bring it.
-			poulain.altDialogRequiresHeld = true
+			// 2026-08-08 #8: click-time dispatch (the Camille multi-branch
+			// pattern) replaces the requires-field pivot — the old flow
+			// re-pointed altDialogFunc at counterService inside the trade
+			// callback, which a save/load lost. Now ONE selector branches on
+			// the persisted var every click, so a reload lands in the right
+			// stage automatically. User playtest #25 still holds: the trade
+			// only fires while the pin is ON THE CURSOR.
+			poulainTraded := parisFlag(VarParisPoulainTraded)
 			poulain.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
-				if !game.inv.hasItem("Rolling Pin") || game.inv.hasItem("Baguette") {
+				if poulainTraded() {
+					return poulainCounterService()
+				}
+				held := game.inv.heldItem
+				if held == nil || held.name != "Rolling Pin" || game.inv.hasItem("Baguette") {
 					return nil, nil, nil
 				}
 				// User 2026-05-21: Poulain now hands out BOTH a Baguette and
@@ -1921,12 +1946,10 @@ func (g *Game) setupParisCallbacks() {
 							})
 						})
 						poulain.dialog = bakeryWomanPostDialog
-						// Pivot from the rolling-pin gate to open counter
-						// service (coffee refills, the pigeon heel, the
-						// signed-postcard hand-in).
-						poulain.altDialogRequiresItem = ""
-						poulain.altDialogRequiresHeld = false
-						poulain.altDialogFunc = poulainCounterService
+						// #8: the persisted flag IS the pivot now — the selector
+						// above routes to counterService from the next click on
+						// (and after any reload).
+						parisSet(VarParisPoulainTraded)
 					}, &handOff{item: "Rolling Pin", back: true, dialogFirst: true} // user #8: text first, item beat inside the scene
 			}
 			break
@@ -1963,18 +1986,9 @@ func (g *Game) setupParisCallbacks() {
 					// read as broken/instant.
 					game.inv.giveItemTo("Cafe au Lait", "monsieur_henri")
 					// 2026-08-01 (user #11): the cup PP just set down STAYS on
-					// Henri's table (decor prop at his mark, 602,518).
-					if cupDef, ok := game.items.getDef("cafe_au_lait"); ok {
-						if cupTex, cw, ch := engine.SafeTextureFromPNGKeyed(game.renderer, cupDef.Texture); cupTex != nil {
-							bakery.floorItems = append(bakery.floorItems, &floorItem{
-								tex: cupTex, srcW: cw, srcH: ch,
-								bounds:  sdl.Rect{X: 602, Y: 518, W: 36, H: 36},
-								name:    "Cafe au Lait",
-								visible: true,
-								decor:   true,
-							})
-						}
-					}
+					// Henri's table (extracted 2026-08-08 #8 so the load-time
+					// reconcile can restore it too).
+					game.addHenriCupDecor()
 					henri.playOneShotAnimThen("give_jam", 1.3, func() {
 						game.player.playOneShot("get_jam", 1.5, func() {
 							if c := game.items.createItem("confiture"); c != nil {
@@ -1985,6 +1999,7 @@ func (g *Game) setupParisCallbacks() {
 					henri.dialog = henriPostTradeDialog
 					henri.altDialogFunc = nil
 					henri.altDialogRequiresItem = ""
+					parisSet(VarParisHenriTraded) // #8: reconcile re-applies dialog + cup decor
 					// 2026-08-01 (user #11): Henri never had a receive-coffee
 					// sheet — PP now SETS the cup on the table instead
 					// (put_coffee_table override + no NPC take-reach).
@@ -2009,10 +2024,10 @@ func (g *Game) setupParisCallbacks() {
 			// User 2026-06-10: the sketching one-shot
 			// (npc_camille_sketching.png) already exists - show it off on her
 			// first regular chat, so she's seen mid-sketch from the start.
-			sketchShown := false
+			sketchShown := parisFlag(VarParisSketchShown) // #8 save-safe
 			camille.onDialogEnd = func() {
-				if !sketchShown {
-					sketchShown = true
+				if !sketchShown() {
+					parisSet(VarParisSketchShown)
 					camille.playOneShotAnimHold("sketch", 2.0, 1.0) // PR#14: slower + hold the reveal
 				}
 			}
@@ -2024,14 +2039,14 @@ func (g *Game) setupParisCallbacks() {
 				// Branch 1: pencil hand-over → she sketches the Room 7 replica.
 				// Gate on EITHER quest flag (2026-06-11 #38: the story dead-ended
 				// here - accept the pencil as soon as anyone asked for it).
-				if holdingPencil && (sketchAsked || camilleAsked) && !sketchDone {
+				if holdingPencil && (sketchAsked() || camilleAsked()) && !sketchDone() {
 					return camilleSketchTradeDialog, func() {
 						// Pencil hand-off via handOff (pre-dialog). After that:
 						// 1. Camille sketches (full duration + hold the reveal).
 						// 2. Camille plays give_sketch one-shot → PP receives.
 						// 3. Sketch added to inventory, quest flag set.
 						game.inv.giveItemTo("Charcoal Pencil", "camille")
-						sketchDone = true
+						parisSet(VarParisSketchDone)
 						camille.dialog = camillePostSketchDialog
 						// sketch_room7 = Room 7 replica drawing (distinct from
 						// first-visit portrait); give_sketch = Camille holds it
@@ -2048,7 +2063,7 @@ func (g *Game) setupParisCallbacks() {
 					}, &handOff{item: "Charcoal Pencil", npcAnim: "receive_pencil"} // user #18: her take beat (falls back until art lands)
 				}
 				// Holding the pencil before the quest is active - never silent.
-				if holdingPencil && !sketchDone {
+				if holdingPencil && !sketchDone() {
 					return []dialogEntry{
 						{speaker: "Mademoiselle Camille", text: "Zat is a fine charcoal pencil, monsieur. Mine is still lost out on ze street somewhere..."},
 					}, nil, nil
@@ -2056,15 +2071,15 @@ func (g *Game) setupParisCallbacks() {
 				// Pencil in the BAG but not on the cursor: nudge the hand-over
 				// motion instead of replaying the stale "ask Nicolas" reminder
 				// (2026-06-11 #38 - this read as the quest being stuck).
-				if camilleAsked && !sketchDone && game.inv.hasItem("Charcoal Pencil") {
+				if camilleAsked() && !sketchDone() && game.inv.hasItem("Charcoal Pencil") {
 					return []dialogEntry{
 						{speaker: "Mademoiselle Camille", text: "You FOUND it?! Don't tease an artist, monsieur - take it from your bag and hand it here!"},
 					}, nil, nil
 				}
 				// Branch 2: Beaumont has asked → Camille's lost-pencil ask.
-				if sketchAsked && !camilleAsked {
+				if sketchAsked() && !camilleAsked() {
 					return camilleSketchAskDialog, func() {
-						camilleAsked = true
+						parisSet(VarParisCamilleAsked)
 						camille.dialog = camillePencilReminderDialog
 						// PR#23: her dismay one-shot (§CAM2) plays on the ask.
 						camille.playOneShotAnimHold("lost_pencil", 2.0, 0.8)
@@ -2158,6 +2173,7 @@ func (g *Game) setupParisCallbacks() {
 			onPickup: func() {
 				// Mark it taken so it can't be re-grabbed, then play the grab
 				// one-shot and only add the item + dialog when the anim ends.
+				parisSet(VarParisPinTaken) // #8: reconcile hides the basket item on load
 				if ps, ok := game.sceneMgr.scenes["paris_street"]; ok {
 					for _, fi := range ps.floorItems {
 						if fi.name == "Rolling Pin" {
@@ -2217,7 +2233,9 @@ func (g *Game) setupParisCallbacks() {
 			// the mirrored grab now reaches RIGHT into it.
 			// 2026-08-01 (user #14): 800→855 — the pick still landed short of
 			// the pot; stand almost against it so the flipped reach hits it.
-			standXOverride: 855,
+			// 2026-08-07 (user #18): 855→880 — still a hair short; PP's
+			// centre now sits ~29px off the pot centre (909).
+			standXOverride: 880,
 			standYOverride: 485,
 			recedeDepth:    0.65,
 			// 2026-07-23 (#20): the default 80px gap grabbed thin air in the
@@ -2229,17 +2247,27 @@ func (g *Game) setupParisCallbacks() {
 				// The pigeons guard the pot until Pierre repays his favor
 				// (user 2026-06-10): trying early plays a blocked beat and
 				// leaves the pencil in place.
-				if !pigeonsCleared {
-					if !camilleAsked {
-						game.dialog.startDialog([]dialogEntry{
+				if !pigeonsCleared() {
+					// 2026-08-07 #9: both blocked beats play in TALK FRONT —
+					// the talk driver only animates mouths in stateTalking
+					// (the flower-pickup precedent, 2026-07-23 #2).
+					game.player.dir = dirDown
+					game.player.facingLeft = false
+					game.player.state = stateTalking
+					if !camilleAsked() {
+						game.dialog.startDialogWithCallback([]dialogEntry{
 							{speaker: "Pink Panther", text: "A pencil, deep in a flower pot... and a very protective pigeon sitting on it. I'll leave it be for now."},
-						})
+						}, func() { game.player.state = stateIdle })
 						return
 					}
-					game.dialog.startDialog([]dialogEntry{
+					// 2026-08-07 #15: the old line SPELLED OUT the whole
+					// solution (Margaux + day-old heel + Poulain). Keep only a
+					// soft nudge — the discovery now happens by talking to
+					// Margaux herself ("only a fresh crust would tempt him off").
+					game.dialog.startDialogWithCallback([]dialogEntry{
 						{speaker: "Pink Panther", text: "Ow! This pigeon guards Camille's pencil like the crown jewels."},
-						{speaker: "Pink Panther", text: "Madame Margaux, the pigeon lady across the street, can coax it off - I'll bring her a day-old baguette heel from Madame Poulain."},
-					})
+						{speaker: "Pink Panther", text: "Shooing it myself is getting me nowhere... maybe someone around here knows these birds better than I do."},
+					}, func() { game.player.state = stateIdle })
 					return
 				}
 				if ps, ok := game.sceneMgr.scenes["paris_street"]; ok {
@@ -2265,7 +2293,7 @@ func (g *Game) setupParisCallbacks() {
 					pencilGrab = "grab_pencil_pot"
 				}
 				game.player.playOneShot(pencilGrab, 1.0, func() {
-					pencilTaken = true
+					parisSet(VarParisPencilTaken)
 					if item := game.items.createItem("charcoal_pencil"); item != nil {
 						game.inv.addItem(item)
 					}
@@ -2379,6 +2407,39 @@ func (g *Game) restoreHigginsWorriedDialog() {
 // reach hand points the other way). On arrival he squares up to the camera
 // (dir front) so blocked/observation lines play facing the player, then the
 // pickup action runs.
+// addHenriCupDecor leaves the café-au-lait cup PP set down on Henri's table
+// as a pure-scenery floor item. Idempotent (skips when already present) so
+// the live trade AND the load-time reconcile can both call it (2026-08-08
+// #8). 2026-08-08 #5 (user): the requested (620,510) is the cup's FOOT —
+// bounds are a raw SDL dest rect (X=left, Y=top), so the 36×36 cup sits at
+// {602,474} to put its bottom-centre exactly there.
+func (g *Game) addHenriCupDecor() {
+	bakery, ok := g.sceneMgr.scenes["paris_bakery"]
+	if !ok {
+		return
+	}
+	for _, fi := range bakery.floorItems {
+		if fi.decor && fi.name == "Cafe au Lait" {
+			return
+		}
+	}
+	cupDef, ok := g.items.getDef("cafe_au_lait")
+	if !ok {
+		return
+	}
+	cupTex, cw, ch := engine.SafeTextureFromPNGKeyed(g.renderer, cupDef.Texture)
+	if cupTex == nil {
+		return
+	}
+	bakery.floorItems = append(bakery.floorItems, &floorItem{
+		tex: cupTex, srcW: cw, srcH: ch,
+		bounds:  sdl.Rect{X: 602, Y: 474, W: 36, H: 36},
+		name:    "Cafe au Lait",
+		visible: true,
+		decor:   true,
+	})
+}
+
 func (g *Game) walkToFloorItem(fi *floorItem, action func()) {
 	itemCX := float64(fi.bounds.X) + float64(fi.bounds.W)/2
 	itemBase := float64(fi.bounds.Y) + float64(fi.bounds.H)
@@ -2409,11 +2470,14 @@ func (g *Game) walkToFloorItem(fi *floorItem, action func()) {
 		}
 	}
 	// 2026-07-24 (#6): depth items shrink PP at the mark before the pickup
-	// (and hold, like the Pierre/Margaux chats). Already-held recede (a chat
-	// just ended at this depth) skips straight to the action in place.
+	// (and hold, like the Pierre/Margaux chats).
 	if fi.recedeDepth > 0 {
+		// 2026-08-08 #11 (user): an already-held recede used to fire the
+		// pickup IN PLACE — after the Margaux chat PP grabbed the pot from
+		// her mark, 45px short. Walk to the item's own stand mark first
+		// (walkToAndDo keeps the held scale; only setTarget releases it).
 		if plr.recedeHeld {
-			arrive()
+			plr.walkToAndDo(standX, standY, arrive)
 			return
 		}
 		plr.walkToAndDo(standX, standY, func() {
@@ -2423,6 +2487,13 @@ func (g *Game) walkToFloorItem(fi *floorItem, action func()) {
 			})
 		})
 		return
+	}
+	// 2026-08-07 #10: a NON-depth item (the rolling-pin basket on the main
+	// road) must release a held recede first — the pot/Pierre chats hold PP
+	// shrunken, and this path was the one walker with no release guard, so
+	// PP marched to the basket at 0.65 scale (walkToAndInteract precedent).
+	if plr.recedeHeld {
+		plr.releaseRecedeSmooth(0.5)
 	}
 	// walkToAndDo's y is PP's CENTER: itemBase minus half the player box
 	// plants his feet on the item's base line (scene minY/maxY still clamp).
@@ -2956,7 +3027,7 @@ func (g *Game) Update(dt float64, mx, my int32) {
 		startX := -float64(playerDstW)
 		endX := scene.spawnX - float64(playerDstW)/2
 		walkY := scene.spawnY
-		g.player.playWalkIn(startX, endX, walkY, 2.5, func() {
+		g.player.playWalkIn(startX, endX, walkY, walkY, 2.5, func() {
 			g.player.state = stateTalking
 			g.player.dir = dirDown
 			g.dialog.startDialogWithCallback(openingMonologue, func() {
@@ -3300,6 +3371,11 @@ func (g *Game) Draw(renderer *sdl.Renderer) {
 	} else {
 		scene.drawActors(renderer, g.player)
 	}
+
+	// 2026-08-07 #8: foreground ambient movers (the Paris biker) render
+	// ABOVE the actors — he crosses the street in front of the flower pot,
+	// the NPCs, and PP.
+	scene.drawForegroundAmbient(renderer)
 
 	// Sequence-owned projectile sprites (thrown map, etc.) render on top
 	// of the scene actors but below the dialog / HUD. No-op when no

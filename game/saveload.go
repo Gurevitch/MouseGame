@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"bitbucket.org/Local/games/PP/engine"
 )
 
 // SaveState captures the complete game state for serialization.
@@ -83,6 +85,17 @@ func (g *Game) LoadGame(path string) error {
 
 	if state.Vars != nil {
 		g.vars = state.Vars
+		// 2026-08-08 #8: nil-map guard — a save missing a scope key yields a
+		// nil map, and the next vars.Set would panic on nil-map write.
+		if g.vars.Game == nil {
+			g.vars.Game = make(map[string]int)
+		}
+		if g.vars.Chapter == nil {
+			g.vars.Chapter = make(map[string]int)
+		}
+		if g.vars.Scene == nil {
+			g.vars.Scene = make(map[string]int)
+		}
 	}
 
 	// Restore legacy fields
@@ -100,15 +113,23 @@ func (g *Game) LoadGame(path string) error {
 	// by a city chapter build that stopped writing legacy fields) let it win.
 	g.syncVarsToFlags()
 
-	// Restore inventory
+	// Restore inventory. 2026-08-08 #8: resolve display names through the
+	// registry (itemIDFromName's 7-name switch silently dropped every other
+	// quest item — a mid-Paris save lost its Card/Confiture/etc on load).
 	g.inv.items = nil
 	for _, name := range state.ItemNames {
-		if item := g.items.createItem(itemIDFromName(name)); item != nil {
+		if item := g.items.createItem(g.items.idForName(name)); item != nil {
 			g.inv.addItem(item)
 		}
 	}
 
-	// Restore scene and player position
+	// Restore scene and player position. 2026-08-08 #8: the transition's
+	// fade-in completion used to snap PP to the scene SPAWN, clobbering the
+	// direct x/y assignment below a frame later — route the saved coords
+	// through the pending-restore hook instead (consumed at fade-in).
+	g.sceneMgr.restorePosPending = true
+	g.sceneMgr.restoreX = state.PlayerX
+	g.sceneMgr.restoreY = state.PlayerY
 	g.sceneMgr.transitionTo(state.CurrentScene, g.player)
 	g.player.x = state.PlayerX
 	g.player.y = state.PlayerY
@@ -210,26 +231,178 @@ func (g *Game) reconcileLoadedWorld() {
 			}
 		}
 	}
+
+	// 2026-08-08 #8/#14: full re-derivation of the Paris chain, the camp
+	// cast, and the travel pins from the persisted vars.
+	g.applyCampRevealState()
+	g.applyParisChainState()
+	g.travelMap.restoreUnlockedFromVars(g.vars)
 }
 
-// itemIDFromName maps item display names to registry IDs
-func itemIDFromName(name string) string {
-	switch name {
-	case "Travel Map":
-		return "travel_map"
-	case "Flower":
-		return "flower"
-	case "Postcard":
-		return "postcard"
-	case "Coin Rubbing":
-		return "coin_rubbing"
-	case "Pressed Sakura":
-		return "pressed_sakura"
-	case "Dance Card":
-		return "dance_card"
-	case "Inscription Rubbing":
-		return "inscription_rubbing"
-	default:
-		return name
+// applyCampRevealState re-derives the camp cast's hidden/silent/strange
+// state from the persisted day + heal-chain vars (2026-08-08 #14: loading a
+// day-2+ save left the WHOLE camp empty — room Marcus is born hidden and
+// office Higgins born silent, revealed only by live startDay2 / heal
+// callbacks a load never re-runs, so the Postcard could never be delivered).
+func (g *Game) applyCampRevealState() {
+	if g.day >= 2 {
+		if marcusRoom, ok := g.sceneMgr.scenes["marcus_room"]; ok {
+			for _, n := range marcusRoom.npcs {
+				if n.name == "Marcus" {
+					n.hidden = false
+					if !g.marcusHealed {
+						n.dialog = marcusStrangeDialog
+						n.setStrange(true)
+					}
+					break
+				}
+			}
+		}
+		if office, ok := g.sceneMgr.scenes["camp_office"]; ok {
+			for _, n := range office.npcs {
+				if n.name == "Director Higgins" {
+					n.silent = false
+					break
+				}
+			}
+		}
+	}
+	// Heal-chain reveals: each heal callback un-silences the NEXT kid in
+	// their room (marcus→jake, lily→tommy, tommy→danny). Strange stays on
+	// until that kid's own heal.
+	reveal := func(scene, kid string, healed bool) {
+		room, ok := g.sceneMgr.scenes[scene]
+		if !ok {
+			return
+		}
+		for _, n := range room.npcs {
+			if n.name == kid {
+				n.silent = false
+				n.setStrange(!healed)
+				break
+			}
+		}
+	}
+	getB := func(k string) bool { return g.vars != nil && g.vars.GetBool(ScopeGame, k) }
+	if g.marcusHealed {
+		reveal("jake_room", "Jake", getB(VarJakeHealed))
+	}
+	if getB(VarLilyHealed) {
+		reveal("tommy_room", "Tommy", getB(VarTommyHealed))
+	}
+	if getB(VarTommyHealed) {
+		reveal("danny_room", "Danny", getB(VarDannyHealed))
+	}
+}
+
+// applyParisChainState re-derives every Paris NPC dialog pointer, floor
+// item, and gate from the persisted paris_* vars (2026-08-08 #8: the chain
+// used to live in closure locals — saving in the Louvre after handing
+// Claude the pass hard-stuck the game on relaunch).
+func (g *Game) applyParisChainState() {
+	if g.vars == nil {
+		return
+	}
+	getB := func(k string) bool { return g.vars.GetBool(ScopeGame, k) }
+	if ps, ok := g.sceneMgr.scenes["paris_street"]; ok {
+		for _, n := range ps.npcs {
+			switch n.name {
+			case "Pierre":
+				switch g.vars.Get(ScopeGame, VarParisPierreStage) {
+				case 1:
+					n.hintState = 1
+					n.dialog = pierreWaitingSpreadDialog
+					n.altDialogRequiresItem = "Confiture"
+				case 2:
+					n.hintState = 2
+					n.dialog = pierreArtistPostDialog
+					n.altDialogFunc = nil
+					n.altDialogRequiresItem = ""
+				}
+			case "Claude":
+				if getB(VarParisLouvreOpen) {
+					n.dialog = gendarmePostDialog
+					n.altDialogFunc = nil
+					n.altDialogRequiresHeld = false
+					n.altDialogRequiresItem = ""
+				}
+			case "Madame Margaux":
+				if getB(VarParisPigeonsClear) {
+					n.dialog = pigeonLadyPostDialog
+					n.altDialogFunc = nil
+					n.altDialogRequiresHeld = false
+					n.altDialogRequiresItem = ""
+				}
+			}
+		}
+		for _, fi := range ps.floorItems {
+			switch fi.name {
+			case "Rolling Pin":
+				if getB(VarParisPinTaken) {
+					fi.visible = false
+					fi.hidden = false
+				}
+			case "Charcoal Pencil":
+				if getB(VarParisPigeonsClear) && !getB(VarParisPencilTaken) {
+					// The pigeon is gone: show the exposed-pencil pot art
+					// (clearPotPigeon's swap, minus the fly-up ambient).
+					tex, w, h := engine.SafeTextureFromPNGKeyed(g.renderer,
+						"assets/images/locations/paris/props/flower_pot_pencil.png")
+					if tex != nil {
+						fi.tex = tex
+						fi.srcW = w
+						fi.srcH = h
+					}
+				}
+				if getB(VarParisPencilTaken) {
+					fi.visible = false
+					fi.hidden = false
+				}
+			}
+		}
+	}
+	if bk, ok := g.sceneMgr.scenes["paris_bakery"]; ok {
+		for _, n := range bk.npcs {
+			switch n.name {
+			case "Madame Poulain":
+				// Deepest state wins; the click-time selector handles the
+				// branch logic, this only restores the resting dialog.
+				switch {
+				case getB(VarParisSouvenirDone):
+					n.dialog = bakeryWomanSouvenirDoneDialog
+				case g.marcusHealed && getB(VarParisSouvenirArmed):
+					n.dialog = bakeryWomanLouvreSouvenirDialog
+				case getB(VarParisPoulainTraded):
+					n.dialog = bakeryWomanPostDialog
+				}
+			case "Monsieur Henri":
+				if getB(VarParisHenriTraded) {
+					n.dialog = henriPostTradeDialog
+					n.altDialogFunc = nil
+					n.altDialogRequiresItem = ""
+					g.addHenriCupDecor()
+				}
+			case "Mademoiselle Camille":
+				switch {
+				case getB(VarParisSketchDone):
+					n.dialog = camillePostSketchDialog
+				case getB(VarParisCamilleAsked):
+					n.dialog = camillePencilReminderDialog
+				}
+			}
+		}
+	}
+	if lv, ok := g.sceneMgr.scenes["paris_louvre"]; ok {
+		for _, n := range lv.npcs {
+			if n.name == "Curator Beaumont" {
+				switch {
+				case getB(VarParisPostcardGiven):
+					n.dialog = museumCuratorPostDialog
+				case getB(VarParisSketchAsked):
+					n.dialog = curatorWaitingDialog
+				}
+				break
+			}
+		}
 	}
 }

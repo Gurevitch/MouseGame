@@ -113,8 +113,10 @@ var garyKombuDialog = []dialogEntry{
 // 2026-07-18 (user #45/#46): Gary is the chapter's CUSTOMS ORACLE — whenever
 // PP doesn't know the local etiquette, Gary + guidebook has the answer. His
 // repeat dialog advances with the chapter flags (see setupKyotoCallbacks).
+// 2026-08-08 #18 (user): the "Kyoto is in PERU" gag read as nonsense —
+// replaced with a coherent guidebook joke.
 var garyTokyoPostDialog = []dialogEntry{
-	{speaker: "Gary", text: "Need a custom checked? My book knows everything. Now it says Kyoto is in PERU, but I'm reading between the lines."},
+	{speaker: "Gary", text: "Need a custom checked? My book knows everything - I just found a whole chapter I'd been holding upside down. TWICE."},
 }
 
 var garyDressCodeDialog = []dialogEntry{
@@ -148,7 +150,7 @@ var hiroMissingDialog = []dialogEntry{
 var hiroKatsuTradeDialog = []dialogEntry{
 	{speaker: "Hiro", text: "KATSUOBUSHI! Fresh flakes, the good kind - into the pantry they go."},
 	{speaker: "Hiro", text: "Now all that is left for the ramen is KOMBU - dried kelp, for the deep of the broth."},
-	{speaker: "Pink Panther", text: "One more trip to Gary's book, then."},
+	// 2026-08-08 #25 (user): PP's "One more trip to Gary's book, then." line removed.
 }
 
 var hiroRamenPostDialog = []dialogEntry{
@@ -159,10 +161,21 @@ var hiroPostKatsuDialog = []dialogEntry{
 	{speaker: "Hiro", text: "The flakes rest in my pantry, panther-san. Now KOMBU - and my lost striker - and the stall opens again."},
 }
 
+// 2026-08-08 #29: Hiro accepts the kelp ON ITS OWN (PP from behind at the
+// counter, the bakery framing) instead of demanding kelp + striker together.
+var hiroKombuTradeDialog = []dialogEntry{
+	{speaker: "Hiro", text: "KOMBU! Thick and dark - the pond dries the best kelp in Kyoto. Into the pantry, next to the flakes."},
+	{speaker: "Hiro", text: "The broth is READY to be born, panther-san. Only my fire-striker is still out there - a kite took it, shiny thief."},
+}
+
+var hiroPostKombuDialog = []dialogEntry{
+	{speaker: "Hiro", text: "The pantry is full, the hearth is cold. Find my STRIKER, panther-san - ask around, someone always sees the kites."},
+}
+
 // The cherry agenda is PP's (from Gary's tip), not Hiro's — after the hearth
 // lights, PP is the one who asks for the blessed bowl.
 var hiroOpenDialog = []dialogEntry{
-	{speaker: "Hiro", text: "My STRIKER - and the KOMBU! With the flakes already in the pantry, the broth is complete. Stand back - "},
+	{speaker: "Hiro", text: "My STRIKER! With the flakes and the kelp already in the pantry, the broth is complete. Stand back - "},
 	{speaker: "Pink Panther", text: "Beautiful. Now, about that favor - one bowl, blessed in the first flame. It's for the old cherry in the grove."},
 	{speaker: "Hiro", text: "For the one who saved my morning? Gladly. Here - carry it with respect."},
 }
@@ -236,6 +249,17 @@ var obachanStrikerDialog = []dialogEntry{
 	{speaker: "Oba-chan", text: "Here. Take it back to him, and the street will eat again."},
 }
 
+// 2026-08-07 #31: the katsuobushi is now a DIALOG hand-over from Oba-chan
+// (Gary's tip says "the flower-store lady stocks it"), replacing the silent
+// stall-table hotspot whose click rect sat entirely INSIDE Kiku's box — NPC
+// clicks win over hotspots, so the packet was unreachable and the whole
+// hearth chain dead-ended.
+var obachanKatsuobushiDialog = []dialogEntry{
+	{speaker: "Pink Panther", text: "Oba-chan - Hiro's pantry needs KATSUOBUSHI, and a certain guidebook says you stock a little of everything."},
+	{speaker: "Oba-chan", text: "The book is right for once. Smoked bonito, shaved this morning - the last packet on the shelf."},
+	{speaker: "Oba-chan", text: "For Hiro's broth? Then take it as a neighbour's favor. Tell him Oba-chan keeps the street fed TOO."},
+}
+
 var obachanLeadDialog = []dialogEntry{
 	{speaker: "Oba-chan", text: "A bowl blessed at the first flame, and a voice charm besides. Now you carry something to GIVE."},
 	{speaker: "Oba-chan", text: "Come - follow me. I open the path to the old tree. Pick the blossom yourself; it means more that way."},
@@ -262,15 +286,21 @@ var groveTreeDoneDialog = []dialogEntry{
 // Kiku the dresser-geisha: she dresses PP (the kimono-spin gag) AND teaches him
 // the way of tea. PP can't begin the matcha quest until he's heard her - she's
 // what unlocks the matcha + bowl shelves (jp_tea_learned).
+// 2026-08-08 #21 (user: "does the clothes change make sense?"): rewritten so
+// the kimono has a REASON before it happens — she names the grove's dress
+// code first (echoing Gary's tip), teaches the tea path, and only then
+// "SPIN!" as the LAST line, so the spin one-shot (played at dialog end)
+// lands right on cue instead of PP saying "I'm dressed" before any spin.
 var dresserDialog = []dialogEntry{
-	{speaker: "Kiku", text: "Ara! A pink panther in MY shop and not one stitch of silk on him? Unforgivable. Hold still - SPIN!"},
-	{speaker: "Pink Panther", text: "Whoa - okay, okay, I'm dressed. ...Actually, this is rather nice."},
-	{speaker: "Kiku", text: "Of course it is. And now, properly dressed, you must learn the way of TEA. The old grove does not open its heart to a restless guest."},
-	{speaker: "Kiku", text: "Take matcha and a bowl from my shelves, draw fresh water at the street well, whisk it - then kneel with the tea master up in the temple house. THAT is how you still a racing heart."},
+	{speaker: "Kiku", text: "Ara... a pink panther, in MY shop. And WHERE do you think you are going, dressed like ZAT?"},
+	{speaker: "Pink Panther", text: "To the old cherry grove - once it opens its heart to me, anyway."},
+	{speaker: "Kiku", text: "The WHISPERING CHERRY? It does not receive guests in street fur. There is a dress code, panther-san - and I am its keeper."},
+	{speaker: "Kiku", text: "And silk alone will not do: the grove refuses a RESTLESS heart. Take matcha from my stall, draw cool water at the street well, whisk it - then kneel with the tea master up in the temple house."},
+	{speaker: "Kiku", text: "A proper chawan? You will have one of MINE - ask me when the matcha is in your paw. Now hold still - SPIN!"},
 }
 
 var dresserPostDialog = []dialogEntry{
-	{speaker: "Kiku", text: "Matcha, a bowl, well-water - then the tea master in the temple house. Go, go, panther-san!"},
+	{speaker: "Kiku", text: "Matcha from my stall, a chawan from ME, well-water from the street - then the tea master in the temple house. Go, go, panther-san!"},
 }
 
 // --- Tea master (flower store): the matcha ceremony that gates the grove ---
@@ -317,9 +347,27 @@ var dannyPhoneCallDialog = []dialogEntry{
 // ---------- NPC constructors ----------
 
 func newRamenSeller(renderer *sdl.Renderer) *npc {
-	idle, talk := loadJapanNPC(renderer,
-		[]string{jpNPCDir + "npc_hiro_idle.png", jpNPCDir + "ramen_seller.png"},
-		[]string{jpNPCDir + "npc_hiro_talk.png", jpNPCDir + "ramen_seller_talk.png"})
+	// 2026-08-07 #1: when the counter sheets exist (setupKyotoCallbacks swaps
+	// them in before anything draws), skip the legacy full-body sheets
+	// entirely — the old npc_hiro_talk has merged figure pairs that spammed
+	// dropMalformedFrames boot warnings for frames the game never showed.
+	var idle, talk []npcFrame
+	if firstExisting(jpNPCDir+"npc_hiro_counter_idle.png") != "" {
+		// Equal-cell load: the counter idle's poses touch (5 runs for 6, one
+		// ~500px merged blob), so the gap cutter moved its boundaries per
+		// frame — the office-Higgins jitter class.
+		idle = loadNPCGridEqualConnectedTol(renderer, jpNPCDir+"npc_hiro_counter_idle.png", 6, 1, 4, 24)
+		talk = idle
+		if p := firstExisting(jpNPCDir + "npc_hiro_counter_talk.png"); p != "" {
+			if t := loadNPCGridConnected(renderer, p, 6, 1); len(t) > 0 {
+				talk = t
+			}
+		}
+	} else {
+		idle, talk = loadJapanNPC(renderer,
+			[]string{jpNPCDir + "npc_hiro_idle.png", jpNPCDir + "ramen_seller.png"},
+			[]string{jpNPCDir + "npc_hiro_talk.png", jpNPCDir + "ramen_seller_talk.png"})
+	}
 	return &npc{
 		idleGrid: idle, talkGrid: talk,
 		// 2026-07-14: stood at the LEFT edge of his stall (the prop now sits at
@@ -371,9 +419,28 @@ func newTouristKyoto(renderer *sdl.Renderer) *npc {
 }
 
 func newKenjiStudent(renderer *sdl.Renderer) *npc {
-	idle, talk := loadJapanNPC(renderer,
-		[]string{jpNPCDir + "npc_kenji_idle.png"},
-		[]string{jpNPCDir + "npc_kenji_talk.png"})
+	// 2026-08-07 #26 (user): TWO idles, both on the same seated-calligrapher
+	// design — a SLOW nature-gazing base idle (§KENJI-IDLE-NATURE) punctuated
+	// by a drawing loop (§KENJI-IDLE-DRAWING, the alt-idle mechanism).
+	// 2026-08-08 #17 (user: "kenji is jittering"): ALL his sheets (incl. the
+	// freshly landed nature + drawing) carry one merged figure pair, so the
+	// gap cutter waist-split a different boundary per frame. Their figures
+	// sit ≤13px off the 192 grid → EQUAL-cell loads (the counter-Hiro /
+	// office-Higgins fix) hold the boundaries still.
+	kenjiSheet := func(cands ...string) []npcFrame {
+		if p := firstExisting(cands...); p != "" {
+			return loadNPCGridEqualConnectedTol(renderer, p, 8, 1, 4, 24)
+		}
+		return nil
+	}
+	idle := kenjiSheet(jpNPCDir+"npc_kenji_idle_nature.png", jpNPCDir+"npc_kenji_idle.png")
+	if len(idle) == 0 {
+		idle = loadNPCGridRow(renderer, jpFbkVendor8x2, 8, 2, 0)
+	}
+	talk := kenjiSheet(jpNPCDir + "npc_kenji_talk.png")
+	if len(talk) == 0 {
+		talk = idle
+	}
 	n := &npc{
 		idleGrid: idle, talkGrid: talk,
 		// 2026-07-27 (user): moved into the TORII scene — a calligraphy
@@ -387,12 +454,22 @@ func newKenjiStudent(renderer *sdl.Renderer) *npc {
 		name:           "Kenji",
 		dialog:         kenjiStudentDialog,
 		talkFrameSpeed: 0.12,
+		// #26: the gaze reads contemplative — slow the idle cadence well
+		// under the derived talk*2 (Pierre precedent 0.40).
+		idleFrameSpeed: 0.5,
 	}
 	// §KENJI-GIVE-CHARM (landed 2026-07-18): his brush-the-charm one-shot.
 	if p := firstExisting(jpNPCDir + "npc_kenji_give_charm.png"); p != "" {
 		if f := loadNPCGridConnected(renderer, p, 8, 1); len(f) > 0 {
 			n.oneShotAnims = map[string][]npcFrame{"give": f}
 		}
+	}
+	// #26: the drawing punctuation — after ~6 idle seconds he brushes a few
+	// strokes, then returns to gazing (one full alt cycle per fire).
+	// #17: equal-cell like the base idle (its pair 7+8 also merges).
+	if f := kenjiSheet(jpNPCDir + "npc_kenji_idle_drawing.png"); len(f) > 0 {
+		n.altIdleGrid = f
+		n.altIdleAfterSec = 6.0
 	}
 	return n
 }
@@ -436,20 +513,26 @@ func newTakeshi(renderer *sdl.Renderer) *npc {
 }
 
 func newTeaMaster(renderer *sdl.Renderer) *npc {
-	// The regenerated blue tea-master sheets are dedicated, cleanly separated
-	// 6x1 strips, so use the gap-aware cutter instead of clipping them to equal
-	// mathematical cells.
-	loadTeaMaster := func(cands ...string) []npcFrame {
-		if p := firstExisting(cands...); p != "" {
-			return loadNPCGridConnected(renderer, p, 6, 1)
-		}
-		return nil
+	// 2026-08-08 #24 (user: idle still shows two frames at once): the idle
+	// sheet is measured PHASE-SHIFTED +19..40px off the 256 grid with dirty
+	// valleys — equal cells slice a sliver of the previous pose into every
+	// frame, and the gap cutter only finds 3 runs. NO cutter can win, so the
+	// clean TALK sheet (6/6 gap-detected runs) doubles as the idle until the
+	// §TEA-MASTER-IDLE-v3 regen lands at its own preferred path.
+	idle := []npcFrame{}
+	if p := firstExisting(jpNPCDir + "npc_tea_master_idle_v3.png"); p != "" {
+		idle = loadNPCGridConnected(renderer, p, 6, 1)
 	}
-	idle := loadTeaMaster(jpNPCDir+"npc_tea_master_idle.png", jpNPCDir+"npc_tea_master_idle_f.png", jpNPCDir+"npc_tea_master_talk.png")
+	talk := []npcFrame{}
+	if p := firstExisting(jpNPCDir + "npc_tea_master_talk.png"); p != "" {
+		talk = loadNPCGridConnected(renderer, p, 6, 1)
+	}
+	if len(idle) == 0 {
+		idle = talk
+	}
 	if len(idle) == 0 {
 		idle = loadNPCGridRow(renderer, jpFbkVendor8x2, 8, 2, 0)
 	}
-	talk := loadTeaMaster(jpNPCDir + "npc_tea_master_talk.png")
 	if len(talk) == 0 {
 		talk = idle
 	}
@@ -459,10 +542,13 @@ func newTeaMaster(renderer *sdl.Renderer) *npc {
 		// at 620) — her placeholder sheets draw the figure tiny in-cell.
 		// The real fix stays the queued §TEA-MASTER-BLUE-v2 re-roll.
 		// 2026-07-26 PR #6: nudged a little left (X 640 → 615) per user.
-		bounds:         sdl.Rect{X: 615, Y: 340, W: 140, H: 280},
-		name:           "Tea Master",
-		dialog:         teaMasterDialog,
-		talkFrameSpeed: 0.12,
+		bounds: sdl.Rect{X: 615, Y: 340, W: 140, H: 280},
+		name:   "Tea Master",
+		dialog: teaMasterDialog,
+		// 2026-08-07 #29 (user: "she need to act slowly"): talk 0.12 → 0.20
+		// and an explicit slow idle (unset derived talk*2 = 0.24 → 0.5).
+		talkFrameSpeed: 0.20,
+		idleFrameSpeed: 0.5,
 		// 2026-08-01 (user #28): he kneels on the raised tatami platform —
 		// foot-aligning PP to his bounds walked PP way up the platform
 		// ("climbing to the roof"). elevated keeps PP on his own floor row
@@ -475,13 +561,21 @@ func newObachan(renderer *sdl.Renderer) *npc {
 	idle, talk := loadJapanNPC(renderer,
 		[]string{jpNPCDir + "npc_obachan_idle.png", jpNPCDir + "old_lady_idle.png"},
 		[]string{jpNPCDir + "npc_obachan_talk.png", jpNPCDir + "old_lady.png"})
-	return &npc{
+	n := &npc{
 		idleGrid: idle, talkGrid: talk,
 		bounds:         sdl.Rect{X: 380, Y: 370, W: 140, H: 250},
 		name:           "Oba-chan",
 		dialog:         obachanDialog,
 		talkFrameSpeed: 0.12,
 	}
+	// 2026-08-08 #20 (user): she visibly HANDS things over (the striker, the
+	// katsuobushi packet) — graceful until §OBACHAN-GIVE lands.
+	if p := firstExisting(jpNPCDir + "npc_obachan_give.png"); p != "" {
+		if f := loadNPCGridConnected(renderer, p, 6, 1); len(f) > 0 {
+			n.oneShotAnims = map[string][]npcFrame{"give": f}
+		}
+	}
+	return n
 }
 
 func newDresser(renderer *sdl.Renderer) *npc {
@@ -519,7 +613,8 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 	// 2026-07-26 PR #2: the torii pilgrims are REMOVED — Gary's arrival scene
 	// reads cleaner without figures behind him (the petal particles stay).
 	// 2026-07-26 PR #8: cat repositioned onto the street awning per user.
-	addJapanProp("kyoto_street", "street_cat.png", 866, 309, 0.3, 0.7, 8)
+	// 2026-08-08 #15 (user): a little smaller — 0.3 → 0.26.
+	addJapanProp("kyoto_street", "street_cat.png", 866, 309, 0.26, 0.7, 8)
 	// the thieving KITE (tobi) perched up on the temple roof — the bird
 	// Hiro and Kenji blame for the fire-striker (§JP-KITE-SHINY).
 	// 2026-07-26 PR #5: foot moved to (657,217) per user.
@@ -529,7 +624,8 @@ func addTokyoScenes(sm *sceneManager, renderer *sdl.Renderer) {
 	addJapanProp("kyoto_temple", "incense_lantern.png", 334, 473, 0.42, 0.5, 8)
 	// steaming kettle beside the tea master. 2026-07-26 PR #7: tol 24 — the
 	// tol-8 global key left a blue AA seam pocket on the kettle.
-	addJapanProp("kyoto_teahouse", "teahouse_kettle.png", 850, 610, 0.34, 0.45, 24)
+	// 2026-08-07 #29: kettle moved (850,610) → (780,530) per user.
+	addJapanProp("kyoto_teahouse", "teahouse_kettle.png", 780, 530, 0.34, 0.45, 24)
 
 	if torii, ok := sm.scenes["kyoto_torii"]; ok {
 		for i := 0; i < 16; i++ {
@@ -688,6 +784,38 @@ func (g *Game) setupKyotoCallbacks() {
 			// Every later dialog finds the book already right-way-up (the
 			// swapped normal-book idle/talk sheets stay in place).
 			garyFlipped := false
+			// 2026-08-08 #26 (user: "I click him multiple times to reach the
+			// relevant line"): the customs-oracle ladder used to be selected
+			// in onDialogEnd — one step BEHIND the state, so every chapter
+			// advance cost a wasted chat replaying the stale line. The switch
+			// now runs at CLICK time (onDialogStart fires in startNPCDialog
+			// before the first line shows — the Takeshi doors precedent), so
+			// the first click after any state change already speaks the right
+			// line. Skipped for his very first chat (the arrival dialog).
+			garySelectDialog := func() {
+				if !game.vars.GetBool(ScopeGame, "jp_met_gary") {
+					return // arrival dialog plays as authored
+				}
+				switch {
+				case game.vars.GetBool(ScopeGame, VarJpGroveRevealed) && !game.vars.GetBool(ScopeGame, VarJpTeaDone):
+					gary.dialog = garyTeaCustomDialog
+				case game.inv.hasItem("Offering Bowl") && !game.vars.GetBool(ScopeGame, VarJpTeaLearned):
+					gary.dialog = garyDressCodeDialog
+				case game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
+					!game.vars.GetBool(ScopeGame, "jp_kombu_given") &&
+					!game.inv.hasItem("Kombu") && !game.inv.hasItem("Offering Bowl"):
+					gary.dialog = garyKombuDialog
+				case game.vars.GetBool(ScopeGame, "jp_hiro_ask_done") &&
+					!game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
+					!game.inv.hasItem("Katsuobushi"):
+					gary.dialog = garyKatsuobushiDialog
+				case game.vars.GetBool(ScopeGame, "jp_met_hiro") && !game.vars.GetBool(ScopeGame, "jp_gary_tip_done"):
+					gary.dialog = garyRamenTipDialog
+				default:
+					gary.dialog = garyTokyoPostDialog
+				}
+			}
+			gary.onDialogStart = garySelectDialog
 			gary.onDialogEnd = func() {
 				if !garyFlipped {
 					garyFlipped = true
@@ -706,29 +834,8 @@ func (g *Game) setupKyotoCallbacks() {
 				if len(gary.dialog) > 0 && &gary.dialog[0] == &garyRamenTipDialog[0] {
 					game.vars.SetBool(ScopeGame, "jp_gary_tip_done", true)
 				}
-				// 2026-07-18 (user #45/#46): Gary = the customs oracle. His
-				// repeat dialog advances with the chapter: dress code once the
-				// offering path opens, tea etiquette once the grove is revealed
-				// but the ceremony isn't done; before all that, the ramen tip
-				// (once Hiro is met) and the grocery index (once Hiro's ask
-				// names katsuobushi + kombu); generic book gag otherwise.
-				switch {
-				case game.vars.GetBool(ScopeGame, VarJpGroveRevealed) && !game.vars.GetBool(ScopeGame, VarJpTeaDone):
-					gary.dialog = garyTeaCustomDialog
-				case game.inv.hasItem("Offering Bowl") && !game.vars.GetBool(ScopeGame, VarJpTeaLearned):
-					gary.dialog = garyDressCodeDialog
-				case game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
-					!game.inv.hasItem("Kombu") && !game.inv.hasItem("Offering Bowl"):
-					gary.dialog = garyKombuDialog
-				case game.vars.GetBool(ScopeGame, "jp_hiro_ask_done") &&
-					!game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
-					!game.inv.hasItem("Katsuobushi"):
-					gary.dialog = garyKatsuobushiDialog
-				case game.vars.GetBool(ScopeGame, "jp_met_hiro") && !game.vars.GetBool(ScopeGame, "jp_gary_tip_done"):
-					gary.dialog = garyRamenTipDialog
-				default:
-					gary.dialog = garyTokyoPostDialog
-				}
+				// #26: keep the resting dialog fresh for save/load too.
+				garySelectDialog()
 			}
 
 		}
@@ -745,7 +852,9 @@ func (g *Game) setupKyotoCallbacks() {
 				continue
 			}
 			if counterIdle := firstExisting(jpNPCDir + "npc_hiro_counter_idle.png"); counterIdle != "" {
-				if idle := loadNPCGridConnected(g.renderer, counterIdle, 6, 1); len(idle) > 0 {
+				// 2026-08-07 #1: EQUAL-cell load — the counter idle's poses
+				// touch, so the gap cutter jittered its boundaries per frame.
+				if idle := loadNPCGridEqualConnectedTol(g.renderer, counterIdle, 6, 1, 4, 24); len(idle) > 0 {
 					n.idleGrid = idle
 					n.talkGrid = idle
 					if p := firstExisting(jpNPCDir + "npc_hiro_counter_talk.png"); p != "" {
@@ -783,31 +892,74 @@ func (g *Game) setupKyotoCallbacks() {
 							n.oneShotAnims["give"] = give
 						}
 					}
+					// 2026-08-08 #20: his counter TAKE (reaches over, receives,
+					// stows under the counter) — the grocery hand-overs skip
+					// the take entirely until this lands (§HIRO-COUNTER-RECEIVE),
+					// because the only fallback was the broth-ladle give.
+					if p := firstExisting(jpNPCDir + "npc_hiro_counter_receive.png"); p != "" {
+						if take := loadNPCGridConnected(g.renderer, p, 6, 1); len(take) > 0 {
+							if n.oneShotAnims == nil {
+								n.oneShotAnims = map[string][]npcFrame{}
+							}
+							n.oneShotAnims["receive_katsuobushi"] = take
+							n.oneShotAnims["receive_kombu"] = take
+						}
+					}
 				}
 			}
 			break
 		}
 
 		// 2026-08-01 (user): Hiro's grocery #2 — kombu drying by the water at
-		// the pond bridge (bottom-right of the street). Gary's book points
-		// here; gated on Hiro's ask like the katsuobushi packet.
-		street.hotspots = append(street.hotspots, hotspot{
-			bounds: sdl.Rect{X: 1150, Y: 650, W: 130, H: 80}, name: "Kombu drying by the pond",
-			onInteract: func() bool {
+		// the pond bridge (bottom-right of the street). Gated on Hiro's ask
+		// like the katsuobushi beat.
+		// 2026-08-08 #28 (user): reworked from a silent hotspot to a hidden
+		// FLOOR ITEM — grab cursor for free — whose stand mark is ON THE
+		// BRIDGE DECK (the old hotspot walk aimed at the rect centre, foot
+		// 825: PP marched into the pond, feet off-screen; the water is now
+		// foot-blocked in kyoto_street.json). The pick plays a kneel-and-pull
+		// beat: §PP-KNEEL-SCOOP once it lands, the crouch-grab until then.
+		street.floorItems = append(street.floorItems, &floorItem{
+			bounds:  sdl.Rect{X: 1150, Y: 650, W: 130, H: 80},
+			name:    "Kombu",
+			visible: true,
+			hidden:  true, // the drying rack is painted in the BG
+			// PP CENTER mark: (1195, 600) → foot (1195, 735), on the planks.
+			standXOverride: 1195,
+			standYOverride: 600,
+			onPickup: func() {
 				// Gated on the SECOND ask — Hiro only names kombu after the
 				// katsuobushi is in his pantry (user: ping-pong, one at a time).
 				if !game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") {
-					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "Long dark ribbons drying by the water... seaweed? Someone's dinner, not mine."}})
-					return true
+					game.player.dir = dirDown
+					game.player.facingLeft = false
+					game.player.state = stateTalking
+					game.dialog.startDialogWithCallback([]dialogEntry{
+						{speaker: "Pink Panther", text: "Long dark ribbons drying by the water... seaweed? Someone's dinner, not mine."},
+					}, func() { game.player.state = stateIdle })
+					return
 				}
-				if game.inv.hasItem("Kombu") || game.inv.hasItem("Offering Bowl") {
+				if game.inv.hasItem("Kombu") || game.vars.GetBool(ScopeGame, "jp_kombu_given") ||
+					game.inv.hasItem("Offering Bowl") {
 					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "I've got the kelp already."}})
-					return true
+					return
 				}
-				game.dialog.startDialogWithCallback([]dialogEntry{
-					{speaker: "Pink Panther", text: "Kombu - dried kelp, hung by the water just like Gary's book said. That's the other half of Hiro's broth."},
-				}, func() { give("kombu") })
-				return true
+				// Kneel at the plank edge, dip, pull the kelp out.
+				scoop := "grab_flower" // crouch-and-reach, the closest landed beat
+				if game.player.hasOneShot("kneel_scoop") {
+					scoop = "kneel_scoop" // §PP-KNEEL-SCOOP
+				}
+				game.player.facingLeft = true
+				game.player.dir = dirLeft
+				game.player.playOneShot(scoop, 1.2, func() {
+					give("kombu")
+					game.player.dir = dirDown
+					game.player.facingLeft = false
+					game.player.state = stateTalking
+					game.dialog.startDialogWithCallback([]dialogEntry{
+						{speaker: "Pink Panther", text: "Kombu - dried kelp, hung by the water just like Gary's book said. That's the other half of Hiro's broth."},
+					}, func() { game.player.state = stateIdle })
+				})
 			},
 		})
 
@@ -909,14 +1061,37 @@ func (g *Game) setupKyotoCallbacks() {
 							game.inv.removeItem("Katsuobushi")
 							game.vars.SetBool(ScopeGame, "jp_katsuobushi_given", true)
 							hiro.dialog = hiroPostKatsuDialog
-						}, &handOff{item: "Katsuobushi", back: true}
+							// 2026-08-08 #20: skip his take-reach only while
+							// the dedicated counter receive hasn't landed —
+							// the fallback played his broth-LADLE give as
+							// the take, which read wrong.
+						}, &handOff{item: "Katsuobushi", back: true,
+							skipNPCTake: !hiro.hasOneShotAnim("receive_katsuobushi")}
 					}
+					// 2026-08-08 #29 (user: "I can't bring the kombu to
+					// Hiro"): there was NO kombu-alone branch — carrying the
+					// kelp without the striker hit nothing and replayed a
+					// generic reminder. Hiro now TAKES the kelp on its own
+					// (PP from behind, the bakery-counter framing) and his
+					// post dialog names what's still missing.
 					if game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
-						game.inv.hasItem("Kombu") && game.inv.hasItem("Fire-Striker") &&
+						game.inv.hasItem("Kombu") &&
+						!game.vars.GetBool(ScopeGame, "jp_kombu_given") {
+						return hiroKombuTradeDialog, func() {
+							game.inv.removeItem("Kombu")
+							game.vars.SetBool(ScopeGame, "jp_kombu_given", true)
+							hiro.dialog = hiroPostKombuDialog
+						}, &handOff{item: "Kombu", back: true,
+							skipNPCTake: !hiro.hasOneShotAnim("receive_kombu")}
+					}
+					// The blessed bowl: pantry stocked (both groceries GIVEN,
+					// no longer carried) + the striker in paw.
+					if game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") &&
+						game.vars.GetBool(ScopeGame, "jp_kombu_given") &&
+						game.inv.hasItem("Fire-Striker") &&
 						!game.inv.hasItem("Offering Bowl") {
 						return hiroOpenDialog, func() {
 							game.inv.removeItem("Fire-Striker")
-							game.inv.removeItem("Kombu")
 							give("offering_bowl")
 							hiro.dialog = []dialogEntry{
 								{speaker: "Hiro", text: "Take the blessed bowl to the old tree, panther-san - and come back for noodles when your heart is light."},
@@ -1063,10 +1238,38 @@ func (g *Game) setupKyotoCallbacks() {
 							give("fire_striker")
 						}, &handOff{returnItem: "Fire-Striker"}
 					}
+					// 2026-08-07 #31: the katsuobushi hand-over (was an
+					// unreachable stall-table hotspot buried under Kiku's
+					// click box). Gated on Hiro having NAMED the list, like
+					// the old hotspot; one packet only.
+					if game.vars.GetBool(ScopeGame, "jp_hiro_ask_done") &&
+						!game.inv.hasItem("Katsuobushi") &&
+						!game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") {
+						return obachanKatsuobushiDialog, func() {
+							give("katsuobushi")
+						}, &handOff{returnItem: "Katsuobushi"}
+					}
 					return nil, nil, nil
 				}
 			case "Kiku":
 				kiku := n
+				// 2026-08-08 #27 (user: two pickups in one spot "looks like
+				// stealing"): the TEA BOWL is now KIKU's hand-over — she
+				// lends one of her own chawan once the ceremony is taught
+				// and the matcha is in the bag. The shelf hotspot is gone.
+				kiku.altDialogFunc = func() ([]dialogEntry, func(), *handOff) {
+					if game.vars.GetBool(ScopeGame, VarJpTeaLearned) &&
+						game.inv.hasItem("Matcha") &&
+						!game.inv.hasItem("Tea Bowl") && !game.inv.hasItem("Matcha Bowl") &&
+						!game.vars.GetBool(ScopeGame, VarJpTeaDone) {
+						bowl := teaBowlNames[rand.Intn(len(teaBowlNames))]
+						return []dialogEntry{
+							{speaker: "Kiku", text: "Matcha in paw? Good. And no, you will NOT paw through shelves for a bowl like a market cat."},
+							{speaker: "Kiku", text: "Here - the " + bowl + " one, from my own set. It has seen a hundred ceremonies; do not let it see the ground."},
+						}, func() { give("tea_bowl") }, &handOff{returnItem: "Tea Bowl"}
+					}
+					return nil, nil, nil
+				}
 				kiku.onDialogEnd = func() {
 					// She spins PP into a kimono (the gag) AND teaches the tea
 					// ceremony - talking to her unlocks the matcha + bowl shelves
@@ -1078,76 +1281,72 @@ func (g *Game) setupKyotoCallbacks() {
 					// spin INTO the costume, MODEL it, spin BACK. Each key is
 					// its own sheet once §PP-KIMONO-SPLIT lands; until then a
 					// slice of the combined spin sheet (see player.go).
-					game.player.playOneShot("kimono_spin_in", 1.3, func() {
-						game.player.playOneShot("kimono_model", 1.5, func() {
-							game.player.playOneShot("kimono_spin_out", 0.8, nil)
+					// 2026-08-07 #32 (user): the spin chain + teaching fire
+					// ONLY on the FIRST chat — jp_tea_learned itself is the
+					// guard, so it's save-safe (a reloaded game skips it too).
+					if !game.vars.GetBool(ScopeGame, VarJpTeaLearned) {
+						game.player.playOneShot("kimono_spin_in", 1.3, func() {
+							game.player.playOneShot("kimono_model", 1.5, func() {
+								game.player.playOneShot("kimono_spin_out", 0.8, nil)
+							})
 						})
-					})
-					game.vars.SetBool(ScopeGame, VarJpTeaLearned, true)
+						game.vars.SetBool(ScopeGame, VarJpTeaLearned, true)
+					}
 					kiku.dialog = dresserPostDialog
 				}
 			}
 		}
-		// Tea-ceremony shelves in the flower store: a matcha tin + a shelf of
-		// chawan (you're handed a random one).
-		// 2026-07-26 PR #9: both moved from the bare upper-left wall onto the
-		// STALL TABLE with the painted pots and bowls (right of Kiku, left of
-		// the grove exit), so the pickups sit on something the player can see.
-		grove.hotspots = append(grove.hotspots, hotspot{
-			bounds: sdl.Rect{X: 1135, Y: 430, W: 80, H: 85}, name: "A tin of matcha",
-			onInteract: func() bool {
+		// 2026-08-08 #27 (user): the two shelf HOTSPOTS (matcha + chawan, 5px
+		// apart, no cursor, no animation — "looks like stealing") are GONE.
+		// The TEA BOWL is Kiku's dialog hand-over now (see her altDialog),
+		// and the MATCHA is a hidden floorItem on the painted tin: the grab
+		// cursor, the beside-the-item walk, and PP's grab one-shot all come
+		// free with the floor-item path (the rolling-pin-basket pattern).
+		grove.floorItems = append(grove.floorItems, &floorItem{
+			bounds:  sdl.Rect{X: 1135, Y: 430, W: 80, H: 85},
+			name:    "Matcha",
+			visible: true,
+			hidden:  true, // painted tin IS the art; cursor-only presence
+			standRight: false,
+			standGapX:  20,
+			onPickup: func() {
 				if !game.vars.GetBool(ScopeGame, VarJpTeaLearned) {
-					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "Pretty green powder... but I wouldn't know what to do with it. Maybe the kimono lady can teach me."}})
-					return true
+					game.player.dir = dirDown
+					game.player.facingLeft = false
+					game.player.state = stateTalking
+					game.dialog.startDialogWithCallback([]dialogEntry{
+						{speaker: "Pink Panther", text: "Pretty green powder... but I wouldn't know what to do with it. Maybe the kimono lady can teach me."},
+					}, func() { game.player.state = stateIdle })
+					return
 				}
 				if game.inv.hasItem("Matcha") || game.vars.GetBool(ScopeGame, VarJpTeaDone) {
 					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "I've already got the matcha."}})
-					return true
+					return
 				}
-				game.dialog.startDialogWithCallback([]dialogEntry{
-					{speaker: "Pink Panther", text: "Bright green matcha powder. Just like Kiku said - the tea master will want this."},
-				}, func() { give("matcha") })
-				return true
+				// Waist-high stall reach: the basket-grab sheet is the closest
+				// existing beat ("grab" is a registered-nowhere no-op).
+				matchaGrab := "grab"
+				if game.player.hasOneShot("grab_rolling_pin") {
+					matchaGrab = "grab_rolling_pin"
+				}
+				game.player.playOneShot(matchaGrab, 0.9, func() {
+					give("matcha")
+					game.player.dir = dirDown
+					game.player.facingLeft = false
+					game.player.state = stateTalking
+					game.dialog.startDialogWithCallback([]dialogEntry{
+						{speaker: "Pink Panther", text: "Bright green matcha powder. Just like Kiku said - the tea master will want this."},
+					}, func() { game.player.state = stateIdle })
+				})
 			},
 		})
-		grove.hotspots = append(grove.hotspots, hotspot{
-			bounds: sdl.Rect{X: 1220, Y: 430, W: 75, H: 85}, name: "A shelf of tea bowls",
-			onInteract: func() bool {
-				if !game.vars.GetBool(ScopeGame, VarJpTeaLearned) {
-					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "Lovely bowls. I shouldn't just grab one - I should learn the proper way first. The kimono lady, maybe."}})
-					return true
-				}
-				if game.inv.hasItem("Tea Bowl") || game.inv.hasItem("Matcha Bowl") || game.vars.GetBool(ScopeGame, VarJpTeaDone) {
-					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "I've got a bowl already."}})
-					return true
-				}
-				bowl := teaBowlNames[rand.Intn(len(teaBowlNames))]
-				game.dialog.startDialogWithCallback([]dialogEntry{
-					{speaker: "Pink Panther", text: "So many chawan to choose from... I'll take " + bowl + " one today."},
-				}, func() { give("tea_bowl") })
-				return true
-			},
-		})
-		// 2026-08-01 (user): Hiro's grocery #1 — a katsuobushi packet on the
-		// same stall table, left of the matcha tin. Gated on Hiro's ask so PP
-		// doesn't shop before he knows the list (Gary's book points here).
-		grove.hotspots = append(grove.hotspots, hotspot{
-			bounds: sdl.Rect{X: 1050, Y: 435, W: 70, H: 75}, name: "A packet of katsuobushi",
-			onInteract: func() bool {
-				if !game.vars.GetBool(ScopeGame, "jp_hiro_ask_done") {
-					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "A paper packet of... smoked fish flakes? Smells intense. No reason to pocket someone's groceries, though."}})
-					return true
-				}
-				if game.inv.hasItem("Katsuobushi") || game.vars.GetBool(ScopeGame, "jp_katsuobushi_given") {
-					game.dialog.startDialog([]dialogEntry{{speaker: "Pink Panther", text: "Hiro's flakes are handled already."}})
-					return true
-				}
-				game.dialog.startDialogWithCallback([]dialogEntry{
-					{speaker: "Pink Panther", text: "Katsuobushi - smoked bonito flakes, exactly like Gary's book said. Half of Hiro's broth, rescued."},
-				}, func() { give("katsuobushi") })
-				return true
-			},
-		})
+		// The katsuobushi-packet hotspot (2026-08-01) was REMOVED 2026-08-07
+		// #31: its click rect {1050,435,70,75} sat entirely inside Kiku's
+		// bounds {980,360,150,250}, and NPC clicks beat hotspots — the packet
+		// could never be clicked, dead-ending the whole hearth chain. The
+		// hand-over is now Oba-chan's dialog beat (obachanKatsuobushiDialog),
+		// which is also what Gary's tip promised ("the flower-store LADY
+		// stocks it").
 		// Exit INTO the hidden grove - needs BOTH Oba-chan's opened path AND a
 		// still heart (the tea ceremony).
 		// 2026-08-01 (user #27): the exit is INVISIBLE until Oba-chan reveals
@@ -1178,15 +1377,19 @@ func (g *Game) setupKyotoCallbacks() {
 		// G9: the path UP to the temple tea-house should recede (shrink + drift
 		// up) instead of marching PP off the top of the screen.
 		// 2026-07-26 PR #11: PP first walks to the temple STAIRS' base
-		// (foot ≈ 838,384; above the walk band, so unclamped), THEN recedes —
-		// same beat as the street→flower-store stairs.
+		// (above the walk band, so unclamped), THEN recedes — same beat as
+		// the street→flower-store stairs.
+		// 2026-08-07 #28: recede drift 80 → 40 (the "roof climb").
+		// 2026-08-08 #22 (user): the shrink starts LOWER — anchor foot
+		// (844,353) → (852,422), the painted stair BASE, matching the
+		// re-centred arrow above it.
 		for i := range grove.hotspots {
 			if grove.hotspots[i].targetScene != "kyoto_teahouse" {
 				continue
 			}
 			grove.hotspots[i].onInteract = func() bool {
-				game.player.walkToAndDoUnclamped(838, 249, func() {
-					game.player.playRecede(1.0, 0.5, 80, func() {
+				game.player.walkToAndDoUnclamped(852, 287, func() {
+					game.player.playRecede(1.0, 0.5, 40, func() {
 						game.sceneMgr.transitionTo("kyoto_teahouse", game.player)
 					})
 				})

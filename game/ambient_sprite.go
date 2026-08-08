@@ -48,6 +48,11 @@ type ambientSprite struct {
 	// x, y is the foot anchor: the ground point the figure stands on.
 	x, y float64
 
+	// foreground (2026-08-07 #8): draw AFTER the footY-sorted actors instead
+	// of in the background ambient pass — the Paris biker crosses the street
+	// in FRONT of everything (he was riding behind the flower pot).
+	foreground bool
+
 	// travel / fly speed in px/sec. Sign sets facing (negative = face left).
 	vx      float64
 	vyUp    float64 // ambientFlyOff: upward drift px/sec
@@ -426,10 +431,31 @@ func (a *ambientSprite) draw(renderer *sdl.Renderer) {
 	src := sdl.Rect{X: f.ox, Y: f.oy, W: f.ow, H: f.oh}
 	dstW := int32(float64(f.ow) * a.scale)
 	dstH := int32(float64(f.oh) * a.scale)
-	dst := sdl.Rect{X: int32(a.x) - dstW/2, Y: int32(a.y) - dstH, W: dstW, H: dstH}
 	flip := sdl.FLIP_NONE
 	if a.vx < 0 {
 		flip = sdl.FLIP_HORIZONTAL
+	}
+	// 2026-08-08 D-2: anchor on the engine's per-frame FEET anchors
+	// (fcx/fry, deadband-stabilized like the NPCs) instead of the opaque
+	// bounding-box centre — a drifting steam plume / raised tail shifts the
+	// bbox per frame, which slid the kettle (±9px), the cat, and the other
+	// props side to side every frame. Falls back to the old bbox anchor
+	// when the loader left the anchors unset.
+	ax := float64(f.ow) / 2 // anchor offset inside the opaque box
+	ay := float64(f.oh)
+	if f.fcx > 0 {
+		ax = float64(f.fcx - f.ox)
+	}
+	if f.fry > f.oy {
+		ay = float64(f.fry - f.oy)
+	}
+	if flip == sdl.FLIP_HORIZONTAL {
+		ax = float64(f.ow) - ax
+	}
+	dst := sdl.Rect{
+		X: int32(a.x - ax*a.scale),
+		Y: int32(a.y - ay*a.scale),
+		W: dstW, H: dstH,
 	}
 	renderer.CopyEx(f.tex, &src, &dst, 0, nil, flip)
 	a.lastRect = dst

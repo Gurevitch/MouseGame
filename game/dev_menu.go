@@ -97,7 +97,7 @@ func (dm *devMenu) draw(renderer *sdl.Renderer, font *engine.BitmapFont) {
 	renderer.SetDrawColor(255, 200, 120, 255)
 	renderer.DrawRect(&sdl.Rect{X: dm.panelX, Y: dm.panelY, W: dm.panelW, H: panelH})
 
-	font.DrawText(renderer, "DEV MENU  (F1 to close)", dm.panelX+16, dm.panelY+16, 3,
+	font.DrawText(renderer, "DEV MENU  (F1 close, F3 walk overlay)", dm.panelX+16, dm.panelY+16, 3,
 		sdl.Color{R: 255, G: 220, B: 140, A: 255})
 
 	for i, row := range dm.rows {

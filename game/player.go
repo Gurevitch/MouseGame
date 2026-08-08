@@ -205,7 +205,12 @@ type player struct {
 	walkInActive   bool
 	walkInStartX   float64
 	walkInEndX     float64
-	walkInY        float64
+	walkInStartY   float64
+	// walkInEndY (2026-08-07 #2): the walk-in can drift vertically too —
+	// the camp-entrance arrival ends slightly UP the road so PP reads as
+	// walking along it, not sliding across a flat line. Same value as
+	// walkInStartY = the old fixed-y behavior.
+	walkInEndY     float64
 	walkInDuration float64
 	walkInElapsed  float64
 	walkInOnDone   func()
@@ -365,7 +370,7 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	p.idleBackFrames = gridFrames(renderer, "assets/images/player/PP idle back.png", 8, 2)
 
 	p.talkFrames = gridFrames(renderer, "assets/images/player/PP talk front.png", 8, 2)
-	p.talkSideFrames = gridFrames(renderer, "assets/images/player/PP talk side.png", 8, 2)
+	p.talkSideFrames = gridFrames(renderer, "assets/images/player/PP talk side.png", 8, 1)
 	// Back-facing talk sheet (PP seen from behind, talking up toward a
 	// counter-height NPC like Madame Poulain). Optional - guarded with
 	// firstExisting so a missing file isn't re-opened every startup; until the
@@ -428,8 +433,12 @@ func newPlayer(renderer *sdl.Renderer) *player {
 	// §PP-PUT-COFFEE-TABLE (2026-08-01 user #11): PP sets Henri's café au
 	// lait down on the table instead of handing it over. Optional — the
 	// handOff ppGiveAnim override falls back to give_coffee until it lands.
+	// 2026-08-07 #11: GLOBAL tol-24 key (was connected) — it's a BLUE-bg
+	// sheet, and the connected key kept its enclosed blue arm pockets +
+	// AA halos, which mis-bridged the cut and read as a "blink" mid-beat
+	// (the give-pencil precedent).
 	if path := firstExisting("assets/images/player/pp_put_coffee_table.png"); path != "" {
-		if f := gridFramesConnectedTol(renderer, path, 6, 1, 24); len(f) > 0 {
+		if f := gridFramesTol(renderer, path, 6, 1, 24); len(f) > 0 {
 			p.oneShotAnims["put_coffee_table"] = f
 		}
 	}
@@ -623,6 +632,12 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		"receive_jerusalem_coffee": "assets/images/player/pp_get_coffee.png",
 		"give_jerusalem_coffee":    "assets/images/player/PP give jerusalem coffee.png",
 		"receive_paper":            "assets/images/player/pp_get_paper.png",
+		// 2026-08-08 #20: the katsuobushi counter-trade pair (graceful —
+		// §PP-GET-KATSUOBUSHI / §PP-GIVE-KATSUOBUSHI-BACK queued).
+		"receive_katsuobushi":   "assets/images/player/pp_get_katsuobushi.png",
+		"give_katsuobushi_back": "assets/images/player/PP_give_katsuobushi_back.png",
+		// #28: the bridge kneel-and-scoop (graceful — §PP-KNEEL-SCOOP queued).
+		"kneel_scoop": "assets/images/player/pp_kneel_scoop.png",
 	} {
 		if _, err := os.Stat(path); err == nil {
 			if f := gridFrames(renderer, path, 6, 1); len(f) > 0 {
@@ -639,9 +654,10 @@ func newPlayer(renderer *sdl.Renderer) *player {
 		"receive_postcard": true,
 		// 2026-07-25 (user): the bagel take reaches away from the seller.
 		"receive_bagel": true,
-		// 2026-08-01 (user #15): the cardamom take reaches away from the
-		// spice seller — mirror it.
-		"receive_cardamom": true,
+		// receive_cardamom REMOVED 2026-08-07 (user #21): the sheet is drawn
+		// facing RIGHT like the base side sheets, so the natural facing-left
+		// mirror already points the take at the spice seller — the old
+		// inversion (added 2026-08-01 #15) turned PP AWAY from him.
 	}
 	// 2026-07-25 (user): the pot pickup — until §PP-GET-PENCIL-POT lands,
 	// alias the generic grab MIRRORED (the grab leans LEFT; the pot sits to
@@ -812,6 +828,31 @@ func giveAnimKeyForItem(name string) string {
 		return "cardamom"
 	case "Note Paper":
 		return "paper"
+	// 2026-08-08 D-1: the map had ZERO Japan items — every Kyoto hand-over
+	// resolved to "item" and silently animated NOTHING on PP's side, even
+	// though six of these sheets were registered and waiting
+	// (give_fire_striker, receive_well_water, receive_voice_charm,
+	// receive_offering_bowl, give_matcha_bowl, ...).
+	case "Katsuobushi":
+		return "katsuobushi"
+	case "Kombu":
+		return "kombu"
+	case "Fire-Striker":
+		return "fire_striker"
+	case "Well-Water":
+		return "well_water"
+	case "Voice Charm":
+		return "voice_charm"
+	case "Offering Bowl":
+		return "offering_bowl"
+	case "Matcha":
+		return "matcha"
+	case "Tea Bowl":
+		return "tea_bowl"
+	case "Matcha Bowl":
+		return "matcha_bowl"
+	case "Pressed Sakura":
+		return "pressed_sakura"
 	}
 	return "item"
 }
@@ -1574,24 +1615,26 @@ func (p *player) playRecede(dur, endScale, dyUp float64, onDone func()) {
 	p.onArrival = nil
 }
 
-// playWalkIn lerps PP horizontally from startX to endX at fixed y over
-// `dur` seconds, with the side-walk frames cycling. Used for the opening
-// "PP enters camp from off-screen-left" cutscene. Drives position
-// directly so it's immune to the clamp / blocker / setTarget machinery.
-// On completion, fires `onDone` (typically the monologue start).
-func (p *player) playWalkIn(startX, endX, y, dur float64, onDone func()) {
+// playWalkIn lerps PP from (startX, startY) to (endX, endY) over `dur`
+// seconds, with the side-walk frames cycling. Used for the opening
+// "PP enters camp from off-screen-left" cutscene. Pass endY == startY for
+// the classic flat walk. Drives position directly so it's immune to the
+// clamp / blocker / setTarget machinery. On completion, fires `onDone`
+// (typically the monologue start).
+func (p *player) playWalkIn(startX, endX, startY, endY, dur float64, onDone func()) {
 	if dur <= 0 {
 		dur = 2.0
 	}
 	p.walkInActive = true
 	p.walkInStartX = startX
 	p.walkInEndX = endX
-	p.walkInY = y
+	p.walkInStartY = startY
+	p.walkInEndY = endY
 	p.walkInDuration = dur
 	p.walkInElapsed = 0
 	p.walkInOnDone = onDone
 	p.x = startX
-	p.y = y
+	p.y = startY
 	p.dir = dirRight
 	p.facingLeft = false
 	p.state = stateWalking
@@ -1760,7 +1803,7 @@ func (p *player) update(dt float64, blockers []sdl.Rect, footBlockers []sdl.Rect
 			t = 1
 		}
 		p.x = p.walkInStartX + (p.walkInEndX-p.walkInStartX)*t
-		p.y = p.walkInY
+		p.y = p.walkInStartY + (p.walkInEndY-p.walkInStartY)*t
 
 		p.walkTimer += dt
 		if p.walkTimer >= walkFrameTime {

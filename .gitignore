@@ -27,5 +27,8 @@ hit_debug/
 .gotmp/
 /sprite_gallery/
 
+# Downloaded cross-compile toolchain (SDL2 mingw dev libs) - see scripts/build_windows.sh
+/.toolchain/
+
 # Claude Code local settings
 .claude/settings.local.json

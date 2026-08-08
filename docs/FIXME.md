@@ -14,6 +14,188 @@ When fixed, move to the **Resolved** section with the date.
 
 ## Open Issues
 
+### 2026-08-08 — PR (28-item sweep + SAVE/LOAD OVERHAUL, plan toasty-imagining-floyd)
+
+SAVE/LOAD (#8/#14, the serious one) — three independent root causes, all
+fixed: (1) the WHOLE Paris chain lived in closure locals that a relaunch
+zeroed (Card consumed + gate closed = Louvre softlock) → 16 new paris_*
+game-scope vars replace them (persisted wholesale), selectors re-branch at
+click time (Poulain pivots via the var now, not a re-pointed altDialogFunc);
+(2) item restore was a 7-name whitelist — "Card"/"Confiture"/"Coin"/… were
+SILENTLY DROPPED from the bag on load → idForName resolves through the item
+registry (new test pins all 38 display names round-trip); (3) camp reveals
+were live-callback-only (room Marcus born hidden, office Higgins born
+silent, heal-chain kids silent) → reconcileLoadedWorld now calls
+applyCampRevealState + applyParisChainState + travel pins restored for ALL
+cities from <id>_unlocked vars; nil-map guard on loaded saves; the saved
+player position survives the load transition (restorePosPending — the
+fade-in used to snap PP to the scene spawn).
+SPRITES (#1/#2/#5a/#6/#10): bg_bake rows for higgins_walk_back_v2 (noisy
+blue), PP talk front (GLOBAL, sixteen ~1030px leg slivers), PP give flower
+(STRICT template — ivory protected), give baguette + give card (noisy blue
+defeated gap detect → proportional slicing = the "two frames at once"),
+put_coffee_table (the residual blink) — all baked + segments re-verified;
+give heel's 1053px detached blob erased (8/8 runs now). put_coffee_table
+had been REPLACED by a fresh generation that re-introduced the merged pair
++ orphan cup — re-repaired (bridge punch, cup band shifted into figure 5).
+PARIS/CAMP (#3/#4/#5b/#7/#9/#11/#12/#13): give_map sliced to {0-5,7} — ends
+on the raised EMPTY hand, the baked-in projectile frame dropped (the tween
+takes over); biker 0.85→0.95; cup decor foot-centre at (620,510) =
+{602,474}; camilleSketchAskDialog reordered so SHE speaks first (the NPC
+mouth freezes while PP talks — that was "her talk sprite is not running");
+lost_pencil sliced to 7 frames so the hold lands on the SAD slump (the
+landed sheet ended on a smile); pot pickup walks to the pot mark while
+recede-held (was picking from Margaux's mark); new per-anim oneShotRefH —
+receive_pencil renders at its own scale (was ~25% oversized under the
+shared pin); the post-postcard homeward lines face Beaumont in talk state.
+JAPAN SYSTEMIC: D-1 giveAnimKeyForItem had ZERO Japan items — every Kyoto
+hand-over animated NOTHING; ten items added, re-activating six
+already-landed sheets (striker/well-water/charm/bowl/matcha-bowl/…).
+D-2 ambientSprite.draw ignored the fcx/fry anti-jitter anchors — the
+kettle's steam plume shifted its bbox ±9px/frame (also cat/kite/lantern);
+draws now foot-anchor like NPCs, no art change needed. D-3 all five kyoto
+walkSegments sat BELOW minY (clamped to one row, zero depth) — re-authored
+in-band as two lanes per scene (+ the bridge deck lane in the street).
+JAPAN ITEMS (#15/#17/#18/#20-#29): cat 0.26; Kenji all-sheets equal-cell
+(every sheet carries one merged pair — the jitter); PERU line replaced;
+katsuobushi ceremony wired (Oba-chan generic give + PP receive/back-give
+keys graceful; Hiro's take SKIPPED until §HIRO-COUNTER-RECEIVE lands — the
+fallback was his broth-ladle give); Kiku's first dialog rewritten (dress
+code BEFORE the spin, "SPIN!" is the last line so the one-shot lands on
+cue); teahouse arrow at (852,285) + shrink from the stair base (foot 422);
+tea master idle = the clean TALK sheet until §TEA-MASTER-IDLE-v3 (the idle
+strip is phase-shifted +19-40px — no cutter can win); "one more trip to
+Gary" deleted; Gary's oracle ladder moved to onDialogStart (was one chat
+BEHIND the state — the multi-click complaint); tea bowl = KIKU's hand-over
++ matcha = hidden floorItem with grab cursor + reach anim (the two
+same-spot "stealing" hotspots are gone); the pond is foot-blocked, kombu =
+floorItem with a BRIDGE stand mark + kneel-scoop beat (§PP-KNEEL-SCOOP
+queued, flower-crouch until then; the old hotspot walked PP into the water,
+feet off-screen); NEW jp_kombu_given + Hiro's third branch — he takes the
+kelp on its own and names the missing striker (the "can't bring kombu"
+dead-end; the bowl branch now keys off given-vars, not carried items).
+F3 overlay (#16, user choice): now also draws blockers (red), footBlockers
+(orange), and hotspot rects (cyan); dev-menu header mentions F3.
+Prompts queued: §PP-KNEEL-SCOOP, §TEA-MASTER-IDLE-v3, §OBACHAN-GIVE,
+§PP-GET-KATSUOBUSHI + §PP-GIVE-KATSUOBUSHI-BACK, §HIRO-COUNTER-RECEIVE.
+
+- [ ] `[P1]` SAVE/LOAD REPRO (user's exact case): mid-Paris save (pass
+      handed to Claude) → QUIT the app → relaunch → load → the Louvre door
+      must open, the street NPCs must be post-trade, the bag must keep its
+      items, and the camp must be populated on return. Also try a save in
+      Kyoto mid-chain and one at camp day 2.
+- [ ] `[P1]` PLAYTEST: biker size/front; give-map release into the tween;
+      Henri beat (blink gone, cup at 620,510); Camille talk on the ask +
+      sad lost-pencil ending + receive_pencil size; pot pickup at the pot
+      while shrunken; Kyoto depth lanes + the pond block + bridge kombu
+      kneel; Kiku dress-code open + her bowl hand-over + matcha grab;
+      Gary's ladder advancing on the FIRST click after each step; Hiro
+      taking katsuobushi and kombu separately (PP from behind); tea master
+      idle (talk sheet) pace; teahouse arrow/shrink; kettle/cat steadiness.
+
+### 2026-08-07 — PR (33-item sweep, plan toasty-imagining-floyd, by location)
+
+GLOBAL boot warnings (#1): camille was fixed earlier today (tol 24, entry
+below); praying-man give-paper holds SEVEN figures → loads 7×1 (+ both
+manifests); Hiro's legacy idle/talk sheets are SKIPPED when the counter
+sheets exist (they were loaded, warned, then discarded) and the counter
+IDLE — mis-cut, 5 runs for 6 — moved to the EQUAL-cell loader. Boot log is
+now warning-free.
+CAMP: #2 the camp_entrance walk-in now DRIFTS UP ~35px (playWalkIn gained a
+y-lerp; all other entries unchanged); #4 danny_room spawn foot 630→660;
+#5 tommy_room un-stuck (blocker h350→330 + minY 350 — the body rect clipped
+the blocker by 1px and pinned PP at foot 1100,619; foot 636 now reachable)
++ room Tommy H245→265 W162→175 (feet kept, hit-test synced); #6 grab-flower
+tail bleed fixed IN the PNG (pose 2's tail tip bridged pose 3 — 23-col
+punch at the waist); #7 give_map un-mirrored (throw now sails left toward
+PP) + §HIGGINS-GIVE-MAP-v4 queued; #3 §HIGGINS-WALK-BACK-v3 queued;
+#20 the Jerusalem pin now ALSO requires jake_strange_seen (set in
+strange-Jake's onDialogEnd; Higgins stays the bonus clue).
+PARIS: #8 biker = front-most (new ambientSprite.foreground layer drawn after
+the actors); #9 both blocked pot monologues play TALK FRONT; #10
+walkToFloorItem releases a held recede for non-depth items (the rolling-pin
+walk stayed shrunk); #11+#14 put_coffee_table: blue-bg sheet moved to the
+GLOBAL tol-24 key AND repaired in place (arm-bridge punch + the set-down cup
+shifted 6px left to join figure 5's run — it was a 59px orphan run = the
+blink frame); cup decor object → (620,510); #12 give/get confiture BAKED;
+#13 Beaumont talk repaired in place (fingertip + elbow bridge punches, dash
+fragment cleared — 8/8 clean; §CURATOR-TALK-v2 stays queued as the proper
+fix); #15 Camille's day-old-heel spoiler line DELETED + PP's blocked-pot
+line rewritten soft (discovery now happens at Margaux); #16
+camille_lostpencil BAKED; #17 the "(she scatters ze crumbs...)" line
+DELETED; #18 pencil mark standXOverride 855→880; #19 camille give_sketch
+mirrored (npc oneShotFlip).
+JERUSALEM: #21 receive_cardamom flip entry REMOVED (the sheet faces right
+like the base side sheets — the inversion pointed PP away from the seller);
+#22 spice idle+talk BAKED (global mode, matching their loader); #23 coffee
+give re-registered at global tol-24 under BOTH "give" and
+give_jerusalem_coffee (AA halos bridged fig 8's offered cup into fig 7 and
+the waist split cut through the cup); #24 bagel give: the pair is bridged by
+a real 21px limb — no clean cut exists → §BAGEL-GIVE-v2 queued (waist split
+stays as interim); its bg_bake row fixed to global:true.
+JAPAN: #25 all five Gary sheets BAKED (blue pockets + flip-sheet specks);
+#26 Kenji: idleFrameSpeed 0.5 + graceful candidates for the
+§KENJI-IDLE-NATURE base + §KENJI-IDLE-DRAWING alt-idle pair (queued, ONE
+design lock per user; brush_menu stays unwired — it's a menu-presentation
+beat, not an idle); #27 geisha idle+talk BAKED; #28 temple→teahouse anchor
+foot (838,384)→(844,353) + recede dyUp 80→40 (the "roof climb"); #29 kettle
+(850,610)→(780,530), tea-master idle back on the EQUAL-cell loader (the
+07-26 #6 jitter fix had regressed; her idle is 3 runs for 6) + slowed
+(talk 0.12→0.20, idle 0.5); #30 all four populated kyoto JSONs carry
+npcOverrides (footY) + _comment maps of their Go-side hotspots; #31
+KATSUOBUSHI HARD BLOCKER: the packet hotspot sat entirely INSIDE Kiku's
+click box (NPC clicks beat hotspots) → unreachable, chain dead-ended.
+Replaced with Oba-chan's dialog hand-over (obachanKatsuobushiDialog, gated
+on jp_hiro_ask_done), hotspot deleted; #32 Kiku's kimono spin + teaching
+fire only on the FIRST chat (guarded by jp_tea_learned itself, save-safe).
+
+SAME-DAY BAKE REJECTIONS (user): four of the baked sheets still show bg
+residue in-game — `npc_geisha_idle/talk`, `npc_spice_seller_idle`,
+`cafe_patron_camille_lostpencil` (the near-white-bg class, where the strict
+pocket caps could not remove the larger patches safely). Full re-rolls on
+the blue canvas queued: §KIKU-BLUE ×2, §SPICE-IDLE-BLUE,
+§CAMILLE-LOSTPENCIL-BLUE. The baked versions stay wired as the interim.
+→ §KIKU-BLUE ×2 LANDED + fixed same day: the re-rolls came back on-design
+but with a noisy blue bg the tol-8 connected key couldn't strip — baked
+transparent (blue-template bg_bake rows), GAP-DETECT 1×8 both, boot clean.
+
+- [ ] `[P1]` Generate §SPICE-IDLE-BLUE + §CAMILLE-LOSTPENCIL-BLUE, land at
+      their existing paths (grids unchanged, 8×1), then run /sprite-check —
+      and expect the same noisy-bg normalization step the Kiku drop needed.
+- [ ] `[P1]` PLAYTEST: the entry-walk up-drift read; danny/tommy room
+      entries + the tommy walk line to foot 636 + bigger Tommy; the Jake
+      gate from a fresh save (fly to Jerusalem only AFTER his room chat);
+      biker in front of the pot; the pot beats (talk-front monologues,
+      closer pencil grab, no shrunk rolling-pin walk); Henri beat (no
+      blink, cup at 620,510); trimmed grab-flower tail; Beaumont talk cut;
+      cardamom take facing; coffee-seller give + PP receive actually
+      visible (verify the held-cardamom flow); Kiku one-time spin;
+      katsuobushi via Oba-chan → full hearth chain → grove; teahouse entry
+      at (844,353); kettle spot; tea-master pace; geisha frame-3 white
+      patch (a >400px one survived the bake cap — flag if it reads as a
+      hole); kombu rack clickability (its rect sits below the walk band).
+
+### 2026-08-07 — curator talk frames touch
+
+- [ ] `[P1]` Re-roll
+      `assets/images/locations/paris/npc/museum/npc_museum_curator_talk.png`
+      with §CURATOR-TALK-v2 in `docs/EXTRA_PROMPTS.md`. Frame 1's outstretched
+      hand physically touches frame 2, merging both poses; the sheet also has
+      1,326 pure-white foreground pixels that risk chroma-key holes. Require
+      compact gestures, ≥15px empty gaps, and off-white shirt/eyes/paper.
+
+### 2026-08-07 — boot-warning fix: Camille patron frame drops (code fix)
+
+The two `[npc frames] cafe_patron_camille.png: dropping runt/double-figure`
+boot warnings are FIXED loader-side: her sheet's figures never touched —
+off-white antialias halos bridged the two tightest 3px gaps under the
+connected tol-8 key and inflated a dust speck into a 7×26 run, so the
+slicer merged figures 7+8 and gave the speck its own cell; both got
+dropped and her café loop ran 6 of 8 frames. `loadCafePatronGrids` now
+loads Camille at tol 24 (the Henri-fringe precedent). Boot log clean, all
+8 frames load, tests green. §CAMILLE-PATRON-v2 retired to the
+EXTRA_PROMPTS Done log — no regen needed.
+
 ### 2026-07-29 — post-drop feedback round (kamishibai doors, seat set, Hiro bust, selfie v2)
 
 User reviewed the landed 07-28 batch. WIRED NOW (all graceful until art):

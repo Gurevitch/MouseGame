@@ -75,7 +75,61 @@ var sheets = []sheetCfg{
 	// apron and the easel (well over the default 4000). Nothing legit on him
 	// is near the pale sky blue, so the wide cap is safe.
 	{"assets/images/locations/paris/npc/outside/npc_pierre_get_baguette.png", 24, 30000, 120, 2, false, 0},
-	{"assets/images/locations/jerusalem/npc/wall/npc_bagel_seller_give.png", 24, 4000, 120, 2, false, 0},
+	// 2026-08-07 #24: global:true (was false) — the runtime loader is the
+	// GLOBAL key (loadNPCGrid), and the tool's own doc says a flood-only bake
+	// on a global-key loader regresses enclosed pockets.
+	{"assets/images/locations/jerusalem/npc/wall/npc_bagel_seller_give.png", 24, 4000, 120, 2, true, 0},
+
+	// --- 2026-08-07 PR batch (user #12/#16/#22/#25/#27): reported white/blue
+	// pockets between arm and body. Near-white-bg sheets follow the
+	// PP-talk-side template (flood, strict pocketTol 6, no defringe); the
+	// #B4D7EE sheets follow the Pierre template. global mirrors each sheet's
+	// runtime loader.
+	// #12 — confiture pair (near-white bg, connected runtime key):
+	{"assets/images/player/PP give confiture.png", 20, 400, 120, 0, false, 6},
+	{"assets/images/player/PP get jam.png", 20, 400, 120, 0, false, 6},
+	// #16 — Camille's lost-pencil dismay loop (near-white, connected):
+	{"assets/images/locations/paris/npc/coffee/cafe_patron_camille_lostpencil.png", 20, 400, 120, 0, false, 6},
+	// #22 — spice seller (GLOBAL runtime key → global:true); idle is
+	// near-white, talk is the blue canvas:
+	{"assets/images/locations/jerusalem/npc/market/npc_spice_seller_idle.png", 20, 400, 120, 0, true, 6},
+	{"assets/images/locations/jerusalem/npc/market/npc_spice_seller_talk.png", 24, 4000, 120, 2, true, 0},
+	// #25 — Gary's five Kyoto sheets (blue canvas, connected runtime key —
+	// his pale eyes must survive; the flip sheet also drops its 4-6px specks
+	// via the speck pass):
+	{"assets/images/locations/japan/npc/npc_gary_idle_oposite_book.png", 24, 4000, 120, 2, false, 0},
+	{"assets/images/locations/japan/npc/npc_gary_talk_oposite_book.png", 24, 4000, 120, 2, false, 0},
+	{"assets/images/locations/japan/npc/npc_gary_flip_his_book.png", 24, 4000, 120, 2, false, 0},
+	{"assets/images/locations/japan/npc/npc_gary_idle_normal_book_idle.png", 24, 4000, 120, 2, false, 0},
+	{"assets/images/locations/japan/npc/npc_gary_idle_normal_book_talk.png", 24, 4000, 120, 2, false, 0},
+	// #27 — Kiku the geisha. 2026-08-07 (round 2): the §KIKU-BLUE re-rolls
+	// landed with a NOISY blue bg (±4-8 levels, ~0% exactly flat), so the
+	// runtime tol-8 connected key left speckle. Rows retuned from the old
+	// near-white config to the blue-canvas template (Gary/Pierre): tol 24
+	// flood + pockets + specks, fringe 2.
+	{"assets/images/locations/japan/npc/npc_geisha_idle.png", 24, 4000, 120, 2, false, 0},
+	{"assets/images/locations/japan/npc/npc_geisha_talk.png", 24, 4000, 120, 2, false, 0},
+
+	// --- 2026-08-08 PR batch (user #1/#2/#5/#6): reported residue. ---
+	// #1a — the fresh walk-back drop: noisy blue bg + leg-gap pockets;
+	// connected runtime loader → flood.
+	{"assets/images/locations/camp/npc/higgins/npc_director_higgins_walk_back_v2.png", 24, 4000, 120, 2, false, 0},
+	// #1b — PP talk front: the BLUE re-roll (not legacy white) with sixteen
+	// ~1030px between-the-legs slivers 3-6 levels off bg; GLOBAL runtime
+	// loader → global mode, encl cap above 1030.
+	{"assets/images/player/PP talk front.png", 24, 4000, 120, 2, true, 0},
+	// #2 — PP give flower: near-white bg, small true pockets (≤326px)
+	// between the legs; PP's ivory/blush flags at loose tolerances (the
+	// 2026-08-01 rollback case) → STRICT PP-talk-side template only.
+	{"assets/images/player/PP give flower.png", 20, 400, 120, 0, false, 6},
+	// #6 — give baguette + give card: noisy blue bg defeats the tol-8
+	// GLOBAL key → gap detect fails → proportional cells slice the
+	// off-cadence figures ("two frames at once"). Global bake.
+	{"assets/images/player/PP give baguette.png", 24, 4000, 120, 2, true, 0},
+	{"assets/images/player/PP give card.png", 24, 4000, 120, 2, true, 0},
+	// #5a — put_coffee_table: same noisy-blue class (the residual "blink");
+	// GLOBAL tol-24 runtime loader.
+	{"assets/images/player/pp_put_coffee_table.png", 24, 4000, 120, 2, true, 0},
 }
 
 func main() {

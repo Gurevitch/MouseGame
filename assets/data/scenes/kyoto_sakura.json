@@ -11,7 +11,9 @@
     {"bounds": {"x": 560, "y": 120, "w": 320, "h": 420}, "name": "The oldest cherry tree", "arrow": ""}
   ],
   "blockers": [],
+  "_comment_walk": "2026-08-08 D-3: the single y=520 lane sat BELOW minY (520-135=385<400), so every click clamped to one row - zero depth. Two lanes now (far 540, near 610) inside the band; tune with F3.",
   "walkSegments": [
-    {"x1": 110, "y1": 520, "x2": 1290, "y2": 520}
+    {"x1": 110, "y1": 540, "x2": 1290, "y2": 540},
+    {"x1": 110, "y1": 610, "x2": 1290, "y2": 610}
   ]
 }

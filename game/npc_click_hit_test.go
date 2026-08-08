@@ -81,7 +81,7 @@ func npcHitCases() []npcHitCase {
 		{scene: "camp_night", name: "Director Higgins (night)", bounds: sdl.Rect{X: 1120, Y: 430, W: 172, H: 220}, hidden: true},
 
 		// --- Kid bedrooms ---
-		{scene: "tommy_room", name: "Tommy (room)", bounds: sdl.Rect{X: 670, Y: 440, W: 162, H: 245}},
+		{scene: "tommy_room", name: "Tommy (room)", bounds: sdl.Rect{X: 754, Y: 425, W: 175, H: 265}}, // 2026-08-07 #5 bigger
 		{scene: "jake_room", name: "Jake (room)", bounds: sdl.Rect{X: 760, Y: 480, W: 162, H: 200}}, // #20 shrunk
 		{scene: "lily_room", name: "Lily (room)", bounds: sdl.Rect{X: 666, Y: 476, W: 162, H: 245}},
 		// User 2026-05-20: Marcus room Y nudged 350 → 385 so feet land
